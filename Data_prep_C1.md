@@ -539,7 +539,9 @@ Treat as missing data the age of consumption begin if it is less than 5 years.
 {: .emphasized}
 
 #### Figure 1. Histogram of Age of Consumption Begin
-![Histogram of Age of Consumption Begin](/Figures/Fig1.png)
+```{r}
+include_graphics(path.expand("~/Figures/Fig1.png"))
+```
 
 ```markdown
   CONS_C1_df %>%
@@ -600,7 +602,9 @@ Consider as missing age if it is less than 18 years and greater than 90.
 {: .emphasized}
 
 #### Figure 2. Histogram of Actual Age
-![Histogram of Actual Age](/Figures/Fig2.png)
+```{r}
+include_graphics(path.expand("~/Figures/Fig2.png"))
+```
 
 ```markdown
     CONS_C1_df %>%
@@ -643,8 +647,9 @@ As seen in Figure 3, there are 2320 cases with more than 1095 days in treatment.
 
 
 #### Figure 3. Histogram of Days In Treatment
-![Histogram of Days in Treatment](/Figures/Fig3.png)
-
+```{r}
+include_graphics(path.expand("~/Figures/Fig3.png"))
+```
 
 <br>
 ### 12. Pregnancy and Sex
