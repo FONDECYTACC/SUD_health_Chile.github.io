@@ -237,10 +237,11 @@ summary {
 -->
 <p>This page will be used to comment and understand the steps, advances and douts about the process of data preparations and standardization of the SISTRAT C1 (Convenio 1) which can be translated to Agreement on Collaboration, Technical Assistance and Transfer of Resources to General Population (“Convenio de Colaboración Técnica y de Transferencia de Recursos para Programa de Población General”). Must note that it does not include Adolescent criminal offenders (C2).</p>
 <p>To see the TOP or Profile of Treatment Results (“Perfil de Resultados de Tratamiento”) datasets, <a href="top_info.md#include-generated-text">go to this webpage</a>.</p>
-<p><br> ### Building dataset Define working directories which contains different text files that will be merged, correspondent to the years of the C1 Sistrat.</p>
+<p><br> ### Building dataset</p>
+<p>Define working directories which contains different text files that will be merged, correspondent to the years of the C1 Sistrat.</p>
 <pre class="markdown"><code>dir_c1 &lt;-toString(paste0(getwd(),&quot;/Encriptado c1/Personas tratadas c1/&quot;))
 dir_top &lt;-toString(paste0(getwd(),&quot;/encriptados TOP/&quot;))</code></pre>
-<p>Define files in the Directory folder, as long as they have the excel extension, #and they do not start with ~ (represent a working temporary file in excel)</p>
+<p>Define files in the Directory folder, as long as they have the excel extension and they do not start with ~ (represent a working temporary file in excel)</p>
 <pre class="markdown"><code>SISTRAT_c1&lt;-list.files(path=toString(dir_c1), all.files=T, pattern=&quot;^[2].*\\s*txt$&quot;)</code></pre>
 <p>SISTRAT_c1 is composed by the following files: * 2010tab-Resultado-20191113 (1).txt * 2011tab -Resultado-20191113.txt * 2012tab-Resultado-20191113.txt * 2013tab-Resultado-20191113.txt * 2014tab-Resultado-20191113.txt * 2015tab-Resultado-20191113.txt * 2016tab-Resultado-20191113.txt * 2017tab-Resultado-20191113.txt * 2018tab-Resultado-20191113.txt * 2019_EneOcttab-Resultado-20191113.txt</p>
 <p>Function to <strong>read tab delimited text files</strong>, with UTF-8 encoding and, based on the first 7 letters of its name, assign them an object name.</p>
@@ -248,11 +249,13 @@ dir_top &lt;-toString(paste0(getwd(),&quot;/encriptados TOP/&quot;))</code></pre
   assign(paste0(substr(filename, 1, 7)),read.delim(paste0(dir, filename),
         na.strings=&quot;null&quot;, header = T, fileEncoding=&quot;UTF-8&quot;),envir = .GlobalEnv)
   }</code></pre>
-<p><br> ### Import datasets To import the datasets, we apply the previous function to every dataset</p>
+<p><br> #### Import datasets</p>
+<p>To import the datasets, we apply the previous function to every dataset</p>
 <pre class="markdown"><code>for (x in SISTRAT_c1) {
   read_excel_mult(as.character(dir_c1), x)
 }</code></pre>
-<p><br> ### Normalize datasets Normalize datasets by defining a common name for hash key’s (“HASH_KEY”) and assign them an standardized name.</p>
+<p><br> #### Normalize datasets</p>
+<p>Normalize datasets by defining a common name for hash key’s (“HASH_KEY”) and assign them an standardized name.</p>
 <pre class="markdown"><code>tab_10_18_mod &lt;- function(x,y) {  get(x) %&gt;% dplyr::rename(&quot;HASH_KEY&quot; = !!names(.[91])) %&gt;%
     as.data.frame() %&gt;% 
     assign(paste0(y, as.character(x)),.,envir = .GlobalEnv)
@@ -262,16 +265,18 @@ for (i in paste0(c(2010:2018),&quot;tab&quot;)) {tab_10_18_mod(i,y=&quot;c1_&quo
 `2019_En` %&gt;% dplyr::rename(&quot;HASH_KEY&quot; = !!names(.[92])) %&gt;%
   as.data.frame() %&gt;% 
   assign(paste0(&quot;c1_&quot;, &quot;2019tab&quot;),.,envir = .GlobalEnv)</code></pre>
-<p><br> ### Append the datasets Once normalized column names. Bind every year’s datasets by their rows.</p>
+<p><br> #### Append the datasets</p>
+<p>Once normalized column names. Bind every year’s datasets by their rows.</p>
 <pre class="markdown"><code>CONS_C1=rbindlist(mget(paste0(&quot;c1_&quot;,c(2010:2019),&quot;tab&quot;)), idcol=&quot;TABLE&quot;, fill=T)
 CONS_C1 &lt;- CONS_C1 %&gt;% dplyr::mutate(row=1:nrow(CONS_C1)) %&gt;% dplyr::select(row,everything())</code></pre>
 <hr />
 <hr />
 <hr />
 <hr />
-<p><br> ## Define and format variable names Redefine variable names, create a column named <em>ano_bd</em> with the year. Also, it reorder the variables to get the identifiers as the first columns.</p>
-<div id="rename-variables" class="section level3">
-<h3>Rename Variables</h3>
+<p><br> ## Define and format variable names</p>
+<p>Redefine variable names, create a column named <em>ano_bd</em> with the year. Also, it reorder the variables to get the identifiers as the first columns.</p>
+<div id="rename-variables" class="section level4">
+<h4>Rename Variables</h4>
 <pre class="markdown"><code>CONS_C1 %&gt;% 
   dplyr::rename(id=`Codigo.Identificación`) %&gt;%
   dplyr::rename(fech_ing=`Fecha.Ingreso.a.Tratamiento`) %&gt;%
@@ -308,7 +313,8 @@ CONS_C1 &lt;- CONS_C1 %&gt;% dplyr::mutate(row=1:nrow(CONS_C1)) %&gt;% dplyr::se
   dplyr::mutate(tipo_de_plan=as.factor(`Tipo.de.Plan`)) %&gt;%  
   dplyr::mutate(tipo_de_programa=as.factor(`Tipo.de.Programa`)) %&gt;%  
   assign(&quot;CONS_C1_df&quot;,.,envir = .GlobalEnv) </code></pre>
-<p><br> ### Standardize Dates Dates of admission and discharge Most of the dates were not formatted equally. When standardized,some cases failed to transform dates, specifically in dates of discharge, which contained 87 cases, while only one case was problematic in admission dates.</p>
+<p><br> #### Standardize Dates <br> Dates of admission and discharge <br></p>
+<p>Most of the dates were not formatted equally. When standardized,some cases failed to transform dates, specifically in dates of discharge, which contained 87 cases, while only one case was problematic in admission dates.</p>
 <pre class="markdown"><code>CONS_C1_df %&gt;%
   dplyr::mutate(fech_ing= ifelse(row==&quot;14504&quot;, &quot;10/01/2011&quot;,fech_ing))  %&gt;%
   dplyr::mutate(fech_ing= lubridate::parse_date_time(fech_ing, c(&quot;%d/%m/%Y&quot;),exact=T))
@@ -658,7 +664,7 @@ DischargeDate-NoFmt
 </tbody>
 </table>
 </div>
-<p>As we can see in Table 2, some non-formatted date of discharge (<em>fech_egres_sin_fmt</em>), had insufficient information to traduce into valid dates.</p>
+<p><br> As we can see in Table 2, some non-formatted date of discharge (<em>fech_egres_sin_fmt</em>), had insufficient information to traduce into valid dates.</p>
 <div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:150px; overflow-x: scroll; width:100%; ">
 <table class="table table-striped table-hover" style="font-size: 10px; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
@@ -810,549 +816,1098 @@ NA
 </tbody>
 </table>
 </div>
-<div id="table-2.-non-interpretable-discharge-dates" class="section level4">
-<h4>Table 2. Non-interpretable discharge dates</h4>
-<table>
-<thead>
-<tr class="header">
-<th align="center">Year</th>
-<th align="center">case</th>
-<th align="center">DischargeDate</th>
-<th align="center">DischargeDate-NoFmt</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center">2011</td>
-<td align="center">12006</td>
-<td align="center">NA</td>
-<td align="center">5</td>
-</tr>
-<tr class="even">
-<td align="center">2011</td>
-<td align="center">12005</td>
-<td align="center">NA</td>
-<td align="center">5</td>
-</tr>
-<tr class="odd">
-<td align="center">2011</td>
-<td align="center">12227</td>
-<td align="center">NA</td>
-<td align="center">25</td>
-</tr>
-<tr class="even">
-<td align="center">2010</td>
-<td align="center">8239</td>
-<td align="center">NA</td>
-<td align="center">15</td>
-</tr>
-<tr class="odd">
-<td align="center">2010</td>
-<td align="center">9043</td>
-<td align="center">NA</td>
-<td align="center">5</td>
-</tr>
-<tr class="even">
-<td align="center">2010</td>
-<td align="center">2603</td>
-<td align="center">NA</td>
-<td align="center">20/0/2010</td>
-</tr>
-<tr class="odd">
-<td align="center">2010</td>
-<td align="center">9042</td>
-<td align="center">NA</td>
-<td align="center">5</td>
-</tr>
-<tr class="even">
-<td align="center">2010</td>
-<td align="center">194</td>
-<td align="center">NA</td>
-<td align="center">15</td>
-</tr>
-<tr class="odd">
-<td align="center">2010</td>
-<td align="center">9353</td>
-<td align="center">NA</td>
-<td align="center">25</td>
-</tr>
-</tbody>
-</table>
 <p><br> <strong><em> </em></strong></p>
-</div>
 </div>
 <div id="data-cleaning-steps-provided-by-sendas-professional" class="section level2">
 <h2>Data Cleaning Steps provided by SENDA’s professional</h2>
 <p>This rules were provided by SENDA’s professionals, in order to select adequate data for the analysis.</p>
-<p><br> ### 1- Exclude not SENDA treatments</p>
+<p><br> #### 1- Exclude not SENDA treatments</p>
 <p>In first place, we should discard treatments not provided by SENDA.</p>
-<pre class="markdown"><code>  data.frame(table(CONS_C1_df$SENDA,exclude=NULL),
-             `%`=paste0(round(prop.table(table(CONS_C1_df$SENDA,exclude=NULL)),3)*100,&quot;%&quot;)) %&gt;%
-    pander::pandoc.table(., split.tables=Inf, style=&#39;rmarkdown&#39;)</code></pre>
-<p>As we can see in Table 3, around 4.8% of cases had a treatment that could be not part of SENDA’s agreements.</p>
-<div id="table-3.-treatment-admissions" class="section level4">
-<h4>Table 3. Treatment Admissions</h4>
-<table>
+<table class="table table-striped table-hover" style="font-size: 10px; margin-left: auto; margin-right: auto;">
+<caption style="font-size: initial !important;">
+Table 3. Treatment Admissions
+</caption>
 <thead>
-<tr class="header">
-<th align="center">SENDA</th>
-<th align="center">n</th>
-<th align="center">%</th>
+<tr>
+<th style="text-align:center;">
+SENDA
+</th>
+<th style="text-align:center;">
+Frequency
+</th>
+<th style="text-align:center;">
+%
+</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
-<td align="center">No</td>
-<td align="center">7762</td>
-<td align="center">4.8%</td>
+<tr>
+<td style="text-align:center;">
+No
+</td>
+<td style="text-align:center;">
+7,762
+</td>
+<td style="text-align:center;">
+4.8%
+</td>
 </tr>
-<tr class="even">
-<td align="center">Yes</td>
-<td align="center">155382</td>
-<td align="center">95.2%</td>
+<tr>
+<td style="text-align:center;">
+Si
+</td>
+<td style="text-align:center;">
+155,382
+</td>
+<td style="text-align:center;">
+95.2%
+</td>
 </tr>
-<tr class="odd">
-<td align="center">NA</td>
-<td align="center">2</td>
-<td align="center">0%</td>
+<tr>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+2
+</td>
+<td style="text-align:center;">
+0%
+</td>
 </tr>
 </tbody>
 </table>
-<p><br> ### 2. Explore if the type of plan</p>
+<p><br> As we can see in Table 3, around 4.8% of cases had a treatment that could be not part of SENDA’s agreements. <br> <br></p>
+<div id="explore-if-the-type-of-plan" class="section level4">
+<h4>2. Explore if the type of plan</h4>
+<p><br></p>
 <p>It is necessary to explore if there is any case that may have a treatment under a probation/parole (“libertad vigilada”) plan.</p>
-<pre class="markdown"><code>  CONS_C1_df %&gt;%
-    dplyr::group_by(SENDA,tipo_de_plan) %&gt;%
-    dplyr::summarise(count = n() ) %&gt;%
-    dplyr::mutate(perc = paste0(round(100 * count/sum(count), 0), &quot;%&quot;)) %&gt;%    
-    data.table() %&gt;% 
-    reshape::melt( id.vars = c(1:2)) %&gt;% 
-    reshape::cast(.,tipo_de_plan~SENDA+variable) %&gt;% 
-    dplyr::rename(&quot;Type of Plan&quot; = tipo_de_plan, &quot;No SENDA(n)&quot; = No_count, &quot;No SENDA(%)&quot; = No_perc,
-                  &quot;Yes SENDA(n)&quot;= Si_count, &quot;Yes SENDA(%)&quot;=Si_perc, &quot;NA (n)&quot;=NA_count, &quot;NA (%)&quot;=NA_perc) %&gt;%
-    as.data.frame() %&gt;% 
-    pander::pandoc.table(., split.tables=Inf, style=&#39;rmarkdown&#39;)</code></pre>
-<p>Table 4 shows that there is only 1 case in the probation/parole plan.</p>
-</div>
-<div id="table-4.-treatment-plans" class="section level4">
-<h4>Table 4. Treatment Plans</h4>
-<table>
+<pre><code>## Warning: Factor `tipo_de_plan` contains implicit NA, consider using
+## `forcats::fct_explicit_na`</code></pre>
+<pre><code>## Warning in melt.data.table(., id.vars = c(1:2)): &#39;measure.vars&#39; [count,
+## perc] are not all of the same type. By order of hierarchy, the molten data
+## value column will be of type &#39;character&#39;. All measure variables not of type
+## &#39;character&#39; will be coerced too. Check DETAILS in ?melt.data.table for more on
+## coercion.</code></pre>
+<table class="table table-striped table-hover" style="font-size: 10px; margin-left: auto; margin-right: auto;">
+<caption style="font-size: initial !important;">
+Table 4. Treatment Plans
+</caption>
 <thead>
-<tr class="header">
-<th align="center">Type of Plan</th>
-<th align="center">No SENDA(n)</th>
-<th align="center">No SENDA(%)</th>
-<th align="center">Yes SENDA(n)</th>
-<th align="center">Yes SENDA(%)</th>
-<th align="center">NA (n)</th>
-<th align="center">NA (%)</th>
+<tr>
+<th style="text-align:center;">
+Type of Plan
+</th>
+<th style="text-align:center;">
+No SENDA(n)
+</th>
+<th style="text-align:center;">
+No SENDA(%)
+</th>
+<th style="text-align:center;">
+Yes SENDA(n)
+</th>
+<th style="text-align:center;">
+Yes SENDA(%)
+</th>
+<th style="text-align:center;">
+NA (n)
+</th>
+<th style="text-align:center;">
+NA (%)
+</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
-<td align="center">CALLE</td>
-<td align="center">5</td>
-<td align="center">0%</td>
-<td align="center">10</td>
-<td align="center">0%</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
+<tr>
+<td style="text-align:center;">
+CALLE
+</td>
+<td style="text-align:center;">
+5
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+10
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
 </tr>
-<tr class="even">
-<td align="center">M-PAB</td>
-<td align="center">6</td>
-<td align="center">0%</td>
-<td align="center">109</td>
-<td align="center">0%</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
+<tr>
+<td style="text-align:center;">
+M-PAB
+</td>
+<td style="text-align:center;">
+6
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+109
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
 </tr>
-<tr class="odd">
-<td align="center">M-PAI</td>
-<td align="center">137</td>
-<td align="center">2%</td>
-<td align="center">10,533</td>
-<td align="center">7%</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
+<tr>
+<td style="text-align:center;">
+M-PAI
+</td>
+<td style="text-align:center;">
+137
+</td>
+<td style="text-align:center;">
+2%
+</td>
+<td style="text-align:center;">
+10533
+</td>
+<td style="text-align:center;">
+7%
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
 </tr>
-<tr class="even">
-<td align="center">M-PAI2</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
-<td align="center">16</td>
-<td align="center">0%</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
+<tr>
+<td style="text-align:center;">
+M-PAI2
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+16
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
 </tr>
-<tr class="odd">
-<td align="center">M-PR</td>
-<td align="center">251</td>
-<td align="center">3%</td>
-<td align="center">7,588</td>
-<td align="center">5%</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
+<tr>
+<td style="text-align:center;">
+M-PR
+</td>
+<td style="text-align:center;">
+251
+</td>
+<td style="text-align:center;">
+3%
+</td>
+<td style="text-align:center;">
+7588
+</td>
+<td style="text-align:center;">
+5%
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
 </tr>
-<tr class="even">
-<td align="center">M-PR2</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
-<td align="center">10</td>
-<td align="center">0%</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
+<tr>
+<td style="text-align:center;">
+M-PR2
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+10
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
 </tr>
-<tr class="odd">
-<td align="center">Otro</td>
-<td align="center">1,778</td>
-<td align="center">23%</td>
-<td align="center">90</td>
-<td align="center">0%</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
+<tr>
+<td style="text-align:center;">
+Otro
+</td>
+<td style="text-align:center;">
+1778
+</td>
+<td style="text-align:center;">
+23%
+</td>
+<td style="text-align:center;">
+90
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
 </tr>
-<tr class="even">
-<td align="center">PAI LV</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
-<td align="center">1</td>
-<td align="center">0%</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
+<tr>
+<td style="text-align:center;">
+PAI LV
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
 </tr>
-<tr class="odd">
-<td align="center">PG-PAB</td>
-<td align="center">2,236</td>
-<td align="center">29%</td>
-<td align="center">54,075</td>
-<td align="center">35%</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
+<tr>
+<td style="text-align:center;">
+PG-PAB
+</td>
+<td style="text-align:center;">
+2236
+</td>
+<td style="text-align:center;">
+29%
+</td>
+<td style="text-align:center;">
+54075
+</td>
+<td style="text-align:center;">
+35%
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
 </tr>
-<tr class="even">
-<td align="center">PG-PAI</td>
-<td align="center">2,233</td>
-<td align="center">29%</td>
-<td align="center">66,300</td>
-<td align="center">43%</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
+<tr>
+<td style="text-align:center;">
+PG-PAI
+</td>
+<td style="text-align:center;">
+2233
+</td>
+<td style="text-align:center;">
+29%
+</td>
+<td style="text-align:center;">
+66300
+</td>
+<td style="text-align:center;">
+43%
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
 </tr>
-<tr class="odd">
-<td align="center">PG-PR</td>
-<td align="center">1,116</td>
-<td align="center">14%</td>
-<td align="center">16,599</td>
-<td align="center">11%</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
+<tr>
+<td style="text-align:center;">
+PG-PR
+</td>
+<td style="text-align:center;">
+1116
+</td>
+<td style="text-align:center;">
+14%
+</td>
+<td style="text-align:center;">
+16599
+</td>
+<td style="text-align:center;">
+11%
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
 </tr>
-<tr class="even">
-<td align="center">PG PAI 2</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
-<td align="center">50</td>
-<td align="center">0%</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
+<tr>
+<td style="text-align:center;">
+PG PAI 2
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+50
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
 </tr>
-<tr class="odd">
-<td align="center">NA</td>
-<td align="center">NA</td>
-<td align="center">NA</td>
-<td align="center">1</td>
-<td align="center">0%</td>
-<td align="center">2</td>
-<td align="center">100%</td>
+<tr>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+2
+</td>
+<td style="text-align:center;">
+100%
+</td>
 </tr>
 </tbody>
+<tfoot>
+<tr>
+<td style="padding: 0; border:0;" colspan="100%">
+<sup>*</sup> PR= Residential Program
+</td>
+</tr>
+<tr>
+<td style="padding: 0; border:0;" colspan="100%">
+<sup>†</sup> PAB= Basic Outpatient Program
+</td>
+</tr>
+<tr>
+<td style="padding: 0; border:0;" colspan="100%">
+<sup>‡</sup> PAI= Intensive Outpatient Treatment
+</td>
+</tr>
+<tr>
+<td style="padding: 0; border:0;" colspan="100%">
+<sup>§</sup> PAI LV= Probation/Parole
+</td>
+</tr>
+<tr>
+<td style="padding: 0; border:0;" colspan="100%">
+<sup>¶</sup> PAI= Intensive Outpatient Treatment
+</td>
+</tr>
+</tfoot>
 </table>
-<p><it> <sub> Note. PR= Residential Program; PAB= Basic Outpatient Program PAI= Intensive Outpatient Treatment; PAI LV= Probation/Parole </sub> </it> {: .note}</p>
-<p><br> ### 3. Changes in programs</p>
+<p><br></p>
+<p>Table 4 shows that there is only 1 case in the probation/parole plan. <br></p>
+</div>
+<div id="changes-in-programs" class="section level4">
+<h4>3. Changes in programs</h4>
 <p>Change fixed residential, flexible residential and residential programmes into a general population residential program (PG PR). Additionally, flexible residential program cannot be under a probation/parole program.</p>
 <p>Must note that there are <strong><em>some plans that have a number 2</em></strong> but they do not contain more than 0% of the total of the datasets. Also there is some plans related to the Treatment of People Living on the Streets Programs (Programa de Tratamiento de Personas en Situación de Calle). <strong><em>For the moment, we are not sure what is the fixed and flexible residential programmes</em></strong>.</p>
-<pre class="markdown"><code>  table(CONS_C1_df$tipo_de_programa, CONS_C1_df$tipo_de_plan, exclude= NULL) %&gt;%
-    pander::pandoc.table(., split.tables=Inf, style=&#39;rmarkdown&#39;)</code></pre>
-</div>
-<div id="table-5.-contingency-tables-of-programs-by-plans" class="section level4">
-<h4>Table 5. Contingency Tables of Programs by Plans</h4>
-<table>
+<table class="table table-striped table-hover" style="font-size: 10px; margin-left: auto; margin-right: auto;">
+<caption style="font-size: initial !important;">
+Table 5. Contingency Tables of Programs by Plans
+</caption>
 <thead>
-<tr class="header">
-<th align="center"> </th>
-<th align="center">CALLE</th>
-<th align="center">M-PAB</th>
-<th align="center">M-PAI</th>
-<th align="center">M-PAI2</th>
-<th align="center">M-PR</th>
-<th align="center">M-PR2</th>
-<th align="center">Otro</th>
-<th align="center">PAI LV</th>
-<th align="center">PG-PAB</th>
-<th align="center">PG-PAI</th>
-<th align="center">PG-PR</th>
-<th align="center">PG PAI 2</th>
-<th align="center">NA</th>
+<tr>
+<th style="text-align:center;">
+Type of Program
+</th>
+<th style="text-align:center;">
+CALLE
+</th>
+<th style="text-align:center;">
+M-PAB
+</th>
+<th style="text-align:center;">
+M-PAI
+</th>
+<th style="text-align:center;">
+M-PAI2
+</th>
+<th style="text-align:center;">
+M-PR
+</th>
+<th style="text-align:center;">
+M-PR2
+</th>
+<th style="text-align:center;">
+Otro
+</th>
+<th style="text-align:center;">
+PAI LV
+</th>
+<th style="text-align:center;">
+PG-PAB
+</th>
+<th style="text-align:center;">
+PG-PAI
+</th>
+<th style="text-align:center;">
+PG-PR
+</th>
+<th style="text-align:center;">
+PG PAI 2
+</th>
+<th style="text-align:center;">
+NA
+</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
-<td align="center"><strong>Libertad Vigilada</strong></td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">2</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
+<tr>
+<td style="text-align:center;">
+Libertad Vigilada
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+2
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
 </tr>
-<tr class="even">
-<td align="center"><strong>Otro</strong></td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">3</td>
-<td align="center">0</td>
-<td align="center">3</td>
-<td align="center">0</td>
-<td align="center">890</td>
-<td align="center">0</td>
-<td align="center">32</td>
-<td align="center">35</td>
-<td align="center">12</td>
-<td align="center">2</td>
-<td align="center">0</td>
+<tr>
+<td style="text-align:center;">
+Otro
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+3
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+3
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+890
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+32
+</td>
+<td style="text-align:center;">
+35
+</td>
+<td style="text-align:center;">
+12
+</td>
+<td style="text-align:center;">
+2
+</td>
+<td style="text-align:center;">
+0
+</td>
 </tr>
-<tr class="odd">
-<td align="center"><strong>Programa Alcohol</strong></td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">80</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
+<tr>
+<td style="text-align:center;">
+Programa Alcohol
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+80
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
 </tr>
-<tr class="even">
-<td align="center"><strong>Programa Calles</strong></td>
-<td align="center">15</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
+<tr>
+<td style="text-align:center;">
+Programa Calles
+</td>
+<td style="text-align:center;">
+15
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
 </tr>
-<tr class="odd">
-<td align="center"><strong>Programa Específico Mujeres</strong></td>
-<td align="center">0</td>
-<td align="center">115</td>
-<td align="center">9,741</td>
-<td align="center">16</td>
-<td align="center">7,590</td>
-<td align="center">10</td>
-<td align="center">7</td>
-<td align="center">0</td>
-<td align="center">19</td>
-<td align="center">48</td>
-<td align="center">3</td>
-<td align="center">16</td>
-<td align="center">0</td>
+<tr>
+<td style="text-align:center;">
+Programa Específico Mujeres
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+115
+</td>
+<td style="text-align:center;">
+9,741
+</td>
+<td style="text-align:center;">
+16
+</td>
+<td style="text-align:center;">
+7,590
+</td>
+<td style="text-align:center;">
+10
+</td>
+<td style="text-align:center;">
+7
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+19
+</td>
+<td style="text-align:center;">
+48
+</td>
+<td style="text-align:center;">
+3
+</td>
+<td style="text-align:center;">
+16
+</td>
+<td style="text-align:center;">
+0
+</td>
 </tr>
-<tr class="even">
-<td align="center"><strong>Programa Población General</strong></td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">926</td>
-<td align="center">0</td>
-<td align="center">246</td>
-<td align="center">0</td>
-<td align="center">971</td>
-<td align="center">1</td>
-<td align="center">56,260</td>
-<td align="center">68,368</td>
-<td align="center">17,700</td>
-<td align="center">32</td>
-<td align="center">0</td>
+<tr>
+<td style="text-align:center;">
+Programa Población General
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+926
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+246
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+971
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+56,260
+</td>
+<td style="text-align:center;">
+68,368
+</td>
+<td style="text-align:center;">
+17,700
+</td>
+<td style="text-align:center;">
+32
+</td>
+<td style="text-align:center;">
+0
+</td>
 </tr>
-<tr class="odd">
-<td align="center">NA</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">0</td>
-<td align="center">3</td>
+<tr>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+3
+</td>
 </tr>
 </tbody>
 </table>
-<p>{: .emphasized .table_wrapper}</p>
-<p><it> <sub> Note. Libertad Vigilada= Probation/Parole; Otro= Another program; Programa Alcohol= Alcohol Program; Programa Calles= Program to people living on streets; Programa Específico Mujeres= Specific program for women; Programa Población General= General population program </sub> </it> {: .note}</p>
-<p><br> ### 4. Plans within Alcohol Program</p>
-<p>If there is a plan within the alcohol program, the plan must be modificated into the general population plan.</p>
-<pre class="markdown"><code>CONS_C1_df %&gt;%
-    dplyr::filter(tipo_de_programa==&quot;Programa Alcohol&quot;) %&gt;%
-    dplyr::group_by(tipo_de_plan) %&gt;%
-    dplyr::summarise(n())</code></pre>
-<p>Every of the 80 cases in the alcohol program are in the general population plan.</p>
-<p><br> ### 5. Another Plan</p>
-<p>If there is any plan correspondent to Another (“Otro”), it changes into a general population program.</p>
-<pre class="markdown"><code>  CONS_C1_df %&gt;%
-    dplyr::filter(tipo_de_plan==&quot;Otro&quot;) %&gt;%
-    dplyr::summarise(n())</code></pre>
-<p>There is 1868 cases with treatments categorized as Another (“Otro”) plan.</p>
-<p><br> ### 6.Plan &amp; Programs by Sex</p>
-<p>Women should be in the M-PAI in they actually are cathegorized in the general population program.</p>
+<p><br> #### 4. Plans within Alcohol Program</p>
+<p>If there is a plan within the alcohol program, the plan must be modificated into the general population plan. <br></p>
+<p>Every of the PG-PAI, 80 cases in the alcohol program are in the general population plan.</p>
+<p><br> #### 5. Another Plan</p>
+<p>If there is any plan correspondent to Another (“Otro”), it changes into a general population program. <br></p>
+<p>There are 1868 cases with treatments categorized as Another (“Otro”) plan.</p>
+<p><br> #### 6.Plan &amp; Programs by Sex</p>
+<p>Women should be in the M-PAI in they actually are cathegorized in the general population program. <br></p>
 <p>As can be seen in Table 6, around 16% of women are in the general population programmes.<strong>Should be removed?</strong></p>
-<pre class="markdown"><code>  data.frame(table(CONS_C1_df$tipo_de_plan, CONS_C1_df$Sexo, exclude=NULL),
-             `%`=paste0(round(prop.table(table(CONS_C1_df$tipo_de_plan, CONS_C1_df$Sexo, exclude=NULL)),3)*100,&quot;%&quot;)) %&gt;% 
-    as.data.frame() %&gt;% 
-    reshape::melt( id.vars = c(&quot;Var1&quot;, &quot;Var2&quot;)) %&gt;%
-    reshape::cast(.,Var1~Var2+variable) %&gt;%
-    pander::pandoc.table(., split.tables=Inf, style=&#39;rmarkdown&#39;)</code></pre>
-</div>
-<div id="table-6.-plan-by-sex" class="section level4">
-<h4>Table 6. Plan by Sex</h4>
-<table>
+<table class="table table-striped table-hover" style="font-size: 10px; margin-left: auto; margin-right: auto;">
+<caption style="font-size: initial !important;">
+Table 6. Plan by Sex
+</caption>
 <thead>
-<tr class="header">
-<th align="center">Plan</th>
-<th align="center">Man (n)</th>
-<th align="center">Man (%)</th>
-<th align="center">Women (n)</th>
-<th align="center">Women (%)</th>
+<tr>
+<th style="text-align:center;">
+Plan
+</th>
+<th style="text-align:center;">
+Man (n)
+</th>
+<th style="text-align:center;">
+Man (%)
+</th>
+<th style="text-align:center;">
+Women (n)
+</th>
+<th style="text-align:center;">
+Women (%)
+</th>
 </tr>
 </thead>
 <tbody>
-<tr class="odd">
-<td align="center">CALLE</td>
-<td align="center">12</td>
-<td align="center">0%</td>
-<td align="center">3</td>
-<td align="center">0%</td>
+<tr>
+<td style="text-align:center;">
+CALLE
+</td>
+<td style="text-align:center;">
+12
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+3
+</td>
+<td style="text-align:center;">
+0%
+</td>
 </tr>
-<tr class="even">
-<td align="center">M-PAB</td>
-<td align="center">0</td>
-<td align="center">0%</td>
-<td align="center">115</td>
-<td align="center">0.1%</td>
+<tr>
+<td style="text-align:center;">
+M-PAB
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+115
+</td>
+<td style="text-align:center;">
+0.1%
+</td>
 </tr>
-<tr class="odd">
-<td align="center">M-PAI</td>
-<td align="center">86</td>
-<td align="center">0.1%</td>
-<td align="center">10,584</td>
-<td align="center">6.5%</td>
+<tr>
+<td style="text-align:center;">
+M-PAI
+</td>
+<td style="text-align:center;">
+86
+</td>
+<td style="text-align:center;">
+0.1%
+</td>
+<td style="text-align:center;">
+10584
+</td>
+<td style="text-align:center;">
+6.5%
+</td>
 </tr>
-<tr class="even">
-<td align="center">M-PAI2</td>
-<td align="center">0</td>
-<td align="center">0%</td>
-<td align="center">16</td>
-<td align="center">0%</td>
+<tr>
+<td style="text-align:center;">
+M-PAI2
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+16
+</td>
+<td style="text-align:center;">
+0%
+</td>
 </tr>
-<tr class="odd">
-<td align="center">M-PR</td>
-<td align="center">68</td>
-<td align="center">0%</td>
-<td align="center">7,771</td>
-<td align="center">4.8%</td>
+<tr>
+<td style="text-align:center;">
+M-PR
+</td>
+<td style="text-align:center;">
+68
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+7771
+</td>
+<td style="text-align:center;">
+4.8%
+</td>
 </tr>
-<tr class="even">
-<td align="center">M-PR2</td>
-<td align="center">0</td>
-<td align="center">0%</td>
-<td align="center">10</td>
-<td align="center">0%</td>
+<tr>
+<td style="text-align:center;">
+M-PR2
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+10
+</td>
+<td style="text-align:center;">
+0%
+</td>
 </tr>
-<tr class="odd">
-<td align="center">Otro</td>
-<td align="center">1,305</td>
-<td align="center">0.8%</td>
-<td align="center">563</td>
-<td align="center">0.3%</td>
+<tr>
+<td style="text-align:center;">
+Otro
+</td>
+<td style="text-align:center;">
+1305
+</td>
+<td style="text-align:center;">
+0.8%
+</td>
+<td style="text-align:center;">
+563
+</td>
+<td style="text-align:center;">
+0.3%
+</td>
 </tr>
-<tr class="even">
-<td align="center">PAI LV</td>
-<td align="center">1</td>
-<td align="center">0%</td>
-<td align="center">0</td>
-<td align="center">0%</td>
+<tr>
+<td style="text-align:center;">
+PAI LV
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0%
+</td>
 </tr>
-<tr class="odd">
-<td align="center">PG-PAB</td>
-<td align="center">44,527</td>
-<td align="center">27.3%</td>
-<td align="center">11,784</td>
-<td align="center">7.2%</td>
+<tr>
+<td style="text-align:center;">
+PG-PAB
+</td>
+<td style="text-align:center;">
+44527
+</td>
+<td style="text-align:center;">
+27.3%
+</td>
+<td style="text-align:center;">
+11784
+</td>
+<td style="text-align:center;">
+7.2%
+</td>
 </tr>
-<tr class="even">
-<td align="center">PG-PAI</td>
-<td align="center">54,142</td>
-<td align="center">33.2%</td>
-<td align="center">14,391</td>
-<td align="center">8.8%</td>
+<tr>
+<td style="text-align:center;">
+PG-PAI
+</td>
+<td style="text-align:center;">
+54142
+</td>
+<td style="text-align:center;">
+33.2%
+</td>
+<td style="text-align:center;">
+14391
+</td>
+<td style="text-align:center;">
+8.8%
+</td>
 </tr>
-<tr class="odd">
-<td align="center">PG-PR</td>
-<td align="center">17,057</td>
-<td align="center">10.5%</td>
-<td align="center">658</td>
-<td align="center">0.4%</td>
+<tr>
+<td style="text-align:center;">
+PG-PR
+</td>
+<td style="text-align:center;">
+17057
+</td>
+<td style="text-align:center;">
+10.5%
+</td>
+<td style="text-align:center;">
+658
+</td>
+<td style="text-align:center;">
+0.4%
+</td>
 </tr>
-<tr class="even">
-<td align="center">PG PAI 2</td>
-<td align="center">27</td>
-<td align="center">0%</td>
-<td align="center">23</td>
-<td align="center">0%</td>
+<tr>
+<td style="text-align:center;">
+PG PAI 2
+</td>
+<td style="text-align:center;">
+27
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+23
+</td>
+<td style="text-align:center;">
+0%
+</td>
 </tr>
-<tr class="odd">
-<td align="center">NA</td>
-<td align="center">3</td>
-<td align="center">0%</td>
-<td align="center">0</td>
-<td align="center">0%</td>
+<tr>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+3
+</td>
+<td style="text-align:center;">
+0%
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0%
+</td>
 </tr>
 </tbody>
+<tfoot>
+<tr>
+<td style="padding: 0; border:0;" colspan="100%">
+<sup>*</sup> PR= Residential Program
+</td>
+</tr>
+<tr>
+<td style="padding: 0; border:0;" colspan="100%">
+<sup>†</sup> PAB= Basic Outpatient Program
+</td>
+</tr>
+<tr>
+<td style="padding: 0; border:0;" colspan="100%">
+<sup>‡</sup> PAI= Intensive Outpatient Treatment
+</td>
+</tr>
+<tr>
+<td style="padding: 0; border:0;" colspan="100%">
+<sup>§</sup> PAI LV= Probation/Parole
+</td>
+</tr>
+<tr>
+<td style="padding: 0; border:0;" colspan="100%">
+<sup>¶</sup> PAI= Intensive Outpatient Treatment
+</td>
+</tr>
+</tfoot>
 </table>
-<p><it> <sub> Note. PR= Residential Program; PAB= Basic Outpatient Program; PAI= Intensive Outpatient Treatment; PAI LV= Probation/Parole; Percentage by sex </sub> </it> {: .note}</p>
 <p>There are still a few doubts about these criteria: - <strong>Why there is men and women with female gender identity that are in the general population?, (Basic outpatient (22 men; 690 women), intensive outpatient (33 men; 1098 women), Residential (5 men; 26 women) and Outpatient 2 (12 women)?</strong> - <strong>Should the 2 men and 12 women in M-PAI but with masculine gender identity be in general population (PG PAI)?</strong> - <strong>If in M-PR there is a women with masculine gender identity, should not be in the general population (PG_PR)?</strong></p>
-<p><br> ### 7.Plan &amp; Programs by Sex</p>
+<p><br> #### 7.Plan &amp; Programs by Sex</p>
 <p>Only plans “M-PAI”, “M-PR”, “PG-PAB”, “PG-PAI” and “PG-PR” must be preserved. <strong>Considering Table 4, what happens with M-PAB (basic outpatient for women), “Calle”, “PG PAI 2”, “M-PAI2”, “M-PR2”, “PAI LV” or another (“Otro”)? (See Table 4)</strong></p>
-<p><br> ### 8.Age of consumption begin</p>
+<p><br> #### 8.Age of consumption begin</p>
 <p>Treat as missing data the age of consumption begin if it is less than 5 years.</p>
-<pre class="markdown"><code>  par(mfrow = c(1,2)) 
+<pre class="r"><code>  par(mfrow = c(1,2)) 
   hist(CONS_C1_df$Edad.Inicio.Consumo, main=&quot;Distribution of Age\nof Consumption Begin&quot;, 
        xlab=&quot;Age&quot;, ylab=&quot;Freq&quot;, breaks=30, xlim=c(0,80))
   hist(CONS_C1_df$Edad.Inicio.Consumo, main=&quot;Distribution of Age\nof Consumption Begin (zoom)&quot;, 
-       xlab=&quot;Age&quot;, ylab=&quot;Freq&quot;, breaks=30, xlim=c(0,10), ylim=c(0,20000))
-  dev.off()</code></pre>
+       xlab=&quot;Age&quot;, ylab=&quot;Freq&quot;, breaks=30, xlim=c(0,10), ylim=c(0,20000))</code></pre>
+<p><img src="Data_prep_C1_files/figure-html/bunch_o_figs-1.png" width="768" /></p>
 </div>
 <div id="figure-1.-histogram-of-age-of-consumption-begin" class="section level4">
 <h4>Figure 1. Histogram of Age of Consumption Begin</h4>
@@ -1362,7 +1917,7 @@ NA
   dplyr::filter(Edad.Inicio.Consumo&lt;5) %&gt;%
   dplyr::summarise(n())</code></pre>
 <p>There is around 1,117 cases with less than 5 years in the consumption begin.</p>
-<p><br> ### 9.Delete duplicated cases (same date of admission and ID)</p>
+<p><br> #### 9.Delete duplicated cases (same date of admission and ID)</p>
 <p>In this case, we included the HASH-KEY as another and more robust criteria to filter duplicate cases.</p>
 <pre class="markdown"><code>    CONS_C1_df %&gt;% 
         mutate(concat=paste0(as.character(id),&quot;_&quot;,fech_ing,&quot;_&quot;,as.character(HASH_KEY))) %&gt;%
@@ -1401,7 +1956,7 @@ NA
 </tbody>
 </table>
 <p>As seen in Table 7, there is more than a quarter of cases that may be replicating across the different datasets.</p>
-<p><br> ### 10.Actual Age</p>
+<p><br> #### 10.Actual Age</p>
 <p>Consider as missing age if it is less than 18 years and greater than 90.</p>
 <pre class="markdown"><code>    par(mfrow = c(1,3)) 
     hist(CONS_C1_df$Edad, main=&quot;Distrbution of Age&quot;, 
@@ -1424,7 +1979,7 @@ NA
       dplyr::filter(Edad&gt;90) %&gt;%
       dplyr::summarise(n())</code></pre>
 <p>There are 673 cases with less than 18 years, 24 cases with more than 90 years.</p>
-<p><br> ### 11. Days In Treatment</p>
+<p><br> #### 11. Days In Treatment</p>
 <p>Consider as missing if cases has more than 1095 days. Do the same for months in treatment.</p>
 <pre class="markdown"><code>    par(mfrow = c(1,2)) 
     hist(CONS_C1_df$dias_trat, main=&quot;Distribution of\nDays in Treatment&quot;, 
@@ -1446,7 +2001,7 @@ NA
 <h4>Figure 3. Histogram of Days In Treatment</h4>
 <pre class="r"><code>include_graphics(paste0(path,&quot;/Figures/Fig3.png&quot;))</code></pre>
 <p><img src="Figures/Fig3.png" width="539" /></p>
-<p><br> ### 12. Pregnancy and Sex</p>
+<p><br> #### 12. Pregnancy and Sex</p>
 <p>Pregnant men should be considered as missing values. As seen in Table 8, 4 cases of men also reported pregnancy.</p>
 <pre class="markdown"><code>    data.frame(table(CONS_C1_df$embarazo, CONS_C1_df$Sexo, exclude=NULL),
                `%`=paste0(round(prop.table(table(CONS_C1_df$embarazo, CONS_C1_df$Sexo, exclude=NULL)),3)*100,&quot;%&quot;)) %&gt;% 
@@ -1491,7 +2046,7 @@ NA
 </tr>
 </tbody>
 </table>
-<p><br> ### 13. Type of plan and Sex</p>
+<p><br> #### 13. Type of plan and Sex</p>
 <p>See plans M-PR and M-PAI . Check if there are men. Keep if they are, but they identify as women. **This should also be checked reversly?</p>
 <p>As seen in table 9, must note that many cases do not answer this question, or what could be more plausible, this question could not be present in previous datasets. This is why we may exclude NA’s (missing values) for the following analysis.</p>
 <pre class="markdown"><code>     data.frame(table(CONS_C1_df$identidad.de.genero, CONS_C1_df$Sexo, exclude=NULL),
@@ -1685,13 +2240,13 @@ NA
 </table>
 <p>{: .emphasized .table_wrapper}</p>
 <p><it> <sub> Note. PR= Residential Program; PAB= Basic Outpatient Program; PAI= Intensive Outpatient Treatment; PAI LV= Probation/Parole; Percentage by gender &amp; sex </sub> </it></p>
-<p><br> ### 14.Days of treatment</p>
+<p><br> #### 14.Days of treatment</p>
 <p>Consider as missing days if theres values 0 and negatives.</p>
 <pre class="markdown"><code>    CONS_C1_df %&gt;%
       dplyr::filter(dias_trat&lt;1) %&gt;%
       dplyr::summarise(n())</code></pre>
 <p>There is 280 values 0 or negative.</p>
-<p><br> ### 15.Age of Consumption Begin and Actual Age</p>
+<p><br> #### 15.Age of Consumption Begin and Actual Age</p>
 <p>Consider the age of consumption begin as missing data if it is greater than the actual age.</p>
 <pre class="markdown"><code>    CONS_C1_df %&gt;%
       dplyr::mutate(edad_inicio_cons= ifelse(Edad.Inicio.Consumo&gt;Edad, 1, 0)) %&gt;%
