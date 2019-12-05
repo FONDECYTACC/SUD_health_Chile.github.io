@@ -71,7 +71,7 @@ if(!require(knitr)){install.packages("knitr")}
 
 -->
 
-This page will be used to comment and understand the steps, advances and douts about the process of data preparations and standardization of the SISTRAT C1 (Convenio 1) which can be translated to Agreement on Collaboration, Technical Assistance and Transfer of Resources to General Population ("Convenio de Colaboración Técnica y de Transferencia de Recursos para Programa de Población General"). Must note that it does not include Adolescent criminal offenders (C2).{ .justificado}
+This page will be used to comment and understand the steps, advances and douts about the process of data preparations and standardization of the SISTRAT C1 (Convenio 1) which can be translated to Agreement on Collaboration, Technical Assistance and Transfer of Resources to General Population ("Convenio de Colaboración Técnica y de Transferencia de Recursos para Programa de Población General"). Must note that it does not include Adolescent criminal offenders (C2).
 
 
 To see the TOP or Profile of Treatment Results ("Perfil de Resultados de Tratamiento") datasets, [go to this webpage](top_info.md#include-generated-text).
@@ -84,7 +84,6 @@ Define working directories which contains different text files that will be merg
 dir_c1 <-toString(paste0(getwd(),"/Encriptado c1/Personas tratadas c1/"))
 dir_top <-toString(paste0(getwd(),"/encriptados TOP/"))
 ```
-{: .emphasized}
 
 Define files in the Directory folder, as long as they have the excel extension,
 #and they do not start with ~  (represent a working temporary file in excel)
@@ -92,7 +91,6 @@ Define files in the Directory folder, as long as they have the excel extension,
 ```markdown
 SISTRAT_c1<-list.files(path=toString(dir_c1), all.files=T, pattern="^[2].*\\s*txt$")
 ```
-{: .emphasized}
 
 SISTRAT_c1 is composed by the following files:
 * 2010tab-Resultado-20191113 (1).txt
@@ -105,7 +103,7 @@ SISTRAT_c1 is composed by the following files:
 * 2017tab-Resultado-20191113.txt
 * 2018tab-Resultado-20191113.txt
 * 2019_EneOcttab-Resultado-20191113.txt
-{: .emphasized}
+
 
 
 Function to **read tab delimited text files**, with UTF-8 encoding and, based on the first 7 letters of its name, assign them an object name.
@@ -116,9 +114,7 @@ read_excel_mult <- function(dir, filename) {
         na.strings="null", header = T, fileEncoding="UTF-8"),envir = .GlobalEnv)
   }
 ```
-{: .emphasized}
 
- 
  <br>
 ### Import datasets
 To import the datasets, we apply the previous function to every dataset
@@ -127,7 +123,7 @@ for (x in SISTRAT_c1) {
   read_excel_mult(as.character(dir_c1), x)
 }
 ```
-{: .emphasized}
+
 
  <br>
 ### Normalize datasets
@@ -144,7 +140,7 @@ for (i in paste0(c(2010:2018),"tab")) {tab_10_18_mod(i,y="c1_")}
   as.data.frame() %>% 
   assign(paste0("c1_", "2019tab"),.,envir = .GlobalEnv)
 ```
-{: .emphasized}
+
 
  <br>
 ### Append the datasets
@@ -153,7 +149,6 @@ Once normalized column names. Bind every year's datasets by their rows.
 CONS_C1=rbindlist(mget(paste0("c1_",c(2010:2019),"tab")), idcol="TABLE", fill=T)
 CONS_C1 <- CONS_C1 %>% dplyr::mutate(row=1:nrow(CONS_C1)) %>% dplyr::select(row,everything())
 ```
-{: .emphasized}
 
 ***
 ***
@@ -188,7 +183,6 @@ CONS_C1 %>%
   dplyr::arrange(id) %>%
   assign("CONS_C1_df",.,envir = .GlobalEnv)
 ```
-{: .emphasized}
 
 Relevant variables are converted into factors.
 
@@ -209,7 +203,6 @@ CONS_C1_df %>%
   dplyr::mutate(tipo_de_programa=as.factor(`Tipo.de.Programa`)) %>%  
   assign("CONS_C1_df",.,envir = .GlobalEnv)	
 ```
-{: .emphasized}
 
 <br>
 ### Standardize Dates
@@ -247,11 +240,11 @@ CONS_C1_df %>%
   dplyr::arrange(desc(ano_bd)) %>% 
   assign("CONS_C1_df",.,envir = .GlobalEnv)
 ```
-{: .emphasized}
 
 For discharge dates, many cases had different formats. Those had to be transformed once the first formats were traduced (e.g. 30-12-2019 is interpteted first as "%d/%m/%Y" format. If it is not traduced, it interprets in "DD/MM/YY" format (or "%d/%m/%y"). We can see in Table 1 in non-formatted date of discharge (_fech_egres_sin_fmt_), how was traduced into an official discharge date (_fech_egres_).
 
-```markdown
+
+```{r echo=F, paged.print=TRUE}
 CONS_C1_df %>%
   dplyr::filter(row %in% c(36308,14083,6349, 42741,8608,11709,
                            40486,42521,5757,39507,3195,37845, 
@@ -260,48 +253,28 @@ CONS_C1_df %>%
   dplyr::select(ano_bd, row,fech_egres,fech_egres_sin_fmt) %>%
   dplyr::rename("Year"=ano_bd, "case"=row, "DischargeDate"=fech_egres,
                 "DischargeDate-NoFmt"=fech_egres_sin_fmt) %>%
-  pander::pandoc.table(., split.tables=Inf, style='rmarkdown')
+ knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 1. Problematic cases of discharge dates which required a manual change",
+                 align =rep('c', 4))  %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10) %>%
+  scroll_box(width = "100%", height = "450px")
 ```
-{: .emphasized}
-
-#### Table 1. Problematic cases of discharge dates which required a manual change
-
-| Year | case  | DischargeDate | DischargeDate-NoFmt |
-|:----:|:-----:|:-------------:|:-------------------:|
-| 2013 | 36308 |  2013-04-02   |     2013/04/02      |
-| 2013 | 42741 |  2013-08-02   |       2082013       |
-| 2013 | 40486 |  2013-07-03   |       307203        |
-| 2013 | 42521 |  2013-07-09   |       9072013       |
-| 2013 | 39507 |  2013-07-02   |       2072013       |
-| 2013 | 37845 |  2013-07-01   |       1072013       |
-| 2013 | 40180 |  2013-08-07   |       7082013       |
-| 2013 | 35971 |  2013-03-01   |     01-03-2013      |
-| 2013 | 39932 |  2013-08-02   |       2082013       |
-| 2013 | 37004 |  2013-08-02   |       2082013       |
-| 2012 | 28008 |  2012-11-27   |     27-11-2012      |
-| 2011 | 14083 |  2011-05-03   |      30520011       |
-| 2011 | 11709 |  2011-02-01   |     01-02-2011      |
-| 2011 | 10415 |  2011-05-03   |       3052011       |
-| 2011 | 16385 |  2011-08-30   |     30/08/20011     |
-| 2011 | 16983 |  2011-09-06   |     06-09-2011      |
-| 2010 | 6349  |  2010-07-01   |     01707/2010      |
-| 2010 | 8608  |  2011-02-01   |     01-02-2011      |
-| 2010 | 5757  |  2010-04-10   |       4102010       |
-| 2010 | 3195  |  2010-10-04   |       4102010       |
-| 2010 | 5172  |  2011-05-03   |       3052011       |
-{: .emphasized}
 
 As we can see in Table 2, some non-formatted date of discharge (_fech_egres_sin_fmt_), had insufficient information to traduce into valid dates.
 
-```markdown
+```{r echo=F, paged.print=TRUE}
     CONS_C1_df %>%
       dplyr::filter(row %in% c(194, 8239, 9042, 9043, 9353, 12005, 12006, 12227,2603)) %>%
       dplyr::select(ano_bd, row,fech_egres,fech_egres_sin_fmt) %>%
       dplyr::rename("Year"=ano_bd, "case"=row, "DischargeDate"=fech_egres,
                     "DischargeDate-NoFmt"=fech_egres_sin_fmt) %>%
-      pander::pandoc.table(., split.tables=Inf, style='rmarkdown')
+ knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 2. Non-interpretable discharge dates",
+                 align =rep('c', 4))  %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10) %>%
+  scroll_box(width = "100%", height = "250px")
 ```
-{: .emphasized}
+
 
 #### Table 2. Non-interpretable discharge dates
 
@@ -316,7 +289,7 @@ As we can see in Table 2, some non-formatted date of discharge (_fech_egres_sin_
 | 2010 | 9042  |      NA       |          5          |
 | 2010 |  194  |      NA       |         15          |
 | 2010 | 9353  |      NA       |         25          |
-{: .emphasized}
+
  <br>
 ***
 ***
@@ -336,7 +309,7 @@ In first place, we should discard treatments not provided by SENDA.
              `%`=paste0(round(prop.table(table(CONS_C1_df$SENDA,exclude=NULL)),3)*100,"%")) %>%
     pander::pandoc.table(., split.tables=Inf, style='rmarkdown')
 ```
-{: .emphasized}
+
 
 As we can see in Table 3, around 4.8% of cases had a treatment that could be not part of SENDA's agreements.
 
@@ -348,7 +321,7 @@ As we can see in Table 3, around 4.8% of cases had a treatment that could be not
 |  No  |  7762  | 4.8%  |
 |  Yes  | 155382 | 95.2% |
 |  NA  |   2    |  0%   |
-{: .emphasized}
+
 
 <br>
 ### 2. Explore if the type of plan 
@@ -368,7 +341,7 @@ It is necessary to explore if there is any case that may have a treatment under 
     as.data.frame() %>% 
     pander::pandoc.table(., split.tables=Inf, style='rmarkdown')
 ```
-{: .emphasized}
+
 
 Table 4 shows that there is only 1 case in the probation/parole plan.
 
@@ -390,7 +363,7 @@ Table 4 shows that there is only 1 case in the probation/parole plan.
 |    PG-PR     |    1,116     |     14%     |    16,599     |     11%      |   NA   |   NA   |
 |   PG PAI 2   |     NA      |     NA      |      50      |      0%      |   NA   |   NA   |
 |      NA      |     NA      |     NA      |      1       |      0%      |   2    |  100%  |
-{: .emphasized}
+
 
 <it> <sub> Note. PR= Residential Program; PAB= Basic Outpatient Program PAI= Intensive Outpatient Treatment; PAI LV= Probation/Parole </sub> </it>
 {: .note}
@@ -406,7 +379,7 @@ Must note that there are ***some plans that have a number 2*** but they do not c
   table(CONS_C1_df$tipo_de_programa, CONS_C1_df$tipo_de_plan, exclude= NULL) %>%
     pander::pandoc.table(., split.tables=Inf, style='rmarkdown')
 ```
-{: .emphasized}
+
 
 
 #### Table 5. Contingency Tables of Programs by Plans
@@ -436,7 +409,7 @@ CONS_C1_df %>%
     dplyr::group_by(tipo_de_plan) %>%
     dplyr::summarise(n())
 ```
-{: .emphasized}
+
 
 Every of the 80 cases in the alcohol program are in the general population plan.
 
@@ -450,7 +423,7 @@ If there is any plan correspondent to Another ("Otro"), it changes into a genera
     dplyr::filter(tipo_de_plan=="Otro") %>%
     dplyr::summarise(n())
 ```
-{: .emphasized}
+
 
 There is 1868 cases with treatments categorized as Another ("Otro") plan.
 
@@ -469,7 +442,7 @@ As can be seen in Table 6, around 16% of women are in the general population pro
     reshape::cast(.,Var1~Var2+variable) %>%
     pander::pandoc.table(., split.tables=Inf, style='rmarkdown')
 ```
-{: .emphasized}
+
 
 #### Table 6. Plan by Sex
 
@@ -488,7 +461,7 @@ As can be seen in Table 6, around 16% of women are in the general population pro
 |  PG-PR   |    17,057    |   10.5%   |    658     |   0.4%   |
 | PG PAI 2 |     27      |    0%     |     23     |    0%    |
 |    NA    |      3      |    0%     |     0      |    0%    |
-{: .emphasized}
+
 
 <it> <sub> Note. PR= Residential Program; PAB= Basic Outpatient Program; PAI= Intensive Outpatient Treatment; PAI LV= Probation/Parole; Percentage by sex </sub> </it>
 {: .note}
@@ -517,7 +490,7 @@ Treat as missing data the age of consumption begin if it is less than 5 years.
        xlab="Age", ylab="Freq", breaks=30, xlim=c(0,10), ylim=c(0,20000))
   dev.off()
 ```
-{: .emphasized}
+
 
 #### Figure 1. Histogram of Age of Consumption Begin
 ```{r}
@@ -529,7 +502,7 @@ include_graphics(paste0(path,"/Figures/Fig1.png"))
   dplyr::filter(Edad.Inicio.Consumo<5) %>%
   dplyr::summarise(n())
 ```
-{: .emphasized}
+
 
 There is around 1,117 cases with less than 5 years in the consumption begin.
 
@@ -553,7 +526,7 @@ In this case, we included the HASH-KEY as another and more robust criteria to fi
             ifelse(duplicated(CONS_C1_df[c('id', 'fech_ing','HASH_KEY')]), 0, 1)))),3)*100,"%")) %>%
     pander::pandoc.table(., split.tables=Inf, style='rmarkdown')
 ```
-{: .emphasized}
+
 
 #### Table 7. Duplicated cases
 
@@ -561,7 +534,7 @@ In this case, we included the HASH-KEY as another and more robust criteria to fi
 |:----:|:------:|:-----:|
 |  Duplicates   | 45445  | 27.9% |
 |  Not duplicates   | 117701 | 72.1% |
-{: .emphasized}
+
 
 As seen in Table 7, there is more than a quarter of cases that may be replicating across the different datasets. 
 
@@ -580,7 +553,7 @@ Consider as missing age if it is less than 18 years and greater than 90.
          xlab="Edad", ylab="Freq", breaks=60, xlim=c(100,120), ylim=c(0,100)) 
         dev.off()
 ```
-{: .emphasized}
+
 
 #### Figure 2. Histogram of Actual Age
 ```{r}
@@ -596,7 +569,7 @@ include_graphics(paste0(path,"/Figures/Fig2.png"))
       dplyr::filter(Edad>90) %>%
       dplyr::summarise(n())
 ```
-{: .emphasized}
+
 
 There are 673 cases with less than 18 years, 24 cases with more than 90 years.
 
@@ -622,7 +595,7 @@ Consider as missing if cases has more than 1095 days. Do the same for months in 
       dplyr::filter(dias_trat<0) %>%
       dplyr::summarise(n())
 ``` 
-{: .emphasized}
+
 
 As seen in Figure 3, there are 2320 cases with more than 1095 days in treatment. On the other hand, there are 12 cases with negative days of treatment. **Should be removed?** 
 
@@ -646,7 +619,7 @@ As seen in Table 8, 4 cases of men also reported pregnancy.
       reshape::cast(.,Var1~Var2+variable) %>%
       pander::pandoc.table(., split.tables=Inf, style='rmarkdown')
 ```
-{: .emphasized}
+
 
 
 #### Table 8. Pregnancy by Sex
@@ -656,7 +629,7 @@ As seen in Table 8, 4 cases of men also reported pregnancy.
 |  No  |    9,515    |   5.8%    |   43,466   |  26.6%   |
 |  Si  |      4      |    0%     |    2,430   |   1.5%   |
 |  NA  |   107,709   |    66%    |     22     |    0%    |
-{: .emphasized}
+
 
 
 <br>
@@ -674,7 +647,7 @@ As seen in table 9, must note that many cases do not answer this question, or wh
       reshape::cast(.,Var1~Var2+variable) %>%
       pander::pandoc.table(., split.tables=Inf, style='rmarkdown')
  ```
-{: .emphasized}
+
 
 
 #### Table 9. Sex by Gender Identity
@@ -684,7 +657,7 @@ As seen in table 9, must note that many cases do not answer this question, or wh
 | Femenine  |     65      |    0%     |    3,249    |    2%    |
 | Masculine |    8,012     |   4.9%    |     60     |    0%    |
 |    NA     |   109,151    |   66.9%   |   42,609    |  26.1%   |
-{: .emphasized}
+
 
 In Table 10, can be seen that there are 2 men with a masculine gender identity that are suscribed to M-PAI plan. However, **what happens with the 12 women with masculine gender identity in M-PAI plan?**
 
@@ -705,7 +678,7 @@ In Table 10, can be seen that there are 2 men with a masculine gender identity t
                      "Fem.-Women(%)"= `Mujer_Femenino_perc`,"Masc.-Women(%)"=`Mujer_Masculino_perc`) %>% 
       pander::pandoc.table(., split.tables=Inf, style='rmarkdown')
 ```
-{: .emphasized}
+
 
 
 #### Table 10. Type of Plan by Gender Identity and Sex 
@@ -736,7 +709,7 @@ Consider as missing days if theres values 0 and negatives.
       dplyr::filter(dias_trat<1) %>%
       dplyr::summarise(n())
 ```
-{: .emphasized}
+
 
 There is 280 values 0 or negative.
 
@@ -753,7 +726,7 @@ Consider the age of consumption begin as missing data if it is greater than the 
       dplyr::select(row,id,HASH_KEY,Edad.Inicio.Consumo, Edad) %>%
       dim()
 ```
-{: .emphasized}
+
 In 780 cases the age of consumption begin is greater than the actual age.
 
 ---
