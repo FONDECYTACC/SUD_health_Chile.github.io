@@ -26,6 +26,8 @@ if(!require(ggplot2)){install.packages("ggplot2")}
 if(!require(dplyr)){install.packages("dplyr")}
 if(!require(Hmisc)){install.packages("Hmisc")}
 if(!require(kableExtra)){install.packages("kableExtra")}
+if(!require(gmodels)){install.packages("summarytools")}
+
 
 ```
 
@@ -422,6 +424,7 @@ Only plans "M-PAI", "M-PR", "PG-PAB", "PG-PAI" and "PG-PR" must be preserved. **
 
 Treat as missing data the age of consumption begin if it is less than 5 years.
 
+##### Figure 1. Histogram of Age of Consumption Begin
 ```{r bunch_o_figs, fig.height=4, fig.width=8}
   par(mfrow = c(1,2)) 
   hist(CONS_C1_df$Edad.Inicio.Consumo, main="Distribution of Age\nof Consumption Begin", 
@@ -430,55 +433,45 @@ Treat as missing data the age of consumption begin if it is less than 5 years.
        xlab="Age", ylab="Freq", breaks=30, xlim=c(0,10), ylim=c(0,20000))
 ```
 
-
-##### Figure 1. Histogram of Age of Consumption Begin
-```markdown
-  CONS_C1_df %>%
-  dplyr::filter(Edad.Inicio.Consumo<5) %>%
-  dplyr::summarise(n())
-```
-
+<br>
+&nbsp;
 
 There is around `r CONS_C1_df %>% dplyr::filter(Edad.Inicio.Consumo<5) %>% dplyr::summarise(n())` cases with less than 5 years in the consumption begin.
 
+&nbsp;
 
 <br>
 #### 9.Delete duplicated cases (same date of admission and ID)
 
 In this case, we included the HASH-KEY as another and more robust criteria to filter duplicate cases.
 
-```markdown
-    CONS_C1_df %>% 
-        mutate(concat=paste0(as.character(id),"_",fech_ing,"_",as.character(HASH_KEY))) %>%
-        dplyr::filter(duplicated(concat)) %>%
-        dplyr::arrange(concat) %>%
-        dplyr::select(concat, everything()) %>%
-        dim()
-    length(which(duplicated(CONS_C1_df[c('id', 'fech_ing','HASH_KEY')]),) )
-
+```{r echo=F, paged.print=TRUE}
     data.frame(table(with(CONS_C1_df, ifelse(duplicated(CONS_C1_df[c('id', 'fech_ing','HASH_KEY')]), 0, 1))),
              `%`=paste0(round(prop.table(  table(with(CONS_C1_df, 
             ifelse(duplicated(CONS_C1_df[c('id', 'fech_ing','HASH_KEY')]), 0, 1)))),3)*100,"%")) %>%
-    pander::pandoc.table(., split.tables=Inf, style='rmarkdown')
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+                   caption="Table 7. Duplicated cases", col.names= c(" ", " Frequencies", "Percentage"), 
+                 align =rep('c', 3))  %>%
+    kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10)
 ```
 
-
-#### Table 7. Duplicated cases
-
-| &nbsp; |  Frequencies  |  Percentage   |
-|:----:|:------:|:-----:|
-|  Duplicates   | 45445  | 27.9% |
-|  Not duplicates   | 117701 | 72.1% |
-
+&nbsp;
 
 As seen in Table 7, there is more than a quarter of cases that may be replicating across the different datasets. 
 
 <br>
+&nbsp;
+
+
 #### 10.Actual Age
 
 Consider as missing age if it is less than 18 years and greater than 90.
 
-```markdown
+<br>
+&nbsp;
+##### Figure 2. Histogram of Actual Age
+
+```{r bunch_o_figs2, fig.height=4, fig.width=8}
     par(mfrow = c(1,3)) 
     hist(CONS_C1_df$Edad, main="Distrbution of Age", 
          xlab="Edad", ylab="Freq", breaks=60)
@@ -486,15 +479,11 @@ Consider as missing age if it is less than 18 years and greater than 90.
          xlab="Edad", ylab="Freq", breaks=60, xlim=c(0,20), ylim=c(0,2000))
     hist(CONS_C1_df$Edad, main="Distrbution of Age (zoom +)", 
          xlab="Edad", ylab="Freq", breaks=60, xlim=c(100,120), ylim=c(0,100)) 
-        dev.off()
-```
+    ```
 
 
-#### Figure 2. Histogram of Actual Age
-
-```{r}
-include_graphics(paste0(path,"/Figures/Fig2.png"))
-```
+<br>
+&nbsp;
 
 ```markdown
     CONS_C1_df %>%
@@ -507,15 +496,17 @@ include_graphics(paste0(path,"/Figures/Fig2.png"))
 ```
 
 
-There are 673 cases with less than 18 years, 24 cases with more than 90 years.
+There are `r CONS_C1_df %>% dplyr::filter(Edad<18) %>% dplyr::summarise(n()) ` cases with less than 18 years, `r CONS_C1_df %>% dplyr::filter(Edad>90) %>% dplyr::summarise(n()) ` cases with more than 90 years.
 
-
+&nbsp;
 <br>
 #### 11. Days In Treatment
 
 Consider as missing if cases has more than 1095 days. Do the same for months in treatment.
-
-```markdown
+&nbsp;
+<br>
+##### Figure 3. Histogram of Days In Treatment
+```{r bunch_o_figs3, fig.height=4, fig.width=8}
     par(mfrow = c(1,2)) 
     hist(CONS_C1_df$dias_trat, main="Distribution of\nDays in Treatment", 
          xlab="Días", ylab="Freq",xlim=c(-100,4100), breaks=60)
@@ -535,39 +526,26 @@ Consider as missing if cases has more than 1095 days. Do the same for months in 
 
 As seen in Figure 3, there are 2320 cases with more than 1095 days in treatment. On the other hand, there are 12 cases with negative days of treatment. **Should be removed?** 
 
-
-#### Figure 3. Histogram of Days In Treatment
-
-```{r}
-include_graphics(paste0(path,"/Figures/Fig3.png"))
-```
-
+&nbsp;
 <br>
 #### 12. Pregnancy and Sex
 
 Pregnant men should be considered as missing values. 
 As seen in Table 8, 4 cases of men also reported pregnancy.
 
-```markdown
-    data.frame(table(CONS_C1_df$embarazo, CONS_C1_df$Sexo, exclude=NULL),
-               `%`=paste0(round(prop.table(table(CONS_C1_df$embarazo, CONS_C1_df$Sexo, exclude=NULL)),3)*100,"%")) %>% 
-      as.data.frame() %>% 
-      reshape::melt( id.vars = c("Var1", "Var2")) %>%
-      reshape::cast(.,Var1~Var2+variable) %>%
-      pander::pandoc.table(., split.tables=Inf, style='rmarkdown')
+#### Table 8. Pregnancy by Sex
+```{r echo=F, paged.print=TRUE}
+print(summarytools::ctable(CONS_C1_df$embarazo, CONS_C1_df$Sexo, prop = "c",totals = FALSE))
+
 ```
 
 
-
-#### Table 8. Pregnancy by Sex
 
 | Pregnant | Men (n) | Men (%)   | Women (n)  | Women (%)|
 |:----:|:-----------:|:---------:|:----------:|:--------:|
 |  No  |    9,515    |   5.8%    |   43,466   |  26.6%   |
 |  Si  |      4      |    0%     |    2,430   |   1.5%   |
 |  NA  |   107,709   |    66%    |     22     |    0%    |
-
-
 
 <br>
 #### 13. Type of plan and Sex
@@ -576,29 +554,16 @@ See plans M-PR and M-PAI . Check if there are men. Keep if they are, but they id
 
 As seen in table 9, must note that many cases do not answer this question, or what could be more plausible, this question could not be present in previous datasets. This is why we may exclude NA's (missing values) for the following analysis.
 
-```markdown
-     data.frame(table(CONS_C1_df$identidad.de.genero, CONS_C1_df$Sexo, exclude=NULL),
-               `%`=paste0(round(prop.table(table(CONS_C1_df$identidad.de.genero, CONS_C1_df$Sexo, exclude=NULL)),3)*100,"%")) %>% 
-      as.data.frame() %>% 
-      reshape::melt( id.vars = c("Var1", "Var2")) %>%
-      reshape::cast(.,Var1~Var2+variable) %>%
-      pander::pandoc.table(., split.tables=Inf, style='rmarkdown')
- ```
-
-
-
-#### Table 9. Sex by Gender Identity
-
-|   Var1    | Men (n) | Men(%) | Women(n) | Women(%) |
-|:---------:|:-----------:|:---------:|:----------:|:--------:|
-| Femenine  |     65      |    0%     |    3,249    |    2%    |
-| Masculine |    8,012     |   4.9%    |     60     |    0%    |
-|    NA     |   109,151    |   66.9%   |   42,609    |  26.1%   |
-
+##### Table 9. Sex by Gender Identity
+```{r echo=F, paged.print=TRUE}
+ print(summarytools::ctable(CONS_C1_df$identidad.de.genero, CONS_C1_df$Sexo, prop = "c",totals = FALSE, style="rmarkdown"))
+```
+<br>
+&nbsp;
 
 In Table 10, can be seen that there are 2 men with a masculine gender identity that are suscribed to M-PAI plan. However, **what happens with the 12 women with masculine gender identity in M-PAI plan?**
 
-```markdown
+```{r echo=F, paged.print=TRUE}
     CONS_C1_df %>%
       dplyr::group_by(as.factor(identidad.de.genero),as.factor(Sexo), as.factor(tipo_de_plan)) %>%
       dplyr::filter(!is.na(as.factor(identidad.de.genero))) %>%
@@ -609,31 +574,16 @@ In Table 10, can be seen that there are 2 men with a masculine gender identity t
       reshape::melt( id.vars = c(1:3)) %>% 
       #reshape::cast(.,as.factor(tipo_de_plan)~variable+as.factor(Sexo)) %>%
       reshape::cast(.,tipo_plan~sexo+id_gen+variable) %>%
-      dplyr::rename("Fem.-Men(n)" = `Hombre_Femenino_count`, "Masc.-Men(n)" = `Hombre_Masculino_count`,
+      dplyr::rename("Plan"= `tipo_plan`, "Fem.-Men(n)" = `Hombre_Femenino_count`, "Masc.-Men(n)" = `Hombre_Masculino_count`,
                     "Fem.-Women(n)"=`Mujer_Femenino_count`,"Masc.-Women(n)"=`Mujer_Masculino_count`,
                     "Fem.-Men(%)"=`Hombre_Femenino_perc`, "Masc.-Men(%)"=`Hombre_Masculino_perc`,
                      "Fem.-Women(%)"= `Mujer_Femenino_perc`,"Masc.-Women(%)"=`Mujer_Masculino_perc`) %>% 
-      pander::pandoc.table(., split.tables=Inf, style='rmarkdown')
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+                   caption="Table 10. Type of Plan by Gender Identity and Sex ", 
+                 align =rep('c', 9))  %>%
+    kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10) %>%
+  add_footnote( c("PR= Residential Program" ,"PAB= Basic Outpatient Program", "PAI= Intensive Outpatient Treatment", "PAI LV=     Probation/Parole", "PAI= Intensive Outpatient Treatment"), notation = "symbol")
 ```
-
-
-
-#### Table 10. Type of Plan by Gender Identity and Sex 
-
-| Plans | Fem.-Men(n) | Fem.-Men(%) | Masc.-Men(n) | Masc.-Men(%) | Fem.-Women(n) | Fem.-Women(%) | Masc.-Women(n) | Masc.-Women(%) |
-|:---------:|:-----------:|:-----------:|:------------:|:------------:|:-------------:|:-------------:|:--------------:|:--------------:|
-|   M-PAI   |      2      |     3%      |      2       |      0%      |      877      |      27%      |       12       |      20%       |
-|  M-PAI2   |     NA      |     NA      |      NA      |      NA      |      16       |      0%       |       NA       |       NA       |
-|   M-PR    |      2      |     3%      |      NA      |      NA      |      505      |      16%      |       1        |       2%       |
-|   M-PR2   |     NA      |     NA      |      NA      |      NA      |      10       |      0%       |       NA       |       NA       |
-|   Otro    |      1      |     2%      |      25      |      0%      |      15       |      0%       |       NA       |       NA       |
-|  PG-PAB   |     22      |     34%     |     2,688     |     34%      |      690      |      21%      |       19       |      32%       |
-|  PG-PAI   |     33      |     51%     |     4,060     |     51%      |     1,098      |      34%      |       28       |      47%       |
-|   PG-PR   |      5      |     8%      |     1,212     |     15%      |      26       |      1%       |       NA       |       NA       |
-| PG PAI 2  |     NA      |     NA      |      25      |      0%      |      12       |      0%       |       NA       |       NA       |
-{: .emphasized .table_wrapper}
-
-<it> <sub> Note. PR= Residential Program; PAB= Basic Outpatient Program; PAI= Intensive Outpatient Treatment; PAI LV= Probation/Parole; Percentage by gender & sex </sub> </it>
 
 
 <br>
@@ -641,30 +591,17 @@ In Table 10, can be seen that there are 2 men with a masculine gender identity t
 
 Consider as missing days if theres values 0 and negatives.
 
-```markdown
-    CONS_C1_df %>%
-      dplyr::filter(dias_trat<1) %>%
-      dplyr::summarise(n())
-```
 
-
-There is 280 values 0 or negative.
+There are `r CONS_C1_df %>% dplyr::filter(dias_trat<1) %>% dplyr::summarise(n())` values 0 or negative.
 
 
 <br>
 #### 15.Age of Consumption Begin and Actual Age
 
 Consider the age of consumption begin as missing data if it is greater than the actual age.
+<br>
 
-```markdown
-    CONS_C1_df %>%
-      dplyr::mutate(edad_inicio_cons= ifelse(Edad.Inicio.Consumo>Edad, 1, 0)) %>%
-      dplyr::filter(edad_inicio_cons==1) %>%
-      dplyr::select(row,id,HASH_KEY,Edad.Inicio.Consumo, Edad) %>%
-      dim()
-```
-
-In 780 cases the age of consumption begin is greater than the actual age.
+In `r CONS_C1_df %>% dplyr::mutate(edad_inicio_cons= ifelse(Edad.Inicio.Consumo>Edad, 1, 0)) %>% dplyr::filter(edad_inicio_cons==1) %>% nrow()` cases the age of consumption begin is greater than the actual age.
 
 ---
 ---
