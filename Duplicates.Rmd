@@ -19,6 +19,8 @@ if(!require(ggplot2)){install.packages("ggplot2")}
 if(!require(dplyr)){install.packages("dplyr")}
 if(!require(Hmisc)){install.packages("Hmisc")}
 if(!require(kableExtra)){install.packages("kableExtra")}
+if(!require(plotly)){install.packages("plotly")}
+if(!require(rbokeh)){install.packages("rbokeh")}
 ```
 
 # Duplicated Cases in SISTRAT C1
@@ -175,3 +177,44 @@ dplyr::arrange(id) %>%
   kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
   scroll_box(width = "100%", height = "350px")
 ```
+
+<br>
+
+Based on the reunion on Dec. 05 of 2012, one of the main challenges was to check wether age was linked to the last 4 numbers of each ID. As we can see in the Figure 1, we can see a very clear correlation with a few residuals. If year of birth is regressed on year, we find that the intercept is `r coef(lm(ano_nac ~Edad, data= CONS_C1_df))[1]` and the slope is `r coef(lm(ano_nac ~Edad, data= CONS_C1_df))[2]`.
+
+<br>
+
+##### Figure 1. Scatterplot of Year of Birtth and Age
+```{r fig_fecha_nac_edad, fig.height=4, fig.width=8}
+  #plot(CONS_C1_df$ano_nac, CONS_C1_df$Edad, ylab="Age", xlab="Year of Birth")
+
+figure() %>%
+  ly_points(ano_nac, Edad, data = CONS_C1_df,
+    hover = c(row,ano_bd)) %>%
+  ly_abline(lm(ano_nac ~Edad, data= CONS_C1_df), type = 2, legend = "Regression") %>%
+    x_axis(label = "Year of Birth")
+
+```
+
+
+<br>
+We identified the outliers, ending up with 3 cases in which the expected age and year of birth presented a difference greater than 1 year. In Table 8 we can see the first 6 cases that had differences ordered by the magnitude of the difference. The rest of the `r CONS_C1_df %>% dplyr::mutate(dif_edad=ano_nac-(2019-Edad)) %>% filter(dif_edad!=0) %>% nrow() %>% sum(-3)` had 12 months of difference.
+
+
+```{r edad_fecha_nac, echo=T, paged.print=TRUE}
+    CONS_C1_df %>%
+    dplyr::mutate(dif_edad=ano_nac-(2019-Edad)) %>%
+      filter(dif_edad!=0) %>%
+      arrange(desc(dif_edad)) %>%
+      dplyr::select(-id,-TABLE,-14,-16,-17,-26,-27,-28,-29,-35,-36,-37,-88,-93,-94,-96,-101) %>%
+      dplyr::select(row, ano_bd, ano_nac, Edad, dif_edad,
+                    HASH_KEY, hash_rut_completo, id_mod,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, 
+                    ID.centro, everything()) %>%
+      head() %>%
+ knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 8. Cases that have a different year of birth and age",
+                 align =rep('c', 101))  %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  scroll_box(width = "100%", height = "350px")
+```
+
