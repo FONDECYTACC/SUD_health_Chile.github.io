@@ -1,8 +1,15 @@
 ---
 title: "Duplicated Cases in SISTRAT C1"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: rmarkdown::github_document
+output: html_document
   ---
+
+<style type="text/css">
+
+code.r{
+  font-size: 8px;
+}
+</style>
 
 ```{r load myData, include=FALSE}
  load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/.RData")
@@ -47,7 +54,7 @@ CONS_C1_df %>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption="Table 1. Differences between cases and unique cases by year",
                  align ="cccc")  %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
+  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10)
 ```
 &nbsp;
 &nbsp;
@@ -96,12 +103,10 @@ There were `r CONS_C1_df %>% dplyr::mutate(concat=paste0(id,"_",HASH_KEY,"_",fec
 
 ```{r echo=F, paged.print=TRUE}
   CONS_C1_df %>%
-    dplyr::mutate(concat=paste0(id,"_",HASH_KEY,"_",fech_ing,"_", fech_egres,"_",
+    dplyr::mutate(concat=paste0(id_mod,"_",HASH_KEY,"_",fech_ing,"_", fech_egres,"_",
                                 motivodeegreso,"_", dias_trat,"_",Fecha.Ultimo.Tratamiento)) %>%
-    dplyr::filter(duplicated(concat)) %>% #dejo los duplicados
-    dplyr::arrange(concat) %>% 
-    dplyr::filter(concat=="MASO113121967_70572358efeb7ac8413c423f6bc99d93_2013-05-08_2017-12-04_Alta Terapéutica_1671_1 a 2 años") %>%
-    dplyr::select(-id,-concat, -TABLE,-14,-16,-17,-26,-27,-28,-29,-35,-36,-37,-88,-93,-94,-96,-101) %>%
+    dplyr::filter(id=="MASO113121967") %>% 
+    dplyr::select(-id, -TABLE,-14,-16,-17,-26,-27,-28,-29,-35,-36,-37,-88,-93,-94,-96,-101) %>%
       dplyr::select(row, ano_bd, HASH_KEY, hash_rut_completo, id_mod,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, everything()) %>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption="Table 4. Case of example that showed more than one concatenated (concat) criteria",
@@ -115,7 +120,7 @@ In Table 4 we can appreciate that this case had 1671 days of treatment, which is
 
 However, these distinctions may be arbitrary, since ID or HASH may be biased. In the following examples, We will show cases in which the HASH or ID may be confusing.
 
-Of the `CONS_C1_df %>% nrow()` cases, around `r CONS_C1_df %>%  mutate(concat=paste0(id,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% nrow()` had a unique combination of ID and HASH. There are `r CONS_C1_df %>%  dplyr::distinct(HASH_KEY, .keep_all = TRUE) %>% nrow()` unique HASHs, and `r CONS_C1_df %>%  dplyr::distinct(id, .keep_all = TRUE) %>% nrow()` unique IDs.
+Of the `r CONS_C1_df %>% nrow()` cases, around `r CONS_C1_df %>%  mutate(concat=paste0(id,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% nrow()` had a unique combination of ID and HASH. There are `r CONS_C1_df %>%  dplyr::distinct(HASH_KEY, .keep_all = TRUE) %>% nrow()` unique HASHs, and `r CONS_C1_df %>%  dplyr::distinct(id, .keep_all = TRUE) %>% nrow()` unique IDs.
 
 &nbsp;
 
@@ -138,6 +143,7 @@ CONS_C1_df %>%
 
 There were `r CONS_C1_df %>% mutate(concat=paste0(id,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% dplyr::filter(duplicated(HASH_KEY)) %>% dplyr::arrange(HASH_KEY) %>%  dplyr::select(HASH_KEY,id,hash_rut_completo) %>% nrow()` cases with duplicated ID's en each hash. This represents a `r paste0(round((4414/136146)*100,1),"%")` of the total cases.
 
+
 For example, the first randomly selected HASHs with different id's, had 6 ("ROAN115061980", "ROAN106061980", "ROAN115062014", "ROAN115101980", "ROAN116051980" and "ROAN115061999"), the second had 3 different id's ("YECH213011983", "YECH213011982" and "JECH213011983"), the third had 3 ("DACO104121968", "DACO104121965" and "DACO104121966"), the fourth had 3 ("ELGA214031992", "ELGA214031991", "ELGR203031991") and the fifth had 3 ("JICA215051979", "JIBE215051979" and "XIBE215051979").
 
 
@@ -157,34 +163,39 @@ CONS_C1_df %>%
 
 In this case, we can appreciate that an id like "JUGA108021973"contain different HASH_KEYs: `r  CONS_C1_df %>% dplyr::filter(id=="MAMO108111971") %>% dplyr::distinct(HASH_KEY) %>%  dplyr::filter(row_number()==1)` and `r  CONS_C1_df %>% dplyr::filter(id=="MAMO108111971") %>% dplyr::distinct(HASH_KEY) %>%  dplyr::filter(row_number()==2)`.
 
-There were `r CONS_C1_df %>% mutate(concat=paste0(id,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% dplyr::filter(duplicated(id)) %>% dplyr::arrange(id) %>%  dplyr::select(HASH_KEY,id,hash_rut_completo) %>% nrow()` cases with duplicated HASH's in each ID. This represents a `r paste0(round((205/136146)*100,1),"%")` of the total cases.
+There were `r CONS_C1_df %>% mutate(concat=paste0(id,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% dplyr::filter(duplicated(id)) %>% dplyr::arrange(id) %>%  dplyr::select(HASH_KEY,id,hash_rut_completo) %>% nrow()` patients with duplicated HASH's in each ID. This represents a `r paste0(round((205/136146)*100,1),"%")` of the total cases.
 
 &nbsp;
 
 ```{r echo=T, paged.print=TRUE}
-#Tomo a los que tienen una combinación de ID y HASH Key distinta al resto
-#Con esto puede que esté subestimando la cantidad de casos (filas) con concatenación distinta.
-# de esos todos combinados distintos, saco los que tienen un ID duplicado
-#selecciona a los IDs duplicados, los ordena y...
-#filtra en base a tener distinto ID
-CONS_C1_df %>% mutate(concat=paste0(id,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% #aquí ya dejo de ver n° de casos
-  dplyr::filter(duplicated(id)) %>% dplyr::arrange(id) %>%  #filtro los casos de entre los que ya descarté duplicados de la combinación de id y HASH
-  distinct(id) %>% assign("ids_more_one_hash",., envir = .GlobalEnv) # saco los tipos distintos de IDs que hay por hash, de los casos en que hay distintas                                                                              combinaciones de IDs y hash, y que en ese subgrupo existen IDs duplicados.
+#Take which has a combination of IDs and HASH Keys distinct to the rest
+#With this I may be subestimating the number of cases with a different concatenation.
+#Considering all the distinct combinations, i take what they have a duplicate ID
+#Select the duplicate IDs, it orders and...
+#Filter only cases that has distinct id.
+CONS_C1_df %>% mutate(concat=paste0(id,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% #once here, n° of cases has been replaced by distinct or                                                                                                            unique combinations of IDs and HASH keys.
+  dplyr::filter(duplicated(id)) %>% dplyr::arrange(id) %>%  #filter cases in which there is more than one ID, despite there is differents combinations of HASH and                                                             IDs, and then arrange IDs. This is possible only if a different HASH-Key contains more than one ID or                                                              viceversa.
+  dplyr::distinct(id) %>% #take distincts IDs (exclude duplicated repeated IDs)
+  assign("ids_more_one_hash",., envir = .GlobalEnv) # Differently put, take the distints IDs per HASH-Key, of the cases in which there are different combinations                                                      # of IDs and hash, and in which subgroup exists duplicated IDs.
+ 
+#IMPORTANT: IF THE ID IS DUPLICATED, MIGHT NOT BE REFLECTED IN THIS RESUME IN TERMS OF QUANTITY.
 
-#luego, aplica esos casos a toda la población
+# Then, apply these cases to the whole population
 CONS_C1_df %>%
-dplyr::filter(id %in% as.character(as.vector(unlist(as.data.table(unlist(ids_more_one_hash)))))) %>% # selecciono los ids de los casos citados
+dplyr::filter(id %in% as.character(as.vector(unlist(as.data.table(unlist(ids_more_one_hash)))))) %>% # Select IDs of cited cases
 dplyr::arrange(id) %>% #ordeno por ids 
-  dplyr::filter(duplicated(HASH_KEY)) %>% #filtro, 
-  #762 casos.
+  #762 cases. 409 cases without duplicates.
       dplyr::select(-id,-TABLE,-14,-16,-17,-26,-27,-28,-29,-35,-36,-37,-88,-93,-94,-96,-101) %>% #762 casos
-      dplyr::select(row, ano_bd, HASH_KEY, hash_rut_completo, id_mod,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, everything()) %>%
+      dplyr::select(row, ano_bd, id_mod, HASH_KEY, hash_rut_completo ,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, everything()) %>%
  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption="Table 7. Total cases that each ID have more than one HASH-KEY",
                  align =rep('c', 101))  %>%
   kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
   scroll_box(width = "100%", height = "350px")
 ```
+&nbsp;
+
+## Age in datasets
 
 <br>
 
@@ -205,7 +216,7 @@ Based on the reunion on Dec. 05 of 2019, one of the main challenges was to check
 plot_ly(CONS_C1_df, x = ~ano_nac, y = ~Edad, 
         text =  ~paste("Row: ", row, '<br>Year DB:', ano_bd),
         mode = "markers") %>% layout(xaxis=list(title="Year of Birth"), 
-                                     yaxis=list(Title="Age"))
+                                     yaxis=list(title="Age"))
 ```
 
 
@@ -236,7 +247,50 @@ We identified the outliers, ending up with 3 cases in which the expected age and
 
 <br>
 
-We found that the age is a time invariant variable. In order to identify similar matches, we need to identify the date of admission and the HASH Key, but considering the year. In Table 9 we can see that 45,526 cases had at least one case with the same combination of HASH-Key and date of admission.
+However, we may take account that there are `r paste0(round(CONS_C1_df %>% dplyr::filter(Edad<18|Edad>90) %>% dplyr::summarise(n())/nrow(CONS_C1_df),3)*100,"%")` cases with inappropiate years, considering `r CONS_C1_df %>% dplyr::filter(Edad<18) %>% dplyr::summarise(n()) ` cases with less than 18 years, and `r CONS_C1_df %>% dplyr::filter(Edad>90) %>% dplyr::summarise(n()) ` cases with more than 90 years. Most of these IDs represent a date of admission, as can be seen in Table 9:
+
+<br>
+
+```{r wrong ages, echo=T, paged.print=TRUE}
+  CONS_C1_df %>% filter(Edad<18|Edad>90) %>%
+    dplyr::select(row, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing) %>%
+ knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 9. Cases that have a wrongly asigned age",
+                 align =rep('c', 101))  %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  scroll_box(width = "100%", height = "350px")
+```
+
+<br>
+
+This may condition the data linkage, given that if I assign a missing value to a patient that in other registry has the correct age, it won't be match within the block assigned. In order to account for this possible bias, we checked whether cases may be replaced with data from 
+
+<br>
+
+```{r wrong ages duplicates, echo=T, paged.print=TRUE}
+#list of distinct HASHs that have a wrongly assigned age
+CONS_C1_df %>% dplyr::filter(Edad<18|Edad>90) %>%
+  dplyr::distinct(HASH_KEY) %>%
+  assign("distinct_hash_wrong_age",., envir = .GlobalEnv)
+#Then, apply these cases to the whole population
+CONS_C1_df %>%
+dplyr::filter(HASH_KEY %in% as.character(as.vector(unlist(as.data.table(unlist(distinct_hash_wrong_age)))))) %>% # select hashs of wrongly assigned ages
+dplyr::arrange(HASH_KEY) %>% #order by hashs 
+#  dplyr::filter(!duplicated(Edad)) %>% #filtro, 
+    #54 patients, 1,231 cases.
+      dplyr::select(-id,-TABLE,-14,-16,-17,-26,-27,-28,-29,-35,-36,-37,-88,-93,-94,-96,-101) %>% #762 casos
+      dplyr::select(row, ano_bd, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, everything()) %>%
+ knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 10. Total cases with wrong ages but have more than one age",
+                 align =rep('c', 101))  %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  scroll_box(width = "100%", height = "350px")
+```
+
+
+<br>
+
+We found that the age is a time invariant variable. In order to identify similar matches, we need to identify the date of admission and the HASH Key, but considering the year. In Table 11 we can see that 45,526 cases had at least one case with the same combination of HASH-Key and date of admission.
 
 <br>
 
@@ -249,9 +303,9 @@ duplicated_rows_concat <- data.frame(duplicated = duplicated(CONS_C1_df_dup[,c("
              `%`=paste0(round(prop.table(table(duplicated_rows_concat$duplicated,exclude=NULL)),3)*100,"%")) %>%
   as.data.frame(.) %>%  
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 9. Duplicated rows of the combination of HASH-Key & Date of Admission", col.names= c(" ", " Frequencies", "Percentage"), 
+                   caption="Table 11. Duplicated rows of the combination of HASH-Key & Date of Admission", col.names= c(" ", " Frequencies", "Percentage"), 
                  align =rep('c', 2))  %>%
-    kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10)
+    kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)
 ```
 
 <br>
