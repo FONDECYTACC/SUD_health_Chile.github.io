@@ -276,9 +276,10 @@ CONS_C1_df %>% dplyr::filter(Edad<18|Edad>90) %>%
 CONS_C1_df %>%
 dplyr::filter(HASH_KEY %in% as.character(as.vector(unlist(as.data.table(unlist(distinct_hash_wrong_age)))))) %>% # select hashs of wrongly assigned ages
 dplyr::arrange(HASH_KEY) %>% #order by hashs 
-#  dplyr::filter(!duplicated(Edad)) %>% #filtro, 
-    #54 patients, 1,231 cases.
-      dplyr::select(-id,-TABLE,-14,-16,-17,-26,-27,-28,-29,-35,-36,-37,-88,-93,-94,-96,-101) %>% #762 casos
+  #dplyr::filter(Edad<18|Edad>90) %>% nrow() #if you want to see how many cases would be changed: 697.
+  #dplyr::filter(!duplicated(HASH_KEY)) %>% nrow() # 443 DIFFERENT HASHS WERE CAPTURED.
+    #54 patients, 1,231 cases. (dont remember where i obtained)
+      dplyr::select(-id,-TABLE,-14,-16,-17,-26,-27,-28,-29,-35,-36,-37,-88,-93,-94,-96,-101) %>%
       dplyr::select(row, ano_bd, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, everything()) %>%
  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption="Table 10. Total cases with wrong ages but have more than one age",
@@ -292,9 +293,15 @@ dplyr::arrange(HASH_KEY) %>% #order by hashs
 
 We found that the age is a time invariant variable. In order to identify similar matches, we need to identify the date of admission and the HASH Key, but considering the year. In Table 11 we can see that 45,526 cases had at least one case with the same combination of HASH-Key and date of admission.
 
+## Deduplication
+
 <br>
 
 ```{r duplicated rows, echo=T, paged.print=TRUE}
+
+
+#create the duplicated dataset, following the recommendation to separate columns
+
 duplicated_rows_concat <- data.frame(duplicated = duplicated(CONS_C1_df_dup[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")]), 
                                        row = 1:nrow(CONS_C1_df_dup[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")])) #%>%
   
@@ -303,8 +310,7 @@ duplicated_rows_concat <- data.frame(duplicated = duplicated(CONS_C1_df_dup[,c("
              `%`=paste0(round(prop.table(table(duplicated_rows_concat$duplicated,exclude=NULL)),3)*100,"%")) %>%
   as.data.frame(.) %>%  
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 11. Duplicated rows of the combination of HASH-Key & Date of Admission", col.names= c(" ", " Frequencies", "Percentage"), 
-                 align =rep('c', 2))  %>%
+                   caption="Table 11. Duplicated rows of the combination of HASH-Key & Date of Admission", col.names= c(" ", " Frequencies", "Percentage"),  align =rep('c', 2))  %>%
     kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)
 ```
 
@@ -326,6 +332,4 @@ In Figure 2 we can see every case and the distribution of duplicated ones.
 ```
 
 
-duplicated_rows_concat <- data.frame(duplicated = duplicated(CONS_C1_df_dup[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")]), 
-                                       row = 1:nrow(CONS_C1_df_dup[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")]))
 

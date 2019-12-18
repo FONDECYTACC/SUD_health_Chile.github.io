@@ -165,7 +165,7 @@ for (i in paste0(c(2010:2018),"tab")) {tab_10_18_mod(i,y="c1_")}
 ```
 
 
- <br
+ <br>
  
 #### Append the datasets
 
@@ -236,13 +236,15 @@ CONS_C1_df %>%
 #### Standardize Dates
 
 <br>
-Dates of admission and discharge
+
+###### Dates of admission and discharge
+
 <br>
 
 Most of the dates were not formatted equally. When standardized,some cases failed to transform dates, specifically in dates of discharge, which contained 87 cases, while only one case was problematic in admission dates. 
 
 ```markdown
-5757 %>%
+CONS_C1_df %>%
   dplyr::mutate(fech_ing= ifelse(row=="14504", "10/01/2011",fech_ing))  %>%
   dplyr::mutate(fech_ing= lubridate::parse_date_time(fech_ing, c("%d/%m/%Y"),exact=T))
   dplyr::mutate(fech_egres_sin_fmt= fech_egres) %>% #me quedo con esta variable por si acaso
@@ -291,6 +293,7 @@ CONS_C1_df %>%
   kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10) %>%
   scroll_box(width = "100%", height = "450px")
 ```
+
 <br>
 As we can see in Table 2, some non-formatted date of discharge (_fech_egres_sin_fmt_), had insufficient information to traduce into valid dates.
 
@@ -306,6 +309,11 @@ As we can see in Table 2, some non-formatted date of discharge (_fech_egres_sin_
   kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10) %>%
   scroll_box(width = "100%", height = "150px")
 ```
+
+ <br>
+
+**uPDATE: 2019-12-11**, had to format this date because it was bad labellled.
+    `CONS_C1_df[CONS_C1_df$row=="5757","fech_egres"] <- "2010-10-04 UTC`}
 
  <br>
 ***
@@ -410,19 +418,25 @@ There are `r CONS_C1_df %>% dplyr::filter(tipo_de_plan=="Otro") %>% dplyr::summa
 Women should be in the M-PAI in they actually are cathegorized in the general population program.
 <br>
 
-As can be seen in Table 6, around 16% of women are in the general population programmes.**Should be removed?**
+As can be seen in Table 6, around 58% of women are in the general population programmes.**Should be removed or changed?**
 
 ```{r echo=F, paged.print=TRUE}
-  data.frame(table(CONS_C1_df$tipo_de_plan, CONS_C1_df$Sexo, exclude=NULL),
-             `%`=paste0(round(prop.table(table(CONS_C1_df$tipo_de_plan, CONS_C1_df$Sexo, exclude=NULL)),3)*100,"%")) %>% 
-    as.data.frame() %>% 
-    reshape::melt( id.vars = c("Var1", "Var2")) %>%
-    reshape::cast(.,Var1~Var2+variable) %>%
+CONS_C1_df %>%
+    count(tipo_de_plan, Sexo) %>% 
+    group_by(Sexo) %>% 
+    mutate(prop = paste0(round(100 * prop.table(n)),"%")) %>%
+    data.table::data.table() %>% 
+    reshape::melt(id.vars = c(1:2)) %>% 
+    reshape::cast(.,tipo_de_plan~Sexo+variable) %>% 
+    dplyr::rename("Type of Plan" = tipo_de_plan, "Men (n)" = Hombre_n, "Men (%)" = Hombre_prop,
+                  "Women (n)"= Mujer_n, "Women (%)"=Mujer_prop) %>%
+    as.data.frame() %>%
     knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 6. Plan by Sex", col.names= c("Plan", " Man (n)", "Man (%)","Women (n)","Women (%)"), 
+                   caption="Table 6. Plan by Sex", col.names= c("Plan", " Men (n)", "Men (%)","Women (n)","Women (%)"), 
                  align =rep('c', 5))  %>%
     kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10) %>%
     add_footnote( c("PR= Residential Program" ,"PAB= Basic Outpatient Program", "PAI= Intensive Outpatient Treatment", "PAI LV=     Probation/Parole", "PAI= Intensive Outpatient Treatment"), notation = "symbol")
+
 ```
 
 There are still a few doubts about these criteria:
@@ -495,11 +509,11 @@ Consider as missing age if it is less than 18 years and greater than 90.
 ```{r bunch_o_figs2, fig.height=4, fig.width=8}
     par(mfrow = c(1,3)) 
     hist(CONS_C1_df$Edad, main="Distrbution of Age", 
-         xlab="Edad", ylab="Freq", breaks=60)
+         xlab="Age", ylab="Freq", breaks=60)
     hist(CONS_C1_df$Edad, main="Distrbution of Age (zoom -)", 
-         xlab="Edad", ylab="Freq", breaks=60, xlim=c(0,20), ylim=c(0,2000))
+         xlab="Age", ylab="Freq", breaks=60, xlim=c(0,20), ylim=c(0,2000))
     hist(CONS_C1_df$Edad, main="Distrbution of Age (zoom +)", 
-         xlab="Edad", ylab="Freq", breaks=60, xlim=c(100,120), ylim=c(0,100)) 
+         xlab="Age", ylab="Freq", breaks=60, xlim=c(100,120), ylim=c(0,100)) 
     ```
 
 
@@ -536,19 +550,12 @@ Consider as missing if cases has more than 1095 days. Do the same for months in 
          xlab="Days", ylab="Freq",xlim=c(-100,4100), breaks=60)
     hist(CONS_C1_df$dias_trat, main="Distribution of\nDays in Treatment (zoom +)", 
          xlab="Days", ylab="Freq", breaks=60, xlim=c(1000,4100), ylim=c(0,2000)) 
-    dev.off()
-    #values out of boundaries
-    CONS_C1_df %>%
-      dplyr::filter(dias_trat>1095) %>%
-      dplyr::summarise(n())
 
-    CONS_C1_df %>%
-      dplyr::filter(dias_trat<0) %>%
-      dplyr::summarise(n())
+        #values out of boundaries
 ``` 
 
 
-As seen in Figure 3, there are 2320 cases with more than 1095 days in treatment. On the other hand, there are 12 cases with negative days of treatment. **Should be removed?** 
+As seen in Figure 3, there are `r CONS_C1_df %>% dplyr::filter(dias_trat>1095) %>% dplyr::summarise(n())` cases with more than 1095 days in treatment. On the other hand, there are `r CONS_C1_df %>% dplyr::filter(dias_trat<=0) %>% dplyr::summarise(n())` cases with negative or no days of treatment. **Should be removed?** 
 
 &nbsp;
 <br>
@@ -558,10 +565,20 @@ As seen in Figure 3, there are 2320 cases with more than 1095 days in treatment.
 Pregnant men should be considered as missing values. 
 As seen in Table 8, 4 cases of men also reported pregnancy.
 
-##### Table 8. Pregnancy by Sex
-
 ```{r echo=F, paged.print=TRUE}
-summarytools::ctable(CONS_C1_df$embarazo, CONS_C1_df$Sexo, prop = "c",totals = FALSE)
+CONS_C1_df %>%
+    count(embarazo, Sexo) %>% 
+    group_by(Sexo) %>% 
+    mutate(prop = paste0(round(100 * prop.table(n)),"%")) %>%
+    data.table::data.table() %>% 
+    reshape::melt(id.vars = c(1:2)) %>% 
+    reshape::cast(.,embarazo~Sexo+variable) %>% 
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+                   caption="Table 8. Pregnancy by Sex", col.names= c("Pregnancy", " Man (n)", "Man (%)","Women (n)","Women (%)"), 
+                 align =rep('c', 5))  %>%
+    kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10) %>%
+    add_footnote( c("Si= Pregnant", "No= Not Pregnant"), notation = "symbol")
+
 ```
 
 <br>
@@ -572,17 +589,28 @@ See plans M-PR and M-PAI . Check if there are men. Keep if they are, but they id
 
 As seen in table 9, must note that many cases do not answer this question, or what could be more plausible, this question could not be present in previous datasets. This is why we may exclude NA's (missing values) for the following analysis.
 
-##### Table 9. Sex by Gender Identity
 
 ```{r echo=F, paged.print=TRUE}
- print(summarytools::ctable(CONS_C1_df$identidad.de.genero, CONS_C1_df$Sexo, prop = "c",totals = FALSE))
+CONS_C1_df %>%
+    count(identidad.de.genero, Sexo) %>% 
+    group_by(Sexo) %>% 
+    mutate(prop = paste0(round(100 * prop.table(n)),"%")) %>%
+    data.table::data.table() %>% 
+    reshape::melt(id.vars = c(1:2)) %>% 
+    reshape::cast(.,identidad.de.genero~Sexo+variable) %>% 
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+                   caption="Table 9. Sex by Gender Identity", col.names= c("Gender \n Identity", " Man (n)", "Man (%)","Women (n)","Women (%)"), 
+                 align =rep('c', 5))  %>%
+    kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10) %>%
+  add_footnote( c("Femenino= Feminine" ,"Masculino= Masculine"), notation = "symbol")
+
 ```
 <br>
 &nbsp;
 
 In Table 10, can be seen that there are 2 men with a masculine gender identity that are suscribed to M-PAI plan. However, **what happens with the  women with masculine gender identity in M-PAI plan?**
 
-```{r echo=F, paged.print=TRUE, message=FALSE}
+```{r echo=F, paged.print=TRUE, message=FALSE, warning=F}
     CONS_C1_df %>%
       dplyr::group_by(as.factor(identidad.de.genero),as.factor(Sexo), as.factor(tipo_de_plan)) %>%
       dplyr::filter(!is.na(as.factor(identidad.de.genero))) %>%
@@ -613,7 +641,21 @@ Consider as missing days if theres values 0 and negatives.
 
 <br>
 
-There are `r CONS_C1_df %>% dplyr::filter(dias_trat<1) %>% dplyr::summarise(n())` values 0 or negative.
+As shown in Figure 3, there are `r CONS_C1_df %>% dplyr::filter(dias_trat<1) %>% dplyr::summarise(n())` values 0 or negative.
+
+```{r dias trat, echo=T, paged.print=TRUE}
+    CONS_C1_df %>%
+    dplyr::filter(dias_trat<1) %>%
+      dplyr::select(-id,-TABLE,-14,-16,-17,-26,-27,-28,-29,-35,-36,-37,-88,-93,-94,-96,-101) %>%
+      dplyr::select(row, ano_bd, HASH_KEY, hash_rut_completo, id_mod, dias_trat,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, 
+                    ID.centro,motivodeegreso, everything()) %>%
+      head() %>%
+ knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 11. Cases with lower dates of treatment",
+                 align =rep('c', 101))  %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  scroll_box(width = "100%", height = "350px")
+```
 
 
 <br>
@@ -624,6 +666,23 @@ Consider the age of consumption begin as missing data if it is greater than the 
 <br>
 
 In `r CONS_C1_df %>% dplyr::mutate(edad_inicio_cons= ifelse(Edad.Inicio.Consumo>Edad, 1, 0)) %>% dplyr::filter(edad_inicio_cons==1) %>% nrow()` cases the age of consumption begin is greater than the actual age.
+
+<br>
+
+```{r inicio consumo, echo=T, paged.print=TRUE}
+CONS_C1_df %>% dplyr::mutate(edad_inicio_cons= ifelse(Edad.Inicio.Consumo>Edad, 1, 0)) %>% dplyr::filter(edad_inicio_cons==1) %>%
+  dplyr::select(row, HASH_KEY, ano_bd, id_mod, Edad.Inicio.Consumo,Edad) %>% 
+  head(50) %>%
+ knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 12. Cases with age of consumption begin greater than the actual age",
+                 align =rep('c', 101))  %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  scroll_box(width = "100%", height = "350px")
+```
+
+<br>
+
+Around `r CONS_C1_df %>% dplyr::mutate(edad_inicio_cons= ifelse(Edad.Inicio.Consumo>Edad, 1, 0)) %>% dplyr::filter(edad_inicio_cons==1) %>% dplyr::filter(Edad<18) %>% nrow()` cases could change once dates are resolved with less than 18 years.
 
 ---
 ---
