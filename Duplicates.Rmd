@@ -204,8 +204,8 @@ Based on the reunion on Dec. 05 of 2019, one of the main challenges was to check
 
 <br>
 
-##### Figure 1. Scatterplot of Year of Birtth and Age
-```{r fig_fecha_nac_edad, fig.height=4, fig.width=8, warning=FALSE}
+##### Figure 1. Scatterplot of Year of Birth and Age
+```{r fig_fecha_nac_edad, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center"}
 #plot(CONS_C1_df$ano_nac, CONS_C1_df$Edad, ylab="Age", xlab="Year of Birth")
 
 #figure() %>%
@@ -336,11 +336,14 @@ duplicated_rows_concat <- data.frame(duplicated_HASH_date = duplicated(CONS_C1_d
 
 <br>
 
-In Figure 2 we can see every case and the distribution of duplicated 
+In Figure 2 we can see every case and the distribution of duplicated cases in terms of the same HASH key and the same date of admission.
 
 <br>
 
-```{r dup rows, fig.height=4, fig.width=8, warning=FALSE}
+```{r dup rows, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center"}
+duplicated_rows_concat <- data.frame(duplicated_HASH_date = duplicated(CONS_C1_df_dup[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")]), 
+                                     row_dup_HASH_date = 1:nrow(CONS_C1_df_dup[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")])) #%>%
+
 # Plot duplicated rows as black lines
   ggplot(duplicated_rows_concat, aes(xintercept = row_dup_HASH_date)) +
     geom_vline(aes(xintercept = row_dup_HASH_date, color= duplicated_HASH_date)) + # plot a black line for each duplicated row
@@ -352,26 +355,11 @@ In Figure 2 we can see every case and the distribution of duplicated
 ```
 
 &nbsp;
-<br>
-
-
-```{r ,echo=T, paged.print=TRUE}
-CONS_C1_df %>%
-  dplyr::filter(is.na(fech_egres)) %>%
-  dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing)), dias_trat_trans= as.numeric(as.Date("2019-11-13"))-fech_ing_num, 
-                diff_treat_days=dias_trat-dias_trat_trans) %>% #fecha del día de hoy 
-  dplyr::select(HASH_KEY, id_mod, ano_bd, sexo, fech_ing, fech_ing_num, dias_trat_trans,dias_trat,diff_treat_days) %>%
-  dplyr::group_by(diff_treat_days) %>%
-  dplyr::summarize(n=n()) %>%
-  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 13. Missing Date of Discharge, Difference between Treatment Dates", col.names= c("Treat Days", "N"),  align =rep('c', 2))  %>%
-    kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
-  add_footnote( c("Assuming the date of retrieval, 2019-11-13"), notation = "symbol")
-```
 
 <br>
 
-Cases shown in Table 13 represent exact matches. But in order to catch some differences that would probabilistically match in terms of HASH-Key and date of admission, we ran a package in the software Stata called "dtalink", with the following criteria:
+Cases shown in Table 12 represent exact matches. But in order to catch some differences that would probabilistically match in terms of HASH-Key and date of admission, we ran a package in the software Stata called "dtalink", with the following criteria:
+
 1. Hash Key, with a weight applied of 25 points, in case this variable match, but minus 25 in case that does not match
 2. SENDA's ID, with a weight applied of 25 points, in case this variable match, but minus 25 in case that does not match
 3. Sex, with a weight applied of 10 points, in case this variable match
@@ -396,18 +384,6 @@ The code used in stata is shown here:
   net describe dtalink
   net install dtalink
   
-  
-  capture program drop mycodebook
-  program mycodebook, rclass
-  syntax [varlist] [if] [in][, *]
-  codebook `varlist' `if' `in', `options'
-  capture ssc install distinct
-  foreach var of varlist `varlist' {
-      qui distinct `var' `if' `in'
-      return scalar nv_`var' = r(ndistinct)
-  }
-  end
-
   * recast int real_fech_ing_mes
   
   cap gen real_fech_ing_ano = real(fech_ing_ano)
@@ -420,17 +396,83 @@ The code used in stata is shown here:
   *Treat each row as a unique observation
   generate id_match = _n
   
-  *dtalink concat, cutoff(4) id(id_match) bestmatch noweight
-  
-  *- #1 is the weight applied for a match (positive)
-  *– #2 is the weight applied for a non-match (negative)
-  *– #3 is the caliper for distance matching (≥ 0)
-
-  *Create date_in, make date as 
+  *Create date_in, transform date as numeric
   	*cap gen date_in = real(date_in)
 
   cap drop _id
   dtalink hash_key 25 -25 id 25 -25 sexo 10 0 idcentro 10 0 date_in 30 -30 5, block(edad) cutoff(70) examples (1) describe
 ```
 
+<br>
+
+An a analysis of probabilistic matches between events by the requirements listed above, showed us 2 matches with scores of 70 (due to a missing value in the date of admission, correspondent to the HASH KEY "6c409c18bf7cc518819dc63c4e8e98ef"), 99 matches with a value of 90 points, and 51,553 matches with 100 points. Must note that many of HASHs involved in matching appear around 2 times (very possible considering the match would be produced by the coincidence of HASH Keys), but the 10% of the HASHs appeared around 4 times, and the remaining 10%, 6 times or more.
+
+<br>
+
+```{r  Case with no date of admission, include=F, eval=F}
+CONS_C1 %>%
+  dplyr::filter(HASH_KEY=="6c409c18bf7cc518819dc63c4e8e98ef") %>%
+  #dplyr::select(row, ano_bd, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing, fech_egres, dias_trat,tipo_de_plan, tipo_de_programa, ID.centro, Edad) %>%
+  head()
+CONS_C1_df %>%
+  dplyr::filter(HASH_KEY=="6c409c18bf7cc518819dc63c4e8e98ef") %>%
+  dplyr::select(row, ano_bd, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing, fech_egres, dias_trat,tipo_de_plan, tipo_de_programa, ID.centro, Edad) %>%
+  head()
+
+quantile(matches_hash_freq$n, .80)
+
+#matches_hash_freq <- read.table(file = "clipboard", sep = "\t", header=TRUE)
+matches_hash_freq
+
+summary(matches_hash_freq)
+hist(matches_hash_freq$n, main="Figure 3. Histogram of HASH Keys in matches", breaks=50,xlab="Repetitions", ylab="Freq.")
+#:#_#_#_#_#__#_#_#_#__#_#_#_#_#__#_#__#_#_#_#_#_#__
+dt <- data.table(CONS_C1_df, key=c("HASH_KEY","fech_ing", "fech_egres"))
+dt <- na.omit(dt, cols= c("HASH_KEY","fech_ing", "fech_egres")) #baja a 153392 casos
+ovl <- foverlaps(dt, dt, type = "within")
+
+```
+```{r  Fig 3, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center"}
+ knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Fig 3.png", dpi = 50)
+
+```
+
+
+<br>
+
+An analysis of duplicated events showed that many ranges between the dates of admission and discharge are overlapping due to derivations, principally by changes in the center of treatment, being the following the most repeated among cases: Centro Tratamiento Adicciones Unidos, Hospital Santa Cruz; y Centro de Tratamiento adicciones Esperanza, Hospital Santa Cruz. However, **to identify overlappings in treatments it is necessary to obtain the missing dates, and clean the dates that may be wrong**. For example, Table 13 shows cases that possess negative days of treatment.
+
+<br>
+
+```{r neg treat days, echo=T, paged.print=TRUE}
+CONS_C1_df %>% 
+  dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing)), fech_egres_num= as.numeric(as.Date(fech_egres)), 
+                discharge_before_treatment=fech_egres_num-fech_ing_num) %>%
+  dplyr::filter(discharge_before_treatment<0) %>%
+  dplyr::select(row, ano_bd, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, Edad, dias_trat) %>%
+  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+                   caption="Table 13. Negative days of treatment", align =rep('c', 101)) %>%
+    kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  add_footnote( c("Assuming the date of retrieval, 2019-11-13"), notation = "symbol")
+```
+&nbsp;
+<br>
+
+As can be seen in Table 14, many treatment discharge dates were NULL values, deriving in a misleading count of treatment days, which were calculated as the difference between the date in which the datasets were retrieved and the date of admission. This one of the reasons that this variable may confound the analysis of duplicate data because of different but overlapping treatments, or duplicated treatments.
+
+<br>
+
+```{r diff between dates,echo=T, paged.print=TRUE}
+CONS_C1_df %>%
+  dplyr::filter(is.na(fech_egres)) %>%
+  dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing)), dias_trat_trans= as.numeric(as.Date("2019-11-13"))-fech_ing_num, 
+                diff_treat_days=dias_trat-dias_trat_trans) %>% #fecha del día de hoy 
+  dplyr::select(HASH_KEY, id_mod, ano_bd, sexo, fech_ing, fech_ing_num, dias_trat_trans,dias_trat,diff_treat_days) %>%
+  dplyr::group_by(diff_treat_days) %>%
+  dplyr::summarize(n=n()) %>%
+  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+                   caption="Table 14. Missing Date of Discharge, Difference between Treatment Dates", col.names= c("Treat Days", "N"),  align =rep('c', 2))  %>%
+    kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  add_footnote( c("Assuming the date of retrieval, 2019-11-13"), notation = "symbol")
+```
 
