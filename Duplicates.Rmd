@@ -29,6 +29,7 @@ if(!require(kableExtra)){install.packages("kableExtra")}
 if(!require(plotly)){install.packages("plotly")}
 if(!require(rbokeh)){install.packages("rbokeh")}
 if(!require(altair)){install.packages("altair")}
+if(!require(zoo)){install.packages("zoo")}
 ```
 
 # Duplicated Cases in SISTRAT C1
@@ -263,7 +264,7 @@ However, we may take account that there are `r paste0(round(CONS_C1_df %>% dplyr
 
 <br>
 
-This may condition the data linkage, given that if I assign a missing value to a patient that in other registry has the correct age, it won't be match within the block assigned. In order to account for this possible bias, we checked whether cases may be replaced with data from 
+This may condition the data linkage, given that if I assign a missing value to a patient that in other registry has the correct age, it won't be match within the block assigned. In order to account for this possible bias, we checked whether cases may be replaced with data with another HASH Key.
 
 <br>
 
@@ -291,39 +292,58 @@ dplyr::arrange(HASH_KEY) %>% #order by hashs
 
 <br>
 
-We found that the age is a time invariant variable. In order to identify similar matches, we need to identify the date of admission and the HASH Key, but considering the year. In Table 11 we can see that 45,526 cases had at least one case with the same combination of HASH-Key and date of admission.
+We found that the age is a time-invariant variable. In order to identify similar matches, we need to identify the date of admission and the HASH Key, but considering the year, leading to `r CONS_C1_df_dup %>% dplyr::filter(Edad<18, Edad>90) %>% nrow()` invalid values in age, but `r CONS_C1_df_dup %>% dplyr::filter(is.na(Edad)) %>% nrow()` missing values with `r CONS_C1_df_dup %>% dplyr::filter(is.na(Edad)) %>% distinct(HASH_KEY) %>% nrow()` different HASH keys. This may be found in Table 11, as cases found correspond mainly to people which does not present any valid age throughout different ages.
+
+<br>
+
+```{r invalid values in age, echo=T, paged.print=TRUE}
+CONS_C1_df_dup %>% 
+  dplyr::filter(is.na(Edad)) %>% 
+  arrange(HASH_KEY) %>%
+  dplyr::select(row, ano_bd, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, Edad) %>%
+ knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 11. Missing Ages among Patients with Wrong Dates of Birth",
+                 align =rep('c', 101))  %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  scroll_box(width = "100%", height = "350px")
+```
+
+&nbsp;
+<br>
 
 ## Deduplication
+
+In Table 12 we can see that most of the cases had at least one case with the same combination of HASH-Key and date of admission. We imputed the age of cases with the same HASH-Key and date of admission
 
 <br>
 
 ```{r duplicated rows, echo=T, paged.print=TRUE}
 
-
 #create the duplicated dataset, following the recommendation to separate columns
 
-duplicated_rows_concat <- data.frame(duplicated = duplicated(CONS_C1_df_dup[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")]), 
-                                       row = 1:nrow(CONS_C1_df_dup[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")])) #%>%
+duplicated_rows_concat <- data.frame(duplicated_HASH_date = duplicated(CONS_C1_df_dup[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")]), 
+                                     row_dup_HASH_date = 1:nrow(CONS_C1_df_dup[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")])) #%>%
   
 # Duplicated rows
-  data.frame(table(duplicated_rows_concat$duplicated,exclude=NULL),
-             `%`=paste0(round(prop.table(table(duplicated_rows_concat$duplicated,exclude=NULL)),3)*100,"%")) %>%
+  data.frame(table(duplicated_rows_concat$duplicated_HASH_date,exclude=NULL),
+             `%`=paste0(round(prop.table(table(duplicated_rows_concat$duplicated_HASH_date,exclude=NULL)),3)*100,"%")) %>%
   as.data.frame(.) %>%  
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 11. Duplicated rows of the combination of HASH-Key & Date of Admission", col.names= c(" ", " Frequencies", "Percentage"),  align =rep('c', 2))  %>%
+                   caption="Table 12. Duplicated rows of the combination of HASH-Key & Date of Admission", 
+               col.names= c(" ", " Frequencies", "Percentage"),  align =rep('c', 2))  %>%
     kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)
 ```
 
 <br>
 
-In Figure 2 we can see every case and the distribution of duplicated ones.
+In Figure 2 we can see every case and the distribution of duplicated 
 
 <br>
 
 ```{r dup rows, fig.height=4, fig.width=8, warning=FALSE}
 # Plot duplicated rows as black lines
-  ggplot(duplicated_rows_concat, aes(xintercept = row)) +
-    geom_vline(aes(xintercept = row, color=duplicated)) + # plot a black line for each duplicated row
+  ggplot(duplicated_rows_concat, aes(xintercept = row_dup_HASH_date)) +
+    geom_vline(aes(xintercept = row_dup_HASH_date, color= duplicated_HASH_date)) + # plot a black line for each duplicated row
     scale_color_manual(values = c('white','black'),name = "Duplicated", labels = c("No", "Yes")) +
     ggtitle("Figure 2. Indexes of duplicated rows") + # add a title
     labs(x=NULL, y=NULL) +
@@ -331,5 +351,86 @@ In Figure 2 we can see every case and the distribution of duplicated ones.
     theme_bw()  
 ```
 
+&nbsp;
+<br>
+
+
+```{r ,echo=T, paged.print=TRUE}
+CONS_C1_df %>%
+  dplyr::filter(is.na(fech_egres)) %>%
+  dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing)), dias_trat_trans= as.numeric(as.Date("2019-11-13"))-fech_ing_num, 
+                diff_treat_days=dias_trat-dias_trat_trans) %>% #fecha del día de hoy 
+  dplyr::select(HASH_KEY, id_mod, ano_bd, sexo, fech_ing, fech_ing_num, dias_trat_trans,dias_trat,diff_treat_days) %>%
+  dplyr::group_by(diff_treat_days) %>%
+  dplyr::summarize(n=n()) %>%
+  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+                   caption="Table 13. Missing Date of Discharge, Difference between Treatment Dates", col.names= c("Treat Days", "N"),  align =rep('c', 2))  %>%
+    kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  add_footnote( c("Assuming the date of retrieval, 2019-11-13"), notation = "symbol")
+```
+
+<br>
+
+Cases shown in Table 13 represent exact matches. But in order to catch some differences that would probabilistically match in terms of HASH-Key and date of admission, we ran a package in the software Stata called "dtalink", with the following criteria:
+1. Hash Key, with a weight applied of 25 points, in case this variable match, but minus 25 in case that does not match
+2. SENDA's ID, with a weight applied of 25 points, in case this variable match, but minus 25 in case that does not match
+3. Sex, with a weight applied of 10 points, in case this variable match
+4. Center's ID, with a weight applied of 10 points, in case this variable match
+5. Date of Admission, with a weight applied of 30 points, in case this variable match, but minus 30 in case that does not match, and a calliper of 5 days to consider as a match a difference of 5 days or less
+6. Blocking variable of Age, in order to match each cases between people with the same Age. 
+7. Matches will be considered as significant if the match accumulates at least 70 points.
+
+<br>
+
+The code used in stata is shown here:
+
+&nbsp;
+<br>
+
+```{stata dtalink, eval=FALSE}
+  import delimited "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\_CONS_C1_df_dup.csv", parselocale(es_CL) clear
+  *import delimited "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\_CONS_C1_df_dup.csv", delimiter(";") clear 
+  cap ssc install unique
+  
+  net from https://raw.githubusercontent.com/kkranker/stata-dtalink/master/
+  net describe dtalink
+  net install dtalink
+  
+  
+  capture program drop mycodebook
+  program mycodebook, rclass
+  syntax [varlist] [if] [in][, *]
+  codebook `varlist' `if' `in', `options'
+  capture ssc install distinct
+  foreach var of varlist `varlist' {
+      qui distinct `var' `if' `in'
+      return scalar nv_`var' = r(ndistinct)
+  }
+  end
+
+  * recast int real_fech_ing_mes
+  
+  cap gen real_fech_ing_ano = real(fech_ing_ano)
+  cap gen real_fech_ing_mes = real(fech_ing_mes)
+  cap gen real_fech_ing_dia = real(fech_ing_dia)
+  
+  cap gen edad_num = real(edad)
+
+  *ID variable
+  *Treat each row as a unique observation
+  generate id_match = _n
+  
+  *dtalink concat, cutoff(4) id(id_match) bestmatch noweight
+  
+  *- #1 is the weight applied for a match (positive)
+  *– #2 is the weight applied for a non-match (negative)
+  *– #3 is the caliper for distance matching (≥ 0)
+
+  *Create date_in, make date as 
+  	*cap gen date_in = real(date_in)
+
+  cap drop _id
+  dtalink hash_key 25 -25 id 25 -25 sexo 10 0 idcentro 10 0 date_in 30 -30 5, block(edad) cutoff(70) examples (1) describe
+```
 
 
