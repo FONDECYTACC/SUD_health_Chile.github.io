@@ -300,7 +300,7 @@ We found that the age is a time-invariant variable. In order to identify similar
 CONS_C1_df_dup %>% 
   dplyr::filter(is.na(Edad)) %>% 
   arrange(HASH_KEY) %>%
-  dplyr::select(row, ano_bd, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, Edad) %>%
+  dplyr::select(row, ano_bd, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, Edad, SENDA) %>%
  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption="Table 11. Missing Ages among Patients with Wrong Dates of Birth",
                  align =rep('c', 101))  %>%
@@ -343,15 +343,22 @@ In Figure 2 we can see every case and the distribution of duplicated cases in te
 ```{r dup rows, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center"}
 duplicated_rows_concat <- data.frame(duplicated_HASH_date = duplicated(CONS_C1_df_dup[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")]), 
                                      row_dup_HASH_date = 1:nrow(CONS_C1_df_dup[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")])) #%>%
+CONS_C1_df_dup %>%
+  dplyr::left_join(duplicated_rows_concat) %>%
+  dplyr::mutate(fech_ing_qrt=as.yearqtr(fech_ing)) %>%
+  dplyr::mutate(dup_hash_date=as.numeric(duplicated_HASH_date)) %>%
+  dplyr::select(fech_ing_qrt,dup_hash_date) %>%   dplyr::group_by(fech_ing_qrt) %>% 
+  dplyr::summarise(duplicated = sum(dup_hash_date==1),n = n(), perc_dup=duplicated/n) %>%
+  dplyr::filter(fech_ing_qrt>=2009) %>%
+  ggplot(aes(x = fech_ing_qrt, y = perc_dup, label = paste0("n=",n))) +
+  geom_line(color = "#0076A8", size=1) +
+  #geom_text(aes(x = fech_ing_qrt, y = perc_dup-0.05, label = paste0(n)), vjust = -1,hjust = 0, angle=45, size=3) +
+  sjPlot::theme_sjplot2() +
+  labs(y="% of Duplicated Data",x="Years & Quarters, Date of Admission" ) +
+  scale_y_continuous(limits=c(0, 1),labels = scales::percent) +
+  scale_x_yearqtr(format="%YQ%q", n=20) +
+  theme(axis.text.x = element_text(vjust = 0.5,angle = 60)) 
 
-# Plot duplicated rows as black lines
-  ggplot(duplicated_rows_concat, aes(xintercept = row_dup_HASH_date)) +
-    geom_vline(aes(xintercept = row_dup_HASH_date, color= duplicated_HASH_date)) + # plot a black line for each duplicated row
-    scale_color_manual(values = c('white','black'),name = "Duplicated", labels = c("No", "Yes")) +
-    ggtitle("Figure 2. Indexes of duplicated rows") + # add a title
-    labs(x=NULL, y=NULL) +
-    coord_flip() + scale_x_reverse() + #flip x & y axis and reverse the x axis
-    theme_bw()  
 ```
 
 &nbsp;
