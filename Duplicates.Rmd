@@ -1,5 +1,5 @@
 ---
-title: "Duplicated Cases in SISTRAT C1"
+title: "Duplicated/ Repeated Cases in SISTRAT C1"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: html_document
   ---
@@ -30,9 +30,15 @@ if(!require(plotly)){install.packages("plotly")}
 if(!require(rbokeh)){install.packages("rbokeh")}
 if(!require(altair)){install.packages("altair")}
 if(!require(zoo)){install.packages("zoo")}
+#if(!require(texreg)){install.packages("texreg")}
+#if(!require(stargazer)){install.packages("stargazer")}
+#if(!require(tab)){install.packages("tab")}
+#remotes::install_github("leifeld/texreg",force = TRUE)
+if(!require(broom)){install.packages("broom")} 
+
 ```
 
-# Duplicated Cases in SISTRAT C1
+# Duplicated/ Repeated Cases in SISTRAT C1
 
 There were `r CONS_C1_df %>% dplyr::filter(hash_rut_completo!="") %>% nrow()` cases with an alternative HASH key, in case the first does not match any of the proposed HASH Keys. In the following table, we can see that duplicated cases may be around 7% per yearly datasets.
 
@@ -71,7 +77,7 @@ There were `r CONS_C1_df %>% dplyr::select(ano_bd,id,HASH_KEY) %>% dplyr::group_
                caption="Table 2. Case of example that showed more than one ID",
                  align =rep('c', 101))  %>%
   kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
-  scroll_box(width = "100%", height = "250px")
+  scroll_box(width = "100%", height = "300px")
 ```
 
  &nbsp;
@@ -94,7 +100,7 @@ This ID had 2 cases in 2010. The last one show 179 days of treatment, but the fi
 
 This HASH in 2017 assisted to CT "Tiempo de Esperanza (PROSEC) and CT Tiempos Nuevos (PROSEC) in two opportunities (in Tiempo de Esperanza, the first time, in 2016). The first case of the year 2017, gather 266 days of treatment (must note that the same case of 2016 is equal in days of treatment, date of admission, date of discharge and cause of discharge. In case of both of the cases with admissions in "CT Tiempos Nuevos", were in Iquique and had different days of treatment between each other, the last one with 49 days vs. 34.
 
-Considering this cases, one index could be the last treatment date (Fecha.Ultimo.Tratamiento), number of previous treatments (Numero.de.Tratamientos.Anteriores), Date of admission (fech_ing), Date of discharge (fech_egres) and cause of discharge (motivodeegreso).
+Considering this cases, one set of indexes could be the last treatment date (Fecha.Ultimo.Tratamiento), number of previous treatments (Numero.de.Tratamientos.Anteriores), Date of admission (fech_ing), Date of discharge (fech_egres) and cause of discharge (motivodeegreso).
 
 **We need to distinguish between duplicated cases and admissions through 2010 to 2019**  
 
@@ -103,18 +109,37 @@ There were `r CONS_C1_df %>% dplyr::mutate(concat=paste0(id,"_",HASH_KEY,"_",fec
 &nbsp;
 
 ```{r echo=F, paged.print=TRUE}
-  CONS_C1_df %>%
-    dplyr::mutate(concat=paste0(id_mod,"_",HASH_KEY,"_",fech_ing,"_", fech_egres,"_",
-                                motivodeegreso,"_", dias_trat,"_",Fecha.Ultimo.Tratamiento)) %>%
-    dplyr::filter(id=="MASO113121967") %>% 
-    dplyr::select(-id, -TABLE,-14,-16,-17,-26,-27,-28,-29,-35,-36,-37,-88,-93,-94,-96,-101) %>%
-      dplyr::select(row, ano_bd, HASH_KEY, hash_rut_completo, id_mod,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, everything()) %>%
-  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 4. Case of example that showed more than one concatenated (concat) criteria",
-                 align =rep('c', 101))  %>%
-  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
-  scroll_box(width = "100%", height = "350px")
+# OR plot
+m1=glm(duplicated ~ is.na(sexo) + is.na(fech_ing) + is.na(fech_egres) + is.na(motivodeegreso) + is.na(dias_trat) + is.na(Fecha.Ultimo.Tratamiento), data=CONS_C1_df, family = binomial ( link = logit )) 
+m2=glm(duplicated ~ factor(sexo) + fech_ing + fech_egres + factor(motivodeegreso) + dias_trat + Fecha.Ultimo.Tratamiento, data=CONS_C1_df, family = binomial ( link = logit )) 
+
+#star.1 <- stargazer(m1, m2,
+#                    title="Title: Regression Results",
+#                    align=TRUE,
+#                    style = "ajs", # "ajs"
+#                    notes="this is a test note"
+#                    )
+
+#print(rbind(xtable::xtable(m1), type = "html"),xtable::xtable(m2, type = "html"))
+
+#xtable::xtable(list(m1,m2), title="Regression of Duplicated Data", align=TRUE, no.space=TRUE,dep.var.labels=c("Null Values","Factor"), 
+#                center = TRUE, doctype = FALSE, caption = "", star.symbol = "\\*") %>%
+
+#table3 <- tabglm(m1, latex = TRUE,columns = c("beta.se", "betaci"), compress.factors=F)
+#> Waiting for profiling to be done...
+#kable(table3, 
+#      caption = "Table 3. Logistic regression fit (created by `tabglm` and `kable`).")
+#kable(xtable(linear.1))
+log_reg<- rbind(summary(m1)$coefficients,summary(m2)$coefficients)
+
+knitr::kable(cbind(Model=rbind("NA's","","","","","","Factor/Numeric","","","","","","","","","","","","",""),
+      Coef.=rbind("Intercept","Date of Admission (NULL)", "Date of Discharge(NULL)", "Cause of Discharge(NULL)", "Days of Treatment(NULL)", "Date of Last Treatment(NULL)","Intercept","Sex(Women)", "Date of Admission", "Date of Discharge", "Cause of Discharge- Administrative Discharge", "Cause of Discharge- Therapeutic Resolution","Cause of Discharge- Derivation.","Cause of Discharge- Death", "Days of Treatment", "Date of Last Treatment- 3-4 yrs","Date of Last Treatment- 5 + yrs","Date of Last Treatment- NA","Date of Last Treatment- 12 months","Date of Last Treatment- 6 months"),
+      as.data.table(log_reg)), digits=3, scientific=FALSE,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 3. Case of example that showed more than one HASH",align =rep('c', 101)) %>%
+    kable_styling("striped")
+
 ```
+
 &nbsp;
 
 In Table 4 we can appreciate that this case had 1671 days of treatment, which is far from the 1095 days proposed by the SENDA professional, and being admitted from 2013-05-08 to 2017-12-04.
@@ -308,12 +333,39 @@ CONS_C1_df_dup %>%
   scroll_box(width = "100%", height = "350px")
 ```
 
+<br>
+
+Only 3 cases were replaced by cases in TOP dataset:
+
+<br>
+
+```{r invalid values in age replaced in TOP, echo=T, paged.print=TRUE}
+CONS_TOP_df_dup_age <- dplyr::select(CONS_TOP, HASH_KEY, ID, Sexo, Edad)%>% 
+  dplyr::filter(Edad>=18, Edad<=90) %>% #%>%  #dim rowa 162449, 4 columns
+  dplyr::mutate(id_mod=sub("(.{5}).", "\\1*",ID)) %>%
+  dplyr::mutate(id_mod=sub("(.{6}).", "\\1*",id_mod)) %>%
+  dplyr::select(-ID) %>%
+  dplyr::filter(!duplicated(HASH_KEY)) #85490 rows, 4 columns
+
+CONS_C1_df_dup %>% 
+  dplyr::filter(is.na(Edad)) %>% 
+  arrange(HASH_KEY) %>%
+  dplyr::select(row, ano_bd, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, Edad, SENDA) %>%
+  dplyr::left_join(CONS_TOP_df_dup_age, by="HASH_KEY", suffix= c(".C1",".TOP")) %>%
+  dplyr::filter(!is.na(id_mod.TOP)) %>%
+  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 12. Replaced Information from TOP dataset",
+                 align =rep('c', 101))  %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 9) %>%
+  scroll_box(width = "100%", height = "350px")
+```
+
 &nbsp;
 <br>
 
 ## Deduplication
 
-In Table 12 we can see that most of the cases had at least one case with the same combination of HASH-Key and date of admission. We imputed the age of cases with the same HASH-Key and date of admission
+In Table 13 we can see that most of the cases had at least one case with the same combination of HASH-Key and date of admission. We imputed the age of cases with the same HASH-Key and date of admission.
 
 <br>
 
@@ -329,7 +381,7 @@ duplicated_rows_concat <- data.frame(duplicated_HASH_date = duplicated(CONS_C1_d
              `%`=paste0(round(prop.table(table(duplicated_rows_concat$duplicated_HASH_date,exclude=NULL)),3)*100,"%")) %>%
   as.data.frame(.) %>%  
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 12. Duplicated rows of the combination of HASH-Key & Date of Admission", 
+                   caption="Table 13. Duplicated rows of the combination of HASH-Key & Date of Admission", 
                col.names= c(" ", " Frequencies", "Percentage"),  align =rep('c', 2))  %>%
     kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)
 ```
@@ -365,7 +417,7 @@ CONS_C1_df_dup %>%
 
 <br>
 
-Cases shown in Table 12 represent exact matches. But in order to catch some differences that would probabilistically match in terms of HASH-Key and date of admission, we ran a package in the software Stata called "dtalink", with the following criteria:
+Cases shown in Table 13 represent exact matches. But in order to catch some differences that would probabilistically match in terms of HASH-Key and date of admission, we ran a package in the software Stata called `dtalink`, with the following criteria:
 
 1. Hash Key, with a weight applied of 25 points, in case this variable match, but minus 25 in case that does not match
 2. SENDA's ID, with a weight applied of 25 points, in case this variable match, but minus 25 in case that does not match
@@ -437,17 +489,18 @@ hist(matches_hash_freq$n, main="Figure 3. Histogram of HASH Keys in matches", br
 dt <- data.table(CONS_C1_df, key=c("HASH_KEY","fech_ing", "fech_egres"))
 dt <- na.omit(dt, cols= c("HASH_KEY","fech_ing", "fech_egres")) #baja a 153392 casos
 ovl <- foverlaps(dt, dt, type = "within")
+#THIS CODE DOES NOT RUN, BUT ITS NECESSARY TO UNDERSTAND THE OVERLAPPING
 
 ```
+
 ```{r  Fig 3, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center"}
- knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Fig 3.png", dpi = 50)
+ knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Fig 3.png", dpi = 200)
 
 ```
-
 
 <br>
 
-An analysis of duplicated events showed that many ranges between the dates of admission and discharge are overlapping due to derivations, principally by changes in the center of treatment, being the following the most repeated among cases: Centro Tratamiento Adicciones Unidos, Hospital Santa Cruz; y Centro de Tratamiento adicciones Esperanza, Hospital Santa Cruz. However, **to identify overlappings in treatments it is necessary to obtain the missing dates, and clean the dates that may be wrong**. For example, Table 13 shows cases that possess negative days of treatment.
+An analysis of duplicated events showed that many ranges between the dates of admission and discharge are overlapping due to derivations, principally by changes in the center of treatment, being the following the most repeated among cases: Centro Tratamiento Adicciones Unidos, Hospital Santa Cruz; y Centro de Tratamiento adicciones Esperanza, Hospital Santa Cruz. However, **to identify overlappings in treatments it is necessary to obtain the missing dates, and clean the dates that may be wrong**. For example, Table 14 shows cases that possess negative days of treatment.
 
 <br>
 
@@ -456,16 +509,16 @@ CONS_C1_df %>%
   dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing)), fech_egres_num= as.numeric(as.Date(fech_egres)), 
                 discharge_before_treatment=fech_egres_num-fech_ing_num) %>%
   dplyr::filter(discharge_before_treatment<0) %>%
-  dplyr::select(row, ano_bd, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, Edad, dias_trat) %>%
+  dplyr::select(row, ano_bd, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, Edad, dias_trat, SENDA) %>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 13. Negative days of treatment", align =rep('c', 101)) %>%
+                   caption="Table 14. Negative days of treatment", align =rep('c', 101)) %>%
     kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
-  add_footnote( c("Assuming the date of retrieval, 2019-11-13"), notation = "symbol")
+  add_footnote( c("Assuming the date of retrieval, 2019-11-13"), notation = "none")
 ```
 &nbsp;
 <br>
 
-As can be seen in Table 14, many treatment discharge dates were NULL values, deriving in a misleading count of treatment days, which were calculated as the difference between the date in which the datasets were retrieved and the date of admission. This one of the reasons that this variable may confound the analysis of duplicate data because of different but overlapping treatments, or duplicated treatments.
+As can be seen in Table 15, many treatment discharge dates were NULL values, deriving in a misleading count of treatment days, which were calculated as the difference between the date in which the datasets were retrieved and the date of admission. This one of the reasons that this variable may confound the analysis of duplicate data because of different but overlapping treatments, or duplicated treatments.
 
 <br>
 
@@ -475,11 +528,11 @@ CONS_C1_df %>%
   dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing)), dias_trat_trans= as.numeric(as.Date("2019-11-13"))-fech_ing_num, 
                 diff_treat_days=dias_trat-dias_trat_trans) %>% #fecha del día de hoy 
   dplyr::select(HASH_KEY, id_mod, ano_bd, sexo, fech_ing, fech_ing_num, dias_trat_trans,dias_trat,diff_treat_days) %>%
-  dplyr::group_by(diff_treat_days) %>%
+  dplyr::group_by(diff_treat_days, ano_bd) %>%
   dplyr::summarize(n=n()) %>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 14. Missing Date of Discharge, Difference between Treatment Dates", col.names= c("Treat Days", "N"),  align =rep('c', 2))  %>%
-    kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
-  add_footnote( c("Assuming the date of retrieval, 2019-11-13"), notation = "symbol")
+                   caption="Table 15. Missing Date of Discharge, Difference between Treatment Dates", col.names= c("Treat Days", "Year of Dataset", "N"),  align =rep('c', 3))  %>%
+    kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10) %>%
+  add_footnote(c("Assuming the date of retrieval, 2019-11-13"), notation = "none")
 ```
 
