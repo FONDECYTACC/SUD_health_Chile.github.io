@@ -110,39 +110,26 @@ There were `r CONS_C1_df %>% dplyr::mutate(concat=paste0(id,"_",HASH_KEY,"_",fec
 
 ```{r echo=F, paged.print=TRUE}
 # OR plot
-m1=glm(duplicated ~ is.na(sexo) + is.na(fech_ing) + is.na(fech_egres) + is.na(motivodeegreso) + is.na(dias_trat) + is.na(Fecha.Ultimo.Tratamiento), data=CONS_C1_df, family = binomial ( link = logit )) 
-m2=glm(duplicated ~ factor(sexo) + fech_ing + fech_egres + factor(motivodeegreso) + dias_trat + Fecha.Ultimo.Tratamiento, data=CONS_C1_df, family = binomial ( link = logit )) 
+m1=glm(duplicated ~ is.na(fech_egres) + is.na(motivodeegreso) + is.na(dias_trat) + is.na(Fecha.Ultimo.Tratamiento), data=CONS_C1_df, family = binomial ( link = logit )) 
+#m2=glm(duplicated ~ factor(sexo) + fech_egres +Fecha.Ultimo.Tratamiento, data = CONS_C1_df, family = binomial ( link = logit ))
 
-#star.1 <- stargazer(m1, m2,
-#                    title="Title: Regression Results",
-#                    align=TRUE,
-#                    style = "ajs", # "ajs"
-#                    notes="this is a test note"
-#                    )
+m1_0 <- update(m1, . ~ 1)
 
-#print(rbind(xtable::xtable(m1), type = "html"),xtable::xtable(m2, type = "html"))
-
-#xtable::xtable(list(m1,m2), title="Regression of Duplicated Data", align=TRUE, no.space=TRUE,dep.var.labels=c("Null Values","Factor"), 
-#                center = TRUE, doctype = FALSE, caption = "", star.symbol = "\\*") %>%
-
-#table3 <- tabglm(m1, latex = TRUE,columns = c("beta.se", "betaci"), compress.factors=F)
-#> Waiting for profiling to be done...
-#kable(table3, 
-#      caption = "Table 3. Logistic regression fit (created by `tabglm` and `kable`).")
-#kable(xtable(linear.1))
-log_reg<- rbind(summary(m1)$coefficients,summary(m2)$coefficients)
-
-knitr::kable(cbind(Model=rbind("NA's","","","","","","Factor/Numeric","","","","","","","","","","","","",""),
-      Coef.=rbind("Intercept","Date of Admission (NULL)", "Date of Discharge(NULL)", "Cause of Discharge(NULL)", "Days of Treatment(NULL)", "Date of Last Treatment(NULL)","Intercept","Sex(Women)", "Date of Admission", "Date of Discharge", "Cause of Discharge- Administrative Discharge", "Cause of Discharge- Therapeutic Resolution","Cause of Discharge- Derivation.","Cause of Discharge- Death", "Days of Treatment", "Date of Last Treatment- 3-4 yrs","Date of Last Treatment- 5 + yrs","Date of Last Treatment- NA","Date of Last Treatment- 12 months","Date of Last Treatment- 6 months"),
-      as.data.table(log_reg)), digits=3, scientific=FALSE,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 3. Case of example that showed more than one HASH",align =rep('c', 101)) %>%
-    kable_styling("striped")
+cbind(Coef.=rbind("Intercept","Date of Discharge(NULL)", "Cause of Discharge(NULL)", "Days of Treatment(NULL)", "Date of Last Treatment(NULL)"),
+      data.table(rbind(round(Epi::ci.lin(m1, Exp=T),3)))) %>%
+knitr::kable(., digits=3, scientific=FALSE,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 4. Coefficients of model to determinate whether events have the same HASH and Date of Admission",
+      col.names= c("Covariates", "Coef.", "StdErr","z","P","OR", "CI 95% lower","CI 95% upper"),
+      align =rep('c', 101)) %>%
+kable_styling(bootstrap_options = c("striped", "hover"),font_size = 11) %>%
+  add_footnote(paste0("LR:",round(lmtest::lrtest(m1)$`LogLik`[1],2),", df=5, ","AIC=",round(m1$aic,2)), notation = "none")
 
 ```
 
 &nbsp;
 
-In Table 4 we can appreciate that this case had 1671 days of treatment, which is far from the 1095 days proposed by the SENDA professional, and being admitted from 2013-05-08 to 2017-12-04.
+Of Table 4, we can identify that the fact that date of last treatment is missing may be associated with slightly less  duplicated cases in comparison to cases that
+have a date of last treatment.
 
 However, these distinctions may be arbitrary, since ID or HASH may be biased. In the following examples, We will show cases in which the HASH or ID may be confusing.
 
@@ -518,7 +505,7 @@ CONS_C1_df %>%
 &nbsp;
 <br>
 
-As can be seen in Table 15, many treatment discharge dates were NULL values, deriving in a misleading count of treatment days, which were calculated as the difference between the date in which the datasets were retrieved and the date of admission. This one of the reasons that this variable may confound the analysis of duplicate data because of different but overlapping treatments, or duplicated treatments.
+As can be seen in Table 15, many treatment discharge dates were NULL values, deriving in a misleading count of treatment days, which were calculated as the difference between the date in which the datasets were retrieved and the date of admission. This one of the reasons that this variable may confound the analysis of duplicate data because of different but overlapping treatments, or duplicated treatments. NA's represent the number of treatment days not available
 
 <br>
 
@@ -536,3 +523,41 @@ CONS_C1_df %>%
   add_footnote(c("Assuming the date of retrieval, 2019-11-13"), notation = "none")
 ```
 
+&nbsp;
+<br>
+
+Considering that some cases may have the same HASH and date of discharge along the dataset, we found that 23 cases would not be included in the Table 16, because they can be replaced with a propper date of discharge, according to the information available.
+
+<br>
+
+```{r saving dates w o discharge date,echo=T, paged.print=TRUE}
+HASHs_w_o_date_discharge<- CONS_C1_df %>%
+  dplyr::filter(is.na(fech_egres)) %>%
+  dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing)), dias_trat_trans= as.numeric(as.Date("2019-11-13"))-fech_ing_num, 
+                diff_treat_days=dias_trat-dias_trat_trans) %>% #fecha del día de hoy 
+  dplyr::select(row, HASH_KEY, id_mod, ano_bd, sexo, fech_ing, fech_ing_num, dias_trat_trans,dias_trat,diff_treat_days) %>%
+  dplyr::select(HASH_KEY, ano_bd, fech_ing_num) %>% 
+  #group_by(ano_bd) %>% summarise(n()) --> if you want to get the 
+  dplyr::filter(!duplicated(HASH_KEY,fech_ing_num)) 
+
+
+CONS_C1_df_egres<- CONS_C1_df %>%
+  dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing))) %>%
+  dplyr::mutate(HASH_KEY_2=HASH_KEY) %>%
+  dplyr::filter(!is.na(fech_egres))  #fecha del día de hoy 
+
+require(data.table) #v>=1.9.8
+setDT(HASHs_w_o_date_discharge); setDT(CONS_C1_df_egres) # converting to data.table in place
+
+#23 cases.
+CONS_C1_df_egres[HASHs_w_o_date_discharge, on = .(HASH_KEY_2=HASH_KEY,fech_ing_num > fech_ing_num), nomatch = 0,
+      .(row,HASH_KEY,id_mod, ano_bd,fech_ing, fech_egres,Edad,Nombre.Centro,motivodeegreso)] %>%
+  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+                   caption="Table 16. Cases with the same HASH and date of admission, but includes a date of discharge", align =rep('c', 101)) %>%
+    kable_styling(bootstrap_options = c("striped", "hover"),font_size = 9)
+
+#similar to
+#fuzzyjoin::fuzzy_left_join(HASHs_w_o_date_discharge,CONS_C1_df,
+#                           by = c("HASH_KEY" = "HASH_KEY", "fech_ing_num" = "fech_ing_num"), 
+#                           match_fun = list(`==`, `>`))
+```
