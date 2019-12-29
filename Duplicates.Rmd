@@ -404,7 +404,7 @@ CONS_C1_df_dup %>%
 
 <br>
 
-Cases shown in Table 13 represent exact matches. But in order to catch some differences that would probabilistically match in terms of HASH-Key and date of admission, we ran a package in the software Stata called `dtalink`, with the following criteria:
+Cases shown in Table 13 represent exact matches. But in order to catch some differences that would probabilistically match in terms of HASH-Key and date of admission, we ran a package in the software Stata called **`dtalink`**, with the following criteria:
 
 1. Hash Key, with a weight applied of 25 points, in case this variable match, but minus 25 in case that does not match
 2. SENDA's ID, with a weight applied of 25 points, in case this variable match, but minus 25 in case that does not match
@@ -487,7 +487,7 @@ ovl <- foverlaps(dt, dt, type = "within")
 
 <br>
 
-An analysis of duplicated events showed that many ranges between the dates of admission and discharge are overlapping due to derivations, principally by changes in the center of treatment, being the following the most repeated among cases: Centro Tratamiento Adicciones Unidos, Hospital Santa Cruz; y Centro de Tratamiento adicciones Esperanza, Hospital Santa Cruz. However, **to identify overlappings in treatments it is necessary to obtain the missing dates, and clean the dates that may be wrong**. For example, Table 14 shows cases that possess negative days of treatment.
+An analysis of duplicated events showed that many ranges between the dates of admission and discharge are overlapping due to derivations, principally by changes in the center of treatment, being the following the most repeated among cases: Centro Tratamiento Adicciones Unidos, Hospital Santa Cruz; and Centro de Tratamiento adicciones Esperanza, Hospital Santa Cruz. Many patients may move from centers 221 to 591, 147 to 358, 164 to 325, or 200 to 203. However, **to identify overlappings in treatments it is necessary to obtain the missing dates, and clean the dates that may be wrong**. For example, Table 14 shows cases that possess negative days of treatment.
 
 <br>
 
@@ -560,4 +560,21 @@ CONS_C1_df_egres[HASHs_w_o_date_discharge, on = .(HASH_KEY_2=HASH_KEY,fech_ing_n
 #fuzzyjoin::fuzzy_left_join(HASHs_w_o_date_discharge,CONS_C1_df,
 #                           by = c("HASH_KEY" = "HASH_KEY", "fech_ing_num" = "fech_ing_num"), 
 #                           match_fun = list(`==`, `>`))
+```
+
+&nbsp;
+<br>
+
+Leaving behind the last questions that may condition the analysis, we ran a probabilistic match based on the criteria defined above in the **`dtalink`** software. In Table 17 there is a selection of probabilistics matches by 90 of the 100 points defined. The first two cases have the same date of admission and cause of discharge, but different dates of discharge and center of treatment and what is more important, they may be overlapping between them along 90 days. In contrast, the following 2 cases below do not overlap, but were matched due to de span of +/-5 days as a calliper.The next 3 cases correspond to a patient that was admitted in 2014-06-04 and may have abandoned a program in a determined center, but ended finishing treatment in another center in 2015. The next match that follows let us interpret that patient was registered in more than one center in a time lapse of 6 days, but the next patient may be in more than one center for 377 days (FEME1_-011993). The patient PAHE1_-111981 was admited for 0 days in a CESFAM, but changed to a therapeutical community inmmediately afterwards. Finally, case YAPO2**121989	and ROMA1_-011979had the same date of admission but not in a program of SENDA.
+
+<br>
+
+```{r saving dates_w_o_discharge_date,echo=T, paged.print=TRUE}
+CONS_C1_df %>%
+dplyr::filter(row %in% c(54760,71542,83766,83830,58436,67549,59294,72579,73114,54953,56452,38864,53878,44514,53958,47284,54973,45002,45995,51619,61353,61572,52659,54383,47377)) %>% 
+  dplyr::arrange(factor(row, levels = c(54760,71542,83766,83830,58436,67549,59294,72579,73114,54953,56452,38864,53878,44514,53958,47284,54973,45002,45995,51619,61353,61572,52659,54383,47377))) %>%
+  dplyr::select(row,HASH_KEY,id_mod,Edad,Sexo,Nombre.Centro,ID.centro,fech_ing,fech_egres,dias_trat,motivodeegreso,tipo_de_programa,tipo_de_plan,SENDA) %>%
+  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+                   caption="Table 17. Example of probabilistic matches", align =rep('c', 101)) %>%
+    kable_styling(bootstrap_options = c("striped", "hover"),font_size = 9)
 ```
