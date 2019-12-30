@@ -1,0 +1,278 @@
+---
+title: "Data_prep_Top"
+description: | 
+  Scientific and technical writing about DB standarization, native to the web
+Date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+     css: styles.css
+     self_contained: no
+
+---
+
+
+<style>
+.tablelines table, .tablelines td, .tablelines th {
+        border: 1px solid black;
+        }
+.centrado {
+    text-align: center;
+}
+.justificado {
+    text-align: justify;
+}
+.alert-danger {
+  color: rgb(169,68,66) !important;
+}
+.alert-green {
+  color: rgb(60,118,61) !important;
+}
+.purple {
+    color:inherit;
+  }
+.purple:hover {
+    color:rgb(107,79,187);
+  }
+.blue {
+  color: blue;
+}
+.emphasized {
+   font-size: .8em;
+}
+.note {
+   font-size: .9em;
+}
+.table.center {
+    margin-left:auto; 
+    margin-right:auto;
+  }
+.table_wrapper{
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+code.r{
+  font-size: 8px;
+}
+</style>
+
+<!---
+
+[//]: # (This is <span style="color: red">written in red</span>.)
+
+[//]: # (Hey! Hover the cursor over me and guess what?! :) {: .purple})
+
+[//]: # (I am in <span style="font-family:Papyrus; font-size:4em;">that!</span>)
+
+[//]: #(#687886)
+
+-->
+
+```{r setup, include=FALSE}
+load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/.RData")
+#setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL")
+#path <-"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL"
+#Libraries used in the routine. Dont change the order
+if(!require(kableExtra)){install.packages("kableExtra",repos = "http://cran.us.r-project.org")}
+if(!require(gmodels)){install.packages("summarytools",repos = "http://cran.us.r-project.org")}
+if(!require(knitr)){install.packages("knitr",repos = "http://cran.us.r-project.org")}
+if(!require(tidyr)){install.packages("tidyr",repos = "http://cran.us.r-project.org")}
+if(!require(data.table)){install.packages("data.table",repos = "http://cran.us.r-project.org")}
+if(!require(DataExplorer)){install.packages("DataExplorer",repos = "http://cran.us.r-project.org")}
+if(!require(stringi)){install.packages("stringi",repos = "http://cran.us.r-project.org")}
+if(!require(stringr)){install.packages("stringr",repos = "http://cran.us.r-project.org")}
+if(!require(ggplot2)){install.packages("ggplot2",repos = "http://cran.us.r-project.org")}
+if(!require(dplyr)){install.packages("dplyr",repos = "http://cran.us.r-project.org")}
+if(!require(Hmisc)){install.packages("Hmisc",repos = "http://cran.us.r-project.org")}
+if(!require(shiny)){install.packages("shiny",repos = "http://cran.us.r-project.org")}
+if(!require(ExPanDaR)){install.packages("ExPanDaR",repos = "http://cran.us.r-project.org")}
+```
+
+# Data Preparation of TOP Dataset
+
+&nbsp;
+
+TOP or Treatment Outcomes Profile ("Perfil de Resultados de Tratamiento") serves as a tool for monitoring and follow up of SUD treatments. This questionnaire must be completed at entry to treatment, each 3 months during treatment, at treatment discharge and some centers may register after discharge. Hence, it is important to capture the date of application and the date of admission, and in order to characterize each user, it is important to standardize his birth date.
+
+&nbsp;
+<br>
+
+### 1. Change Dates of Admission, Aplication of TOP and Birth
+
+As can be seen in Table 1, every date was formatted into dates in a format disposed to show first a 4-digit year, 2-digit month and day.
+
+<br>
+
+```{r changes_dates}
+#create the first changes into TOP dataset
+CONS_TOP %>%
+  dplyr::mutate(ano_bd=as.numeric(substr(TABLE,4,7))) %>%
+  dplyr::mutate(id_mod=sub("(.{5}).", "\\1*",as.character(ID))) %>%
+  dplyr::mutate(id_mod=sub("(.{6}).", "\\1*",as.character(id_mod))) %>% 
+  dplyr::select(HASH_KEY, hash_rut_completo, id_mod, ID, ano_bd, everything()) %>%
+  dplyr::arrange(desc(ano_bd)) %>% 
+  assign("CONS_TOP_df",.,envir = .GlobalEnv)
+#change dates
+CONS_TOP_df %>%
+  dplyr::mutate(fech_ing= lubridate::parse_date_time(Fecha.de.Ingreso.a.Tratamiento, c("%d/%m/%Y"),exact=T)) %>% #No parse failures
+  #dplyr::select(Fecha.de.Ingreso.a.Tratamiento,fech_ing) %>% head() #To see how it responds to changes. Many null values
+  dplyr::mutate(fech_ing_sin_fmt= Fecha.de.Ingreso.a.Tratamiento) %>% #keep this variable for comparison
+  dplyr::mutate(fech_ap_top= lubridate::parse_date_time(Fecha.Aplicación.TOP, c("%Y-%m-%d"),exact=T)) %>% #No parse failures
+  #dplyr::select(Fecha.Aplicación.TOP,fech_ap_top) %>% head() #To see how it responds to changes.
+  dplyr::mutate(fech_nac= lubridate::parse_date_time(stringr::str_trim(Fecha.Nacimiento), 
+                                                       orders = c("%d/%m/%Y"),exact=T)) %>%
+  #dplyr::select(Fecha.Nacimiento,fech_nac) %>% View() #To see how it responds to changes. No failures
+  assign("CONS_TOP_df",.,envir = .GlobalEnv) #
+#Example of transformations
+CONS_TOP_df %>%
+  dplyr::select(Fecha.de.Ingreso.a.Tratamiento,fech_ing,Fecha.Aplicación.TOP,fech_ap_top,Fecha.Nacimiento,fech_nac) %>% head() %>%
+  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 1. Example of date of admission to treatment",
+              col.names = c("Unformatted Date of Admission","Date of Admission", "Unformatted Date of Application", "Date of Application", "Unformatted Date of Birth","Date of Birth"),
+                 align =rep('c', 6))  %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10)
+```
+
+&nbsp;
+<br>
+
+##### Figure 1.
+
+In the transformation of dates of admission, we found an amount of missing values. However, there are `r CONS_TOP_df %>% dplyr::filter(is.na(fech_ap_top)) %>% summarise(n())` missing dates of application of the TOP and  `r CONS_TOP_df %>% dplyr::filter(is.na(fech_nac)) %>% summarise(n())` missing birth dates.**Considering the characteristics of TOP programs and monitoring, it may be possible to impute these dates from the C1 dataset, using the date of application if it is within the ranges of an specific treatment.**
+
+<br>
+
+```{r fech_ing_nas, echo=FALSE, fig.align='center',fig.cap= "Figure 1. Pie Chart of Missing Dates of Admission"}
+#Hay un 1% de casos perdidos
+CONS_TOP_df %>%
+  dplyr::group_by(is.na(Fecha.de.Ingreso.a.Tratamiento)) %>% 
+  dplyr::rename("MISS_DATE_ADM"=`is.na(Fecha.de.Ingreso.a.Tratamiento)`) %>% 
+  summarise(n=n()) %>% 
+  data.frame() %>%  mutate(perc=n/sum(n)) %>%
+  ggplot(aes(x="", y=n, fill=MISS_DATE_ADM))+
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start=0) + 
+  scale_fill_brewer("Missing Date\nof Admission") + theme_minimal() +
+  theme(axis.text.x=element_blank())+
+  geom_text(aes(y = n/2 + c(0, cumsum(n)[-length(n)]), 
+                label = paste0(n, "\n(",scales::percent(perc),")")), size=4) +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.border = element_blank(),
+    panel.grid=element_blank(),
+    axis.ticks = element_blank(),
+    plot.title=element_text(size=14, face="bold")
+  ) 
+```
+
+<br>
+
+### 2. Inconsistencies between SENDA's ID and HASH Key
+
+<br>
+
+In order to check whether individual IDs (RUT) masked into HASH keys are consistent by each SENDA's ID and do not depend on other factors (eg., how the individual ID was written in the computer), we searched for more than one HASH Key in each SENDA's ID. There are 33 IDs that have more than one HASH key. This 33 IDs affect 183 registries.
+
+<br>
+
+```{r inconsistencies_in_id}
+    #Take which has a combination of IDs and HASH Keys distinct to the rest
+    #With this I may be subestimating the number of cases with a different concatenation.
+    #Considering all the distinct combinations, i take what they have a duplicate ID
+    #Select the duplicate IDs, it orders and...
+    #Filter only cases that has distinct id.
+    CONS_TOP_df %>% mutate(concat=paste0(ID,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% #once here, n° of cases has been replaced by distinct or unique combinations of IDs and HASH keys.
+      dplyr::filter(duplicated(ID)) %>% dplyr::arrange(ID) %>%  #filter cases in which there is more than one ID, 
+      #despite there is differents combinations of HASH and IDs, and then arrange IDs. This is possible only if a different HASH-Key contains more than one ID or viceversa.
+      #take distincts IDs (exclude duplicated repeated IDs)
+      dplyr::distinct(ID) %>% 
+      assign("ids_more_one_hash_TOP",., envir = .GlobalEnv) # Differently put, take the distints IDs per HASH-Key, of the cases in which there are different combinations                                                      
+    # of IDs and hash, and in which subgroup exists duplicated IDs.
+    
+    #There are 33 IDs that have more than one HASH key.
+    
+    #IMPORTANT: IF THE ID IS DUPLICATED, MIGHT NOT BE REFLECTED IN THIS RESUME IN TERMS OF QUANTITY.
+    
+    # Then, apply these cases to the whole population. 
+    CONS_TOP_df %>%
+      dplyr::filter(ID %in% as.character(as.vector(unlist(as.data.table(unlist(ids_more_one_hash_TOP)))))) %>% # Select IDs of cited cases
+      dplyr::arrange(ID) %>% #ordeno por ids 
+      #183 cases may be affected with this problem
+      dplyr::select(row, ano_bd, id_mod, HASH_KEY, hash_rut_completo , Edad, Sexo,fech_ing,Plan.de.Tratamiento, Nombre.del.Centro, Tipo.Centro, Región.Centro, Comentario) %>%
+      knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 2. Total registries that each ID have more than one HASH-KEY",
+              col.names = c("Row ID","Year of Dataset", "SENDA's ID", "HASH KEY", "HASH Key (Alternative)","Year", "Sex", "Date of Admission", "Treatment Plan", "Center", "Type of Center", "Region", "Comment"),
+                 align =rep('c', 6))  %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8)
+```
+<br>
+&nbsp;
+
+### 3. Duplicated cases
+
+<br>
+To define what can be considered as a unique event, we identified how many unique combinations of dates of admission and HASH keys. We found that only 41.4% of the registries are unique combinations. Attending the characteristics of the questionnaires, it is possible to explore more specific time points.
+
+<br>
+
+
+```{r Duplicated}
+    #create the duplicated dataset, following the recommendation to separate columns
+    
+    duplicated_rows_concat_TOP <- data.frame(duplicated_HASH_date = duplicated(CONS_TOP_df[,c("HASH_KEY","fech_ing")]), 
+                                         row_dup_HASH_date = 1:nrow(CONS_TOP_df[,c("HASH_KEY","fech_ing")])) #%>%
+    
+    # Duplicated rows
+    data.frame(table(duplicated_rows_concat_TOP$duplicated_HASH_date,exclude=NULL),
+               `%`=paste0(round(prop.table(table(duplicated_rows_concat_TOP$duplicated_HASH_date,exclude=NULL)),3)*100,"%")) %>%
+      as.data.frame(.) %>%
+      knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+                   caption="Table 3. Frequency and Percentage of Duplicated Values of the combination of HASH-Key & Date of Admission", 
+                   col.names= c("Duplicated", " Frequencies", "Percentage"),  align =rep('c', 2))  %>%
+      kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)   
+    
+    #Var1  Freq    X.
+    #1 FALSE 44463 41.4%
+    #2  TRUE 62844 58.6% 
+  
+```
+<br>
+
+One of them is the date of application of the TOP questionnaire. As can be seen in Table 4, 94% of the registries are unique combinations of date of application of the TOP questionnaire and HASH key.
+
+<br>
+
+```{r Duplicated2}
+    duplicated_rows_concat_TOP2 <- data.frame(duplicated_HASH_date = duplicated(CONS_TOP_df[,c("HASH_KEY","fech_ap_top")]), 
+                                         row_dup_HASH_date = 1:nrow(CONS_TOP_df[,c("HASH_KEY","fech_ap_top")])) #%>%
+        # Duplicated rows
+    data.frame(table(duplicated_rows_concat_TOP2$duplicated_HASH_date,exclude=NULL),
+               `%`=paste0(round(prop.table(table(duplicated_rows_concat_TOP2$duplicated_HASH_date,exclude=NULL)),3)*100,"%")) %>%
+      as.data.frame(.) %>%
+      knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+                   caption="Table 4. Frequency and Percentage of Duplicated Values of the combination of HASH-Key & Date of Application of TOP", 
+                   col.names= c("Duplicated", " Frequencies", "Percentage"),  align =rep('c', 2))  %>%
+      kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)   
+```
+<br>
+
+As can be seen in Table 5, 
+005238a56b9614ead0903bb264de7be9_2018-09-27
+<br>
+
+```{r Duplicated2.2}
+ 
+dplyr::bind_cols(CONS_TOP_df, duplicated_rows_concat_TOP2) %>%
+  #dplyr::filter(duplicated_HASH_date==TRUE) %>%
+      as.data.frame(.) %>%
+  dplyr::select(HASH_KEY, id_mod, ano_bd, 8:50, 52,53,54) %>%
+  dplyr::mutate(concat=paste0(HASH_KEY,"_",fech_ap_top)) %>%
+  dplyr::filter(duplicated(concat)) %>% dim()
+  dplyr::arrange(HASH_KEY,fech_ap_top) %>%
+      knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+                   caption="Table 5. Duplicated rows of the combination of HASH-Key & Date of Application of TOP", 
+                   #col.names= c("Duplicated", " Frequencies", "Percentage"),
+                   align =rep('c', 102))  %>%
+      kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8)
+```

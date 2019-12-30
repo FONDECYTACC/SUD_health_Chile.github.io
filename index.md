@@ -6,7 +6,7 @@ This page is composed by the following main topics:
 
 0. [Encription of RUTs and generation of HASHs](Encript.html)
 1. [Data preparation and Standardization of C1](Data_prep_C1)
-2. [Data preparation and Standardization of TOP or Profile of Treatment Results](top_info.md#include-generated-text)
+2. [Data preparation and Standardization of TOP or Profile of Treatment Results](Data_prep_TOP)
 
 <br>
 
