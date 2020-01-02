@@ -13,24 +13,27 @@ output:
 
 ```{r setup, include = FALSE}
 
-load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/.RData")
-#setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL")
-#path <-"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL"
+load(paste0(getwd(),"/1.RData"))
+
 #Libraries used in the routine. Dont change the order
-if(!require(kableExtra)){install.packages("kableExtra",repos = "http://cran.us.r-project.org")}
-if(!require(gmodels)){install.packages("summarytools",repos = "http://cran.us.r-project.org")}
-if(!require(knitr)){install.packages("knitr",repos = "http://cran.us.r-project.org")}
-if(!require(tidyr)){install.packages("tidyr",repos = "http://cran.us.r-project.org")}
-if(!require(data.table)){install.packages("data.table",repos = "http://cran.us.r-project.org")}
-if(!require(DataExplorer)){install.packages("DataExplorer",repos = "http://cran.us.r-project.org")}
-if(!require(stringi)){install.packages("stringi",repos = "http://cran.us.r-project.org")}
-if(!require(stringr)){install.packages("stringr",repos = "http://cran.us.r-project.org")}
-if(!require(ggplot2)){install.packages("ggplot2",repos = "http://cran.us.r-project.org")}
-if(!require(dplyr)){install.packages("dplyr",repos = "http://cran.us.r-project.org")}
-if(!require(Hmisc)){install.packages("Hmisc",repos = "http://cran.us.r-project.org")}
-if(!require(shiny)){install.packages("shiny",repos = "http://cran.us.r-project.org")}
-if(!require(ExPanDaR)){install.packages("ExPanDaR",repos = "http://cran.us.r-project.org")}
- 
+if(!require(tidyr)){install.packages("tidyr")}
+if(!require(data.table)){install.packages("data.table")}
+if(!require(DataExplorer)){install.packages("DataExplorer")}
+if(!require(stringi)){install.packages("stringi")}
+if(!require(stringr)){install.packages("stringr")}
+if(!require(ggplot2)){install.packages("ggplot2")}
+if(!require(dplyr)){install.packages("dplyr")}
+if(!require(Hmisc)){install.packages("Hmisc")}
+if(!require(kableExtra)){install.packages("kableExtra")}
+if(!require(plotly)){install.packages("plotly")}
+if(!require(rbokeh)){install.packages("rbokeh")}
+if(!require(altair)){install.packages("altair")}
+if(!require(zoo)){install.packages("zoo")}
+#if(!require(texreg)){install.packages("texreg")}
+#if(!require(stargazer)){install.packages("stargazer")}
+#if(!require(tab)){install.packages("tab")}
+#remotes::install_github("leifeld/texreg",force = TRUE)
+if(!require(broom)){install.packages("broom")} 
 ```
 
 <style type="text/css">
@@ -84,6 +87,9 @@ Define working directories which contains different text files that will be merg
 ```markdown
 dir_c1 <-toString(paste0(getwd(),"/Encriptado c1/Personas tratadas c1/"))
 dir_top <-toString(paste0(getwd(),"/encriptados TOP/"))
+#In my case,
+dir_c1 <-toString(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)","/Encriptado c1/Personas tratadas c1/"))
+dir_top <-toString(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)","/encriptados TOP/"))
 ```
 
 Define files in the Directory folder, as long as they have the excel extension and they do not start with ~  (represent a working temporary file in excel)
@@ -288,7 +294,7 @@ As we can see in Table 2, some non-formatted date of discharge (_fech_egres_sin_
                caption="Table 2. Non-interpretable discharge dates",
                  align =rep('c', 4))  %>%
   kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10) %>%
-  scroll_box(width = "100%", height = "150px")
+  scroll_box(width = "100%", height = "250px")
 ```
 
  <br>
@@ -403,12 +409,14 @@ As can be seen in Table 6, around 58% of women are in the general population pro
 
 ```{r echo=F, paged.print=TRUE, warning=FALSE}
 CONS_C1_df %>%
-    count(tipo_de_plan, Sexo) %>% 
-    group_by(Sexo) %>% 
+    dplyr::count(tipo_de_plan, Sexo) %>% 
+    dplyr::group_by(Sexo) %>% 
     mutate(prop = paste0(round(100 * prop.table(n)),"%")) %>%
     data.table::data.table() %>% 
     reshape::melt(id.vars = c(1:2)) %>% 
     reshape::cast(.,tipo_de_plan~Sexo+variable) %>% 
+    dplyr::mutate(Hombre_n=as.numeric(Hombre_n),Mujer_n=as.numeric(Mujer_n)) %>%
+    as.data.frame() %>%
     dplyr::rename("Type of Plan" = tipo_de_plan, "Men (n)" = Hombre_n, "Men (%)" = Hombre_prop,
                   "Women (n)"= Mujer_n, "Women (%)"=Mujer_prop) %>%
     as.data.frame() %>%
@@ -548,12 +556,13 @@ As seen in Table 8, 4 cases of men also reported pregnancy.
 
 ```{r echo=F, paged.print=TRUE, warning=FALSE}
 CONS_C1_df %>%
-    count(embarazo, Sexo) %>% 
-    group_by(Sexo) %>% 
+    dplyr::count(embarazo, Sexo) %>% 
+    dplyr::group_by(Sexo) %>% 
     mutate(prop = paste0(round(100 * prop.table(n)),"%")) %>%
     data.table::data.table() %>% 
     reshape::melt(id.vars = c(1:2)) %>% 
     reshape::cast(.,embarazo~Sexo+variable) %>% 
+    data.table::as.data.table() %>%
     knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                    caption="Table 8. Pregnancy by Sex", col.names= c("Pregnancy", " Man (n)", "Man (%)","Women (n)","Women (%)"), 
                  align =rep('c', 5))  %>%
@@ -573,12 +582,12 @@ As seen in table 9, must note that many cases do not answer this question, or wh
 
 ```{r echo=F, paged.print=TRUE, warning=FALSE}
 CONS_C1_df %>%
-    count(identidad.de.genero, Sexo) %>% 
-    group_by(Sexo) %>% 
-    mutate(prop = paste0(round(100 * prop.table(n)),"%")) %>%
+    dplyr::count(identidad.de.genero, Sexo) %>% 
+    dplyr::group_by(Sexo) %>% 
+    dplyr::mutate(prop = paste0(round(100 * prop.table(n)),"%")) %>%
     data.table::data.table() %>% 
     reshape::melt(id.vars = c(1:2)) %>% 
-    reshape::cast(.,identidad.de.genero~Sexo+variable) %>% 
+    reshape::cast(.,identidad.de.genero~Sexo+variable) %>%
     knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                    caption="Table 9. Sex by Gender Identity", col.names= c("Gender \n Identity", " Man (n)", "Man (%)","Women (n)","Women (%)"), 
                  align =rep('c', 5))  %>%
