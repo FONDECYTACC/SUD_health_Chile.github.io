@@ -31,7 +31,7 @@ body{ /* Normal  */
 </style>
 
 ```{r load myData, include=FALSE}
- load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/.RData")
+load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/2.Rdata")
 ```
 
 ```{r setup, include = FALSE}
@@ -53,7 +53,8 @@ if(!require(zoo)){install.packages("zoo")}
 #if(!require(stargazer)){install.packages("stargazer")}
 #if(!require(tab)){install.packages("tab")}
 #remotes::install_github("leifeld/texreg",force = TRUE)
-if(!require(broom)){install.packages("broom")} 
+if(!require(broom)){install.packages("broom")}
+if(!require(sqldf)){install.packages("sqldf")} 
 
 ```
 
@@ -127,7 +128,7 @@ There were `r CONS_C1_df %>% dplyr::mutate(concat=paste0(id,"_",HASH_KEY,"_",fec
 
 ```{r echo=F, paged.print=TRUE}
 # OR plot
-m1=glm(duplicated ~ is.na(fech_egres) + is.na(motivodeegreso) + is.na(dias_trat) + is.na(Fecha.Ultimo.Tratamiento), data=CONS_C1_df, family = binomial ( link = logit )) 
+m1=glm(duplicated_HASH_date ~ is.na(fech_egres) + is.na(motivodeegreso) + is.na(dias_trat) + is.na(Fecha.Ultimo.Tratamiento), data=CONS_C1_df_dup, family = binomial ( link = logit )) 
 #m2=glm(duplicated ~ factor(sexo) + fech_egres +Fecha.Ultimo.Tratamiento, data = CONS_C1_df, family = binomial ( link = logit ))
 
 m1_0 <- update(m1, . ~ 1)
@@ -280,7 +281,6 @@ We identified the outliers, ending up with 3 cases in which the expected age and
 However, we may take account that there are `r paste0(round(CONS_C1_df %>% dplyr::filter(Edad<18|Edad>90) %>% dplyr::summarise(n())/nrow(CONS_C1_df),3)*100,"%")` cases with inappropiate years, considering `r CONS_C1_df %>% dplyr::filter(Edad<18) %>% dplyr::summarise(n()) ` cases with less than 18 years, and `r CONS_C1_df %>% dplyr::filter(Edad>90) %>% dplyr::summarise(n()) ` cases with more than 90 years. Most of these IDs represent a date of admission, as can be seen in Table 9:
 
 <br>
-
 ```{r wrong ages, echo=T, paged.print=TRUE}
   CONS_C1_df %>% filter(Edad<18|Edad>90) %>%
     dplyr::select(row, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing) %>%
@@ -349,7 +349,7 @@ CONS_TOP_df_dup_age <- dplyr::select(CONS_TOP, HASH_KEY, ID, Sexo, Edad)%>%
   dplyr::mutate(id_mod=sub("(.{5}).", "\\1*",ID)) %>%
   dplyr::mutate(id_mod=sub("(.{6}).", "\\1*",id_mod)) %>%
   dplyr::select(-ID) %>%
-  dplyr::filter(!duplicated(HASH_KEY)) #85490 rows, 4 columns
+  dplyr::filter(!duplicated(HASH_KEY)) #37124 rows, 5 columns
 
 CONS_C1_df_dup %>% 
   dplyr::filter(is.na(Edad)) %>% 
@@ -361,7 +361,7 @@ CONS_C1_df_dup %>%
                caption="Table 12. Replaced Age from TOP dataset",
                  align =rep('c', 101))  %>%
   kable_styling(bootstrap_options = c("striped", "hover"),font_size = 9) %>%
-  scroll_box(width = "100%", height = "350px")
+  scroll_box(width = "100%", height = "250px")
 ```
 
 &nbsp;
@@ -489,11 +489,6 @@ matches_hash_freq
 
 summary(matches_hash_freq)
 hist(matches_hash_freq$n, main="Figure 3. Histogram of HASH Keys in matches", breaks=50,xlab="Repetitions", ylab="Freq.")
-#:#_#_#_#_#__#_#_#_#__#_#_#_#_#__#_#__#_#_#_#_#_#__
-dt <- data.table(CONS_C1_df, key=c("HASH_KEY","fech_ing", "fech_egres"))
-dt <- na.omit(dt, cols= c("HASH_KEY","fech_ing", "fech_egres")) #baja a 153392 casos
-ovl <- foverlaps(dt, dt, type = "within")
-#THIS CODE DOES NOT RUN, BUT ITS NECESSARY TO UNDERSTAND THE OVERLAPPING
 
 ```
 
@@ -521,6 +516,42 @@ CONS_C1_df %>%
 ```
 &nbsp;
 <br>
+
+Figure 4 let us observe how many treatments overlap. Many patients start from 2000 to nowadays.
+
+<br>
+
+```{r  Fig 4, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center"}
+
+CONS_C1_df_dup_intervals<- CONS_C1_df_dup %>%
+  dplyr::mutate(fech_ing_num2=as.numeric(as.Date(fech_ing))) %>%
+  dplyr::mutate(fech_egres_num2=as.numeric(as.Date(fech_egres))) %>%
+  dplyr::mutate(HASH_KEY_2=HASH_KEY) %>%
+  dplyr::select(row,HASH_KEY_2, id_mod, ano_bd,fech_ing, fech_ing_num2,fech_egres,fech_egres_num2,Edad, Nombre.Centro, motivodeegreso) %>% 
+  as.data.table()
+
+require(sqldf)
+  ans3 <- sqldf("SELECT *
+                 FROM CONS_C1_df_dup_intervals AS x  
+                 INNER JOIN CONS_C1_df_dup_intervals AS y 
+                 ON x.HASH_KEY_2 == y.HASH_KEY_2 AND 
+                 x.fech_ing_num2 <= y.fech_egres_num2 AND x.fech_egres_num2 >= y.fech_ing_num2 AND x.row != y.row") #busca mismo hash, distinto row,                    pero fecha de ingreso menor o igual a la fecha de egreso del otro, y fecha de egreso mayor o igual a la fecha de ingreso del otro.
+  ans3 %>%
+    dplyr::arrange(HASH_KEY_2, fech_ing_num2, row) %>% 
+ggplot(.) + 
+  geom_segment(aes(x = fech_ing, xend = fech_egres,
+                   y = HASH_KEY_2, yend = HASH_KEY_2)) + theme(axis.line=element_blank(),
+          axis.text.y=element_blank(),axis.ticks=element_blank(),
+          axis.title.x=element_text(""),legend.position="none",
+          panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank(),plot.background=element_blank()) +
+    labs(x = "Dates of admission and discharge", y = "")+
+    ggtitle("Figure 4. Trajecories of every HASH from dates of admission to discharge")
+    #+
+  #geom_text(vjust = -0.5, hjust=0, size = 1,
+  #          aes(x = start_date, y = membershipID, 
+  #              label = paste(round(mo_dur, 2), "months")))
+```
 
 As can be seen in Table 15, many treatment discharge dates were NULL values, deriving in a misleading count of treatment days, which were calculated as the difference between the date in which the datasets were retrieved and the date of admission. This one of the reasons that this variable may confound the analysis of duplicate data because of different but overlapping treatments, or duplicated treatments. NA's represent the number of treatment days not available.  Considering the numbers exposed, we think that **cases in datasets from 2018 and after  may  be available and not be a part of incompleteness due to right censoring because they may still be in treatment up until the date of retrieval of the datasets (leaving an approximate of 272 HASHs and date of admissions left to analyse).**
 
@@ -557,21 +588,20 @@ Considering that some cases may have the same HASH and date of admission  along 
 <br>
 
 ```{r saving dates w o discharge date,echo=T, paged.print=TRUE}
-HASHs_w_o_date_discharge<- CONS_C1_df %>%
-  dplyr::filter(is.na(fech_egres)) %>%
-  dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing)), dias_trat_trans= as.numeric(as.Date("2019-11-13"))-fech_ing_num, 
-                diff_treat_days=dias_trat-dias_trat_trans) %>% #fecha del día de hoy 
-  dplyr::select(row, HASH_KEY, id_mod, ano_bd, sexo, fech_ing, fech_ing_num, dias_trat_trans,dias_trat,diff_treat_days) %>%
-  dplyr::select(HASH_KEY, ano_bd, fech_ing_num) %>% 
-  #group_by(ano_bd) %>% summarise(n()) --> if you want to get the 
-  dplyr::filter(!duplicated(HASH_KEY,fech_ing_num)) 
+HASHs_w_o_date_discharge<- CONS_C1_df_dup %>%
+          dplyr::filter(is.na(fech_egres)) %>%
+          dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing)), dias_trat_trans= as.numeric(as.Date("2019-11-13"))-fech_ing_num, 
+                        diff_treat_days=dias_trat-dias_trat_trans,fech_egres_num=as.numeric(as.Date(fech_egres))) %>% #fecha del día de hoy 
+          dplyr::select(row, HASH_KEY, id_mod, ano_bd, sexo, fech_ing, fech_ing_num, fech_egres_num, dias_trat_trans,dias_trat,diff_treat_days) %>%
+          dplyr::select(HASH_KEY, ano_bd, fech_ing_num) %>%        
+          dplyr::filter(!duplicated(HASH_KEY,fech_ing_num)) #%>% dim()
 
-
-CONS_C1_df_egres2<- CONS_C1_df %>%
+CONS_C1_df_egres2<- CONS_C1_df_dup %>%
   dplyr::mutate(fech_ing_num2=as.numeric(as.Date(fech_ing))) %>%
+  dplyr::mutate(fech_egres_num2=as.numeric(as.Date(fech_egres))) %>%
   dplyr::mutate(HASH_KEY_2=HASH_KEY) %>%
   dplyr::filter(!is.na(fech_egres)) %>%
-  dplyr::select(row,HASH_KEY_2, id_mod, ano_bd,fech_ing, fech_ing_num2,fech_egres,Edad, Nombre.Centro, motivodeegreso) %>% 
+  dplyr::select(row,HASH_KEY_2, id_mod, ano_bd,fech_ing, fech_ing_num2,fech_egres,fech_egres_num2,Edad, Nombre.Centro, motivodeegreso) %>% 
   as.data.table()
 
 require(data.table) #v>=1.9.8
@@ -580,8 +610,9 @@ require(data.table) #v>=1.9.8
 CONS_C1_df_egres2[HASHs_w_o_date_discharge, on = .(HASH_KEY_2=HASH_KEY,fech_ing_num2 >= fech_ing_num), nomatch = 0,
       .(row,HASH_KEY,id_mod, ano_bd,fech_ing, fech_egres,Edad,Nombre.Centro,motivodeegreso)] %>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 16. Cases with the same HASH and date of admission, but includes a date of discharge", align =rep('c', 101)) %>%
-    kable_styling(bootstrap_options = c("striped", "hover"),font_size = 9)
+              caption="Table 16. Cases with the same HASH and date of admission, that had a more recent date of discharge", align =rep('c', 101)) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 9) %>%
+  scroll_box(width = "100%", height = "350px")
 #Update of 31-12-2019, nomatch= 0 may be wrong. Finally, it was right for this analysis. Similar to left join:
 #CONS_C1_df_egres[HASHs_w_o_date_discharge, on = .(HASH_KEY_2=HASH_KEY,fech_ing_num >= fech_ing_num), #nomatch = 0, its an inner join
 #      .(row,HASH_KEY,id_mod, ano_bd,fech_ing, fech_egres,Edad,Nombre.Centro,motivodeegreso)]  %>%      dplyr::filter(!is.na(HASH_KEY))
@@ -600,7 +631,51 @@ CONS_C1_df_egres2[HASHs_w_o_date_discharge, on = .(HASH_KEY_2=HASH_KEY,fech_ing_
 &nbsp;
 <br>
 
-Leaving behind the last questions that may condition the analysis, we ran a probabilistic match based on the criteria defined above in the **`dtalink`** software. In Table 17 there is a selection of probabilistics matches by 90 of the 100 points defined. The first two cases have the same date of admission and cause of discharge, but different dates of discharge and center of treatment and what is more important, they may be overlapping between them along 90 days. In contrast, the following 2 cases below do not overlap, but were matched due to de span of +/-5 days as a calliper.The next 3 cases correspond to a patient that was admitted in 2014-06-04 and may have abandoned a program in a determined center, but ended finishing treatment in another center in 2015. The next match that follows let us interpret that patient was registered in more than one center in a time lapse of 6 days, but the next patient may be in more than one center for 377 days (FEME1_-011993). The patient PAHE1_-111981 was admited for 0 days in a CESFAM, but changed to a therapeutical community inmmediately afterwards. Finally, case YAPO2**121989	and ROMA1_-011979 had the same date of admission but in a different center and not in a program of SENDA.
+In Table 17, we offer a table of each HASH and dates of discharge. This Table may permit to estimate if one of the dates may be replaced by the last date or definetly erase the case.
+
+<br>
+
+
+```{r analyzing replace of dates w o discharge date,echo=T, paged.print=TRUE}
+HASHs_w_o_date_discharge<- CONS_C1_df_dup %>%
+          dplyr::filter(is.na(fech_egres)) %>%
+          dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing)), dias_trat_trans= as.numeric(as.Date("2019-11-13"))-fech_ing_num, 
+                        diff_treat_days=dias_trat-dias_trat_trans,fech_egres_num=as.numeric(as.Date(fech_egres))) %>% #fecha del día de hoy 
+          dplyr::select(row, HASH_KEY, id_mod, ano_bd, sexo, fech_ing, fech_ing_num, fech_egres_num, dias_trat_trans,dias_trat,diff_treat_days) %>%
+          dplyr::select(HASH_KEY, ano_bd, fech_ing_num) %>%        
+          dplyr::filter(!duplicated(HASH_KEY,fech_ing_num)) #%>% dim()
+
+CONS_C1_df_egres2<- CONS_C1_df_dup %>%
+  dplyr::mutate(fech_ing_num2=as.numeric(as.Date(fech_ing))) %>%
+  dplyr::mutate(fech_egres_num2=as.numeric(as.Date(fech_egres))) %>%
+  dplyr::mutate(HASH_KEY_2=HASH_KEY) %>%
+  dplyr::filter(!is.na(fech_egres)) %>%
+  dplyr::select(row,HASH_KEY_2, id_mod, ano_bd,fech_ing, fech_ing_num2,fech_egres,fech_egres_num2,Edad, Nombre.Centro, motivodeegreso) %>% 
+  as.data.table()
+#153394 rows
+
+require(data.table) #v>=1.9.8
+#54 cases of C1 that do not have dates of discharge,  that can be replaced with cases in C1 that have available dates of discharge but with a date of admission equal  or greater than  the not   available.
+CONS_C1_df_dup_w_date_discharge <- CONS_C1_df_egres2[HASHs_w_o_date_discharge, on = .(HASH_KEY_2=HASH_KEY,fech_ing_num2 >= fech_ing_num), nomatch = 0,
+                  .(row,HASH_KEY,id_mod, ano_bd,fech_ing, fech_egres, fech_egres_num2, Edad,Nombre.Centro,motivodeegreso)]
+#select hashs for analysis
+CONS_C1_df_dup_w_date_discharge_HKEY <-CONS_C1_df_dup_w_date_discharge %>% distinct(HASH_KEY)
+
+dplyr::left_join(CONS_C1_df_dup,CONS_C1_df_dup_w_date_discharge, by = "HASH_KEY", suffix = c("", ".disch")) %>% # dim()
+dplyr::mutate(fech_egres_corr= ifelse(is.na(fech_egres),fech_egres_num2,as.character(fech_egres))) %>% 
+  dplyr::filter(HASH_KEY %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_w_date_discharge_HKEY)))))) %>%
+  dplyr::select(HASH_KEY, fech_ing, fech_egres, fech_ing.disch, fech_egres.disch, fech_egres_corr) %>%
+  dplyr::arrange(HASH_KEY, fech_ing) %>%
+  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+              caption="Table 17. HASHs with more recent date of discharge, for analysis and replace", align =rep('c', 101)) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 9) %>%
+  scroll_box(width = "100%", height = "350px")
+  
+```
+
+<br>
+
+Leaving behind the last questions that may condition the analysis, we ran a probabilistic match based on the criteria defined above in the **`dtalink`** software. In Table 18 there is a selection of probabilistics matches by 90 of the 100 points defined. The first two cases have the same date of admission and cause of discharge, but different dates of discharge and center of treatment and what is more important, they may be overlapping between them along 90 days. In contrast, the following 2 cases below do not overlap, but were matched due to de span of +/-5 days as a calliper.The next 3 cases correspond to a patient that was admitted in 2014-06-04 and may have abandoned a program in a determined center, but ended finishing treatment in another center in 2015. The next match that follows let us interpret that patient was registered in more than one center in a time lapse of 6 days, but the next patient may be in more than one center for 377 days (FEME1_-011993). The patient PAHE1_-111981 was admited for 0 days in a CESFAM, but changed to a therapeutical community inmmediately afterwards. Finally, case YAPO2**121989	and ROMA1_-011979 had the same date of admission but in a different center and not in a program of SENDA.
 
 <br>
 
@@ -610,7 +685,7 @@ dplyr::filter(row %in% c(54760,71542,83766,83830,58436,67549,59294,72579,73114,5
   dplyr::arrange(factor(row, levels = c(54760,71542,83766,83830,58436,67549,59294,72579,73114,54953,56452,38864,53878,44514,53958,47284,54973,45002,45995,51619,61353,61572,52659,54383,47377))) %>%
   dplyr::select(row,HASH_KEY,id_mod,Edad,Sexo,Nombre.Centro,ID.centro,fech_ing,fech_egres,dias_trat,motivodeegreso,tipo_de_programa,tipo_de_plan,SENDA) %>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 17. Example of probabilistic matches", align =rep('c', 101)) %>%
+                   caption="Table 18. Example of probabilistic matches", align =rep('c', 101)) %>%
     kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8)  %>%
   scroll_box(width = "100%", height = "350px")
 ```
