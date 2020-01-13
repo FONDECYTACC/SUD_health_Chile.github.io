@@ -245,7 +245,7 @@ There were `r CONS_C1_df_dup_ENE_2020_prev2 %>% dplyr::mutate(concat=paste0(id,"
 
 &nbsp;
 
-```{r echo=F, paged.print=TRUE}
+```{r echo=F, paged.print=TRUE, warning=F}
 # OR plot
 m1=glm(duplicated_HASH_date ~ is.na(fech_egres) + is.na(motivodeegreso) + is.na(dias_trat) + is.na(Fecha.Ultimo.Tratamiento), data=CONS_C1_df_dup_ENE_2020_prev2, family = binomial ( link = logit )) 
 #m2=glm(duplicated ~ factor(sexo) + fech_egres +Fecha.Ultimo.Tratamiento, data = CONS_C1_df_dup_ENE_2020_prev2, family = binomial ( link = logit ))
@@ -327,7 +327,7 @@ However, we may take account that there are `r paste0(round(CONS_C1_df_dup_ENE_2
 <br>
 ```{r wrong ages, echo=T, paged.print=TRUE}
   CONS_C1_df_dup_ENE_2020_prev2 %>% dplyr::filter(Edad<18|Edad>90) %>%
-    dplyr::select(row, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing) %>%
+    dplyr::select(row, HASH_KEY, id_mod, ano_nac, ano_bd,Edad,fech_ing) %>%
  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption="Table 8. Cases that have a wrongly asigned age",
                  align =rep('c', 101))  %>%
@@ -345,19 +345,18 @@ This may condition the data linkage, given that if I assign a missing value to a
 #list of distinct HASHs that have a wrongly assigned age
 CONS_C1_df_dup_ENE_2020_prev2 %>% dplyr::filter(Edad<18|Edad>90) %>%
   dplyr::distinct(HASH_KEY) %>%
-  assign("distinct_hash_wrong_age",., envir = .GlobalEnv)
+  assign("distinct_hash_wrong_age2",., envir = .GlobalEnv)
 
 #Then, apply these cases to the whole population
 CONS_C1_df_dup_ENE_2020_prev2 %>%
-dplyr::filter(HASH_KEY %in% as.character(as.vector(unlist(as.data.table(unlist(distinct_hash_wrong_age)))))) %>% # select hashs of wrongly assigned ages
+dplyr::filter(HASH_KEY %in% as.character(as.vector(unlist(as.data.table(unlist(distinct_hash_wrong_age2)))))) %>% # select hashs of wrongly assigned ages
 dplyr::arrange(HASH_KEY) %>% #order by hashs 
-  #dplyr::filter(Edad<18|Edad>90) %>% nrow() #if you want to see how many cases would be changed: 697.
-  #dplyr::filter(!duplicated(HASH_KEY)) %>% nrow() # 443 DIFFERENT HASHS WERE CAPTURED.
-    #54 patients, 1,231 cases. (dont remember where i obtained)
+  dplyr::filter(Edad>=18,Edad<=90) %>% #nrow() #if you want to see how many cases would be changed: 387.
+  #dplyr::filter(!duplicated(HASH_KEY)) %>% nrow() # 211 DIFFERENT HASHS WERE CAPTURED.
       dplyr::select(-id,-TABLE,-14,-16,-17,-26,-27,-28,-29,-35,-36,-37,-88,-93,-94,-96,-101) %>%
-      dplyr::select(row, ano_bd, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, everything()) %>%
+      dplyr::select(row, ano_bd, HASH_KEY, id_mod, ano_nac, ano_bd,Edad, fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, everything()) %>%
  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 9. Total cases with wrong ages but have more than one age",
+               caption="Table 9. Total cases with wrong ages but their HASH have a valid age along the dataset",
                  align =rep('c', 101))  %>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
   kableExtra::scroll_box(width = "100%", height = "350px")
@@ -372,7 +371,7 @@ CONS_C1_df_dup_age <- dplyr::select(CONS_C1_df, HASH_KEY, id, id_mod, Edad)%>%
   dplyr::left_join(CONS_C1_df_dup_ENE_2020_prev2,dplyr::select(CONS_C1_df_dup_age,HASH_KEY,Edad, id,id_mod), by = "HASH_KEY", suffix = c("", ".y")) %>% # dim()
     dplyr::mutate(id= ifelse((Edad<18 & !is.na(Edad.y))|(Edad>90 & !is.na(Edad.y)),id.y, id)) %>%
     dplyr::mutate(id_mod=ifelse((Edad<18 & !is.na(Edad.y))|(Edad>90 & !is.na(Edad.y)),id_mod.y,id_mod)) %>% 
-    dplyr::mutate(Edad= ifelse(Edad<18|Edad>90,Edad.y, Edad)) %>%
+    dplyr::mutate(Edad= ifelse(Edad<18|Edad>90,Edad.y, Edad)) %>% #treat as invalid
  dplyr::select(-id_mod.y, -id.y) %>%
     #dplyr::group_by(Edad) %>% summarise(n=n()) %>% View()
     assign("CONS_C1_df_dup_ENE_2020_prev3",., envir = .GlobalEnv) 
@@ -417,11 +416,12 @@ CONS_C1_df_dup_ENE_2020_prev3  %>%
   dplyr::select(row, ano_bd, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, Edad, SENDA) %>%
   dplyr::left_join(CONS_TOP_df_dup_age, by="HASH_KEY", suffix= c(".C1",".TOP")) %>%
   dplyr::filter(!is.na(id_mod.TOP)) %>%
+  dplyr::select(row, ano_bd, HASH_KEY, id_mod.C1, ano_nac, ano_bd,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, Edad.C1, Edad.TOP,SENDA) %>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 11. Replaced Age from TOP dataset",
+               caption="Table 11. Replaced Ages from TOP dataset",
                  align =rep('c', 101))  %>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 9) %>%
-  kableExtra::scroll_box(width = "100%", height = "150px")
+  kableExtra::scroll_box(width = "100%", height = "175px")
 ```
 
 ```{r final assignment, echo=F,cache=T, paged.print=TRUE}
@@ -434,6 +434,7 @@ CONS_C1_df_dup_ENE_2020_prev3  %>%
     #dplyr::group_by(Edad) %>% summarise(n=n()) %>% View()
     assign("CONS_C1_df_dup_ENE_2020",., envir = .GlobalEnv) 
 write.csv2(CONS_C1_df_dup_ENE_2020, file ="CONS_C1_df_dup_ENE_2020.csv")
+save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/3.Rdata")
 ```
 &nbsp;
 <br>
@@ -540,7 +541,7 @@ The code used in stata is shown here:
 
 <br>
 
-An a analysis of probabilistic matches between events by the requirements listed above, showed us 2 matches with scores of 70 (due to a missing value in the date of admission, correspondent to the HASH KEY "6c409c18bf7cc518819dc63c4e8e98ef"), 99 matches with a value of 90 points, and 51,553 matches with 100 points. Must note that many of HASHs involved in matching appear around 2 times (very possible considering the match would be produced by the coincidence of HASH Keys), but the 10% of the HASHs appeared around 4 times, and the remaining 10%, 6 times or more.
+An a analysis of probabilistic matches between events by the requirements listed above, showed us 1 case with a missing value in the date of admission, (correspondent to the HASH KEY "6c409c18bf7cc518819dc63c4e8e98ef"), 71 matches with a value of 90 points, and 458 matches with 100 points. Must note that 92.9% of HASHs involved in matching appear around 2 times (very possible considering the match would be produced by the coincidence of HASH Keys), and the remaining 7,1%, 4 times or more.
 
 <br>
 
@@ -556,15 +557,17 @@ CONS_C1_df_dup_ENE_2020 %>%
 ```
 
 ```{r  Fig 3, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center"}
- knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Fig 3.png", dpi = 200)
-
 #quantile(matches_hash_freq$n, .80)
 
 #matches_hash_freq <- read.table(file = "clipboard", sep = "\t", header=TRUE)
 #matches_hash_freq
 
 #summary(matches_hash_freq)
-#hist(matches_hash_freq$n, main="Figure 3. Histogram of HASH Keys in matches", breaks=50,xlab="Repetitions", ylab="Freq.")
+#
+require(readxl)
+Duplicates_Matching_ene_2020 <- read_excel("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/Stata Duplicates Match/Duplicates_Matching_ene_2020.xlsx", 
+    sheet = "unique value")
+hist(Duplicates_Matching_ene_2020$n, main=paste0("Figure 3. Histogram of HASH Keys in matches (n=",nrow(Duplicates_Matching_ene_2020),")"), breaks=10,xlab="Repetitions", ylab="Freq.")
 ```
 
 <br>
