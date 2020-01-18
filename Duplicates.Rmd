@@ -32,9 +32,26 @@ body{ /* Normal  */
   }
 </style>
 
-```{r load, include=FALSE, cache=T}
+```{r prev, include=FALSE, cache=T}
+rm(list=ls());gc()
 unlink('SUD_CL/Duplicates_cache', recursive = TRUE)
-load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/2.Rdata")
+```
+
+```{r load, include=FALSE, cache=T}
+load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/1.Rdata")
+if(!require(dplyr)){install.packages("dplyr")}
+if(!require(data.table)){install.packages("data.table")}
+require(data.table)
+require(dplyr)
+CONS_C1_df%>%
+  dplyr::mutate(fech_ing_ano = lubridate::year(fech_ing), 
+                fech_ing_mes = lubridate::month(fech_ing), 
+                fech_ing_dia = lubridate::day(fech_ing)) %>%
+  dplyr::mutate(concat=paste0(HASH_KEY,"_",fech_ing_ano,"_",fech_ing_mes,"_",fech_ing_dia)) %>%
+  dplyr::mutate(duplicated_HASH_date = duplicated(concat)) %>%
+  as.data.table() %>%
+  assign("CONS_C1_df_dup",.,envir = .GlobalEnv)
+#45526 trues
 ```
 
 ```{r setup, include = FALSE, cache=T}
@@ -56,8 +73,8 @@ if(!require(zoo)){install.packages("zoo")}
 #remotes::install_github("leifeld/texreg",force = TRUE)
 if(!require(broom)){install.packages("broom")}
 if(!require(sqldf)){install.packages("sqldf")} 
-if(!require(dplyr)){install.packages("dplyr")}
 if(!require(data.table)){install.packages("data.table")}
+if(!require(dplyr)){install.packages("dplyr")}
 unlink('SUD_CL/Duplicates_cache', recursive = TRUE)#para clear cache
 ```
 
@@ -122,6 +139,8 @@ CONS_C1_df_dup_ENE_2020_prev %>%
     kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
   kableExtra::add_footnote( c("Assuming the date of retrieval, 2019-11-13"), notation = "none") %>%
   kableExtra::scroll_box(width = "100%", height = "350px")
+
+
 ```
 
 <br>
@@ -444,7 +463,6 @@ CONS_C1_df_dup_ENE_2020_prev3  %>%
 
 ```{r generate data 3, echo=F, paged.print=TRUE}
 write.csv2(CONS_C1_df_dup_ENE_2020, file ="CONS_C1_df_dup_ENE_2020.csv")
-save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/3.Rdata")
 ```
 
 &nbsp;
@@ -481,12 +499,9 @@ In Figure 2 we can see every case and the distribution of duplicated cases in te
 
 ```{r dup rows, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center", message=F}
 require(zoo)
-duplicated_rows_concat <- data.frame(duplicated_HASH_date = duplicated(CONS_C1_df_dup_ENE_2020[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")]), 
-                                     row_dup_HASH_date = 1:nrow(CONS_C1_df_dup_ENE_2020[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")])) #%>%
 CONS_C1_df_dup_ENE_2020 %>%
-  dplyr::left_join(duplicated_rows_concat) %>%
   dplyr::mutate(fech_ing_qrt=as.yearqtr(fech_ing)) %>%
-  dplyr::mutate(dup_hash_date=as.numeric(duplicated_HASH_date)) %>%
+  dplyr::mutate(dup_hash_date=duplicated(concat)) %>%
   dplyr::select(fech_ing_qrt,dup_hash_date) %>%   dplyr::group_by(fech_ing_qrt) %>% 
   dplyr::summarise(duplicated = sum(dup_hash_date==1),n = n(), perc_dup=duplicated/n) %>%
   dplyr::filter(fech_ing_qrt>=2009) %>%
@@ -592,7 +607,7 @@ Figure 4 let us observe how many treatments overlap. Many patients start from 20
 
 <br>
 
-```{r  Fig 4, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center", message=F}
+```{r  Fig 4, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center", message=F, cache=T}
 
 CONS_C1_df_dup_intervals<- CONS_C1_df_dup_ENE_2020 %>%
   dplyr::mutate(fech_ing_num2=as.numeric(as.Date(fech_ing))) %>%
@@ -707,7 +722,7 @@ In Table 16, we offer a table of each HASH and dates of discharge. This Table ma
 <br>
 
 
-```{r analyzing replace of dates w o discharge date,echo=T, paged.print=TRUE, message=F}
+```{r analyzing replace of dates w o discharge date,echo=T, paged.print=TRUE, message=F, cache=T}
 HASHs_w_o_date_discharge<- CONS_C1_df_dup_ENE_2020 %>%
           dplyr::filter(is.na(fech_egres)) %>%
           dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing)), dias_trat_trans= as.numeric(as.Date("2019-11-13"))-fech_ing_num, 
@@ -742,7 +757,6 @@ dplyr::mutate(fech_egres_corr= ifelse(is.na(fech_egres),fech_egres_num2,as.chara
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 9) %>%
   kableExtra::scroll_box(width = "100%", height = "350px")
 
-
 #NO SE PUEDEN RESCATAR DE TOPs
 #CONS_C1_df_dup_ENE_2020_w_date_disch <- CONS_C1_df_dup_ENE_2020 %>% dplyr::filter(is.na(fech_egres)) #no puedo rescatar de TOP
 #CONS_TOP %>%
@@ -766,6 +780,7 @@ dplyr::mutate(fech_egres_corr= ifelse(is.na(fech_egres),fech_egres_num2,as.chara
 #  dplyr::right_join(CONS_C1_df_dup_ENE_2020_w_date_disch,by="concat") %>% 
 #  dplyr::filter(!is.na(fech_ap_top)) %>%
 #  dplyr::select(HASH_KEY.x, fech_ing.x,concat,fech_egres,fech_ap_top) %>%View()
+save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/3.Rdata")
 ```
 <br>
 

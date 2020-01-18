@@ -12,6 +12,7 @@ output:
 
 
 ```{r setup, include = FALSE}
+rm(list=ls());gc()
 unlink('SUD_CL/Data_prep_C1_cache', recursive = TRUE)
 load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/1.Rdata")
 
@@ -232,9 +233,12 @@ Most of the dates were not formatted equally. When standardized,some cases faile
 
 ```markdown
 CONS_C1_df %>%
-  dplyr::mutate(fech_ing= ifelse(row=="14504", "10/01/2011",fech_ing))  %>%
-  dplyr::mutate(fech_ing= lubridate::parse_date_time(fech_ing, c("%d/%m/%Y"),exact=T))
-  dplyr::mutate(fech_egres_sin_fmt= fech_egres) %>% #this variable remains if necessary
+  dplyr::mutate(fech_ing= ifelse(row=="14504", "10/01/2011",
+                          ifelse(row=="88379", "09/07/2015", #ACTUALIZACION 2020-01-17: cambio fecha ingreso
+                          ifelse(row=="79428", "09/07/2015", #ACTUALIZACION 2020-01-17: cambio fecha ingreso             
+                                        fech_ing))))  %>%
+  dplyr::mutate(fech_ing= lubridate::parse_date_time(fech_ing, c("%d/%m/%Y"),exact=T)) %>% #un caso falla en ser transformado
+  dplyr::mutate(fech_egres_sin_fmt= fech_egres) %>% #me quedo con esta variable por si acaso
   dplyr::mutate(fech_egres= ifelse(row=="36308", "02/04/2013",
                             ifelse(row=="14083", "03/05/2011",
                             ifelse(row=="6349", "01/07/2010",
@@ -243,7 +247,7 @@ CONS_C1_df %>%
                             ifelse(row=="11709","01/02/2011",
                             ifelse(row=="40486","03/07/2013",
                             ifelse(row=="42521","09/07/2013",
-                            ifelse(row=="5757", "04/10/2010",
+                            ifelse(row=="5757", "04/10/2010", #cambiado
                             ifelse(row=="39507", "02/07/2013",
                             ifelse(row=="3195", "04/10/2010",
                             ifelse(row=="37845", "01/07/2013",
@@ -255,11 +259,13 @@ CONS_C1_df %>%
                             ifelse(row=="16385", "30/08/2011",
                             ifelse(row=="39932", "02/08/2013",
                             ifelse(row=="16983", "06/09/2011",
-                            ifelse(row=="37004", "02/08/2013",fech_egres)))))))))))))))))))))) %>%
+                            ifelse(row=="88379", "11/04/2016", #ACTUALIZACION 2020-01-17: cambio fecha egreso
+                            ifelse(row=="79428", "11/04/2016", #ACTUALIZACION 2020-01-17: cambio fecha egreso
+                            ifelse(row=="37004", "02/08/2013",fech_egres)))))))))))))))))))))))) %>%
   dplyr::mutate(fech_egres= lubridate::parse_date_time(stringr::str_trim(fech_egres), 
                                                        orders = c("%d/%m/%Y", "%d/%m/%y","%d%m%Y"),exact=T)) %>%
   dplyr::arrange(desc(ano_bd)) %>% 
-  assign("CONS_C1_df",.,envir = .GlobalEnv)
+  assign("CONS_C1_df",.,envir = .GlobalEnv) #87 failed to parse, bajé a 37, y 30 después de quitar espacios
 ```
 
 For discharge dates, many cases had different formats. Those had to be transformed once the first formats were traduced (e.g. 30-12-2019 is interpteted first as "%d/%m/%Y" format. If it is not traduced, it interprets in "DD/MM/YY" format (or "%d/%m/%y"). We can see in Table 1 in non-formatted date of discharge (_fech_egres_sin_fmt_), how was traduced into an plausible discharge date (_fech_egres_). One criteria is that possibly in many cases, the second and or third 0 would correspond to a month character. On the contrary, "7082013" or "9072013" would be "2013-8-70" and "2013-7-90", respectively.
@@ -299,8 +305,12 @@ As we can see in Table 2, some non-formatted date of discharge (_fech_egres_sin_
 
  <br>
 
-**UPDATE: 2019-12-11**, had to format this date because it was bad labellled.  `CONS_C1_df[CONS_C1_df$row=="5757","fech_egres"] <- parse_date_time(str_trim("04/10/2010"), orders = c("%d/%m/%Y"),exact=T)`. Still, there is `r table(is.na(CONS_C1_df$fech_egres))[2]` cases with NULL dates of discharge.
-
+**UPDATE: 2019-12-11**, had to format this date because it was bad labellled.  `CONS_C1_df[CONS_C1_df$row=="5757","fech_egres"] <- parse_date_time(str_trim("04/10/2010"), orders = c("%d/%m/%Y"),exact=T)`.
+**UPDATE: 2020-01-17**. Thanks to SENDA's experts, they provided us with information about a case with missing values in dates of treatment. Had to format this date because it was bad labellled.  `CONS_C1_df[CONS_C1_df$row=="88379","fech_ing"] <- parse_date_time(str_trim("09/07/2015"), orders = c("%d/%m/%Y"),exact=T)`.
+**UPDATE: 2020-01-17**, had to format this date because it was bad labellled.  `CONS_C1_df[CONS_C1_df$row=="79428","fech_ing"] <- parse_date_time(str_trim("09/07/2015"), orders = c("%d/%m/%Y"),exact=T)`.
+**UPDATE: 2020-01-17**, had to format this date because it was bad labellled.  `CONS_C1_df[CONS_C1_df$row=="88379","fech_egres"] <- parse_date_time(str_trim("11/04/2016"), orders = c("%d/%m/%Y"),exact=T)`.
+**UPDATE: 2020-01-17**, had to format this date because it was bad labellled.  `CONS_C1_df[CONS_C1_df$row=="79428","fech_egres"] <- parse_date_time(str_trim("11/04/2016"), orders = c("%d/%m/%Y"),exact=T)`. Still, there is `r table(is.na(CONS_C1_df$fech_egres))[2]` cases with NULL dates of
+discharge.
  <br>
 ***
 ***
