@@ -385,8 +385,8 @@ dplyr::arrange(HASH_KEY) %>% #order by hashs
 ```{r transformation of ages in datasets, echo=F,cache=T, paged.print=TRUE}
 #Capture every valid case distinct that has a valid age
 CONS_C1_df_dup_age <- dplyr::select(CONS_C1_df, HASH_KEY, id, id_mod, Edad)%>% 
-                      dplyr::filter(Edad>=18, Edad<=90) %>% #%>%  #dim rows 162449, 4 columns
-                      dplyr::filter(!duplicated(HASH_KEY)) 
+                      dplyr::filter(Edad>=18, Edad<=90) %>% #%>%  #dim rows 85490, 4 columns
+                      dplyr::filter(!duplicated(HASH_KEY)) #lo mismo que  dplyr::distinct(HASH_KEY)
 #Join datasets 
   dplyr::left_join(CONS_C1_df_dup_ENE_2020_prev2,dplyr::select(CONS_C1_df_dup_age,HASH_KEY,Edad, id,id_mod), by = "HASH_KEY", suffix = c("", ".y")) %>% # dim()
     dplyr::mutate(id= ifelse((Edad<18 & !is.na(Edad.y))|(Edad>90 & !is.na(Edad.y)),id.y, id)) %>%
@@ -428,7 +428,7 @@ CONS_TOP_df_dup_age <- dplyr::select(CONS_TOP, HASH_KEY, ID, Sexo, Edad)%>%
   dplyr::mutate(id_mod=sub("(.{5}).", "\\1*",ID)) %>%
   dplyr::mutate(id_mod=sub("(.{6}).", "\\1*",id_mod)) %>%
   dplyr::select(-ID) %>%
-  dplyr::filter(!duplicated(HASH_KEY)) #37124 rows, 5 columns
+  dplyr::filter(!duplicated(HASH_KEY)) #dplyr::distinct(HASH_KEY) %>% nrow() #37124 rows, 5 columns
 #merge datasets w CONS C1
 CONS_C1_df_dup_ENE_2020_prev3  %>% 
   dplyr::filter(is.na(Edad)) %>% 
@@ -480,11 +480,16 @@ In Table 12 we can see that most of the cases had at least one case with the sam
 
 duplicated_rows_concat <- data.frame(duplicated_HASH_date = duplicated(CONS_C1_df_dup_ENE_2020[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")]), 
                                      row_dup_HASH_date = 1:nrow(CONS_C1_df_dup_ENE_2020[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")])) #%>%
-  
+  #arroja 117,620 casos únicos, aunque son muchos menos
+as.data.table(CONS_C1_df_dup_ENE_2020)[, dup_hash_date := .N, by = c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")] %>% ##dim() #arroja 117,190 casos únicos.
+  dplyr::group_by(dup_hash_date) %>%
+  dplyr::summarise(n=n()) %>%
+  mutate(perc = round(n / sum(n),2)*100) %>%
+  mutate(perc = paste0(perc,"%")) %>%
 # Duplicated rows
-  data.frame(table(duplicated_rows_concat$duplicated_HASH_date,exclude=NULL),
-             `%`=paste0(round(prop.table(table(duplicated_rows_concat$duplicated_HASH_date,exclude=NULL)),3)*100,"%")) %>%
-  as.data.frame(.) %>%  
+#  data.frame(table(duplicated_rows_concat$duplicated_HASH_date,exclude=NULL),
+#            `%`=paste0(round(prop.table(table(duplicated_rows_concat$duplicated_HASH_date,exclude=NULL)),3)*100,"%")) %>%
+# as.data.frame(.) %>%  
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                    caption="Table 12. Duplicated rows of the combination of HASH-Key & Date of Admission", 
                col.names= c(" ", " Frequencies", "Percentage"),  align =rep('c', 2))  %>%
@@ -499,20 +504,20 @@ In Figure 2 we can see every case and the distribution of duplicated cases in te
 
 ```{r dup rows, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center", message=F}
 require(zoo)
-CONS_C1_df_dup_ENE_2020 %>%
-  dplyr::mutate(fech_ing_qrt=as.yearqtr(fech_ing)) %>%
-  dplyr::mutate(dup_hash_date=duplicated(concat)) %>%
-  dplyr::select(fech_ing_qrt,dup_hash_date) %>%   dplyr::group_by(fech_ing_qrt) %>% 
-  dplyr::summarise(duplicated = sum(dup_hash_date==1),n = n(), perc_dup=duplicated/n) %>%
-  dplyr::filter(fech_ing_qrt>=2009) %>%
+#CONS_C1_df_dup_ENE_2020 %>%
+as.data.table(CONS_C1_df_dup_ENE_2020)[, dup_hash_date := .N, by = c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")] %>% 
+  dplyr::mutate(fech_ing_qrt=zoo::as.yearqtr(fech_ing)) %>%
+  dplyr::select(fech_ing_qrt,dup_hash_date) %>%  dplyr::group_by(fech_ing_qrt) %>% 
+  dplyr::summarise(duplicated = sum(dup_hash_date>1),n = sum(dup_hash_date), perc_dup=duplicated/n) %>%
+  dplyr::filter(fech_ing_qrt>=2007) %>%
   ggplot2::ggplot(aes(x = fech_ing_qrt, y = perc_dup, label = paste0("n=",n))) +
   geom_line(color = "#0076A8", size=1) +
   #geom_text(aes(x = fech_ing_qrt, y = perc_dup-0.05, label = paste0(n)), vjust = -1,hjust = 0, angle=45, size=3) +
   sjPlot::theme_sjplot2() +
-  labs(y="% of Duplicated Data",x="Years & Quarters, Date of Admission" ) + ggtitle( "Figure 2. Duplicated entries  by year and quarter") +
-  scale_y_continuous(limits=c(0, .03),labels = scales::percent) +
+  labs(y="% of Duplicated Data",x="Years & Quarters, Date of Admission",caption="Note. Two cases with date of admission before 2007 were ignored") + ggtitle( "Figure 2. Duplicated entries  by year and quarter")+
+  scale_y_continuous(limits=c(0, .075),labels = scales::percent) +
   scale_x_yearqtr(format="%YQ%q", n=20) +
-  theme(axis.text.x = element_text(vjust = 0.5,angle = 60)) 
+  theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60)) 
 
 ```
 
@@ -680,7 +685,7 @@ HASHs_w_o_date_discharge<- CONS_C1_df_dup_ENE_2020 %>%
                         diff_treat_days=dias_trat-dias_trat_trans,fech_egres_num=as.numeric(as.Date(fech_egres))) %>% #fecha del día de hoy 
           dplyr::select(row, HASH_KEY, id_mod, ano_bd, sexo, fech_ing, fech_ing_num, fech_egres_num, dias_trat_trans,dias_trat,diff_treat_days) %>%
           dplyr::select(HASH_KEY, ano_bd, fech_ing_num) %>%        
-          dplyr::filter(!duplicated(HASH_KEY,fech_ing_num)) #%>% dim()
+          dplyr::distinct(HASH_KEY,fech_ing_num)# %>% dim() 8142
 
 CONS_C1_df_egres2<- CONS_C1_df_dup_ENE_2020 %>%
   dplyr::mutate(fech_ing_num2=as.numeric(as.Date(fech_ing))) %>%
@@ -729,7 +734,7 @@ HASHs_w_o_date_discharge<- CONS_C1_df_dup_ENE_2020 %>%
                         diff_treat_days=dias_trat-dias_trat_trans,fech_egres_num=as.numeric(as.Date(fech_egres))) %>% #fecha del día de hoy 
           dplyr::select(row, HASH_KEY, id_mod, ano_bd, sexo, fech_ing, fech_ing_num, fech_egres_num, dias_trat_trans,dias_trat,diff_treat_days) %>%
           dplyr::select(HASH_KEY, ano_bd, fech_ing_num) %>%        
-          dplyr::filter(!duplicated(HASH_KEY,fech_ing_num)) #%>% dim()
+          dplyr::distinct(HASH_KEY,fech_ing_num)# %>% dim() 8142
 
 CONS_C1_df_egres2<- CONS_C1_df_dup_ENE_2020 %>%
   dplyr::mutate(fech_ing_num2=as.numeric(as.Date(fech_ing))) %>%
@@ -769,7 +774,7 @@ dplyr::mutate(fech_egres_corr= ifelse(is.na(fech_egres),fech_egres_num2,as.chara
 #  dplyr::select(HASH_KEY.x, fech_ing.x,concat,fech_egres,fech_ap_top) %>%View()
 ```
 
-```{r saving dates_w_o_discharge_date_from_TOP,echo=F, paged.print=TRUE}
+```{r saving dataset in 3 Rdata,echo=F, paged.print=TRUE}
 #NO SE PUEDEN RESCATAR DE TOPs
 #CONS_C1_df_dup_ENE_2020_w_date_disch <- CONS_C1_df_dup_ENE_2020 %>% dplyr::filter(is.na(fech_egres)) #no puedo rescatar de TOP
 #CONS_TOP %>%
