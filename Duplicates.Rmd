@@ -265,7 +265,7 @@ There were `r CONS_C1_df_dup_ENE_2020_prev2 %>% dplyr::mutate(concat=paste0(id,"
 
 &nbsp;
 
-```{r echo=F, paged.print=TRUE, warning=F}
+```{r echo=F, paged.print=TRUE, warning=F, message=F}
 # OR plot
 m1=glm(duplicated_HASH_date ~ is.na(fech_egres) + is.na(motivodeegreso) + is.na(dias_trat) + is.na(Fecha.Ultimo.Tratamiento), data=CONS_C1_df_dup_ENE_2020_prev2, family = binomial ( link = logit )) 
 #m2=glm(duplicated ~ factor(sexo) + fech_egres +Fecha.Ultimo.Tratamiento, data = CONS_C1_df_dup_ENE_2020_prev2, family = binomial ( link = logit ))
@@ -273,7 +273,7 @@ m1=glm(duplicated_HASH_date ~ is.na(fech_egres) + is.na(motivodeegreso) + is.na(
 m1_0 <- update(m1, . ~ 1)
 require(lmtest)
 cbind(Coef.=rbind("Intercept","Date of Discharge(NULL)", "Cause of Discharge(NULL)", "Days of Treatment(NULL)", "Date of Last Treatment(NULL)"),
-      data.table(rbind(round(Epi::ci.lin(m1, Exp=T),3)))) %>%
+      round(data.table(rbind(round(Epi::ci.lin(m1, Exp=T),3))),3)) %>% 
 knitr::kable(., digits=3, scientific=FALSE,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption="Table 6. Coefficients of model to determinate whether events have the same HASH and Date of Admission",
       col.names= c("Covariates", "Coef.", "StdErr","z","P","OR", "CI 95% lower","CI 95% upper"),
@@ -491,8 +491,8 @@ as.data.table(CONS_C1_df_dup_ENE_2020)[, dup_hash_date := .N, by = c("HASH_KEY",
 #            `%`=paste0(round(prop.table(table(duplicated_rows_concat$duplicated_HASH_date,exclude=NULL)),3)*100,"%")) %>%
 # as.data.frame(.) %>%  
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 12. Duplicated rows of the combination of HASH-Key & Date of Admission", 
-               col.names= c(" ", " Frequencies", "Percentage"),  align =rep('c', 2))  %>%
+                   caption="Table 12. Times that the combination of HASH-Key & Date of Admission may appear in the dataset", 
+               col.names= c("Times", " Frequencies", "Percentage"),  align =rep('c', 2))  %>%
      kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12)
 ```
 
@@ -612,37 +612,56 @@ Figure 4 let us observe how many treatments overlap. Many patients start from 20
 
 <br>
 
-```{r  Fig 4, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center", message=F, cache=T}
+```{r  Fig 4, fig.height=10, fig.width=8, warning=FALSE, fig.align = "center", message=F, cache=T}
 
 CONS_C1_df_dup_intervals<- CONS_C1_df_dup_ENE_2020 %>%
   dplyr::mutate(fech_ing_num2=as.numeric(as.Date(fech_ing))) %>%
   dplyr::mutate(fech_egres_num2=as.numeric(as.Date(fech_egres))) %>%
   dplyr::mutate(HASH_KEY_2=HASH_KEY) %>%
-  dplyr::select(row,HASH_KEY_2, id_mod, ano_bd,fech_ing, fech_ing_num2,fech_egres,fech_egres_num2,Edad, Nombre.Centro, motivodeegreso) %>% 
+  dplyr::select(row,HASH_KEY_2, id_mod, ano_bd,fech_ing, fech_ing_num2,fech_egres,fech_egres_num2,Edad, Nombre.Centro, motivodeegreso, SENDA) %>% 
   as.data.table()
 
 require(sqldf)
+require(gridExtra)
   ans3 <- sqldf("SELECT *
                  FROM CONS_C1_df_dup_intervals AS x  
                  INNER JOIN CONS_C1_df_dup_intervals AS y 
                  ON x.HASH_KEY_2 == y.HASH_KEY_2 AND 
-                 x.fech_ing_num2 <= y.fech_egres_num2 AND x.fech_egres_num2 >= y.fech_ing_num2 AND x.row != y.row") #busca mismo hash, distinto row,                    pero fecha de ingreso menor o igual a la fecha de egreso del otro, y fecha de egreso mayor o igual a la fecha de ingreso del otro.
-  ans3 %>%
-    dplyr::arrange(HASH_KEY_2, fech_ing_num2, row) %>% 
-ggplot(.) + 
+                 x.fech_ing_num2 <= y.fech_egres_num2 AND x.fech_egres_num2 >= y.fech_ing_num2 AND x.row != y.row AND x.SENDA==y.SENDA") 
+  #busca mismo hash, distinto row,pero fecha de ingreso menor o igual a la fecha de egreso del otro, y fecha de egreso mayor o igual a la fecha de ingreso del otro. ESTO ES PARA VER SI SE SUPERPONEN.
+  random<-round(runif(1, 1, 100),0)
+total_plot <- ans3 %>%
+    dplyr::arrange(HASH_KEY_2, fech_ing_num2, row) %>% ggplot(.) + 
   geom_segment(aes(x = fech_ing, xend = fech_egres,
                    y = HASH_KEY_2, yend = HASH_KEY_2)) + theme(axis.line=element_blank(),
           axis.text.y=element_blank(),axis.ticks=element_blank(),
           axis.title.x=element_text(""),legend.position="none",
           panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
           panel.grid.minor=element_blank(),plot.background=element_blank()) +
-    labs(x = "Dates of admission and discharge", y = "")+
-    ggtitle("Figure 4. Trajectories of every HASH from dates of admission to discharge")
+    labs(x = "Dates of admission and discharge", y = "", caption="Note. Only patients that share characteristics and overlap between them")+
+    ggtitle("Figure 4.1 Trajectories of every HASH from dates of admission to discharge")
+sample_plot <- ans3 %>% 
+    dplyr::arrange(HASH_KEY_2, fech_ing_num2, row) %>% 
+  dplyr::slice(random:(random+25)) %>%
+  ggplot(.) + 
+  geom_segment(aes(x = fech_ing, xend = fech_egres,
+                   y = HASH_KEY_2, yend = HASH_KEY_2,colour=as.factor(row),size=1/100)) + theme(axis.line=element_blank(),
+          axis.text.y=element_blank(),axis.ticks=element_blank(),
+          axis.title.x=element_text(""),legend.position="none",
+          panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank(),plot.background=element_blank()) +
+    labs(x = "Dates of admission and discharge", y = "", caption="Note. Only patients that share characteristics overlap between them",
+         subtitle="Sample of 25 cases. Colored lines represent different rows in the dataset")+
+    ggtitle("Figure 4.2 Trajectories of every HASH from dates of admission to discharge")
     #+
   #geom_text(vjust = -0.5, hjust=0, size = 1,
   #          aes(x = start_date, y = membershipID, 
   #              label = paste(round(mo_dur, 2), "months")))
+grid.arrange(total_plot,sample_plot)
+
 ```
+
+In Figure 4, we may notice that `r nrow(ans3)` entries from `r ans3 %>% distinct(HASH_KEY_2) %>% nrow()` may share the same HASH Key, both are SENDA programs, but the date of admission is lesser than the date of discharge of another case, and the date of discharge is greater than the date of admission of that other case, given that he other case does not correspond to the same row. These conditions let us see how many cases overlap with another entry in the dataset.
 
 As can be seen in Table 14, many treatment discharge dates were NULL values, deriving in a misleading count of treatment days, which were calculated as the difference between the date in which the datasets were retrieved and the date of admission. This one of the reasons that this variable may confound the analysis of duplicate data because of different but overlapping treatments, or duplicated treatments. NA's represent the number of treatment days not available.  Considering the numbers exposed, we think that **cases in datasets from 2018 and after  may  be available and not be a part of incompleteness due to right censoring because they may still be in treatment up until the date of retrieval of the datasets (leaving an approximate of 272 HASHs and date of admissions left to analyse).**
 
