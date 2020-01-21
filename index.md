@@ -5,7 +5,11 @@ Welcome to the repositories of the construction of the treatment information sys
 This page is composed by the following main topics:
 
 0. [Encription of RUTs and generation of HASHs](Encript.html)
-1. [Data preparation and Standardization of C1](Data_prep_C1)
+
+1. [Data preparation and Standardization of C1](Data_prep_C1) 
+
+    1.1. [Dedupication of C1](Duplicates)
+  
 2. [Data preparation and Standardization of TOP or Profile of Treatment Results](Data_prep_TOP)
 
 <br>
