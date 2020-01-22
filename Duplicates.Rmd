@@ -544,36 +544,52 @@ The code used in stata is shown here:
 <br>
 
 ```{stata dtalink, eval=FALSE}
-  import delimited "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\_CONS_C1_df_dup.csv", parselocale(es_CL) clear
-  *import delimited "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\_CONS_C1_df_dup.csv", delimiter(";") clear 
-  cap ssc install unique
-  
-  net from https://raw.githubusercontent.com/kkranker/stata-dtalink/master/
-  net describe dtalink
-  net install dtalink
-  
-  * recast int real_fech_ing_mes
-  
-  cap gen real_fech_ing_ano = real(fech_ing_ano)
-  cap gen real_fech_ing_mes = real(fech_ing_mes)
-  cap gen real_fech_ing_dia = real(fech_ing_dia)
-  
-  cap gen edad_num = real(edad)
+cap ssc install unique
 
-  *ID variable
-  *Treat each row as a unique observation
-  generate id_match = _n
-  
-  *Create date_in, transform date as numeric
-  	*cap gen date_in = real(date_in)
+net from https://raw.githubusercontent.com/kkranker/stata-dtalink/master/
+net describe dtalink
+net install dtalink
 
-  cap drop _id
-  dtalink hash_key 25 -25 id 25 -25 sexo 10 0 idcentro 10 0 date_in 30 -30 5, block(edad) cutoff(70) examples (1) describe
+* recast int real_fech_ing_mes
+
+cap gen real_fech_ing_ano = real(fech_ing_ano)
+cap gen real_fech_ing_mes = real(fech_ing_mes)
+cap gen real_fech_ing_dia = real(fech_ing_dia)
+
+cap gen edad_num = real(edad)
+ 
+cap gen date_in = mdy(real_fech_ing_mes, real_fech_ing_dia, real_fech_ing_ano)
+cap gen date_in = mdy(fech_ing_mes, fech_ing_dia, fech_ing_ano)
+
+cap tab edad_num if edad_num>90 | edad_num<18
+
+cap mycodebook hash_key if edad_num>90|edad_num<18, compact
+return list
+
+cap browse if missing(real(fech_ing_mes))
+cap browse if missing(fech_ing)
+
+generate id_match = _n
+
+cap drop _id
+dtalink hash_key 25 -25 id 25 -25 sexo 10 0 idcentro 10 0 date_in 30 -30 5, block(edad) cutoff(70) examples (1) describe
+
+duplicates list _id, N
+di 180905   - 31598/2
+
+browse _matchID if _score==80
+browse if _matchID== 24451
+browse  _matchID if _score==90
+browse hash_key sexo idcentro date_in edad fech_egres motivodeegreso  if _matchID== 45097
+*see duplicated cases
+browse _matchID row hash_key id edad sexo nombrecentro idcentro date_in fech_ing fech_egres dias_trat motivodeegreso tipo_de_programa tipo_de_plan senda if _score==90
+browse _matchID row hash_key id edad sexo nombrecentro idcentro date_in fech_ing fech_egres dias_trat motivodeegreso tipo_de_programa tipo_de_plan senda if _score==100
+
 ```
 
 <br>
 
-An a analysis of probabilistic matches between events by the requirements listed above, showed us 1 case with a missing value in the date of admission, (correspondent to the HASH KEY "6c409c18bf7cc518819dc63c4e8e98ef"), 71 matches with a value of 90 points, and 458 matches with 100 points. Must note that 92.9% of HASHs involved in matching appear around 2 times (very possible considering the match would be produced by the coincidence of HASH Keys), and the remaining 7,1%, 4 times or more.
+An a analysis of probabilistic matches between events by the requirements listed above, showed us 1 case with a missing value in the date of admission, (correspondent to the HASH KEY "6c409c18bf7cc518819dc63c4e8e98ef"), 71 matches with a value of 90 points, and 429 matches with 100 points. Must note that 92.9% of HASHs involved in matching appear around 2 times (very possible considering the match would be produced by the coincidence of HASH Keys), and the remaining 7%, 4 times or more.
 
 <br>
 
@@ -593,12 +609,14 @@ CONS_C1_df_dup_ENE_2020 %>%
 
 #matches_hash_freq <- read.table(file = "clipboard", sep = "\t", header=TRUE)
 #matches_hash_freq
+prob<- c(1:200)/200 #generate options
 
 #summary(matches_hash_freq)
 #
 require(readxl)
 Duplicates_Matching_ene_2020 <- read_excel("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/Stata Duplicates Match/Duplicates_Matching_ene_2020.xlsx", 
     sheet = "unique value")
+#quantile(Duplicates_Matching_ene_2020$n, prob)
 hist(Duplicates_Matching_ene_2020$n, main=paste0("Figure 3. Histogram of HASH Keys in matches (n=",nrow(Duplicates_Matching_ene_2020),")"), breaks=10,xlab="Repetitions", ylab="Freq.")
 ```
 

@@ -8,7 +8,9 @@ This page is composed by the following main topics:
 
 1. [Data preparation and Standardization of C1](Data_prep_C1) 
 
-    1.1. [Dedupication of C1](Duplicates)
+    1.1. [Preliminary Results to SER 2020](SER_Stata.html)
+    
+    1.2. [Dedupication of C1](Duplicates)
   
 2. [Data preparation and Standardization of TOP or Profile of Treatment Results](Data_prep_TOP)
 

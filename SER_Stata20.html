@@ -1,0 +1,163 @@
+<h1><a href="#presentation-of-ser-2020" id="presentation-of-ser-2020">Presentation of SER 2020</a></h1>
+<p>The following indices are preliminary results to be presented on SER 2020. We used a dataset in construction, in which many cases had to be discarded in order to produce valid estimates. However, we are working to rescue as much valid treatments and patients as possible.</p>
+<pre><code>. use &quot;G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\Stata SER 2020\_CONS_C1_df_csv_pedido_SER2020_avance
+&gt; 6(ENE 2020).dta&quot;, clear
+
+</code></pre>
+<p>We eliminate HASHs that only have been admitted once time.</p>
+<pre><code>. gen a_botar=.
+(103,669 missing values generated)
+
+. recode a_botar .=1 if dup==0 &amp; duplicates_filtered==1
+(a_botar: 58752 changes made)
+
+. *siempre el primer tratamiento, si tiene más de uno
+. recode a_botar .=1 if dup==1 &amp; duplicates_filtered&gt;1
+(a_botar: 17832 changes made)
+
+. ****drop unique cases
+. drop if missing(a_botar)
+(27,085 observations deleted)
+
+. ****generate event if each hash has more than an admission
+. gen event=0
+
+. recode event 0=1 if dup&gt;0
+(event: 17832 changes made)
+
+</code></pre>
+<p>Then, we set the dataset as a survival time format, configured by years (365.25 days) and defined by the difference between the last date of discharge of the last treatment and the date of admission of the following treatment (<code>person_days</code>) along the datasets from 2010 to 2019.</p>
+<pre><code>. stset person_days, failure(event==1) scale(365.25) id(row)
+
+                id:  row
+     failure event:  event == 1
+obs. time interval:  (person_days[_n-1], person_days]
+ exit on or before:  failure
+    t for analysis:  time/365.25
+
+------------------------------------------------------------------------------
+     76,584  total observations
+          0  exclusions
+------------------------------------------------------------------------------
+     76,584  observations remaining, representing
+     76,584  subjects
+     17,832  failures in single-failure-per-subject data
+ 89,802.045  total analysis time at risk and under observation
+                                                at risk from t =         0
+                                     earliest observed entry t =         0
+                                          last observed exit t =  11.91239
+
+. stdescribe, weight
+
+         failure _d:  event == 1
+   analysis time _t:  person_days/365.25
+                 id:  row
+
+                                   |-------------- per subject --------------|
+Category                   total        mean         min     median        max
+------------------------------------------------------------------------------
+no. of subjects            76584   
+no. of records             76584           1           1          1          1
+
+(first) entry time                         0           0          0          0
+(final) exit time                   1.172595    .0027379   .6105407   11.91239
+
+subjects with gap              0   
+time on gap if gap             0           .           .          .          .
+time at risk           89802.045    1.172595    .0027379   .6105407   11.91239
+
+failures                   17832    .2328424           0          0          1
+------------------------------------------------------------------------------
+
+</code></pre>
+<pre><code></code></pre>
+<p>We calculated the failures in single-failre-per-subject data, divided by the total analysis time at risk and under observation. The cumulative incidence rate of readmission was     198.6 (per 1,000 patients/year).</p>
+<h2><a href="#incidence-rate" id="incidence-rate">Incidence Rate</a></h2>
+<p>We recoded the variables of cause of discharge, in order to account for early widthdrawal and late widthdrawal.</p>
+<pre><code></code></pre>
+<p>The following figures shows the Kaplan-Meier estimates for the risk of experiencing readmission in the study period. Compared with those with therapeutic discharge, it was 2.85 [IC95% 2.69- 3.01] times higher among people with early withdraw, 1.72 [CI95% 1.64- 1.80] higher among people with late withdraw.</p>
+<pre><code>(note:  named style large not found in class linewidth, default attributes used)
+(note:  linewidth not found in scheme, default attributes used)
+(note:  named style large not found in class linewidth, default attributes used)
+(note:  linewidth not found in scheme, default attributes used)
+&lt;img src=&quot;stata1.svg&quot; height=&quot;400&quot; &gt;
+</code></pre>
+<pre><code>(note:  named style large not found in class linewidth, default attributes used)
+(note:  linewidth not found in scheme, default attributes used)
+(note:  named style large not found in class linewidth, default attributes used)
+(note:  linewidth not found in scheme, default attributes used)
+&lt;img src=&quot;stata2.svg&quot; height=&quot;400&quot; &gt;
+</code></pre>
+<p>We recoded the variables of main type of drug, in order to account for the main substance and comparisons between them: Cocaine vs. Alcohol, Cocaine Paste vs. Alcohol, and Marihuana vs. Alcohol.</p>
+<pre><code></code></pre>
+<p>The following figures shows the Kaplan-Meier estimates for the risk of experiencing readmission in the study period. Compared with those with alcohol as the main substance at admission, the cumulative incidence rate of readmission was 1.28 [IC95% 1.22- 1.34] times higher for those using cocaine, 1.53 [IC95% 1.47- 1.58] times higher for those using cocaine paste, but there were not important differences for those using marijuana (1.03 [IC95% 0.96- 1.10]).</p>
+<pre><code>(note:  named style large not found in class linewidth, default attributes used)
+(note:  linewidth not found in scheme, default attributes used)
+(note:  named style large not found in class linewidth, default attributes used)
+(note:  linewidth not found in scheme, default attributes used)
+&lt;img src=&quot;stata3.svg&quot; height=&quot;400&quot; &gt;
+
+(note:  named style large not found in class linewidth, default attributes used)
+(note:  linewidth not found in scheme, default attributes used)
+(note:  named style large not found in class linewidth, default attributes used)
+(note:  linewidth not found in scheme, default attributes used)
+&lt;img src=&quot;stata4.svg&quot; height=&quot;400&quot; &gt;
+
+(note:  named style large not found in class linewidth, default attributes used)
+(note:  linewidth not found in scheme, default attributes used)
+(note:  named style large not found in class linewidth, default attributes used)
+(note:  linewidth not found in scheme, default attributes used)
+&lt;img src=&quot;stata4.svg&quot; height=&quot;400&quot; &gt;
+</code></pre>
+<h2><a href="#time-outside-treatment" id="time-outside-treatment">Time outside treatment</a></h2>
+<pre><code>. use &quot;G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\Stata SER 2020\_CONS_C1_df_csv_pedido_SER2020_avance
+&gt; 6(ENE 2020).dta&quot;, clear
+
+</code></pre>
+<p>To calculate the average time outside treatment, we needed to drop cases with only one treatment and keep those with more than one treatment.</p>
+<p>. gen a_botar=.</p>
+<p>. recode a_botar .=1 if dup==0 &amp; duplicates_filtered==1</p>
+<p>. drop if a_botar==1</p>
+<p>Then, we needed to order the dataset by HASHs and date of admission and date of discarge, and replace the date of discharge if it is greater than the next date of admission.</p>
+<pre><code>. gsort hash_key fech_ing_fmt fech_egres_fmt
+
+. *si la fecha de  egreso es mayor a la siguiente fecha de ingreso, reemplazar con la fecha de ingreso
+. by hash_key: gen fech_egres_fmt_corr = fech_ing_fmt[_n+1] if fech_egres_fmt&gt;fech_ing_fmt[_n+1]  
+
+. *si se quiere, replace
+. by hash_key: replace fech_egres_fmt = fech_ing_fmt[_n+1] if fech_egres_fmt&gt;fech_ing_fmt[_n+1]  
+
+. **formatear
+. format fech_egres_fmt_corr %td
+
+. format fech_ing_fmt %td
+
+</code></pre>
+<p>Finally, we get the difference between the most recent date of admission and the next date of discharge (or lagged date).</p>
+<pre><code>. *get the time span between the date of admission and date of discharge
+. bysort hash_key (fech_ing_num): gen time5 = fech_egres_fmt - fech_ing_fmt[_n-1]
+
+. *bysort hash_key (fech_ing_num): gen time6  = time5 - time[_n-1]  
+. rename time5 span_treat
+
+</code></pre>
+<p>As can be seen in the following figure, days between treatments among patients tend to group from 0 to 1000 days, but with a sustained decrease starting from 500 days.</p>
+<pre><code>&lt;img src=&quot;stata5.svg&quot; height=&quot;400&quot; &gt;
+</code></pre>
+<p>In every event in the dataset, the average treatment span between treatment was      2.15 However. Considering the question was made focusing in those readmitted to treatment, we needed to collapse the dataset by HASHs.</p>
+<pre><code>. collapse (mean) avg_span_treat=span_treat, by(hash_key) 
+
+. mean(avg_span_treat)
+
+Mean estimation                     Number of obs   =     17,832
+
+----------------------------------------------------------------
+               |       Mean   Std. Err.     [95% Conf. Interval]
+---------------+------------------------------------------------
+avg_span_treat |    848.724   4.587316      839.7324    857.7155
+----------------------------------------------------------------
+
+. mat b= e(b)
+
+</code></pre>
+<p>Summarising by HASHs, the average treatment span between treatments among the readmitted (        .) in years is around      2.32 years.</p>
