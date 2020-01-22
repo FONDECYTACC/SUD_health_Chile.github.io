@@ -631,7 +631,7 @@ Figure 4 let us observe how many treatments overlap. Many patients start from 20
 
 <br>
 
-```{r  Fig 4, fig.height=10, fig.width=8, warning=FALSE, fig.align = "center", message=F, cache=T}
+```{r  Fig 4, fig.height=14, fig.width=8, warning=FALSE, fig.align = "center", message=F, cache=T}
 
 CONS_C1_df_dup_intervals<- CONS_C1_df_dup_ENE_2020 %>%
   dplyr::mutate(fech_ing_num2=as.numeric(as.Date(fech_ing))) %>%
@@ -681,7 +681,31 @@ sample_plot <- ans3 %>%
   #geom_text(vjust = -0.5, hjust=0, size = 1,
   #          aes(x = start_date, y = membershipID, 
   #              label = paste(round(mo_dur, 2), "months")))
-grid.arrange(total_plot,sample_plot)
+
+clean_plot <- CONS_C1_df_dup_ENE_2020 %>%
+  dplyr::mutate(fech_ing_num2=as.numeric(as.Date(fech_ing))) %>%
+  dplyr::mutate(fech_egres_num2=as.numeric(as.Date(fech_egres))) %>%
+  dplyr::mutate(HASH_KEY_2=HASH_KEY) %>%
+  dplyr::select(row,HASH_KEY_2, id_mod, ano_bd,fech_ing, fech_ing_num2,fech_egres,fech_egres_num2,Edad, Nombre.Centro, motivodeegreso, SENDA) %>% 
+    as.data.table() %>%
+  dplyr::filter(HASH_KEY_2 %in% c("059216780da3ae0e41e378293847af9c", "07b0d5b1e32b62374685e48039ae6a67",	"0b810dfb7988e5e795b03a9cadc771fe", "0c3aa4566acbeb996e4bf645c7210f83",	"0ddcd4866d1495598c7a79bd2d361c43","0012beab59a3a84eec95c9371f393a06" "01a95b45fa9acf445fe1a7106f2f6664")) %>%
+  dplyr::arrange(HASH_KEY_2, fech_ing_num2, row) %>% 
+  dplyr::slice(random:(random+25)) %>%
+  mutate(Date = format(as.Date(fech_ing, format = "%Y-%m-%d"))) %>% 
+  ggplot(aes(x=Date)) + 
+  geom_segment(aes(x = fech_ing, xend = fech_egres,
+                   y = HASH_KEY_2, yend = HASH_KEY_2,colour=as.factor(row),size=1/100)) + theme(axis.line=element_blank(),
+          axis.text.y=element_blank(),axis.ticks=element_blank(),
+          axis.title.x=element_text(""),legend.position="none",
+          panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank(),plot.background=element_blank()) +
+  #scale_x_date(breaks = scales::date_breaks("1 year"), date_labels = "%b %d") +
+    theme(plot.caption = element_text(hjust = 0, face= "italic")) +
+    labs(x = "Dates of admission and discharge", y = "", caption="Note. Only patients that share characteristics overlap between them",
+         subtitle="Example of three clean trajectories. Colored lines represent different rows in the dataset, but same HASH")+
+    ggtitle("Figure 4.3 Trajectories of every HASH from dates of admission to discharge")
+
+grid.arrange(total_plot,sample_plot, clean_plot)
 
 ```
 
