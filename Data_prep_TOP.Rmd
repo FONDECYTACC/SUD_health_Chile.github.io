@@ -128,7 +128,7 @@ CONS_TOP_df %>%
 &nbsp;
 <br>
 
-In the transformation of dates of admission, we found an amount of missing values. However, **there were `r CONS_TOP_df %>% dplyr::filter(is.na(fech_ap_top)) %>% summarise(n())` missing dates of application of the TOP** and  `r CONS_TOP_df %>% dplyr::filter(is.na(fech_nac)) %>% summarise(n())` missing birth dates (despite `r CONS_TOP_df %>% dplyr::filter(!is.na(fech_nac)) %>% dplyr::select(fech_nac) %>% dplyr::filter(fech_nac<"1929-11-01"|fech_nac>"2001-11-01")  %>% nrow()` cases could be invalid according to the criteria stated by SENDA's professionals). **Considering the characteristics of TOP programs and monitoring, it may be possible to impute these dates from the C1 dataset, using the date of application if it is within the ranges of an specific treatment.**
+In the transformation of the dates of admission, we found an important amount of missing values. However, **there were `r CONS_TOP_df %>% dplyr::filter(is.na(fech_ap_top)) %>% summarise(n())` missing dates of application of the TOP** and  `r CONS_TOP_df %>% dplyr::filter(is.na(fech_nac)) %>% summarise(n())` missing birth dates (despite `r CONS_TOP_df %>% dplyr::filter(!is.na(fech_nac)) %>% dplyr::select(fech_nac) %>% dplyr::filter(fech_nac<"1929-11-01"|fech_nac>"2001-11-01")  %>% nrow()` cases could be invalid according to the criteria stated by SENDA's professionals). **Considering the characteristics of TOP programs and monitoring, it may be possible to impute these dates from the C1 dataset, using the date of application if it is within the ranges of an specific treatment.**
 
 <br>
 
@@ -158,7 +158,38 @@ CONS_TOP_df %>%
 
 <br>
 
-### 2. Inconsistencies between SENDA's ID and HASH Key
+Considering that the dates of admission to the treatment and discharge may let us merge the dataset with the correspondent to C1, we need to obtain the remining dates that were missed.
+
+<br>
+
+### 2. Replacing dates.
+
+<br>
+
+In order to replace the dates of admission, we should obtain it not only from the TOP dataset, but also using the C1 agreement. First, we  should identify applications of the TOP that were done for the same stage and for the same HASH, but have dates of admission. 
+
+```{r replace_date_adm}
+CONS_TOP_df_dup_fech_ing_adm <- dplyr::select(CONS_TOP_df, HASH_KEY, fech_ap_top, fech_ing, TOP)%>% 
+  dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") 
+CONS_TOP_df_dup_fech_ing <- dplyr::select(CONS_TOP_df, HASH_KEY, fech_ap_top, fech_ing, TOP)%>% 
+  dplyr::filter(!is.na(fech_ing)) 
+nrow(CONS_TOP_df_dup_fech_ing) ##DESPITE HAS MORE ROWS, DOES NOT MAKE A DIFFERENCE IN THE QUANTITY
+nrow(CONS_TOP_df_dup_fech_ing_adm)
+#Join datasets 
+dplyr::left_join(CONS_TOP_df,CONS_TOP_df_dup_fech_ing_adm, by = c("HASH_KEY", "fech_ap_top"), suffix = c("", ".y")) %>% #names() #junto con la BD que hice
+  dplyr::filter(!is.na(fech_ing.y), is.na(fech_ing)) %>%  #filtro los casos que en que sí tengo fecha de ingreso en el merge, pero no la tengo en la BD.
+  dplyr::select(row,ano_bd, HASH_KEY, hash_rut_completo, id_mod, Edad, Sexo, fech_ing, fech_ap_top, TOP, fech_ing.y) %>% #dejo para ver cómo la icorporo
+      knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table XX. HASHs with missing dates of admission that can be replaced by",
+              col.names = c("Row ID","Year of Dataset", "HASH KEY","HASH Key (Alternative)","SENDA's ID", "Year", "Sex", "Date of Admission", "Date of Application","Stage of TOP", "Date of Admission (replacement)" ),
+                 align =rep('c', 6))  %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+            scroll_box(width = "100%", height = "350px")
+```
+
+
+
+### 3. Inconsistencies between SENDA's ID and HASH Key
 
 <br>
 
@@ -203,7 +234,7 @@ In order to check whether individual IDs (RUT) masked into HASH keys are consist
 <br>
 &nbsp;
 
-### 3. Duplicated cases
+### 4. Duplicated cases
 
 <br>
 To define what can be considered as a unique event, we identified how many unique combinations of dates of admission and HASH keys. We found that only 41.4% of the registries are unique combinations. Attending the characteristics of the questionnaires, it is possible to explore more specific time points.
@@ -269,16 +300,16 @@ as.data.table(CONS_TOP_df)[, dup_hash_date_ap := .N, by = c("HASH_KEY","fech_ap_
 ```
 
 
-### 4. Deletion of nearly exact duplicated cases
+### 5. Deletion of nearly exact duplicated cases
 
 nbsp;
 <br>
-We need reduce the number of cases, but in the mean time, try to reduce the loss of information due to specific changes in each entry, despite it could be originated by different mechanisms (eg. different persons may evaluated  ), other than comming from the same yearly dataset. 
+We need reduce the number of cases, but in the mean time, try to reduce the loss of information due to specific changes in each entry, despite it could be originated by different mechanisms (eg. different professionals evaluated the same patients for an specific stage of the treatment, but highlighting different things), other than comming from the same yearly dataset.
 
 <br>
 
 
-```{r echo=T, cache=T, paged.print=TRUE}
+```{r deduplication1 echo=T, cache=T, paged.print=TRUE}
 #create vector with variable names
 names_top <- names(CONS_TOP_df[,c(1,2,4,8,10:48)])
 #Group by duplicated rows 
@@ -306,6 +337,12 @@ data.table::data.table(CONS_TOP_df_dup_ENE_2020_prev) %>%
   assign("CONS_TOP_df_dup_ENE_2020_prev2",.,envir = .GlobalEnv)
 #Unlike base sorting with sort(), NA are: always sorted to the end for local data, even when wrapped with desc().
 ```
+
+&nbsp;
+<br>
+
+As seen in Table 5, not many cases were dropped, which can be interpreted that there is different information regarding patients and specific treatments in each of the remaining `r nrow(CONS_TOP_df_dup_ENE_2020_prev2) %>% formatC(., format="f", big.mark=",", digits=0)` rows. 
+
 
 &nbsp;
 <br>
