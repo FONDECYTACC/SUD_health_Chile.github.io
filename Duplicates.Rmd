@@ -70,6 +70,8 @@ if(!require(altair)){install.packages("altair")}
 if(!require(zoo)){install.packages("zoo")}
 if(!require(broom)){install.packages("broom")}
 if(!require(sqldf)){install.packages("sqldf")} 
+if(!require(devtools)){install.packages("devtools")}
+if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
 if(!require(data.table)){install.packages("data.table")}
 if(!require(dplyr)){install.packages("dplyr")}
 
@@ -479,7 +481,7 @@ In Table 12 we can see that most of the cases had at least one case with the sam
 duplicated_rows_concat <- data.frame(duplicated_HASH_date = duplicated(CONS_C1_df_dup_ENE_2020[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")]), 
                                      row_dup_HASH_date = 1:nrow(CONS_C1_df_dup_ENE_2020[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")])) #%>%
   #arroja 117,620 casos únicos, aunque son muchos menos
-as.data.table(CONS_C1_df_dup_ENE_2020)[, dup_hash_date := .N, by = c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")] %>% ##dim() #arroja 117,190 casos únicos.
+as.data.table(CONS_C1_df_dup_ENE_2020)[, dup_hash_date := .N, by = c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")] %>% ##dim() #arroja 117,190 casos únicos. PERO CUIDADO: EN LOS QUE TIENEN 2, 3, 4, 5 Y MÁS, HAY CASOS QUE SON ÚNICOS TAMBIÉN (POR ESO UN DISTINCT NO LOS CAPTURA)
   dplyr::group_by(dup_hash_date) %>%
   dplyr::summarise(n=n()) %>%
   mutate(perc = round(n / sum(n),2)*100) %>%
@@ -512,10 +514,10 @@ as.data.table(CONS_C1_df_dup_ENE_2020)[, dup_hash_date := .N, by = c("HASH_KEY",
   geom_line(color = "#0076A8", size=1) +
   #geom_text(aes(x = fech_ing_qrt, y = perc_dup-0.05, label = paste0(n)), vjust = -1,hjust = 0, angle=45, size=3) +
   sjPlot::theme_sjplot2() +
-  labs(y="% of Duplicated Data",x="Years & Quarters, Date of Admission",caption="Note. Two cases with date of admission before 2007 were ignored") + ggtitle( "Figure 2. Duplicated entries  by year and quarter")+
+  labs(y="% of Duplicated Data",x="Years & Quarters, Date of Admission",caption="Note. Two cases with date of admission before 2007 were ignored. These percentages indicate the number of entries that have the same HASH & date of admission one or more times\ndivided by the number of cases that are admitted in each quarter and year") + ggtitle( "Figure 2. Duplicated entries  by year and quarter")+
   scale_y_continuous(limits=c(0, .075),labels = scales::percent) +
   scale_x_yearqtr(format="%YQ%q", n=20) +
-  theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60)) 
+  theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), caption.text=element_text(hjust=0)) 
 
 ```
 
@@ -540,48 +542,28 @@ The code used in stata is shown here:
 &nbsp;
 <br>
 
-```{stata dtalink, eval=FALSE}
-cap ssc install unique
-
-net from https://raw.githubusercontent.com/kkranker/stata-dtalink/master/
-net describe dtalink
-net install dtalink
-
-* recast int real_fech_ing_mes
-
+```{stata, collectcode=TRUE}
+qui import delimited "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\CONS_C1_df_dup_ENE_2020.csv"
 cap gen real_fech_ing_ano = real(fech_ing_ano)
 cap gen real_fech_ing_mes = real(fech_ing_mes)
 cap gen real_fech_ing_dia = real(fech_ing_dia)
-
 cap gen edad_num = real(edad)
- 
 cap gen date_in = mdy(real_fech_ing_mes, real_fech_ing_dia, real_fech_ing_ano)
 cap gen date_in = mdy(fech_ing_mes, fech_ing_dia, fech_ing_ano)
-
-cap tab edad_num if edad_num>90 | edad_num<18
-
-cap mycodebook hash_key if edad_num>90|edad_num<18, compact
-return list
-
-cap browse if missing(real(fech_ing_mes))
-cap browse if missing(fech_ing)
-
-generate id_match = _n
-
+qui cap tab edad_num if edad_num>90 | edad_num<18
+qui cap browse if missing(real(fech_ing_mes))
+qui cap browse if missing(fech_ing)
+qui generate id_match = _n
 cap drop _id
-dtalink hash_key 25 -25 id 25 -25 sexo 10 0 idcentro 10 0 date_in 30 -30 5, block(edad) cutoff(70) examples (1) describe
+dtalink hash_key 25 -25 id 25 -25 sexo 10 0 idcentro 10 0 date_in 30 -30 5, block(edad) cutoff(70)
 
-duplicates list _id, N
-di 180905   - 31598/2
+qui browse _matchID if _score==80
+qui browse if _matchID== 24451
+qui browse  _matchID if _score==90
+qui browse hash_key sexo idcentro date_in edad fech_egres motivodeegreso  if _matchID== 45097
 
-browse _matchID if _score==80
-browse if _matchID== 24451
-browse  _matchID if _score==90
-browse hash_key sexo idcentro date_in edad fech_egres motivodeegreso  if _matchID== 45097
-*see duplicated cases
-browse _matchID row hash_key id edad sexo nombrecentro idcentro date_in fech_ing fech_egres dias_trat motivodeegreso tipo_de_programa tipo_de_plan senda if _score==90
-browse _matchID row hash_key id edad sexo nombrecentro idcentro date_in fech_ing fech_egres dias_trat motivodeegreso tipo_de_programa tipo_de_plan senda if _score==100
-
+qui browse _matchID row hash_key id edad sexo nombrecentro idcentro date_in fech_ing fech_egres dias_trat motivodeegreso tipo_de_programa tipo_de_plan senda if _score==90
+qui browse _matchID row hash_key id edad sexo nombrecentro idcentro date_in fech_ing fech_egres dias_trat motivodeegreso tipo_de_programa tipo_de_plan senda if _score==100
 ```
 
 <br>
