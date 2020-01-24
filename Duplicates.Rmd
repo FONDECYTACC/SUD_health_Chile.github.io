@@ -72,10 +72,9 @@ if(!require(broom)){install.packages("broom")}
 if(!require(sqldf)){install.packages("sqldf")} 
 if(!require(devtools)){install.packages("devtools")}
 if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
+if(!require(wesanderson)){install_github("karthik/wesanderson")}
 if(!require(data.table)){install.packages("data.table")}
 if(!require(dplyr)){install.packages("dplyr")}
-
-unlink('SUD_CL/Duplicates_cache', recursive = TRUE)#para clear cache
 ```
 
 ## 1. Deletion of nearly exact duplicated cases
@@ -620,8 +619,24 @@ CONS_C1_df_dup_intervals<- CONS_C1_df_dup_ENE_2020 %>%
   dplyr::filter(motivodeegreso!="Derivación") %>%
   as.data.table()
 
+c26 <- c(
+  "dodgerblue2", "#E31A1C", # red
+  "green4",
+  "#6A3D9A", # purple
+  "#FF7F00", # orange
+  "black", "gold1",
+  "skyblue2", "#FB9A99", # lt pink
+  "palegreen2",
+  "#CAB2D6", # lt purple
+  "#FDBF6F", # lt orange
+  "gray70", "khaki2",
+  "maroon", "orchid1", "deeppink1", "blue1", "steelblue4",
+  "darkturquoise", "green1", "yellow4", "yellow3",
+  "darkorange4", "brown", "gray40")
+
 require(sqldf)
 require(gridExtra)
+require(wesanderson)
   ans3 <- sqldf("SELECT *
                  FROM CONS_C1_df_dup_intervals AS x  
                  INNER JOIN CONS_C1_df_dup_intervals AS y 
@@ -639,7 +654,7 @@ total_plot <- ans3 %>%
           panel.grid.minor=element_blank(),plot.background=element_blank()) +
   theme(plot.caption = element_text(hjust = 0, face= "italic")) +
     labs(x = "Dates of admission and discharge", y = "", caption="Note. Only patients that share characteristics and overlap between them")+
-    ggtitle("Figure 4.1 Trajectories of every HASH from dates of admission to discharge")
+    ggtitle("Figure 4.1 Trajectories of HASHs from dates of admission to discharge")
 sample_plot <- ans3 %>% 
     dplyr::arrange(HASH_KEY_2, fech_ing_num2, row) %>% 
   dplyr::slice(random:(random+25)) %>%
@@ -653,6 +668,7 @@ sample_plot <- ans3 %>%
           panel.grid.minor=element_blank(),plot.background=element_blank()) +
   #scale_x_date(breaks = scales::date_breaks("1 year"), date_labels = "%b %d") +
     theme(plot.caption = element_text(hjust = 0, face= "italic")) +
+  scale_color_manual(values=c26) +
     labs(x = "Dates of admission and discharge", y = "", caption="Note. Only patients that share characteristics overlap between them",
          subtitle="Sample of 25 cases. Colored lines represent different rows in the dataset, but same HASH")+
     ggtitle("Figure 4.2 Trajectories of every HASH from dates of admission to discharge")
@@ -677,9 +693,9 @@ clean_plot <- CONS_C1_df_dup_ENE_2020 %>%
           axis.ticks=element_blank(),axis.title.y=element_text("HASHs"),
           axis.title.x=element_text(""),legend.position="none",
           panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
-          panel.grid.minor=element_blank(),plot.background=element_blank(), plot.title = element_text(hjust = -0.25)) +
+          panel.grid.minor=element_blank(),plot.background=element_blank(), plot.title = element_text(hjust = -0.25))+
   #scale_x_date(breaks = scales::date_breaks("1 year"), date_labels = "%b %d") +
-    theme(plot.caption = element_text(face= "italic",hjust = -0.35)) +
+    theme(plot.caption = element_text(face= "italic",hjust = 0)) +
     theme(axis.text.y = element_text(size = rel(0.65))) +
     labs(x = "Dates of admission and discharge", y="HASHs", caption="Note. Only patients that share characteristics overlap between them",
          subtitle="Example of 4 clean trajectories. Colored lines represent different rows in the dataset,\nbut same HASH")+
