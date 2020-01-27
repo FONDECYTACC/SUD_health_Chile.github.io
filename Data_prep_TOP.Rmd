@@ -119,7 +119,7 @@ CONS_TOP_df %>%
 &nbsp;
 <br>
 
-In the transformation of the dates of admission, we found an important amount of missing values. However, **there were `r CONS_TOP_df %>% dplyr::filter(is.na(fech_ap_top)) %>% summarise(n())` missing dates of application of the TOP** and  `r CONS_TOP_df %>% dplyr::filter(is.na(fech_nac)) %>% summarise(n())` missing birth dates (despite `r CONS_TOP_df %>% dplyr::filter(!is.na(fech_nac)) %>% dplyr::select(fech_nac) %>% dplyr::filter(fech_nac<"1929-11-01"|fech_nac>"2001-11-01")  %>% nrow()` cases could be invalid according to the criteria stated by SENDA's professionals). **Considering the characteristics of TOP programs and monitoring, it may be possible to impute these dates from the C1 dataset, using the date of application if it is within the ranges of an specific treatment.**
+In the transformation of the dates of admission, we found an important amount of missing values. However, **there were `r CONS_TOP_df %>% dplyr::filter(is.na(fech_ap_top)) %>% summarise(n())` missing dates of application of the TOP** and  `r CONS_TOP_df %>% dplyr::filter(is.na(fech_nac)) %>% summarise(n())` missing birth dates (despite `r CONS_TOP_df %>% dplyr::select(Edad) %>% dplyr::filter(Edad<18|Edad>90) %>% nrow()` cases could be invalid according to the criteria stated by SENDA's professionals). **Considering the characteristics of TOP programs and monitoring, it may be possible to replace dates from the cases that share the same information within the TOP dataset, or obtain it from C1 dataset, using the date of application as a reference to determine the adequate date of admission.**
 
 <br>
 
@@ -153,7 +153,7 @@ Considering that the dates of admission to the treatment and discharge may let u
 
 <br>
 
-### 2. Replacing dates.
+### 2. Replacing dates
 
 <br>
 
@@ -165,11 +165,11 @@ CONS_TOP_df_dup_fech_ing_adm <- dplyr::select(CONS_TOP_df, HASH_KEY, fech_ap_top
 CONS_TOP_df_dup_fech_ing <- dplyr::select(CONS_TOP_df, HASH_KEY, fech_ap_top, fech_ing, TOP)%>% 
   dplyr::filter(!is.na(fech_ing)) 
 ######################################
-nrow(CONS_TOP_df_dup_fech_ing) ##DESPITE HAS MORE ROWS, DOES NOT MAKE A DIFFERENCE IN THE QUANTITY
-nrow(CONS_TOP_df_dup_fech_ing_adm)
+#nrow(CONS_TOP_df_dup_fech_ing) ##DESPITE HAS MORE ROWS, DOES NOT MAKE A DIFFERENCE IN THE QUANTITY
+#nrow(CONS_TOP_df_dup_fech_ing_adm)
 #################################
 #Join datasets 
-dplyr::left_join(CONS_TOP_df,CONS_TOP_df_dup_fech_ing_adm, by = c("HASH_KEY", "fech_ap_top"), suffix = c("", ".y")) %>% #names() #junto con la BD que hice
+dplyr::left_join(CONS_TOP_df,CONS_TOP_df_dup_fech_ing, by = c("HASH_KEY", "fech_ap_top"), suffix = c("", ".y")) %>% #names() #junto con la BD que hice
   dplyr::filter(!is.na(fech_ing.y), is.na(fech_ing)) %>%  #filtro los casos que en que sí tengo fecha de ingreso en el merge, pero no la tengo en la BD.
   dplyr::select(row,ano_bd, HASH_KEY, hash_rut_completo, id_mod, Edad, Sexo, fech_ing, fech_ap_top, TOP, fech_ing.y) %>% #dejo para ver cómo la icorporo
       knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
@@ -196,13 +196,15 @@ dplyr::left_join(CONS_TOP_df_dup_fech_ing_adm, by = c("HASH_KEY", "fech_ap_top",
 #str(CONS_TOP_df_dup_ENE_2020_prev0) #TENGO PROBLEMAS PARA FORMATEAR LA ECHA DE INGRESO SIN HORAS
 ```
 
-Done this, we still find many cases (`r formatC(CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(is.na(fech_ing)) %>% nrow(), format="f", big.mark=",", digits=0)`) that do not have a date of admission. Another option would be to replace the date of admission from the date of application, in the event of application. However, this was not possible due to an inaccuracy of data, observed in the difference between those that have both dates available (Mean=`r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Mean)`,Mdn= `r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Median)`,[`r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Q25)`- `r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Q75)`]).
+Done this, we still find many cases (`r formatC(CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(is.na(fech_ing)) %>% nrow(), format="f", big.mark=",", digits=0)`) that do not have a date of admission. Another option would be to replace the date of admission from the date of application, in the event of application. However, this was not possible due to an inaccuracy of data, observed in the difference between those that have both dates available (Mean=`r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Mean)`; Mdn= `r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Median)` [Q1= `r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Q25)`, Q3= `r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Q75)`]).
 
 ```{r diff_dates_adm_application, echo=FALSE, fig.align='center',fig.cap= "Figure 2. Histogram of Differences Between Dates of Admission and Dates of Application of TOP, among those questionnaires applied in the stage of admission"}
 CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% dplyr::select(diff_fech_ing_ap) %>% dplyr::rename("Diff. in Dates of Admission & Date of Application of TOP"="diff_fech_ing_ap") %>% hist()
 ```
 
-In Table 3, we may see how many dates could be replaced by the dates in C1. We replace these dates by filtering the applications correspondent to the event of admission that had missing data. Then, we paired them with cases in C1 with the same HASH and the same date of admission (in which the date of application of the TOP for admission coincides with the date of admission in C1), and then we replaced it with this corresponding date.
+<br>
+
+In Table 3, we may see how many dates could be replaced by the dates in C1. We replace these dates by filtering the applications correspondent to the event of admission that had missing data. Then, we pair them with cases in C1 with the same HASH and the same date of admission (in which the date of application of the TOP for admission coincides with the date of admission in C1), and finally we replace it with this corresponding date.
 
 ```{r replace_date_adm_table_c1}
   #debiese poneruyha, HASHs with missing dates of admission that can be replaced by cases in C1 with the same characteristics",
@@ -232,21 +234,107 @@ CONS_TOP_df_dup_ENE_2020_prev0 %>%
   dplyr::left_join(dplyr::select(CONS_C1_df_rownum,HASH_KEY, fech_ing,row_leftjoin, fech_ing_C1), by=c("HASH_KEY"="HASH_KEY", "fech_ap_top"="fech_ing", "row_leftjoin", "row_leftjoin"), suffix=c(".TOP",".C1"))%>%
   dplyr::mutate(fech_ing= ifelse((is.na(fech_ing))&(TOP=="Ingreso"),as.Date(as.numeric(fech_ing_C1), format="%Y-%m-%d"), fech_ing)) %>%
   dplyr::mutate(fech_ing=as.POSIXct(strftime(as.POSIXct(as.POSIXct(as.Date(as.character(lubridate::as_datetime(as.numeric(fech_ing)))),format='%Y-%m-%d',usetz = FALSE)+ 3*60*60,format='%Y-%m-%d',usetz = FALSE), format="%Y-%m-%d"),format='%Y-%m-%d',usetz = FALSE)) %>% 
+  dplyr::select(-fech_ing_C1, -row_leftjoin) %>%
 #  dplyr::filter(HASH_KEY %in% c("9b74476e88c81cb019a468106d65ac85","f0210e3f219b7c4b85d9767fc5446c73","d4eeee40471666533d3cbbda0901fada", "c6b57a1ddf9555842bd46216851bf2ee", "92be85e2ace88e24a99fe3980bcd5fc0", "2adfa7e2f6d763c1c6c2b5ed35889243", "ec15af2d6521535ae5bdc50459a62f8c", "978988a1c417f54963eb9f5d84f07c60"), TOP=="Ingreso", is.na(fech_ing_na)) %>% #c6b57a1ddf9555842bd46216851bf2ee  este no debería incorporarlo, porque debiese ser NA
  # View()
   assign("CONS_TOP_df_dup_ENE_2020_prev1",., envir = .GlobalEnv) 
 ```
 
+
+<br>
+
+And what about another important event that is present along the C1 dataset?. Unfortunatelly, dates of admission could hot be replaced by the dates in C1 following this criteria. We filtered the applications correspondent to the event of discharge that had missing data in the date of admission (n= `r CONS_TOP_df_dup_ENE_2020_prev1 %>% dplyr::filter(TOP=="Egreso", is.na(fech_ing)) %>% nrow()`). Then, we paired them with cases in C1 with the same HASH and the same date of discharge (in which the date of application of the TOP for discharge coincides with the date of discharge in C1), but we ended with `r CONS_TOP_df_dup_ENE_2020_prev1 %>% dplyr::filter(TOP=="Egreso", is.na(fech_ing)) %>% dplyr::inner_join(dplyr::select(CONS_C1_df_dup_ENE_2020,HASH_KEY, fech_ing, fech_egres), by=c("HASH_KEY"="HASH_KEY", "fech_ap_top"="fech_egres"), suffix=c(".TOP",".C1")) %>% as.data.frame() %>% nrow()` cases to match.
+
+<br>
+
+Another alternative could be the matching by coincing HASHs and years at the time of admission. However, we require to have valid ages in the TOP dataset. There were `r CONS_TOP_df_dup_ENE_2020_prev1 %>% dplyr::filter(!is.na(fech_nac)) %>% dplyr::select(fech_nac) %>% dplyr::filter(fech_nac<"1929-03-19"|fech_nac>"2001-11-01")  %>% nrow()` cases with invalid values in age. In the following table, these cases are described in depth.
+
+<br>
+
+```{r edad, cache=T}
+#CONS_TOP_df_dup_ENE_2020_prev1 %>% dplyr::filter(!is.na(fech_nac)) %>% dplyr::select(fech_nac, Edad) %>% dplyr::filter(fech_nac<"1929-03-19"|fech_nac>"2001-11-01")  %>% nrow()
+
+#El filtro que hice yo no sirvió mucho, los rangos de edad. Ahí lo corregí por la influencia de 1929-03-20
+#INVESTIGAR ESTE CASO.
+  CONS_TOP_df_dup_ENE_2020_prev1 %>% dplyr::filter(Edad<18|Edad>90) %>%
+    dplyr::select(row, HASH_KEY, id_mod, fech_nac, ano_bd,Edad,fech_ing) %>%
+ knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 4. Cases that have a wrongly asigned age",
+              col.names = c("Row ID","HASH KEY","SENDA's ID","Year of Birth","Year of Dataset",  "Age", "Date of Admission"),
+                 align =rep('c', 101))  %>%
+   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  kableExtra::scroll_box(width = "100%", height = "350px")
+```
+
+<br>
+
+An important amount of cases were available in the TOP dataset, permitting to replace invalid ages with the right information. The next table presents those HASHs that had other registries with a valid age.
+
+<br>
+
+```{r wrong ages duplicates, echo=T,cache=T, paged.print=TRUE}
+#list of distinct HASHs that have a wrongly assigned age
+CONS_TOP_df_dup_ENE_2020_prev1 %>% dplyr::filter(Edad<18|Edad>90) %>%
+   dplyr::select(HASH_KEY, Edad) %>%
+  dplyr::distinct(HASH_KEY) %>%
+  assign("distinct_hash_wrong_age2_top",., envir = .GlobalEnv)
+
+#Then, apply these cases to the whole population
+CONS_TOP_df_dup_ENE_2020_prev1 %>%
+dplyr::filter(HASH_KEY %in% as.character(as.vector(unlist(as.data.table(unlist(distinct_hash_wrong_age2_top)))))) %>% # select hashs of wrongly assigned ages
+dplyr::arrange(HASH_KEY) %>% #order by hashs 
+  dplyr::filter(Edad>=18,Edad<=90) %>% #nrow() #if you want to see how many cases would be changed: 58
+      dplyr::select(row, ano_bd, HASH_KEY, id_mod, fech_nac, ano_bd,Edad, fech_ing, fech_ap_top, everything()) %>%
+  dplyr::select(-ID) %>%
+ knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 5. Total cases with wrong ages but their HASH had a valid age along the dataset",
+                 align =rep('c', 101))  %>%
+   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  kableExtra::scroll_box(width = "100%", height = "350px")
+```
+
+<br>
+
+We replaced SENDA's ID, age, ID and date of birth to those cases, to get a much clean dataset of valid cases. **One observation that come from this transformation, is that many of TOPs applications that had missing values in one value, has missing values in many other more. Possibly, there are duplicated events, and some of them were invalid. If this is true, we only need to discard events with incomplete data instead of replacing them with valid information. But first we need to check whether this happens or not. This have to be contrasted in the next stages of data preparation**.
+
+<br>
+
+```{r edad_save, cache=T}
+CONS_TOP_df_dup_age <- dplyr::select(CONS_TOP_df_dup_ENE_2020_prev1, HASH_KEY, ID, id_mod, Edad, fech_nac)%>% 
+                      dplyr::filter(Edad>=18, Edad<=90) %>% #%>%  #dim rows 85490, 4 columns
+                      dplyr::filter(!duplicated(HASH_KEY)) #lo mismo que  dplyr::distinct(HASH_KEY)
+##CON EL DISTINCT ME SALVO DE SUMAR MÁS FILAS A LA BASE DE DATOS.
+#Join datasets 
+  dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev1,dplyr::select(CONS_TOP_df_dup_age,HASH_KEY,Edad, ID,id_mod, fech_nac), by = "HASH_KEY", suffix = c("", ".y")) %>% # dim()
+    dplyr::mutate(ID= ifelse((Edad<18 & !is.na(Edad.y))|(Edad>90 & !is.na(Edad.y)),ID.y, ID)) %>%
+    dplyr::mutate(id_mod=ifelse((Edad<18 & !is.na(Edad.y))|(Edad>90 & !is.na(Edad.y)),id_mod.y,id_mod)) %>% 
+    dplyr::mutate(fech_nac=ifelse((Edad<18 & !is.na(Edad.y))|(Edad>90 & !is.na(Edad.y)),as.Date(as.numeric(fech_nac.y), format="%Y-%m-%d"),fech_nac)) %>% 
+    dplyr::mutate(Edad= ifelse(Edad<18|Edad>90,Edad.y, Edad)) %>% #treat as invalID
+    dplyr::mutate(fech_nac=as.POSIXct(strftime(as.POSIXct(as.POSIXct(as.Date(as.character(lubridate::as_datetime(as.numeric(fech_nac)))),format='%Y-%m-%d',usetz = FALSE)+ 3*60*60,format='%Y-%m-%d',usetz = FALSE), format="%Y-%m-%d"),format='%Y-%m-%d',usetz = FALSE)) %>%
+    dplyr::mutate(Edad_al_ing=lubridate::time_length(difftime(as.Date(fech_ing), as.Date(fech_nac)),"years")) %>%
+    dplyr::mutate(Edad_al_ing=replace(Edad_al_ing, is.na(Edad), NA)) %>%
+##un resumen   
+     #dplyr::group_by(Edad) %>% summarise(n=n()) %>%  #baja de 273 a 227
+#PA4RA REVISAR
+        #dplyr::filter(HASH_KEY %in% as.character(as.vector(unlist(as.data.table(unlist(distinct_hash_wrong_age2_top)))))) %>% # select hashs of wrongly assigned ages. Hay               algunos que no los va a encontrar porque no los tiene, no mas
+        #dplyr::select(HASH_KEY, Edad, fech_nac, Edad.y, fech_nac.y, fech_ing, ID, id_mod, ID.y, Edad_al_ing) %>%
+        #arrange(HASH_KEY) %>%
+         #   View() 
+dplyr::select(-id_mod.y, -ID.y, -Edad.y, -fech_nac.y) %>% 
+assign("CONS_TOP_df_dup_ENE_2020_prev2",., envir = .GlobalEnv) 
+```
+
 ### 3. Inconsistencies between SENDA's ID and HASH Key
 
 <br>
+
 ```{r inconsistencies_in_id_inconsistent_hashs, cache=T}
     #Take which has a combination of IDs and HASH Keys distinct to the rest
     #With this I may be subestimating the number of cases with a different concatenation.
     #Considering all the distinct combinations, i take what they have a duplicate ID
     #Select the duplicate IDs, it orders and...
     #Filter only cases that has distinct id.
-    CONS_TOP_df %>% mutate(concat=paste0(ID,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% 
+    CONS_TOP_df_dup_ENE_2020_prev2 %>% mutate(concat=paste0(ID,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% 
       dplyr::filter(duplicated(ID)) %>% #filter cases that have than one 
   dplyr::arrange(ID) %>%  #filter cases in which there is more than one ID, 
       #despite there is differents combinations of HASH and IDs, and then arrange IDs. This is possible only if a different HASH-Key contains more than one ID or viceversa.
@@ -254,10 +342,7 @@ CONS_TOP_df_dup_ENE_2020_prev0 %>%
       dplyr::distinct(ID) %>% 
       assign("ids_more_one_hash_TOP",., envir = .GlobalEnv) # Differently put, take the distints IDs per HASH-Key, of the cases in which there are different combinations                                                      
     # of IDs and hash, and in which subgroup exists duplicated IDs.
-
-
     #There are 33 IDs that have more than one HASH key.
-    
     #IMPORTANT: IF THE ID IS DUPLICATED, MIGHT NOT BE REFLECTED IN THIS RESUME IN TERMS OF QUANTITY.
 ```
 
@@ -267,13 +352,13 @@ In order to check whether individual IDs (RUT) masked into HASH keys are consist
 
 ```{r inconsistencies_in_id}
     # Then, apply these cases to the whole population. 
-    CONS_TOP_df %>%
+    CONS_TOP_df_dup_ENE_2020_prev2 %>%
       dplyr::filter(ID %in% as.character(as.vector(unlist(as.data.table(unlist(ids_more_one_hash_TOP)))))) %>% # Select IDs of cited cases
       dplyr::arrange(ID) %>% #ordeno por ids 
       #183 cases may be affected with this problem
       dplyr::select(row, ano_bd, id_mod, HASH_KEY, hash_rut_completo , Edad, Sexo,fech_ing,Plan.de.Tratamiento, Nombre.del.Centro, Tipo.Centro, Región.Centro, Comentario) %>%
       knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 5. Total registries that each ID have more than one HASH-KEY",
+               caption="Table 6. Total registries that each ID have more than one HASH-KEY",
               col.names = c("Row ID","Year of Dataset", "SENDA's ID", "HASH KEY", "HASH Key (Alternative)","Year", "Sex", "Date of Admission", "Treatment Plan", "Center", "Type of Center", "Region", "Comment"),
                  align =rep('c', 6))  %>%
   kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
@@ -294,7 +379,7 @@ To define what can be considered as a unique event, we identified how many uniqu
 ```{r Duplicated}
     #create the duplicated dataset, following the recommendation to separate columns
     
-    as.data.table(CONS_TOP_df)[, dup_hash_date_top := .N, by = c("HASH_KEY","fech_ing")] %>% ##dim()
+    as.data.table(CONS_TOP_df_dup_ENE_2020_prev2)[, dup_hash_date_top := .N, by = c("HASH_KEY","fech_ing")] %>% ##dim()
       dplyr::group_by(dup_hash_date_top) %>%
       dplyr::summarise(n=n()) %>%
       mutate(perc = round(n / sum(n),2)*100) %>%
@@ -302,46 +387,46 @@ To define what can be considered as a unique event, we identified how many uniqu
       as.data.frame(.) %>%
     # Duplicated rows
       knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 6. Frequency and Percentage of Duplicated Values of the combination of HASH-Key & Date of Admission", 
+                   caption="Table 7. Frequency and Percentage of Duplicated Values of the combination of HASH-Key & Date of Admission", 
                    col.names= c("Times present in Dataset", " Frequencies", "Percentage"),  align =rep('c', 2))  %>%
       kable_styling(bootstrap_options = c("striped", "hover"),font_size = 11) %>%
   scroll_box(width = "100%", height = "350px")
     ```
 <br>
 
-One of them is the date of application of the TOP questionnaire. As can be seen in Table 7, 94% of the registries are unique combinations of date of application of the TOP questionnaire and HASH key.
+One of them is the date of application of the TOP questionnaire. As can be seen in Table 8, 94% of the registries are unique combinations of date of application of the TOP questionnaire and HASH key.
 
 <br>
 
 ```{r Duplicated2}
-    duplicated_rows_concat_TOP2 <- data.frame(duplicated_HASH_date = duplicated(CONS_TOP_df[,c("HASH_KEY","fech_ap_top")]), 
-                                         row_dup_HASH_date = 1:nrow(CONS_TOP_df[,c("HASH_KEY","fech_ap_top")])) #%>%
+    duplicated_rows_concat_TOP2 <- data.frame(duplicated_HASH_date = duplicated(CONS_TOP_df_dup_ENE_2020_prev2[,c("HASH_KEY","fech_ap_top")]), 
+                                         row_dup_HASH_date = 1:nrow(CONS_TOP_df_dup_ENE_2020_prev2[,c("HASH_KEY","fech_ap_top")])) #%>%
 
-    as.data.table(CONS_TOP_df)[, dup_hash_date_ap := .N, by = c("HASH_KEY","fech_ap_top")] %>% ##dim()
+    as.data.table(CONS_TOP_df_dup_ENE_2020_prev2)[, dup_hash_date_ap := .N, by = c("HASH_KEY","fech_ap_top")] %>% ##dim()
       dplyr::group_by(dup_hash_date_ap) %>%
       dplyr::summarise(n=n()) %>%
       mutate(perc = round(n / sum(n),3)*100) %>%
       mutate(perc = paste0(perc,"%")) %>%
       as.data.frame(.) %>%
       knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 7. Frequency and Percentage of Duplicated Values of the combination of HASH-Key & Date of Application of TOP", 
+                   caption="Table 8. Frequency and Percentage of Duplicated Values of the combination of HASH-Key & Date of Application of TOP", 
                    col.names= c("Times present in Dataset", " Frequencies", "Percentage"),  align =rep('c', 2))  %>%
       kable_styling(bootstrap_options = c("striped", "hover"),font_size = 11) %>%
   scroll_box(width = "100%", height = "350px")
 ```
 <br>
 
-  As can be seen in Table 8, in some cases the only thing that varies is the stage of treatment (005238a56b9614ead0903bb264de7be9_2016-12-28) in others also varies the qualitative observations (67e87f8ff93505867ccab2eb0150c7f0_2016-06-29) or variables relative to the content of the evaluation (f414c49e178c414f020b114b09d962d2_2017-06-23). **Can a single  combination of date of query and HASH have different dates of admission?**
+  As can be seen in Table 9, in some cases the only thing that varies is the stage of treatment (005238a56b9614ead0903bb264de7be9_2016-12-28) in others also varies the qualitative observations (67e87f8ff93505867ccab2eb0150c7f0_2016-06-29) or variables relative to the content of the evaluation (f414c49e178c414f020b114b09d962d2_2017-06-23). **Can a single  combination of date of query and HASH have different dates of admission?**
 
 <br>
 
 ```{r Duplicated2.2}
-as.data.table(CONS_TOP_df)[, dup_hash_date_ap := .N, by = c("HASH_KEY","fech_ap_top")] %>%
+as.data.table(CONS_TOP_df_dup_ENE_2020_prev2)[, dup_hash_date_ap := .N, by = c("HASH_KEY","fech_ap_top")] %>%
   dplyr::filter(dup_hash_date_ap>1) %>% #Aquí veo quienes aparecen más de una vez
   dplyr::arrange(HASH_KEY,fech_ap_top) %>% 
   dplyr::select(HASH_KEY, hash_rut_completo, id_mod, ano_bd, fech_ap_top, TOP,fech_nac, Edad, Sexo, Plan.de.Tratamiento, Nombre.del.Centro, Sustancia.Principal.1, Sustancia.Principal.2, Sustancia.Principal.3, starts_with("Total"),starts_with("Dósis")) %>%
       knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 8. Duplicated rows of the combination of HASH-Key & Date of Application of TOP", 
+                   caption="Table 9. Duplicated rows of the combination of HASH-Key & Date of Application of TOP", 
                    #col.names= c("Duplicated", " Frequencies", "Percentage"),
                    align =rep('c', 102))  %>%
       kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
@@ -360,37 +445,37 @@ We need reduce the number of cases, but in the mean time, try to reduce the loss
 
 ```{r deduplication1, echo=T, cache=T, paged.print=TRUE}
 #create vector with variable names
-names_top <- names(CONS_TOP_df[,c(1,2,4,8,10:48)])
+names_top <- names(CONS_TOP_df_dup_ENE_2020_prev2[,c(1,2,4,8,10:48)])
 #Group by duplicated rows 
-as.data.table(CONS_TOP_df)[, dup_todo_TOP := .N, by = names_top] %>%
+as.data.table(CONS_TOP_df_dup_ENE_2020_prev2)[, dup_todo_TOP := .N, by = names_top] %>%
   data.table::as.data.table() %>%
-  assign("CONS_TOP_df_dup_ENE_2020_prev",.,envir = .GlobalEnv)
+  assign("CONS_TOP_df_dup_ENE_2020_prev3",.,envir = .GlobalEnv)
 #summarise duplicates and times
-as.data.table(CONS_TOP_df)[, dup_todo_TOP := .N, by = names_top] %>%
+as.data.table(CONS_TOP_df_dup_ENE_2020_prev3)[, dup_todo_TOP := .N, by = names_top] %>%
   dplyr::group_by(dup_todo_TOP) %>%
   dplyr::summarise(n()) %>%
   data.frame() %>%
   dplyr::rename("Times present in Dataset"=dup_todo_TOP, "Number of Rows"=`n..`) %>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 9. Duplicated cases in almost every variable",
+               caption="Table 10. Duplicated cases in almost every variable",
                  align ="cccc")  %>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10)
 ```
 
 ```{r dataset_creation, echo=F, paged.print=TRUE, cache=T, warning=F}
-data.table::data.table(CONS_TOP_df_dup_ENE_2020_prev) %>%
+data.table::data.table(CONS_TOP_df_dup_ENE_2020_prev3) %>%
   dplyr::arrange(desc(ano_bd)) %>%
   dplyr::distinct_(.dots = names_top, .keep_all = TRUE) %>%
   dplyr::arrange(HASH_KEY, fech_ing, fech_ap_top, desc(ano_bd)) %>%
   data.table::as.data.table() %>%
-  assign("CONS_TOP_df_dup_ENE_2020_prev2",.,envir = .GlobalEnv)
+  assign("CONS_TOP_df_dup_ENE_2020",.,envir = .GlobalEnv)
 #Unlike base sorting with sort(), NA are: always sorted to the end for local data, even when wrapped with desc().
 ```
 
 &nbsp;
 <br>
 
-As seen in Table 9, not many cases were dropped, which can be interpreted that there is different information regarding patients and specific treatments in each of the remaining `r nrow(CONS_TOP_df_dup_ENE_2020_prev2) %>% formatC(., format="f", big.mark=",", digits=0)` rows. 
+As seen in Table 10, not many cases were dropped, which can be interpreted that there is different information regarding patients and specific treatments in each of the remaining `r nrow(CONS_TOP_df_dup_ENE_2020) %>% formatC(., format="f", big.mark=",", digits=0)` rows. 
 
 
 &nbsp;
