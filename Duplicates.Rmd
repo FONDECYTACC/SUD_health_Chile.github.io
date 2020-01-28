@@ -72,7 +72,6 @@ if(!require(broom)){install.packages("broom")}
 if(!require(sqldf)){install.packages("sqldf")} 
 if(!require(devtools)){install.packages("devtools")}
 if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
-if(!require(wesanderson)){install_github("karthik/wesanderson")}
 if(!require(data.table)){install.packages("data.table")}
 if(!require(dplyr)){install.packages("dplyr")}
 ```
@@ -453,7 +452,7 @@ CONS_C1_df_dup_ENE_2020_prev3  %>%
                   Edad_al_ing=lubridate::time_length(difftime(as.Date(fech_ing), as.Date(fech_nac)),"years")) %>%
   dplyr::mutate(fech_nac=replace(fech_nac, is.na(Edad), NA)) %>%
   dplyr::mutate(Edad_al_ing=replace(Edad_al_ing, is.na(Edad), NA)) %>%
-   dplyr::select(-id_mod.TOP) %>%  
+   dplyr::select(-id_mod.TOP, -duplicated_HASH_date) %>%  
     #dplyr::group_by(Edad) %>% summarise(n=n()) %>% View()
     assign("CONS_C1_df_dup_ENE_2020",., envir = .GlobalEnv) 
 #PARA VER CÓMO SE COMPORTA CON IS.NA
@@ -513,7 +512,7 @@ as.data.table(CONS_C1_df_dup_ENE_2020)[, dup_hash_date := .N, by = c("HASH_KEY",
   geom_line(color = "#0076A8", size=1) +
   #geom_text(aes(x = fech_ing_qrt, y = perc_dup-0.05, label = paste0(n)), vjust = -1,hjust = 0, angle=45, size=3) +
   sjPlot::theme_sjplot2() +
-  labs(y="% of Duplicated Data",x="Years & Quarters, Date of Admission",caption="Note. Two cases with date of admission before 2007 were ignored; Percentages indicate the number of entries that have the \n same HASH & date of admission one or more times divided by the number\n of cases that are admitted in each quarter and year") + ggtitle( "Figure 2. Duplicated entries  by year and quarter")+
+  labs(y="% of Duplicated Data",x="Years & Quarters, Date of Admission",caption="Note. Two cases with date of admission before 2007 were ignored; Percentages indicate the number of entries that have the \n same HASH & date of admission one or more times divided by the number of cases that are admitted in each quarter and \nyear.") + ggtitle( "Figure 2. Duplicated entries by year and quarter")+
   scale_y_continuous(limits=c(0, .075),labels = scales::percent) +
   scale_x_yearqtr(format="%YQ%q", n=20) +
   theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), plot.caption=element_text(hjust=0)) 
@@ -542,27 +541,15 @@ The code used in stata is shown here:
 <br>
 
 ```{stata, collectcode=TRUE}
-qui import delimited "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\CONS_C1_df_dup_ENE_2020.csv"
-cap gen real_fech_ing_ano = real(fech_ing_ano)
-cap gen real_fech_ing_mes = real(fech_ing_mes)
-cap gen real_fech_ing_dia = real(fech_ing_dia)
-cap gen edad_num = real(edad)
+import delimited "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\CONS_C1_df_dup_ENE_2020.csv", delimiter(";") clear 
+
 cap gen date_in = mdy(real_fech_ing_mes, real_fech_ing_dia, real_fech_ing_ano)
 cap gen date_in = mdy(fech_ing_mes, fech_ing_dia, fech_ing_ano)
-qui cap tab edad_num if edad_num>90 | edad_num<18
-qui cap browse if missing(real(fech_ing_mes))
-qui cap browse if missing(fech_ing)
-qui generate id_match = _n
+
+generate id_match = _n
 cap drop _id
 dtalink hash_key 25 -25 id 25 -25 sexo 10 0 idcentro 10 0 date_in 30 -30 5, block(edad) cutoff(70)
-
-qui browse _matchID if _score==80
-qui browse if _matchID== 24451
-qui browse  _matchID if _score==90
-qui browse hash_key sexo idcentro date_in edad fech_egres motivodeegreso  if _matchID== 45097
-
-qui browse _matchID row hash_key id edad sexo nombrecentro idcentro date_in fech_ing fech_egres dias_trat motivodeegreso tipo_de_programa tipo_de_plan senda if _score==90
-qui browse _matchID row hash_key id edad sexo nombrecentro idcentro date_in fech_ing fech_egres dias_trat motivodeegreso tipo_de_programa tipo_de_plan senda if _score==100
+drop if missing(_score)
 ```
 
 <br>
@@ -636,7 +623,6 @@ c26 <- c(
 
 require(sqldf)
 require(gridExtra)
-require(wesanderson)
   ans3 <- sqldf("SELECT *
                  FROM CONS_C1_df_dup_intervals AS x  
                  INNER JOIN CONS_C1_df_dup_intervals AS y 
@@ -690,13 +676,12 @@ clean_plot <- CONS_C1_df_dup_ENE_2020 %>%
   geom_segment(aes(x = fech_ing, xend = fech_egres,
                    y = HASH_KEY_2, yend = HASH_KEY_2,colour=as.factor(row),size=1/100)) + 
   theme(axis.line=element_blank(),
-          axis.ticks=element_blank(),axis.title.y=element_text("HASHs"),
+          axis.ticks=element_blank(),axis.title.y=element_text("HASHs"),axis.text.y=element_blank(),
           axis.title.x=element_text(""),legend.position="none",
           panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
-          panel.grid.minor=element_blank(),plot.background=element_blank(), plot.title = element_text(hjust = -0.25))+
+          panel.grid.minor=element_blank(),plot.background=element_blank(), plot.title = element_text(hjust = 0))+
   #scale_x_date(breaks = scales::date_breaks("1 year"), date_labels = "%b %d") +
     theme(plot.caption = element_text(face= "italic",hjust = 0)) +
-    theme(axis.text.y = element_text(size = rel(0.65))) +
     labs(x = "Dates of admission and discharge", y="HASHs", caption="Note. Only patients that share characteristics overlap between them",
          subtitle="Example of 4 clean trajectories. Colored lines represent different rows in the dataset,\nbut same HASH")+
     ggtitle("Figure 4.3 Trajectories of every HASH from dates of admission to discharge")
@@ -853,16 +838,40 @@ save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/3.Rdata")
 ```
 <br>
 
-Leaving behind the last questions that may condition the analysis, we ran a probabilistic match based on the criteria defined above in the **`dtalink`** software. In Table 17 there is a selection of probabilistics matches by 90 of the 100 points defined. The first two cases have the same date of admission and cause of discharge, but different dates of discharge and center of treatment and what is more important, they may be overlapping between them along 90 days. In contrast, the following 2 cases below do not overlap, but were matched due to de span of +/-5 days as a calliper.The next 3 cases correspond to a patient that was admitted in 2014-06-04 and may have abandoned a program in a determined center, but ended finishing treatment in another center in 2015. The next match that follows let us interpret that patient was registered in more than one center in a time lapse of 6 days, but the next patient may be in more than one center for 377 days (FEME1_-011993). The patient PAHE1_-111981 was admited for 0 days in a CESFAM, but changed to a therapeutical community inmmediately afterwards. Finally, case YAPO2**121989	and ROMA1_-011979 had the same date of admission but in a different center and not in a program of SENDA.
+Leaving behind the last questions that may condition the analysis, we ran a probabilistic match based on the criteria defined above in the **`dtalink`** software. In Table 17 there is a selection of probabilistics matches that have elements that are worth of discussion.  Most of them have many information in common, describing derivations to another center or parallel treatments, but come characteristics change, requiring to be precautious to not automatically delete one of them.
+
+* JOCA1**071981	shares the same date of admission and center. One of the cases is not part of the SENDA Program. The type of plan changes.
+* JOMA1**031956	have three dates of admission in the same center in the same dates and was derived one time, passed through a therapeutic discharge and then is dervided again. The type of plan changes. One of the registries have a difference of two days of 2 days in the admission.
+* LEMO2**101983	shares the same dates of admission and the same centre, but the type of plan changes. Both do not have a date of discharge.
+* ALOL1**101981	have a clear transition from being one day into a treatment for one day that he abandoned and was not considered a program of SENDA. Then he went to a treatment and did not left it until the day the dataset was retrieved.
+* Different is the case of DAAS2**091996: both treatments share the date of admission, but she was admitted in a treatment for 5 days that overlapped the next treatment. Although, this treatment was not considered as a SENDA program.
+* VAPR2**041981	have two programs with the same date of admission in the same center. Both programs are financed by SENDA but have different plans.
+* GAPE1**121980 registries	were obtained from the same yearly dataset, and share the date of admission and center, but not the date of discharge. Both are financed by SENDA.
+* JOSE1**121964	registries were obtained from the same yearly dataset, and share the date of admission and center, but not the date of discharge and plan of treatment. All are financed by SENDA.
+* ALNU1**051977 share the same date of admission but not the date of discharge.	Do not share the same treatment plan. It shows more days in treatment in a program not financed by SENDA.
+* ALNE1**101974	registries were obtained from the same yearly dataset, and share the date of admission and center, but not the plan and the date of discharge.
+* PAGA2**121972	registries were obtained from the same yearly dataset, and share the same date of admission. but not the same date of discharge or type of plan.
+* BACA1**011979	share the same date of admission but different center and date of discharge, both labelled as therapeutic discharge as a cause of discharge.
+* CLCA2**051976	have a difference of threee days in the date of admission between two treatments in different centers.
+* CLTO2**101979	share the same date of admission, but one of the treatments only lasted 6 days, being derived into the second one.
+* LUCA1**051994	have a clear transition from being two days in a treatment in one center to another.
+* MEGU2**121979	have a diference of two days in the date of admission in their treatments, and different dates of discharge and plans of their treatments.
+* MIOY1**031990 have a difference of two days in the date of admission in their treatments, and do not share center or date of discharge.
+* MOVA1**041983	registries were obtained from the same yearly dataset, have a difference of five days between the different dates of admission, both treatments overlapping by three days. Thet have different plans of treatment and center.
+* PAHE1**111981	have a difference of three days in the date of admission with a program of 0 days posterior to the first admission. Also they have different plans of treatment and center.
+* ROMA1**011979	registries were obtained from the same yearly dataset, but their dates of admission are different by one day, and centers and dates of discharge are different. Only one of the programs is financed by SENDA.
+* YAPO2**121989	registries were obtained from the same yearly dataset and share the same date of admission and date of discharge, but not the same center, being one of them not financed by SENDA.
 
 <br>
 
-```{r saving dates_w_o_discharge_date,echo=T, paged.print=TRUE}
+```{r saving dates_w_o_discharge_date, echo=T, paged.print=TRUE}
 CONS_C1_df_dup_ENE_2020 %>%
-dplyr::filter(row %in% c(54760,71542,83766,83830,58436,67549,59294,72579,73114,54953,56452,38864,53878,44514,53958,47284,54973,45002,45995,51619,61353,61572,52659,54383,47377)) %>% 
-  dplyr::arrange(factor(row, levels = c(54760,71542,83766,83830,58436,67549,59294,72579,73114,54953,56452,38864,53878,44514,53958,47284,54973,45002,45995,51619,61353,61572,52659,54383,47377))) %>%
-  dplyr::select(row,HASH_KEY,id_mod,Edad,Sexo,Nombre.Centro,ID.centro,fech_ing,fech_egres,dias_trat,motivodeegreso,tipo_de_programa,tipo_de_plan,SENDA) %>%
+dplyr::filter(row %in% c(149670,142875,8809,6864,151245,145140,160070,160066,135212,135017,85501,44753,41263,32299,12180,8809,14057,12517,14057
+,8752, 8013, 13040,6202,8799,6334,5571,2319,5530,3865,71542,54760,66467,46349,66785,54953,90796,83766,67549,58436,54973,47284,73114,72579,51619,45002,61572,61353,52659,54383)) %>% 
+  dplyr::arrange(factor(row, levels = c(149670,142875,8809,6864,12180,151245,145140,160070,160066,135212,135017,85501,44753,41263,32299,14057,12517,8752,8013,13040,6202,8799,6334,5571,2319,5530,3865,71542,54760,66467,46349,66785,54953,90796,83766,67549,58436,54973,47284,73114,72579,51619,45002,61572,61353,52659,54383))) %>%
+  dplyr::select(row,HASH_KEY, ano_bd, id_mod,Edad,Sexo,Nombre.Centro,ID.centro,fech_ing,fech_egres,dias_trat,motivodeegreso,tipo_de_programa,tipo_de_plan,SENDA) %>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               col.names= c("Row", "HASH_KEY", "Year of\nDataset", "ID","Year", "Sex", "Name of\nthe Center", "Center ID", "Date of\nAdmission", "Date of\n Discharge", "Treatment Days", "Cause of\nDischarge", "Type of\nProgram", "Type of\nplan", "SENDA\nProgram"),
                    caption="Table 17. Example of probabilistic matches", align =rep('c', 101)) %>%
     kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8)  %>%
   kableExtra::scroll_box(width = "100%", height = "350px")
@@ -877,3 +886,8 @@ Many selections for the purposes of the study are still being necessary until to
 ```{r  Fig 5, warning=FALSE, fig.align = "center", message=F, cache=T, out.width = "250%"}
 knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figure_Duplicates.jpg", dpi = 300)
 ```
+
+
+<!--- SÍ O SÍ, HACER LA LIMPIEZA DE LOS SENDA NO, PRINCIPALMENTE DE LOS QUE SE SUPERPONGAN, TAMBIÉN PREGUNTAR A ACC SI LOS CON 0 DÍAS DE TRATAMIENTO SE BORRARÁN O NO; DE AHI EMPEZAR A NORMALIZAR LOS PROGRAMAS Y PLANES DE ACUERDO CON CRITERIOS MAUREEN, PARA NO GENERAR DIFERENCIAS AHI Y PODER DEDUPLICAR TRANQUILO --->
+
+<!--- tipo_centro, convertir en factor 1. Privado, 2. Público;  --->
