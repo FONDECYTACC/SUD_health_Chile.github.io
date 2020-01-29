@@ -18,7 +18,7 @@ This page is composed by the following main topics:
 
 <br>
 
-The main processes implied in the preparation of datasets is be presented as follows.
+The main processes implied in the preparation of datasets is presented as follows.
 
 ##### Figure 1. Diagram of data preparation
 ![Diagram](Figures/RUT_Administración.svg) 
