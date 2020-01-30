@@ -68,6 +68,7 @@ if(!require(plotly)){install.packages("plotly")}
 if(!require(rbokeh)){install.packages("rbokeh")}
 if(!require(altair)){install.packages("altair")}
 if(!require(zoo)){install.packages("zoo")}
+if(!require(codebook)){install.packages("codebook")}
 if(!require(broom)){install.packages("broom")}
 if(!require(sqldf)){install.packages("sqldf")} 
 if(!require(devtools)){install.packages("devtools")}
@@ -116,7 +117,7 @@ data.table::data.table(CONS_C1_df_dup_ENE_2020_prev) %>%
 
 &nbsp;
 <br>
-Since these duplicated rows contained the same values, **no additional information is lost by deleting these rows**. Considering this, of the original `r formatC(nrow(CONS_C1_df_dup), format="f", big.mark=",", digits=0)` cases, only `r formatC(nrow(CONS_C1_df_dup_ENE_2020_prev), format="f", big.mark=",", digits=0)` rows were selected to the analysis. Still, we need to identify which row has nearly the same but more recent information regarding an specific treatment of a patient, that is why we need to eliminate duplicated rows, but **keep events that contemplates more days of treatment, or comes from more recent yearly datasets**. Table 2 shows HASHs that possess negative days of treatment and their entries. **We meed to clarify some dates in order to avoid overlap between treatments. As can be seen in Table 2, a few can be replaced by an event with siilar dates, but there were others that may be imuted once the dataset is normalized.** 
+Since these duplicated rows contained the same values, **no additional information is lost by deleting these rows**. Considering this, of the original `r formatC(nrow(CONS_C1_df_dup), format="f", big.mark=",", digits=0)` cases, only `r formatC(nrow(CONS_C1_df_dup_ENE_2020_prev), format="f", big.mark=",", digits=0)` rows were selected to the analysis. Still, we need to identify which row has nearly the same but more recent information regarding an specific treatment of a user, that is why we need to eliminate duplicated rows, but **keep events that contemplates more days of treatment, or comes from more recent yearly datasets**. Table 2 shows HASHs that possess negative days of treatment and their entries. **We meed to clarify some dates in order to avoid overlap between treatments. As can be seen in Table 2, a few can be replaced by an event with siilar dates, but there were others that may be imuted once the dataset is normalized.** 
 
 <br>
 
@@ -143,7 +144,7 @@ CONS_C1_df_dup_ENE_2020_prev %>%
 
 <br>
 
-The second stage consisted in **eliminating rows that contained duplicated values in some variables related to the patient and more contextual variables. The following were selected:** HASH Key (HASH_KEY), date of admission (fech_ing), type of center(tipo_centro), ID of the center(ID.centro), type of program (Tipo.de.Programa), type of plan (Tipo.de.Plan), SENDA program (SENDA), main substance of consumption (Sustancia.Principal), other substances (first, second and third) (Otras.Sustancias.), frequency of consumption of the main substance (Frecuencia.de.Consumo..Sustancia.Principal), substance of initiation (Sustancia.de.Inicio) and year of the initiation (Edad.Inicio.Consumo).
+The second stage consisted in **eliminating rows that contained duplicated values in some variables related to the users and more contextual variables. The following were selected:** HASH Key (HASH_KEY), date of admission (fech_ing), type of center(tipo_centro), ID of the center(ID.centro), type of program (Tipo.de.Programa), type of plan (Tipo.de.Plan), SENDA program (SENDA), main substance of consumption (Sustancia.Principal), other substances (first, second and third) (Otras.Sustancias.), frequency of consumption of the main substance (Frecuencia.de.Consumo..Sustancia.Principal), substance of initiation (Sustancia.de.Inicio) and year of the initiation (Edad.Inicio.Consumo).
 
 <br>
 
@@ -198,7 +199,7 @@ There were `r CONS_C1_df_dup_ENE_2020_prev2 %>% dplyr::select(ano_bd,id,HASH_KEY
 &nbsp;
 <br>
 
-Instead, there were `r CONS_C1_df_dup_ENE_2020_prev2 %>% mutate(concat=paste0(id,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% dplyr::filter(duplicated(id)) %>% dplyr::arrange(id) %>%  dplyr::select(HASH_KEY,id,hash_rut_completo) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)` patients with duplicated HASH's in each ID. This represents a `r paste0(round((CONS_C1_df_dup_ENE_2020_prev2 %>% mutate(concat=paste0(id,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% dplyr::filter(duplicated(id)) %>% dplyr::arrange(id) %>%  dplyr::select(HASH_KEY,id,hash_rut_completo) %>% nrow()/ CONS_C1_df_dup_ENE_2020_prev2 %>% nrow())*100,1),"%")` of the total cases.
+Instead, there were `r CONS_C1_df_dup_ENE_2020_prev2 %>% mutate(concat=paste0(id,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% dplyr::filter(duplicated(id)) %>% dplyr::arrange(id) %>%  dplyr::select(HASH_KEY,id,hash_rut_completo) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)` users with duplicated HASH's in each ID. This represents a `r paste0(round((CONS_C1_df_dup_ENE_2020_prev2 %>% mutate(concat=paste0(id,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% dplyr::filter(duplicated(id)) %>% dplyr::arrange(id) %>%  dplyr::select(HASH_KEY,id,hash_rut_completo) %>% nrow()/ CONS_C1_df_dup_ENE_2020_prev2 %>% nrow())*100,1),"%")` of the total cases. **According to indications from the professionals of SENDA, these duplicated rows correspond to different RUTs.**
 
 
 ```{r IDs w more than one hash, echo=T, paged.print=TRUE}
@@ -250,7 +251,7 @@ CONS_C1_df_dup_ENE_2020_prev2 %>%
 &nbsp;
 
 
-There were `r CONS_C1_df_dup_ENE_2020_prev2 %>% mutate(concat=paste0(id,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% dplyr::filter(duplicated(HASH_KEY)) %>% dplyr::arrange(HASH_KEY) %>%  dplyr::select(HASH_KEY,id,hash_rut_completo) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)` HASHs with duplicated ID's en each hash. This represents a `r paste0(round((CONS_C1_df_dup_ENE_2020_prev2 %>% mutate(concat=paste0(id,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% dplyr::filter(duplicated(HASH_KEY)) %>% dplyr::arrange(HASH_KEY) %>%  dplyr::select(HASH_KEY,id,hash_rut_completo) %>% nrow()/nrow(CONS_C1_df_dup_ENE_2020_prev2))*100,1),"%")` of the total cases. A much bigger number that could mean that **HASH could be less likely to represent more than one patient, compared to SENDAs ID.**
+There were `r CONS_C1_df_dup_ENE_2020_prev2 %>% mutate(concat=paste0(id,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% dplyr::filter(duplicated(HASH_KEY)) %>% dplyr::arrange(HASH_KEY) %>%  dplyr::select(HASH_KEY,id,hash_rut_completo) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)` HASHs with duplicated ID's en each hash. This represents a `r paste0(round((CONS_C1_df_dup_ENE_2020_prev2 %>% mutate(concat=paste0(id,"_",HASH_KEY)) %>% dplyr::distinct(concat, .keep_all = TRUE) %>% dplyr::filter(duplicated(HASH_KEY)) %>% dplyr::arrange(HASH_KEY) %>%  dplyr::select(HASH_KEY,id,hash_rut_completo) %>% nrow()/nrow(CONS_C1_df_dup_ENE_2020_prev2))*100,1),"%")` of the total cases. A much bigger number that could mean that **HASH could be less likely to represent more than one user, compared to SENDAs ID.**
 
 ## 3. Focus on Duplicated Cases and Dates of Admission
 
@@ -355,7 +356,7 @@ However, we may take account that there are `r paste0(round(CONS_C1_df_dup_ENE_2
 
 <br>
 
-This may condition the data linkage, given that if I assign a missing value to a patient that in other registry has the correct age, it won't be matched within the block assigned. In order to account for this possible bias, we checked whether cases may be replaced with data with another HASH Key.
+This may condition the data linkage, given that if I assign a missing value to a user that in other registry has the correct age, it won't be matched within the block assigned. In order to account for this possible bias, we checked whether cases may be replaced with data with another HASH Key.
 
 <br>
 
@@ -408,7 +409,7 @@ CONS_C1_df_dup_ENE_2020_prev3 %>%
   arrange(HASH_KEY) %>%
   dplyr::select(row, ano_bd, HASH_KEY, id_mod, ano_nac, ano_bd,fech_ing, fech_egres,tipo_de_plan, tipo_de_programa, ID.centro, Edad, SENDA) %>%
  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 10. Missing Ages among Patients with Wrong Dates of Birth",
+               caption="Table 10. Missing Ages among Users with Wrong Dates of Birth",
                  align =rep('c', 101))  %>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
   kableExtra::scroll_box(width = "100%", height = "350px")
@@ -587,12 +588,12 @@ hist(Duplicates_Matching_ene_2020$n, main=paste0("Figure 3. Histogram of HASH Ke
 
 <br>
 
-An analysis of duplicated events showed that many ranges between the dates of admission and discharge are overlapping due to derivations, principally by changes in the center of treatment, being the following the most repeated among cases: Centro Tratamiento Adicciones Unidos, Hospital Santa Cruz; and Centro de Tratamiento adicciones Esperanza, Hospital Santa Cruz. This could be seen in the fact that many patients may move from centers 221 to 591, 147 to 358, 164 to 325, or 200 to 203. However, **to identify overlappings in treatments it is necessary to obtain the missing dates, and clean the dates that may be wrong**.
+An analysis of duplicated events showed that many ranges between the dates of admission and discharge are overlapping due to derivations, principally by changes in the center of treatment, being the following the most repeated among cases: Centro Tratamiento Adicciones Unidos, Hospital Santa Cruz; and Centro de Tratamiento adicciones Esperanza, Hospital Santa Cruz. This could be seen in the fact that many users may move from centers 221 to 591, 147 to 358, 164 to 325, or 200 to 203. However, **to identify overlappings in treatments it is necessary to obtain the missing dates, and clean the dates that may be wrong**.
 
 &nbsp;
 <br>
 
-Figure 4 let us observe how many treatments overlap. Many patients start from 2000 to nowadays.  This graphic may be seem a bit noisy, but we should see less black colored regions and more white areas between lines. Regarding Figure 4.2, we selected 25 cases randomly assigned of a list of cases that may have overlapping treatments, in order to make possible an interpretation graphically, and we may appreciate that some horizontal lines (HASHs) may have more than one color (treatments) over time, each color above the other. In contrast, Figure 4.3 shows four examples of clean trajectories which does not have overlaps over time.
+Figure 4 let us observe how many treatments overlap. Many users start from 2000 to nowadays.  This graphic may be seem a bit noisy, but we should see less black colored regions and more white areas between lines. Regarding Figure 4.2, we selected 25 cases randomly assigned of a list of cases that may have overlapping treatments, in order to make possible an interpretation graphically, and we may appreciate that some horizontal lines (HASHs) may have more than one color (treatments) over time, each color above the other. In contrast, Figure 4.3 shows four examples of clean trajectories which does not have overlaps over time.
 
 <br>
 
@@ -639,7 +640,7 @@ total_plot <- ans3 %>%
           panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
           panel.grid.minor=element_blank(),plot.background=element_blank()) +
   theme(plot.caption = element_text(hjust = 0, face= "italic")) +
-    labs(x = "Dates of admission and discharge", y = "", caption="Note. Only patients that share characteristics and overlap between them")+
+    labs(x = "Dates of admission and discharge", y = "", caption="Note. Only users that share characteristics and overlap between them")+
     ggtitle("Figure 4.1 Trajectories of HASHs from dates of admission to discharge")
 sample_plot <- ans3 %>% 
     dplyr::arrange(HASH_KEY_2, fech_ing_num2, row) %>% 
@@ -655,7 +656,7 @@ sample_plot <- ans3 %>%
   #scale_x_date(breaks = scales::date_breaks("1 year"), date_labels = "%b %d") +
     theme(plot.caption = element_text(hjust = 0, face= "italic")) +
   scale_color_manual(values=c26) +
-    labs(x = "Dates of admission and discharge", y = "", caption="Note. Only patients that share characteristics overlap between them",
+    labs(x = "Dates of admission and discharge", y = "", caption="Note. Only users that share characteristics overlap between them",
          subtitle="Sample of 25 cases. Colored lines represent different rows in the dataset, but same HASH")+
     ggtitle("Figure 4.2 Trajectories of every HASH from dates of admission to discharge")
     #+
@@ -682,7 +683,7 @@ clean_plot <- CONS_C1_df_dup_ENE_2020 %>%
           panel.grid.minor=element_blank(),plot.background=element_blank(), plot.title = element_text(hjust = 0))+
   #scale_x_date(breaks = scales::date_breaks("1 year"), date_labels = "%b %d") +
     theme(plot.caption = element_text(face= "italic",hjust = 0)) +
-    labs(x = "Dates of admission and discharge", y="HASHs", caption="Note. Only patients that share characteristics overlap between them",
+    labs(x = "Dates of admission and discharge", y="HASHs", caption="Note. Only users that share characteristics overlap between them",
          subtitle="Example of 4 clean trajectories. Colored lines represent different rows in the dataset, but same HASH")+
     ggtitle("Figure 4.3 Trajectories of every HASH from dates of admission to discharge")
 
@@ -834,6 +835,122 @@ dplyr::mutate(fech_egres_corr= ifelse(is.na(fech_egres),fech_egres_num2,as.chara
 #  dplyr::right_join(CONS_C1_df_dup_ENE_2020_w_date_disch,by="concat") %>% 
 #  dplyr::filter(!is.na(fech_ap_top)) %>%
 #  dplyr::select(HASH_KEY.x, fech_ing.x,concat,fech_egres,fech_ap_top) %>%View()
+
+  metadata(CONS_C1_df_dup_ENE_2020)$name <- "Agreement 1 SENDA"
+  metadata(CONS_C1_df_dup_ENE_2020)$description <- "Information About Agreement 1 of SENDA and MINSAL"
+  
+codebook::var_label(CONS_C1_df_dup_ENE_2020) <- list(row = 'Numerador de los eventos presentes en la Base de Datos/Events in the Dataset',
+TABLE = 'Origen de los Datos (de los archivos por año)/Source of Data (of files per year)',
+HASH_KEY = 'Codificación del RUT/Masked Identifier (RUT)',
+ano_bd = 'Año de la Base de Datos/Year of the Dataset (Source)',
+id = 'Codigo Identificación de SENDA/SENDAs ID',
+Nombre.Centro = 'Nombre del Centro de Tratamiento/Treatment Center',
+tipo_centro = 'Tipo de Centro/Type of Center',
+Región.del.Centro = 'Región del Centro/Chilean Region of the Center',
+Servicio.de.Salud = 'Servicio de Salud/Health Service',
+Tipo.de.Programa = '(original, Recodificado en tipo_de_programa)/',
+Tipo.de.Plan = '(original, Recodificado en tipo_de_plan)/',
+SENDA = 'SENDA/SENDA',
+dias_trat = 'Días de Tratamiento/Days of Treatment',
+nmesesentratamiento = 'Número de Meses en Tratamiento/Number of Months in Treatment',
+Dias.en.SENDA = 'Días en SENDA/Days in SENDA',
+N.Meses.en.SENDA = 'Número de Meses en SENDA/Number of Months in SENDA',
+Sexo = '(original, Recodificado en sexo)/',
+Edad = 'Edad (número entero)/Year (Discrete Number)',
+Nombre.Usuario = 'Nombre del Usuario (OCULTO y no accesible)/Name of the User (Not Accessible)',
+Comuna.Residencia = 'Comuna de Residencia/Municipality of Residence',
+Origen.de.Ingreso = 'Origen de Ingreso/Background of Admission',
+País.Nacimiento = 'País de Nacimiento/Country of Birth',
+Nacionalidad = 'Nacionalidad/Nationallity',
+Etnia = 'Etnia/Ethnicity',
+Estado.Conyugal = 'Estado Conyugal/Marital Status',
+Número.de.Hijos = 'Número de Hijos/Number of Children',
+Número.de.Hijos.Ingreso.Tratamiento.Residencial = 'Número de Hijos para Ingreso a Tratamiento Residencial/Number of Children to Residential Treatment',
+Parentesco.con.el.Jefe.de.Hogar = '(Sólo presenta valores perdidos)/',
+Numero.de.Tratamientos.Anteriores = 'Número de Tratamientos Anteriores/Number of Previous Treatments',
+Fecha.Ultimo.Tratamiento = 'Fecha del Último Tratamiento (aún no formateada como fecha)/Date of the Last Treatment',
+Sustancia.de.Inicio = 'Sustancia de Inicio (debiese colapsarse en menos categorías)/Starting Substance',
+Edad.Inicio.Consumo = 'Edad de Inicio de Consumo/Age of Beginning Consumption',
+X.Se.trata.de.una.mujer.embarazada. = 'Mujer Embarazada al Ingreso/Pregnant at Admission',
+Escolaridad..último.año.cursado. = 'Escolaridad: Último Año Cursado/Education: Last Year/Academic Year',
+Condicion.Ocupacional = 'Condición Ocupacional/Occupational Status',
+Categoría.Ocupacional = 'Categoría Ocupacional/Occupational Category',
+Rubro.Trabaja = 'Rubro de Trabajo/Area of Work',
+Con.Quién.Vive = 'Persona con la que vive el Usuario/People that Share Household with the User',
+Tipo.de.vivienda = 'Tipo de Vivienda/Type of Housing',
+Tenencia.de.la.vivienda = 'Tenencia de la Vivienda/Tenure status of Households',
+Sustancia.Principal = 'Sustancia Principal de Consumo/Main Substance of Consumption',
+Otras.Sustancias.nº1 = 'Otras Sustancias (1)/Other Substances (1)',
+Otras.Sustancias.nº2 = 'Otras Sustancias (2)/Other Substances (2)',
+Otras.Sustancias.nº3 = 'Otras Sustancias (3)/Other Substances (3)',
+Frecuencia.de.Consumo..Sustancia.Principal. = 'Frecuencia de Consumo de la Sustancia Principal/Frequency of Consumption of the Main Substance',
+Edad.Inicio..Sustancia.Principal. = 'Edad Inicio Sustancia Principal (es necesario normalizar sus límites de acuerdo a los parámetros establecidos por los profesionales SENDA)/Age of Beginning Consumption of the Main Substance',
+Vía.Administración..Sustancia.Principal. = 'Vía de Administración de la Sustancia Principal/Route of Administration of the Main Substance',
+Diagnóstico.Trs..Consumo.Sustancia = 'Diagnósico de Trastorno por Consumo de Sustancias/Diagnosed of Substance Use Disorder',
+Diagnóstico.Trs..Psiquiátrico.DSM.IV = 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV/Diagnosis of Psychiatric Disorders, DSM-IV criteria',
+Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV = 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification)',
+X2.Diagnóstico.Trs..Psiquiátrico.DSM.IV = 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (2)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (2)',
+X2.Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV = 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion) (2)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification) (2)',
+X3.Diagnóstico.Trs..Psiquiátrico.DSM.IV = 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (3)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (3)',
+X3.Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV = 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion) (3)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification) (3)',
+Diagnóstico.Trs..Psiquiátrico.CIE.10 = 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10/Diagnosis of Psychiatric Disorders, CIE-10 criteria',
+Diagnóstico.Trs..Psiquiátrico.SUB.CIE.10 = 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification)',
+X2.Diagnóstico.Trs..Psiquiátrico.CIE.10 = 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (2)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (2)',
+X2.Diagnóstico.Trs..Psiquiátrico.SUB.CIE.10 = 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion) (2)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification) (2)',
+X3.Diagnóstico.Trs..Psiquiátrico.CIE.10 = 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (3)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (3)',
+X3.Diagnóstico.Trs..Psiquiátrico.SUB.CIE.10 = 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion) (3)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification) (3)',
+Diagnóstico.Trs..Físico = 'Diagnóstico de Trastorno Físico/Diagnosis of Physical Disorder',
+Otros.Problemas.de.Atención.de.Salud.Mental = 'Otros Problemas de Atención Vinculados a Salud Mental/Other problems linked to Mental Health',
+Compromiso.Biopsicosocial = 'Compromiso Biopsicosocial/Biopsychosocial Involvement',
+DIAGNOSTICO.GLOBAL.DE.NECESIDADES.DE.INTEGRACION.SOCIAL = 'Diagnóstico Global de Necesidades de Integración Social/Global Diagnosis of Social Integration',
+DIAGNOSTICO.DE.NECESIDADES.DE.INTEGRACIóN.SOCIAL.EN.CAPITAL.HUMANO = 'Diagnóstico de Necesidades de Integración Social en Capital Humano/Global Diagnosis of Social Integration in Human Capital',
+DIAGNOSTICO.DE.NECESIDADES.DE.INTEGRACIóN.SOCIAL.EN.CAPITAL.FISICO = 'Diagnóstico de Necesidades de Integración Social en Capital Físico/Global Diagnosis of Social Integration in Physical Capital',
+DIAGNOSTICO.DE.NECESIDADES.DE.INTEGRACIóN.SOCIAL.EN.CAPITAL.SOCIAL = 'Diagnóstico de Necesidades de Integración Social en Capital Social/Global Diagnosis of Social Integration in Social Capital',
+fech_ing = 'Fecha de Ingreso a Tratamiento/Date of Admission to Treatment',
+Fecha.Ingreso.a.Convenio.SENDA = 'Fecha de Ingreso a Convenio SENDA (aún no formateada como fecha)/Date of Admission to SENDA Agreement',
+Usuario.de.Tribunales..Tratamiento.Drogas = 'Usuario de modalidad Tribunales de Tratamiento de Drogas/User of Drug Treatment Courts Modality',
+Consentimiento.Informado = 'Consentimiento Informado/Informed Consent',
+fech_egres = 'Fecha de Egreso de Tratamiento/Date of Discharge from Treatment',
+motivodeegreso = 'Motivo de Egreso/Cause of Discharge',
+Tipo.Centro.Derivación = 'Tipo de Centro al que el Usuario es Derivado/Type of Center of Derivation',
+evaluacindelprocesoteraputico = 'Evaluación del Proceso Terapéutico/Evaluation of the Therapeutic Process',
+eva_consumo = 'Evaluación al Egreso Respecto al Patrón de consumo/Evaluation at Discharge regarding to Consumption Pattern',
+eva_fam = 'Evaluación al Egreso Respecto a Situación Familiar/Evaluation at Discharge regarding to Family Situation',
+eva_relinterp = 'Evaluación al Egreso Respecto a Relaciones Interpersonales/Evaluation at Discharge regarding to Interpersonal Relations',
+eva_ocupacion = 'Evaluación al Egreso Respecto a Situación Ocupacional/Evaluation at Discharge regarding to Occupational Status',
+eva_sm = 'Evaluación al Egreso Respecto a Salud Mental/Evaluation at Discharge regarding to Mental Health',
+eva_fisica = 'Evaluación al Egreso Respecto a Salud Física/Evaluation at Discharge regarding to Physical Health',
+eva_transgnorma = 'Evaluación al Egreso Respecto a Trasgresión a la Norma Social/Evaluation at Discharge regarding to Transgression to the Norm',
+Diagnóstico.Trastorno.Psiquiátrico.CIE.10.al.Egreso = '(Sólo presenta valores perdidos)/',
+DIAGNOSTICO.GLOBAL.DE.NECESIDADES.DE.INTEGRACION.SOCIAL.1 = 'Diagnóstico Global de Necesidades de Integración Social (1)/Global Diagnosis of Social Integration (1)',
+DIAGNOSTICO.DE.NECESIDADES.DE.INTEGRACIóN.SOCIAL.EN.CAPITAL.HUMANO.1 = 'Diagnóstico de Necesidades de Integración Social en Capital Humano (1)/Global Diagnosis of Social Integration in Human Capital (1)',
+DIAGNOSTICO.DE.NECESIDADES.DE.INTEGRACIóN.SOCIAL.EN.CAPITAL.FISICO.1 = 'Diagnóstico de Necesidades de Integración Social en Capital Físico (1)/Global Diagnosis of Social Integration in Physical Capital (1)',
+DIAGNOSTICO.DE.NECESIDADES.DE.INTEGRACIóN.SOCIAL.EN.CAPITAL.SOCIAL.1 = 'Diagnóstico de Necesidades de Integración Social en Capital Social (1)/Global Diagnosis of Social Integration in Social Capital (1)',
+TIENE.MENORES.DE.EDAD.A.CARGO = 'Menores de Edad A Cargo/Minor Dependants',
+Motivo.de.egreso.Alta.Administrativa = 'Motivo de Egreso Alta Administrativa/Cause of Discharge ',
+Consorcio = 'Sociedades de Tratamiento, Servicios de Salud, Fundaciones, entre otras entidades encargadas de los centros/Consortium',
+ID.centro = 'ID de Centro/Center ID',
+Ha.estado.embarazada.egreso. = '¿Ha estado embarazada? (al Egreso)/Have you been Pregnant (at Discharge)',
+identidad.de.genero = 'Identidad de Género/Gender Identity',
+discapacidad = 'Presenta Discapacidad/Disability',
+hash_rut_completo = 'HASH alternativo, en el escenario en que se asuma que el individuo al que se le codificó el RUT presente mayor edad/Alternative HASH-Key',
+Opción.discapacidad = 'Origen de Discapacidad/Cause of Disability',
+sexo = 'Sexo Usuario/Sex of User',
+embarazo = 'Embarazo/Pregnant',
+tipo_de_plan = 'Tipo de Plan/Type of Plan',
+tipo_de_programa = 'Tipo de Programa de Tratamiento/Type of Program',
+fech_egres_sin_fmt = 'Fecha de Egreso de Tratamiento (Sin Formato de Fecha)/Date of Discharge',
+id_mod = 'ID de SENDA para Presentación en Página Web (enmascara caracteres 5 y 6)/SENDAs ID (mask characters 5 & 6)',
+ano_nac = 'Año de Nacimiento (numérico)/Year of Birth (numeric)',
+fech_ing_ano = 'Año de Ingreso (numérico)/Year of Admission (numeric)',
+fech_ing_mes = 'Mes de Ingreso (numérico)/Month of Admission (numeric)',
+fech_ing_dia = 'Día de Ingreso (numérico)/Day of Admission (numeric)',
+concat = 'ID de SENDA y HASH Concatenado (permite discriminar más de un HASH en un mismo ID)/Combination of SENDAs ID & HASH',
+dup_todo = 'Concatenación de 103 variables (para contrastar entradas duplicadas)/Combination of 103 variables (to discard duplicated rows)',
+dias_trat_inv = 'Días de Tratamiento Invertidos (fecha más reciente, menor valor numérico)/Treatment Days (Reversed)',
+fech_nac = 'Fecha de Nacimiento/Date of Birth',
+Edad_al_ing = 'Edad a la Fecha de Ingreso a Tratamiento (numérico continuo)/Age at Admission to Treatment')
+
 save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/3.Rdata")
 ```
 <br>
@@ -883,8 +1000,8 @@ dplyr::filter(row %in% c(149670,142875,8809,6864,151245,145140,160070,160066,135
 
 Many selections for the purposes of the study are still being necessary until today, in order to  keep the greater amount of information about each event. 
 
-```{r  Fig 5, warning=FALSE, fig.align = "center", message=F, cache=T, out.width = "250%"}
-knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figure_Duplicates.jpg", dpi = 300)
+```{r  Fig 5, warning=FALSE, fig.align = "center", message=F, cache=T}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Figure_Duplicates.svg")
 ```
 
 
