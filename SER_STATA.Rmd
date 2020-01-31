@@ -1,0 +1,442 @@
+---
+title: "Preliminary Results to SER 2020"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: hide  
+    toc: true # table of content true
+    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+#Libraries used in the routine. Dont change the order
+if(!require(tidyr)){install.packages("tidyr")}
+if(!require(DataExplorer)){install.packages("DataExplorer")}
+if(!require(stringi)){install.packages("stringi")}
+if(!require(stringr)){install.packages("stringr")}
+if(!require(ggplot2)){install.packages("ggplot2")}
+if(!require(Hmisc)){install.packages("Hmisc")}
+if(!require(kableExtra)){install.packages("kableExtra")}
+if(!require(plotly)){install.packages("plotly")}
+if(!require(rbokeh)){install.packages("rbokeh")}
+if(!require(altair)){install.packages("altair")}
+if(!require(zoo)){install.packages("zoo")}
+if(!require(broom)){install.packages("broom")}
+if(!require(sqldf)){install.packages("sqldf")} 
+if(!require(data.table)){install.packages("data.table")}
+if(!require(dplyr)){install.packages("dplyr")}
+if(!require(devtools)){install.packages("devtools")}
+if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
+```
+
+```{r setup2}
+    library(Statamarkdown)
+```
+
+The following indices are preliminary results to be presented on SER 2020. We used a dataset in construction, in which many cases had to be discarded in order 
+to produce valid estimates. However, we are still working to rescue as much valid treatments and patients as possible.
+
+* We eliminated cases without an available date of discharge or date of admission
+* We eliminated repeated events due to the combination of HASHs and dates of  admission.
+* We eliminated cases with negative days of treatment
+* We eliminated cases that doesn't followed the criteria proposed by SENDA's Professionals (eg., programs that were not payed by SENDA or programs for parole)
+
+This survival setting selected the first events from each HASH, The event is defined by being readmitted one or more times between 2010 to 2019.
+
+Person days are  concieved as the difference in each HASH, of the minimum date of admission (the first time  that each patient was admitted between 2010 and 2019), and  the maximum  date of discharge (the last time that a patient was discharged  from a treatment  between  2010 and 2019). 
+
+
+```{stata discard_dups, collectcode=TRUE}
+qui use "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\Stata SER 2020\_CONS_C1_df_csv_pedido_SER2020_avance6(ENE 2020).dta", clear
+* cases with only one event are  keeped
+* dup= count how many times the hash has repeated (eg. 1, 2,  3)
+* duplicates_filtered= count the total times each hash has repeated, different than duplicated_hash because this may be considering deleted cases. 
+* get the first case if there are no other among them
+qui gen a_botar=.
+qui recode a_botar .=1 if dup==0 & duplicates_filtered==1
+qui recode a_botar .=1 if dup==1 & duplicates_filtered>1
+qui drop if missing(a_botar)
+qui gen event=0
+qui recode event 0=1 if dup>0
+qui stset person_days, failure(event==1) scale(365.25) id(row)
+stdescribe, weight
+*always get the first treatment, if it has more than one: 
+*get the first case if there are no other among them
+******browse hash_key a_botar dup duplicates_filtered if dup==0 & duplicates_filtered ==1
+******browse hash_key a_botar dup duplicates_filtered if duplicates_filtered >1
+****drop unique cases
+drop if missing(a_botar)
+****generate event if each hash has more than one admission
+```
+<br>
+
+Then, we set the dataset as a survival time format, configured by years (365.25 days) and defined by the difference between the last date of discharge of the last treatment and the date of admission of the following treatment (`person_days`) along the datasets from 2010 to 2019.
+
+```{stata for_inline, include=FALSE} 
+file open myfile using example_a.txt, write replace
+file write myfile `"`r(N_sub)'"'
+file close myfile
+file open myfile using example_b.txt, write replace
+file write myfile `"`r(N_fail)'"'
+file close myfile
+```
+
+Of the `r format(as.numeric(readLines('example_a.txt')), nsmall=0, digits=0)` subjects, `r format(as.numeric(readLines('example_b.txt')), nsmall=2, digits=2)` had more than one treatment.
+
+```{r cleanup, include=FALSE} 
+unlink("example_a.txt")
+unlink("example_b.txt")
+```
+
+
+
+```{stata STSUM, collectcode=TRUE}
+qui stsum
+qui file open myfile using example_c.txt, write replace
+qui file write myfile `"`r(ir)'"'
+qui file close myfile
+```
+
+We calculated the failures in single-failre-per-subject data, divided by the total analysis time at risk and under observation. The cumulative incidence rate of readmission was `r format(as.numeric(readLines('example_c.txt'))*1000, nsmall=1, digits=1)` (per 1,000 patients/year).
+
+```{r cleanup2, include=FALSE} 
+unlink("example_c.txt")
+```
+
+# Incidence Rate By Groups
+
+We recoded the variables of cause of discharge, in order to account for early drop-out and late drop-out. 
+
+```{stata mot_egres_recod, collectcode=TRUE}
+qui recode motivodeegreso 	(1=.  ) ///
+						(2=3  "Alta Administrativa") ///
+						(3=4 "Alta Terap?utica") ///
+						(4=5 "Derivaci?n"), gen(mot_egreso_rec)
+qui recode mot_egreso_rec .=1 if earlywdl==1
+qui recode mot_egreso_rec .=2 if earlywdl==0
+
+qui label define mot_egreso_rec 1 "Abandono Temprano", modify
+qui label define mot_egreso_rec 2 "Abandono Tardio", modify
+
+qui recode mot_egreso_rec	(4=0 "Alta Terap?utica") ///
+						(1=1 "Abandono Temprano") (else=.), gen(mot_egres_earlywdl)
+qui tab mot_egreso_rec mot_egres_earlywdl, miss
+
+qui recode mot_egreso_rec	(4=0 "Alta Terap?utica") ///
+						(2=1 "Abandono Tard?o") (else=.), gen(mot_egres_latewdl)
+qui tab mot_egreso_rec mot_egres_latewdl, miss
+```
+
+```{stata for_inline_ir_drop, include=FALSE} 
+ir event mot_egres_earlywdl _t
+file open myfile using example4.txt, write replace
+file write myfile `"`r(irr)'"'
+file close myfile
+file open myfile using example5.txt, write replace
+file write myfile `"`r(lb_irr)'"'
+file close myfile
+file open myfile using example6.txt, write replace
+file write myfile `"`r(ub_irr)'"'
+file close myfile
+ir event mot_egres_latewdl _t
+file open myfile using example7.txt, write replace
+file write myfile `"`r(irr)'"'
+file close myfile
+file open myfile using example8.txt, write replace
+file write myfile `"`r(lb_irr)'"'
+file close myfile
+file open myfile using example9.txt, write replace
+file write myfile `"`r(ub_irr)'"'
+file close myfile
+
+```
+
+Compared with those with therapeutic discharge, it was `r format(as.numeric(readLines('example4.txt')), nsmall=2, digits=2)` [IC95% `r format(as.numeric(readLines('example5.txt')), nsmall=2, digits=2)`- `r format(as.numeric(readLines('example6.txt')), nsmall=2, digits=2)`] times higher among people with early drop-out, 
+
+
+Compared with those with therapeutic discharge, it was `r format(as.numeric(readLines('example7.txt')), nsmall=2, digits=2)` [IC95% `r format(as.numeric(readLines('example8.txt')), nsmall=2, digits=2)`- `r format(as.numeric(readLines('example9.txt')), nsmall=2, digits=2)`]  times higher among people with late drop-out.
+
+```{r cleanup3, include=FALSE} 
+unlink("example7.txt")
+unlink("example8.txt")
+unlink("example9.txt")
+unlink("example4.txt")
+unlink("example5.txt")
+unlink("example6.txt")
+```
+
+<br>
+
+We recoded the variables of main type of drug, in order to account for the main substance and comparisons between them: Cocaine vs. Alcohol, Cocaine Paste vs. Alcohol, and Marihuana vs. Alcohol.
+
+```{stata droga_recod, collectcode=TRUE}
+qui recode droga (1=1  "Cocaina") ///
+			 (2=2  "Alcohol") ///
+			 (3=3 "Marihuana") ///
+			 (7=4 "Pasta Base") ///
+			 (4 5 6 8 9 10=5 "Otros"), gen(droga_rec)
+
+qui recode droga (1=1  "Cocaina") ///
+			 (2=0 "Alcohol" ) ///
+			 (3=. ) ///
+			 (7=. ) ///
+			 (4 5 6 8 9 10=. ), gen(droga_rec_coc)
+qui recode droga (1=.  ) ///
+			 (2=0  "Alcohol") ///
+			 (3=. ) ///
+			 (7=1 "Pasta Base") ///
+			 (4 5 6 8 9 10=. ), gen(droga_rec_pbase)
+qui recode droga (1=.  ) ///
+			 (2=0 "Alcohol") ///
+			 (3=1 "Marihuana") ///
+			 (7=. ) ///
+			 (4 5 6 8 9 10=. ), gen(droga_rec_mar)
+```
+
+
+```{stata for_inline_ir_drop2, include=FALSE} 
+ir event droga_rec_coc _t
+file open myfile using example10.txt, write replace
+file write myfile `"`r(irr)'"'
+file close myfile
+file open myfile using example11.txt, write replace
+file write myfile `"`r(lb_irr)'"'
+file close myfile
+file open myfile using example12.txt, write replace
+file write myfile `"`r(ub_irr)'"'
+file close myfile
+ir event droga_rec_pbase _t
+file open myfile using example13.txt, write replace
+file write myfile `"`r(irr)'"'
+file close myfile
+file open myfile using example14.txt, write replace
+file write myfile `"`r(lb_irr)'"'
+file close myfile
+file open myfile using example15.txt, write replace
+file write myfile `"`r(ub_irr)'"'
+file close myfile
+ir event droga_rec_mar _t
+file open myfile using example16.txt, write replace
+file write myfile `"`r(irr)'"'
+file close myfile
+file open myfile using example17.txt, write replace
+file write myfile `"`r(lb_irr)'"'
+file close myfile
+file open myfile using example18.txt, write replace
+file write myfile `"`r(ub_irr)'"'
+file close myfile
+```
+
+Compared with those with alcohol as the main substance at admission, the cumulative incidence rate of readmission was `r format(as.numeric(readLines('example10.txt')), nsmall=2, digits=2)` [IC95% `r format(as.numeric(readLines('example11.txt')), nsmall=2, digits=2)`- `r format(as.numeric(readLines('example12.txt')), nsmall=2, digits=2)`] times higher for those using cocaine.
+
+Compared with those with alcohol as the main substance at admission, the cumulative incidence rate of readmission was `r format(as.numeric(readLines('example13.txt')), nsmall=2, digits=2)` [IC95% `r format(as.numeric(readLines('example14.txt')), nsmall=2, digits=2)`- `r format(as.numeric(readLines('example15.txt')), nsmall=2, digits=2)`] times higher for those using cocaine paste.
+
+Compared with those with alcohol as the main substance at admission, there were not important differences in the cumulative incidence for those using marijuana (`r format(as.numeric(readLines('example16.txt')), nsmall=2, digits=2)` [IC95% `r format(as.numeric(readLines('example17.txt')), nsmall=2, digits=2)`- `r format(as.numeric(readLines('example18.txt')), nsmall=2, digits=2)`]).
+
+
+```{r cleanup4, include=FALSE} 
+unlink("example10.txt")
+unlink("example11.txt")
+unlink("example12.txt")
+unlink("example13.txt")
+unlink("example14.txt")
+unlink("example15.txt")
+unlink("example16.txt")
+unlink("example17.txt")
+unlink("example18.txt")
+```
+
+## Incidence Rate Graphics
+
+The following figures shows the Nelson-Aalen for the cumulative hazard of experiencing readmission in the study period. 
+
+In order to graphic the differences between Early drop-out and Therapeutic Discharge on a time span, we had to set the dataset in a format that let us capture the first readmission.
+
+```{stata early_drop, echo=T} 
+*ytitle("Prob. of Being Readmitted") 
+*"it measures the total amount of risk that has been accumulated up to time t" (p. 8)
+*count data interpretation: "it gives the number of times we would expect (mathematically) to observe failures [or other events] over a given period, if only the failure event were repeatable" (p. 13)
+*https://books.google.de/books?id=xttbn0a-QR8C&printsec=frontcover&hl=de#v=onepage&q&f=false
+sts graph, by (mot_egres_earlywdl) na ci title("Cumulative Hazard to Experience Readmission to" "SUD Treatment, by cause of Discharge") /// 
+subtitle("Nelson-Aalen Estimator w/ Confidence Intervals 95%") ///
+ylabel(#8) ///
+risktable(, size(*.5) order(1 "Therapeutic Discharge" 2 "Early drop-out")) ///
+xtitle("Years Follow-up") xlabel(#8) ///
+note("Source: FONDECYT 1191282, SENDA's SUD Treatments period 2010-2019") ///
+legend(rows(3)) ///
+legend(cols(4)) ///
+graphregion(color(white) lwidth(large)) bgcolor(white) ///
+plotregion(fcolor(white)) graphregion(fcolor(white) ) ///
+legend(order(1 "95% CI Therapeutic Discharge" 2 "Therapeutic Discharge" 3 "95% CI Early drop-out" 4 "Early drop-out")size(*.5)region(lstyle(none)) region(c(none)) nobox) 
+*graph export "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\stata1.svg", as(svg) width(800) height(600) replace
+```
+
+```{r graph1, echo=T}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/stata1.svg")
+```
+
+```{stata late_drop, echo=T} 
+sts graph, by (mot_egres_latewdl) na ci title("Cumulative Hazard to Experience Readmission to" "SUD Treatment by cause of Discharge") /// 
+subtitle("Nelson-Aalen Estimator w/ Confidence Intervals 95%") ///
+risktable(, size(*.5) order(1 "Therapeutic Discharge" 2 "Late drop-out")) ///
+ylabel(#8) ///
+xtitle("Years Follow-up") xlabel(#8) ///
+note("Source: FONDECYT 1191282, SENDA's SUD Treatments period 2010-2019") ///
+legend(rows(3)) ///
+legend(cols(4)) ///
+graphregion(color(white) lwidth(large)) bgcolor(white) ///
+plotregion(fcolor(white)) graphregion(fcolor(white) ) ///
+legend(order(1 "95% CI Therapeutic Discharge" 2 "Therapeutic Discharge" 3 "95% CI Late drop-out" 4 "Late drop-out")size(*.5)region(lstyle(none)) region(c(none)) nobox) 
+graph export "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\stata2.svg", as(svg) width(800) height(600) replace
+```
+
+```{r graph2, echo=T}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/stata2.svg")
+```
+
+```{stata pbase, echo=T} 
+sts graph, by (droga_rec_pbase) na ci  ///
+title("Cumulative Hazard to Experience Readmission to" "SUD Treatment by Main Drug Consumed") /// 
+subtitle("Nelson-Aalen Estimator w/ Confidence Intervals 95%") ///
+risktable(, size(*.5) order(1 "Alcohol" 2 "P. Base" )) ///
+ylabel(#8) ///
+xtitle("Years Follow-up") xlabel(#8) ///
+note("Source: FONDECYT 1191282, SENDA's SUD Treatments period 2010-2019") ///
+legend(rows(3)) ///
+legend(cols(4)) ///
+graphregion(color(white) lwidth(large)) bgcolor(white) ///
+plotregion(fcolor(white)) graphregion(fcolor(white) ) ///
+legend(order(1 "95CI Alcohol" 2 "Alcohol" 3 "95CI P. Base" 4 "P. Base"  )size(*.5)region(lstyle(none)) region(c(none)) nobox)
+graph export "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\stata3.svg", as(svg) width(800) height(600) replace
+```
+
+```{r graph3, echo=T}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/stata3.svg")
+```
+
+```{stata mar, echo=T} 
+sts graph, by (droga_rec_mar) na ci ///
+title("Cumulative Hazard to Experience Readmission to" "SUD Treatment by Main Drug Consumed") /// 
+subtitle("Nelson-Aalen Estimator w/ Confidence Intervals 95%") ///
+risktable(, size(*.5) order(1 "Alcohol" 2 "Marihuana")) ///
+ylabel(#8) ///
+xtitle("Years Follow-up") xlabel(#8) ///
+note("Source: FONDECYT 1191282, SENDA's SUD Treatments period 2010-2019") ///
+legend(rows(3)) ///
+legend(cols(4)) ///
+graphregion(color(white) lwidth(large)) bgcolor(white) ///
+plotregion(fcolor(white)) graphregion(fcolor(white) ) ///
+legend(order(1 "95CI Alcohol" 2 "Alcohol" 3 "95CI Marihuana" 4 "Marihuana"  )size(*.5)region(lstyle(none)) region(c(none)) nobox)
+graph export "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\stata4.svg", as(svg) width(800) height(600) replace
+```
+
+```{r graph4, echo=T}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/stata4.svg")
+```
+
+```{stata coc, echo=T} 
+sts graph, by (droga_rec_coc) na ci  ///
+title("Cumulative Hazard to Experience Readmission to" "SUD Treatment by Main Drug Consumed") /// 
+subtitle("Nelson-Aalen Estimator w/ Confidence Intervals 95%") ///
+risktable(, size(*.5) order(1 "Alcohol" 2 "Cocaine")) ///
+ylabel(#8) ///
+xtitle("Years Follow-up") xlabel(#8) ///
+note("Source: FONDECYT 1191282, SENDA's SUD Treatments period 2010-2019") ///
+legend(rows(3)) ///
+legend(cols(4)) ///
+graphregion(color(white) lwidth(large)) bgcolor(white) ///
+plotregion(fcolor(white)) graphregion(fcolor(white) ) ///
+legend(order(1 "95CI Alcohol" 2 "Alcohol" 3 "95CI Cocaine" 4 "Cocaine" )size(*.5)region(lstyle(none)) region(c(none)) nobox)
+graph export "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\stata5.svg", as(svg) width(800) height(600) replace
+```
+
+```{r graph5, echo=T}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/stata5.svg")
+```
+
+
+# Time outside treatment
+
+To calculate the average time outside treatment, we needed to drop cases with only one treatment and keep those with more than one treatment.
+
+```{stata treat, collectcode=TRUE}
+clear all
+qui use "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\Stata SER 2020\_CONS_C1_df_csv_pedido_SER2020_avance6(ENE 2020).dta", clear
+qui gen a_botar=.
+qui recode a_botar .=1 if dup==0 & duplicates_filtered==1
+qui drop if a_botar==1
+des,short
+```
+
+Then, we had to order the dataset by HASHs and date of admission and date of discarge, and replace the date of discharge if it is greater than the next date of 
+admission.
+
+```{stata TTE_setting, collectcode=TRUE}
+qui gsort hash_key fech_ing_fmt fech_egres_fmt
+*si la fecha de  egreso es mayor a la siguiente fecha de ingreso, reemplazar con la fecha de ingreso
+qui by hash_key: gen fech_egres_fmt_corr = fech_ing_fmt[_n+1] if fech_egres_fmt>fech_ing_fmt[_n+1]  
+*si se quiere, replace
+qui by hash_key: replace fech_egres_fmt = fech_ing_fmt[_n+1] if fech_egres_fmt>fech_ing_fmt[_n+1]  
+**formatear
+qui format fech_egres_fmt_corr %td
+qui format fech_ing_fmt %td
+```
+
+
+Finally, we get the difference between the most recent date of admission and the next date of discharge (or lagged date). For example, if a patient X had 4 treatments, and among them, in the second treatment he/she was discharged in January 27, and the third treatment was admitted from March 30. Time span will be the 62 days.
+
+```{stata hist_teat_span}
+*We iteratively stablished differences between times 
+*get the time span between the date of admission and date of discharge
+bysort hash_key (fech_ing_num): gen time5 = fech_egres_fmt - fech_ing_fmt[_n-1]
+*bysort hash_key (fech_ing_num): gen time6  = time5 - time[_n-1]  
+rename time5 span_treat
+cd  "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\"
+hist span_treat,freq title(Histogram of Treatment Span) xtitle(Days Between Treatments) scheme(s1mono)
+graph export "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\stata6.svg", as(svg) width(800) height(600) replace
+
+```
+
+```{r graph6, echo=T}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/stata6.svg")
+```
+
+```{stata mean, collectcode=TRUE}
+cap drop if missing(span_treat)
+qui sum span_treat
+```
+```{stata mean_r, include=FALSE}
+file open myfile using example19.txt, write replace
+file write myfile `"`r(mean)/365.25'"'
+file close myfile
+```
+
+The average treatment span between treatment was `r format(as.numeric(readLines('example19.txt')), nsmall=2, digits=2)` years, for every event in the dataset. However. Considering the question was made focusing in those readmitted to treatment, we needed to collapse the dataset by HASHs. 
+
+```{r cleanup drop mat1, include=FALSE} 
+unlink("example19.txt")
+```
+
+```{stata mean2, collectcode=TRUE}
+qui collapse (mean) avg_span_treat=span_treat, by(hash_key) 
+qui sum avg_span_treat
+```
+```{stata mean_r2, include=FALSE}
+file open myfile using example20.txt, write replace
+file write myfile `"`r(N)'"'
+file close myfile
+file open myfile using example21.txt, write replace
+file write myfile `"`r(mean)/365.25'"'
+file close myfile
+```
+
+Summarising by HASHs, the average treatment span between treatments among the readmitted (`r format(as.numeric(readLines('example20.txt')), nsmall=0, digits=0)`) in years is around `r format(as.numeric(readLines('example21.txt')), nsmall=2, digits=2)` years.
+
+```{r cleanup drop mat2, include=FALSE} 
+unlink("example20.txt")
+unlink("example21.txt")
+```
+
+
+<a href="https://fondecytacc.github.io/SUD_health_Chile.github.io/">Go back to the main webpage</a>
