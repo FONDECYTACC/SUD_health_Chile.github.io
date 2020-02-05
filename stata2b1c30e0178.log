@@ -1,0 +1,62 @@
+
+
+running G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\profile.do ...
+
+
+. qui use "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\Stata SER 2020\_CONS_C1_
+> df_csv_pedido_SER2020_avance6(ENE 2020).dta", clear
+
+. * cases with only one event are  keeped
+. * dup= count how many times the hash has repeated (eg. 1, 2,  3)
+. * duplicates_filtered= count the total times each hash has repeated, differen
+> t than duplicated_hash because this may be considering deleted cases. 
+. * get the first case if there are no other among them
+. qui gen a_botar=.
+
+. qui recode a_botar .=1 if dup==0 & duplicates_filtered==1
+
+. qui recode a_botar .=1 if dup==1 & duplicates_filtered>1
+
+. qui drop if missing(a_botar)
+
+. qui gen event=0
+
+. qui recode event 0=1 if dup>0
+
+. qui stset person_days, failure(event==1) scale(365.25) id(row)
+
+. stdescribe, weight
+
+         failure _d:  event == 1
+   analysis time _t:  person_days/365.25
+                 id:  row
+
+                                   |-------------- per subject --------------|
+Category                   total        mean         min     median        max
+------------------------------------------------------------------------------
+no. of subjects            76584   
+no. of records             76584           1           1          1          1
+
+(first) entry time                         0           0          0          0
+(final) exit time                   1.172595    .0027379   .6105407   11.91239
+
+subjects with gap              0   
+time on gap if gap             0           .           .          .          .
+time at risk           89802.045    1.172595    .0027379   .6105407   11.91239
+
+failures                   17832    .2328424           0          0          1
+------------------------------------------------------------------------------
+
+. *always get the first treatment, if it has more than one: 
+. *get the first case if there are no other among them
+. ******browse hash_key a_botar dup duplicates_filtered if dup==0 & duplicates_
+> filtered ==1
+. ******browse hash_key a_botar dup duplicates_filtered if duplicates_filtered 
+> >1
+. ****drop unique cases
+. drop if missing(a_botar)
+(0 observations deleted)
+
+. ****generate event if each hash has more than one admission
+. 
+end of do-file

@@ -390,10 +390,12 @@ Finally, we get the difference between the most recent date of admission and the
 *We iteratively stablished differences between times 
 *get the time span between the date of admission and date of discharge
 bysort hash_key (fech_ing_num): gen time5 = fech_egres_fmt - fech_ing_fmt[_n-1]
+bysort hash_key (fech_ing_num): gen span_treat_days = fech_egres_fmt - fech_ing_fmt[_n-1]
 *bysort hash_key (fech_ing_num): gen time6  = time5 - time[_n-1]  
-rename time5 span_treat
+gen span_treat= time5/365.25
+*rename time5 span_treat
 cd  "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\"
-hist span_treat,freq title(Histogram of Treatment Span) xtitle(Days Between Treatments) scheme(s1mono)
+hist span_treat_days,freq title(Histogram of Treatment Span) xtitle(Days Between Treatments) scheme(s1mono)
 graph export "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\stata6.svg", as(svg) width(800) height(600) replace
 
 ```
@@ -408,7 +410,7 @@ qui sum span_treat
 ```
 ```{stata mean_r, include=FALSE}
 file open myfile using example19.txt, write replace
-file write myfile `"`r(mean)/365.25'"'
+file write myfile `"`r(mean)'"'
 file close myfile
 ```
 
@@ -427,11 +429,11 @@ file open myfile using example20.txt, write replace
 file write myfile `"`r(N)'"'
 file close myfile
 file open myfile using example21.txt, write replace
-file write myfile `"`r(mean)/365.25'"'
+file write myfile `"`r(mean)'"'
 file close myfile
 ```
 
-Summarising by HASHs, the average treatment span between treatments among the readmitted (`r format(as.numeric(readLines('example20.txt')), nsmall=0, digits=0)`) in years is around `r format(as.numeric(readLines('example21.txt')), nsmall=2, digits=2)` years.
+Summarising by HASHs, the average treatment span between treatments among the readmitted (`r formatC(as.numeric(readLines('example20.txt')), format="f", big.mark=",", digits=0)`) in years is around `r format(as.numeric(readLines('example21.txt')), nsmall=2, digits=2)` years.
 
 ```{r cleanup drop mat2, include=FALSE} 
 unlink("example20.txt")
