@@ -57,6 +57,13 @@ CONS_C1_df%>%
 
 ```{r setup, include = FALSE, cache=T}
 #Libraries used in the routine. Dont change the order
+
+#https://github.com/RevolutionAnalytics/checkpoint
+if(!require(checkpoint)){install.packages("checkpoint")}
+if(!require(here)){install.packages("here")}
+
+#checkpoint::checkpoint("2020-02-11",project=here::here(),checkpointLocation=paste0(here::here(),"/Duplicates"), use.lock=F, use.knitr=T, auto.install.knitr = T,scan.rnw.with.knitr=T, forceInstall=T,scanForPackages = TRUE)
+#checkpointArchives(tempdir(), full.names = TRUE)
 if(!require(tidyr)){install.packages("tidyr")}
 if(!require(DataExplorer)){install.packages("DataExplorer")}
 if(!require(stringi)){install.packages("stringi")}
@@ -299,20 +306,12 @@ Based on the meeting on Dec. 05 of 2019, one of the main challenges was to check
 ##### Figure 1. Scatterplot of Year of Birth and Age
 ```{r fig_fecha_nac_edad, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center", message=F}
 #plot(CONS_C1_df_dup_ENE_2020_prev2$ano_nac, CONS_C1_df_dup_ENE_2020_prev2$Edad, ylab="Age", xlab="Year of Birth")
-
-#figure() %>%
- # ly_points(ano_nac, Edad, data = CONS_C1_df_dup_ENE_2020_prev2,
-#    hover = c(row,ano_bd)) %>%
-#  ly_abline(lm(ano_nac ~Edad, data= CONS_C1_df_dup_ENE_2020_prev2), type = 2, legend = "Regression") %>%
- #   x_axis(label = "Year of Birth")
- #   y_axis(label = "Age")
 require(plotly)
-plotly::plot_ly(CONS_C1_df_dup_ENE_2020_prev2, x = ~ano_nac, y = ~Edad, 
+plotly::plot_ly(CONS_C1_df_dup_ENE_2020_prev2,type="scatter", x = ~ano_nac, y = ~Edad, 
         text =  ~paste("Row: ", row, '<br>Year DB:', ano_bd),
         mode = "markers") %>% layout(xaxis=list(title="Year of Birth"), 
                                      yaxis=list(title="Age"))
 ```
-
 
 <br>
 
@@ -451,13 +450,220 @@ CONS_C1_df_dup_ENE_2020_prev3  %>%
     dplyr::mutate(Edad= ifelse(Edad<18|Edad>90,Edad.TOP, Edad)) %>%
     dplyr::mutate(fech_nac=lubridate::parse_date_time(stringi::stri_sub(id,-8,-1),"dmY"), 
                   Edad_al_ing=lubridate::time_length(difftime(as.Date(fech_ing), as.Date(fech_nac)),"years")) %>%
-  dplyr::mutate(fech_nac=replace(fech_nac, is.na(Edad), NA)) %>%
-  dplyr::mutate(Edad_al_ing=replace(Edad_al_ing, is.na(Edad), NA)) %>%
-   dplyr::select(-id_mod.TOP, -duplicated_HASH_date, Edad.y, Sexo.TOP, Edad.TOP) %>%  
+    dplyr::mutate(fech_nac=replace(fech_nac, is.na(Edad), NA)) %>%
+    dplyr::mutate(Edad_al_ing=replace(Edad_al_ing, is.na(Edad), NA)) %>%
+    dplyr::select(-id_mod.TOP, -duplicated_HASH_date, Edad.y, Sexo.TOP, Edad.TOP) %>%  
     #dplyr::group_by(Edad) %>% summarise(n=n()) %>% View()
-    assign("CONS_C1_df_dup_ENE_2020",., envir = .GlobalEnv) 
+    as.data.frame() %>%
+    assign("CONS_C1_df_dup_ENE_2020_prev4",., envir = .GlobalEnv) 
 #PARA VER CÓMO SE COMPORTA CON IS.NA
 #CONS_C1_df_dup_ENE_2020 %>% dplyr::select(HASH_KEY, ano_bd, id, fech_ing, Edad_al_ing, fech_nac, Edad) %>% #dplyr::mutate(ano=as.numeric(fech_nac)/365.25) %>% dplyr::filter(is.na(Edad)) %>% View()
+```
+
+
+```{r final_assignment_change_factors_recode, echo=F,cache=T, paged.print=TRUE}
+CONS_C1_df_dup_ENE_2020_prev4 %>%
+  dplyr::filter(Tipo.de.Plan!="PAI LV") %>% #Deletion of cases in Parole
+#LV se elimina el tipo de plan
+  dplyr::mutate(tipo_de_plan=dplyr::recode(Tipo.de.Plan,"M-PAI2"= "M-PAI", "M-PR2"="M-PR","PG PAI 2"="PG-PAI", "Otro"="PG-PR", "CALLE"="PG-PR"))%>%
+#Table 10. Type of Plan by Gender Identity and Sex
+#En SER 2020, dejé los Calle y Otro en PG-PAB, pero ahora lo dejaré en PG-PR
+  dplyr::mutate(tipo_de_plan=ifelse(identidad.de.genero=="Masculino" & sexo=="Hombre" & tipo_de_plan=="M-PAI","PG-PAI", as.character(tipo_de_plan))) %>%
+  dplyr::mutate(tipo_de_plan=ifelse(identidad.de.genero=="Masculino" & sexo=="Hombre" & tipo_de_plan=="M-PR","PG-PR", as.character(tipo_de_plan))) %>%
+  dplyr::mutate(tipo_de_plan=ifelse(identidad.de.genero=="Masculino" & sexo=="Hombre" & tipo_de_plan=="M-PAB","PG-PAB", as.character(tipo_de_plan))) %>%
+  dplyr::mutate(tipo_de_plan=as.factor(tipo_de_plan)) %>%
+#Si la edad de inicio de consumo es mayor a la edad actual, lo mismo la edad de iniciación a la sustancia principal, las declaro perdidas.
+  dplyr::mutate(edad_ini_cons= ifelse(Edad.Inicio.Consumo>Edad, Edad.Inicio.Consumo, NA)) %>%
+  dplyr::mutate(edad_ini_sus_prin= ifelse(Edad.Inicio..Sustancia.Principal.>Edad, Edad.Inicio..Sustancia.Principal., NA)) %>%
+#Si se inicia en la sustancia principal o inicia el consumo a una edad menor a 5 años, lo declaro como perdido.
+  dplyr::mutate(edad_ini_cons= ifelse(edad_ini_cons<5,NA,edad_ini_cons)) %>%
+  dplyr::mutate(edad_ini_sus_prin= ifelse(edad_ini_sus_prin<5,NA,edad_ini_sus_prin)) %>%
+  #CONS_C1_df_dup_ENE_2020_prev3 %>% dplyr::filter(embarazo=="Si") %>% group_by(sexo) %>% summarise(n())
+#Embarazos en hombres se declaran como perdidos
+  dplyr::mutate(embarazo= ifelse(embarazo=="Si" & sexo=="Hombre",NA,as.character(embarazo))) %>%
+  #dplyr::mutate(embarazo= dplyr::recode("1"="No","2"="Si")) %>%
+  dplyr::mutate(embarazo=as.factor(embarazo)) %>%
+  assign("CONS_C1_df_dup_ENE_2020_prev4",., envir = .GlobalEnv) 
+
+  #CONS_C1_df_dup_ENE_2020_prev3 %>% dplyr::mutate(dias_trat_alta_temprana=ifelse(dias_trat>90,0,1)) %>% dplyr::group_by(dias_trat_alta_temprana,motivodeegreso) %>% summarise(n())
+  CONS_C1_df_dup_ENE_2020_prev4 %>% dplyr::mutate(dias_trat_alta_temprana=ifelse(dias_trat>=90,0,1)) %>%
+  dplyr::mutate(dias_trat_alta_temprana=as.factor(dias_trat_alta_temprana)) %>%
+  dplyr::mutate(dias_trat_alta_temprana= dplyr::recode(dias_trat_alta_temprana, "1"="Menos de 90 días", "0"="Mayor o igual a 90 días")) %>%
+  dplyr::mutate(motivodeegreso_mod= ifelse(dias_trat_alta_temprana=="Menos de 90 días" & motivodeegreso=="Abandono", "Abandono Temprano",as.character(motivodeegreso))) %>% 
+  dplyr::mutate(motivodeegreso_mod= ifelse(dias_trat_alta_temprana=="Mayor o igual a 90 días" & motivodeegreso=="Abandono", "Abandono Tardio",as.character(motivodeegreso_mod))) %>% 
+  dplyr::mutate(motivodeegreso_mod=as.factor(motivodeegreso_mod)) %>%
+  #data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Sustancia.Principal))
+  dplyr::mutate(sus_principal= as.character(Sustancia.Principal)) %>%
+  dplyr::mutate(sus_principal= dplyr::recode(sus_principal,
+                                             "Hipnóticos "= "Tranquilizantes e Hipnóticos",
+                                             "Sedantes:  diazepam, Valium, clonazepam, Ravotril, alprazolam, adax, barbitúricos, fenobarbital." = "Tranquilizantes e Hipnóticos",
+                                             "Anfetaminas"="Estimulante tipo anfetaminas",
+                                             "Extasis"="Estimulante tipo anfetaminas",
+                                             "Fenilciclidina"="Estimulante tipo anfetaminas",
+                                             "Metanfetaminas y otros derivados"="Estimulante tipo anfetaminas",
+                                             "Otros Estimulantes"="Estimulante tipo anfetaminas",
+                                             "LSD"="Alucinógenos",
+                                             "Otros Alucinógenos"="Alucinógenos",
+                                             "Crack"="Pasta Base",
+                                             "Heroína"="Opioides",
+                                             "Metadona"="Opioides",
+                                             "Otros Opioides Analgésicos: morfina, codeína, meperidina,  demerol, tramadol, tramal."="Opioides",
+                                             "Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
+                                             "Esteroides Anabólicos"="Otros")) %>%
+dplyr::mutate(sus_principal=as.factor(sus_principal)) %>%
+#data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Otras.Sustancias.nº1))
+  dplyr::mutate(otras_sus1=as.character(Otras.Sustancias.nº1)) %>%
+  dplyr::mutate(otras_sus1= dplyr::recode(otras_sus1,
+                                              "Hipnóticos "= "Tranquilizantes e Hipnóticos",
+                                              "Sedantes:  diazepam, Valium, clonazepam, Ravotril, alprazolam, adax, barbitúricos, fenobarbital." = "Tranquilizantes e Hipnóticos",
+                                              "Anfetaminas"="Estimulante tipo anfetaminas",
+                                              "Extasis"="Estimulante tipo anfetaminas",
+                                              "Fenilciclidina"="Estimulante tipo anfetaminas",
+                                              "Metanfetaminas y otros derivados"="Estimulante tipo anfetaminas",
+                                              "Otros Estimulantes"="Estimulante tipo anfetaminas",
+                                              "LSD"="Alucinógenos",
+                                              "Otros Alucinógenos"="Alucinógenos",
+                                              "Crack"="Pasta Base",
+                                              "Heroína"="Opioides",
+                                              "Metadona"="Opioides",
+                                              "Otros Opioides Analgésicos: morfina, codeína, meperidina,  demerol, tramadol, tramal."="Opioides",
+                                              "Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
+                                              "Esteroides Anabólicos"="Otros",
+                                              "Hongos"="Alucinógenos")) %>%
+dplyr::mutate(otras_sus1= dplyr::na_if(otras_sus1, "SIN CONSUMO")) %>%
+dplyr::mutate(otras_sus1=as.factor(otras_sus1)) %>%        
+#data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Otras.Sustancias.nº2))
+  dplyr::mutate(otras_sus2=as.character(Otras.Sustancias.nº2)) %>%
+  dplyr::mutate(otras_sus2= dplyr::recode(otras_sus2,
+                                              "Hipnóticos "= "Tranquilizantes e Hipnóticos",
+                                              "Sedantes:  diazepam, Valium, clonazepam, Ravotril, alprazolam, adax, barbitúricos, fenobarbital." = "Tranquilizantes e Hipnóticos",
+                                              "Anfetaminas"="Estimulante tipo anfetaminas",
+                                              "Extasis"="Estimulante tipo anfetaminas",
+                                              "Fenilciclidina"="Estimulante tipo anfetaminas",
+                                              "Metanfetaminas y otros derivados"="Estimulante tipo anfetaminas",
+                                              "Otros Estimulantes"="Estimulante tipo anfetaminas",
+                                              "LSD"="Alucinógenos",
+                                              "Otros Alucinógenos"="Alucinógenos",
+                                              "Crack"="Pasta Base",
+                                              "Heroína"="Opioides",
+                                              "Metadona"="Opioides",
+                                              "Otros Opioides Analgésicos: morfina, codeína, meperidina,  demerol, tramadol, tramal."="Opioides",
+                                              "Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
+                                              "Esteroides Anabólicos"="Otros",
+                                              "Hongos"="Alucinógenos")) %>%
+dplyr::mutate(otras_sus2= dplyr::na_if(otras_sus2, "SIN CONSUMO")) %>%
+dplyr::mutate(otras_sus2=as.factor(otras_sus2)) %>%    
+#data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Otras.Sustancias.nº3))
+  dplyr::mutate(otras_sus3=as.character(Otras.Sustancias.nº3)) %>%
+  dplyr::mutate(otras_sus3= dplyr::recode(otras_sus3,
+                                              "Hipnóticos "= "Tranquilizantes e Hipnóticos",
+                                              "Sedantes:  diazepam, Valium, clonazepam, Ravotril, alprazolam, adax, barbitúricos, fenobarbital." = "Tranquilizantes e Hipnóticos",
+                                              "Anfetaminas"="Estimulante tipo anfetaminas",
+                                              "Extasis"="Estimulante tipo anfetaminas",
+                                              "Fenilciclidina"="Estimulante tipo anfetaminas",
+                                              "Metanfetaminas y otros derivados"="Estimulante tipo anfetaminas",
+                                              "Otros Estimulantes"="Estimulante tipo anfetaminas",
+                                              "LSD"="Alucinógenos",
+                                              "Otros Alucinógenos"="Alucinógenos",
+                                              "Crack"="Pasta Base",
+                                              "Heroína"="Opioides",
+                                              "Metadona"="Opioides",
+                                              "Otros Opioides Analgésicos: morfina, codeína, meperidina,  demerol, tramadol, tramal."="Opioides",
+                                              "Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
+                                              "Esteroides Anabólicos"="Otros",
+                                              "Hongos"="Alucinógenos")) %>%
+dplyr::mutate(otras_sus3= dplyr::na_if(otras_sus3, "SIN CONSUMO")) %>%
+dplyr::mutate(otras_sus3=as.factor(otras_sus3)) %>%    
+#data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Sustancia.de.Inicio))
+dplyr::mutate(sus_ini=as.character(Sustancia.de.Inicio)) %>%
+dplyr::mutate(sus_ini= dplyr::recode(sus_ini,
+                                              "Hipn?os "= "Tranquilizantes e Hipnóticos",
+                                              "Sedantes:  diazepam, Valium, clonazepam, Ravotril, alprazolam, adax, barbit?os, fenobarbital." = "Tranquilizantes e Hipnóticos",
+                                              "Anfetaminas"="Estimulante tipo anfetaminas",
+                                              "Extasis"="Estimulante tipo anfetaminas",
+                                              "Fenilciclidina"="Estimulante tipo anfetaminas",
+                                              "Metanfetaminas y otros derivados"="Estimulante tipo anfetaminas",
+                                              "Otros Estimulantes"="Estimulante tipo anfetaminas",
+                                              "LSD"="Alucinógenos",
+                                              "Otros Alucin?os"="Alucinógenos",
+                                              "Crack"="Pasta Base",
+                                              "Hero?"="Opioides",
+                                              "Coca?"="Cocaína",
+                                              "Metadona"="Opioides",
+                                              "Otros Opioides Analg?cos: morfina, code?, meperidina,  demerol, tramadol, tramal."="Opioides",
+                                              "Inhalables: neopren, GHB, ?o nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
+                                              "Esteroides Anabólicos"="Otros",
+                                              "Hongos"="Alucinógenos")) %>% 
+dplyr::mutate(sus_ini=as.factor(sus_ini)) %>%    
+#data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Estado.Conyugal))
+#marital status (single, married/with partner, separated/divorced, widow)
+dplyr::mutate(estado_conyugal=ifelse(as.character(Estado.Conyugal)=="Casado"|as.character(Estado.Conyugal)=="Conviviente"|as.character(Estado.Conyugal)=="conviviente civil", "Casado/Conviviente",stringr::str_trim(as.character(Estado.Conyugal)))) %>%
+dplyr::mutate(estado_conyugal=ifelse(estado_conyugal=="Separado"|estado_conyugal=="Divorciado"|estado_conyugal=="Anulado", "Separado/Divorciado",estado_conyugal)) %>% 
+dplyr::mutate(estado_conyugal=ifelse(estado_conyugal=="Nocontesta",NA,estado_conyugal)) %>%
+dplyr::mutate(estado_conyugal=as.factor(estado_conyugal)) %>%
+#occupational status (inactive, unemployed, employed)  
+#data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Condicion.Ocupacional))
+#
+#Esta variable busca establecer si la persona desarrolló alguna actividad laboral o productiva, es decir, si participó en la producción de un bien o servicio para la venta o para el autoconsumo, por un mínimo de una hora semanal en la semana anterior (lunes a domingo) a la entrevista. Los quehaceres del hogar no son considerados una actividad productiva o ‘razón de ocupación’.
+#Si la respuesta es afirmativa se debe seleccionar la opción “Trabajando actualmente” Si la persona No Trabajó, interesa saber si está Desocupada (“busca trabajo por primera vez” o “cesante”) o Inactiva (que corresponde al resto de la opciones, quehaceres del hogar, estudiando, jubilado, etc.) 
+#
+#Inactivo, desempleado, empleado
+#     Buscando trabajo por primera vez |        245        0.21        0.21
+#                              Cesante |     43,299       36.67       36.87
+#              Estudiando sin trabajar |      1,353        1.15       38.02
+#Incapacitado permanente para trabajar |        294        0.25       38.27
+#                                   NA |          1        0.00       38.27
+#                     No busca Trabajo |      1,250        1.06       39.33
+#                           Otra razón |      1,348        1.14       40.47
+#   Pensionado o jubilado sin trabajar |      1,872        1.59       42.05
+#                 Quehaceres del hogar |      7,683        6.51       48.56
+#                             Rentista |         78        0.07       48.63
+#                        Sin actividad |      7,449        6.31       54.93
+#               Trabajando actualmente |     53,120       44.98       99.92
+#              Trabajando y estudiando |         97        0.08      100.00
+dplyr::mutate(estatus_ocupacional=ifelse(Condicion.Ocupacional=="Trabajando actualmente","Empleado",
+                                         ifelse(Condicion.Ocupacional=="Buscando trabajo por primera vez"|Condicion.Ocupacional=="Cesante",
+                                                "Desempleado","Inactivo"))) %>%
+dplyr::mutate(estatus_ocupacional=as.factor(estatus_ocupacional)) %>%
+#Comprende la relación entre una persona económicamente activa y su trabajo o empleo. Sólo se aplica aquellas personas que se encuentran trabajando al momento de ingresar a tratamiento (las que respondieron 1 en la pregunta anterior). Para las personas que no están trabajando (estudiantes, cesante, etc.) esta opción estará bloqueada.
+#data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Categoría.Ocupacional))
+dplyr::mutate(cat_ocupacional=ifelse(Condicion.Ocupacional!="Trabajando actualmente",NA,as.character(Categoría.Ocupacional))) %>%
+dplyr::mutate(cat_ocupacional=as.factor(cat_ocupacional)) %>%
+#18-24, 25- 29, 30-35, 36-45, and 45+.
+dplyr::mutate(Edad_grupos=ifelse(Edad>45,">45",
+      ifelse(Edad>=36,"36-45",
+      ifelse(Edad>=30,"30-35",
+      ifelse(Edad>=25,"25-29",
+      ifelse(Edad>=18,"18-24",
+      NA)))))) %>%
+dplyr::mutate(Edad_grupos=as.factor(Edad_grupos)) %>%
+# motive of admission to treatment (spontaneous consultation, referral from a health center, indicated in the judicial system, other)
+#data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Origen.de.Ingreso))
+dplyr::mutate(origen_ingreso=ifelse(as.character(Origen.de.Ingreso)=="Consulta Espontánea", "Consulta Espontánea",as.character(Origen.de.Ingreso))) %>%
+dplyr::mutate(origen_ingreso=ifelse(origen_ingreso=="Establecimiento Educacional"|origen_ingreso=="Otros"|origen_ingreso=="Trabajo (empresa o empleador)"|origen_ingreso=="Servicios Sociales u otros (iglesia, Mideplan, ser. comunitarios, etc.)", "Otros",origen_ingreso)) %>%
+dplyr::mutate(origen_ingreso=ifelse(origen_ingreso=="Juzgado con Competencia en Crimen"|origen_ingreso=="Juzgado de Garantía"|origen_ingreso=="Libertad Vigilada"|origen_ingreso=="Juzgado de Familia"|origen_ingreso=="Juzgado de Policía"|origen_ingreso=="Otros (fiscalía)","Sector Justicia",origen_ingreso)) %>%
+dplyr::mutate(origen_ingreso=ifelse(origen_ingreso=="Otros de la Red de Salud General Privado"|origen_ingreso=="Estab. de APS"|origen_ingreso=="Estab. de APS "|origen_ingreso=="Otros de la Red de Salud General Público", "Sector Salud", origen_ingreso)) %>%
+dplyr::mutate(origen_ingreso=ifelse(origen_ingreso=="Otro Centro Tratamiento Drogas"|origen_ingreso=="FONODROGAS"|origen_ingreso=="Previene","Otro Centro Tratamiento Drogas/FONODROGAS/Previene",origen_ingreso)) %>%
+dplyr::mutate(origen_ingreso=as.factor(origen_ingreso)) %>%
+# education attainment (completed primary school or less, completed or incomplete high school, more that high school)
+# data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Escolaridad..último.año.cursado.))
+dplyr::mutate(escolaridad=ifelse(as.character(Escolaridad..último.año.cursado.)=="BASICA COMPLETA"|as.character(Escolaridad..último.año.cursado.)=="BASICA INCOMPLETA"|as.character(Escolaridad..último.año.cursado.)=="SIN ESTUDIOS","Ed Primaria Completa o Menor",as.character(Escolaridad..último.año.cursado.))) %>%
+dplyr::mutate(escolaridad=ifelse(escolaridad=="MEDIA COMPLETA"|escolaridad=="MEDIA INCOMPLETA","Ed Secundaria Completa o Menor",
+      ifelse(escolaridad=="NO SABE O NO SE APLICA",NA,
+      ifelse(escolaridad %in% c("TECNICA COMPLETA", "TECNICA INCOMPLETA", "UNIVERSITARIA COMPLETA O MAS", "UNIVERSITARIA INCOMPLETA"), "Mayor a Ed Secundaria",escolaridad)))) %>%
+dplyr::mutate(escolaridad=as.factor(escolaridad)) %>%
+# pattern of drug used (daily, 4 to 6 days a week, 2 to 3 days a week, 1 day a week or less),
+    #data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Vía.Administración..Sustancia.Principal.))
+dplyr::mutate(via_adm_sus_ini=as.character(Vía.Administración..Sustancia.Principal.))%>%
+dplyr::mutate(via_adm_sus_ini=ifelse(via_adm_sus_ini== "No sabe",NA,as.character(via_adm_sus_ini))) %>%
+dplyr::mutate(via_adm_sus_ini=as.factor(via_adm_sus_ini)) %>%
+#data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Frecuencia.de.Consumo..Sustancia.Principal.))
+dplyr::mutate(freq_cons_sus_ini=as.character(Frecuencia.de.Consumo..Sustancia.Principal.))%>%
+dplyr::mutate(freq_cons_sus_ini=ifelse(freq_cons_sus_ini== "Desconocida",NA,as.character(freq_cons_sus_ini))) %>%
+dplyr::mutate(freq_cons_sus_ini=as.factor(freq_cons_sus_ini)) %>%
+dplyr::select(-Edad.y, -Sexo.TOP, -Edad.TOP, -dup_todo) %>%
+as.data.frame(.) %>%  
+assign("CONS_C1_df_dup_ENE_2020",., envir = .GlobalEnv)
 ```
 
 ```{r generate data in csv, echo=F, paged.print=TRUE}
@@ -474,9 +680,7 @@ In Table 12 we can see that most of the cases had at least one case with the sam
 <br>
 
 ```{r duplicated rows, echo=T, paged.print=TRUE}
-
 #create the duplicated dataset, following the recommendation to separate columns
-
 duplicated_rows_concat <- data.frame(duplicated_HASH_date = duplicated(CONS_C1_df_dup_ENE_2020[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")]), 
                                      row_dup_HASH_date = 1:nrow(CONS_C1_df_dup_ENE_2020[,c("HASH_KEY","fech_ing_ano","fech_ing_mes","fech_ing_dia")])) #%>%
   #arroja 117,620 casos únicos, aunque son muchos menos
@@ -517,7 +721,6 @@ as.data.table(CONS_C1_df_dup_ENE_2020)[, dup_hash_date := .N, by = c("HASH_KEY",
   scale_y_continuous(limits=c(0, .075),labels = scales::percent) +
   scale_x_yearqtr(format="%YQ%q", n=20) +
   theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), plot.caption=element_text(hjust=0)) 
-
 ```
 
 &nbsp;
@@ -551,6 +754,7 @@ generate id_match = _n
 cap drop _id
 dtalink hash_key 25 -25 id 25 -25 sexo 10 0 idcentro 10 0 date_in 30 -30 5, block(edad) cutoff(70)
 drop if missing(_score)
+save "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\Stata Duplicates Match\_CONS_C1_df_match70_2020_02_11.dta", replace
 ```
 
 <br>
@@ -668,8 +872,7 @@ clean_plot <- CONS_C1_df_dup_ENE_2020 %>%
   dplyr::mutate(fech_ing_num2=as.numeric(as.Date(fech_ing))) %>%
   dplyr::mutate(fech_egres_num2=as.numeric(as.Date(fech_egres))) %>%
   dplyr::mutate(HASH_KEY_2=HASH_KEY) %>%
-  dplyr::select(row,HASH_KEY_2, id_mod, ano_bd,fech_ing, fech_ing_num2,fech_egres,fech_egres_num2,Edad, Nombre.Centro, motivodeegreso, SENDA) %>% 
-    as.data.table() %>%
+  dplyr::select(row,HASH_KEY_2, id_mod, ano_bd,fech_ing, fech_ing_num2,fech_egres,fech_egres_num2,Edad, Nombre.Centro, motivodeegreso, SENDA)%>%     as.data.table() %>%
   dplyr::filter(HASH_KEY_2 %in% c("07b0d5b1e32b62374685e48039ae6a67",	"0b810dfb7988e5e795b03a9cadc771fe", "0c3aa4566acbeb996e4bf645c7210f83", "01a95b45fa9acf445fe1a7106f2f6664")) %>%
   dplyr::arrange(HASH_KEY_2, fech_ing_num2, row) %>% 
   mutate(Date = format(as.Date(fech_ing, format = "%Y-%m-%d"))) %>% 
@@ -688,7 +891,6 @@ clean_plot <- CONS_C1_df_dup_ENE_2020 %>%
     ggtitle("Figure 4.3 Trajectories of every HASH from dates of admission to discharge")
 
 grid.arrange(total_plot,sample_plot, clean_plot)
-
 ```
 
 In Figure 4, we may notice that `r nrow(ans3)` entries from `r ans3 %>% distinct(HASH_KEY_2) %>% nrow()` different HASHs may share the same HASH Key, both are SENDA programs, but the date of admission is lesser than the date of discharge of another case, and the date of discharge is greater than the date of admission of that other case; and does not include derivation as a cause of discharge. These conditions let us see how many cases overlap with another entry in the dataset.
@@ -823,7 +1025,7 @@ dplyr::mutate(fech_egres_corr= ifelse(is.na(fech_egres),fech_egres_num2,as.chara
 #  dplyr::select(HASH_KEY.x, fech_ing.x,concat,fech_egres,fech_ap_top) %>%View()
 ```
 
-```{r saving dataset in 3 Rdata,echo=F, paged.print=TRUE}
+```{r change labels,echo=F, paged.print=TRUE}
 #TODAVÍA NO ES POSIBLE HACER EL TRASPASO DE ESAS FECHAS TAN IMPORTANTES AL HASH.
 #NO SE PUEDEN RESCATAR DE TOPs
 #CONS_C1_df_dup_ENE_2020_w_date_disch <- CONS_C1_df_dup_ENE_2020 %>% dplyr::filter(is.na(fech_egres)) #no puedo rescatar de TOP
@@ -859,33 +1061,33 @@ Sexo = '(original, Recodificado en sexo)/',
 Edad = 'Edad (número entero)/Year (Discrete Number)',
 Nombre.Usuario = 'Nombre del Usuario (OCULTO y no accesible)/Name of the User (Not Accessible)',
 Comuna.Residencia = 'Comuna de Residencia/Municipality of Residence',
-Origen.de.Ingreso = 'Origen de Ingreso/Background of Admission',
+Origen.de.Ingreso = '(original, Recodificado en origen_ingreso)/',
 País.Nacimiento = 'País de Nacimiento/Country of Birth',
 Nacionalidad = 'Nacionalidad/Nationallity',
 Etnia = 'Etnia/Ethnicity',
-Estado.Conyugal = 'Estado Conyugal/Marital Status',
+Estado.Conyugal = '(original, Recodificado en estado_conyugal)/',
 Número.de.Hijos = 'Número de Hijos/Number of Children',
 Número.de.Hijos.Ingreso.Tratamiento.Residencial = 'Número de Hijos para Ingreso a Tratamiento Residencial/Number of Children to Residential Treatment',
 Parentesco.con.el.Jefe.de.Hogar = '(Sólo presenta valores perdidos)/',
 Numero.de.Tratamientos.Anteriores = 'Número de Tratamientos Anteriores/Number of Previous Treatments',
 Fecha.Ultimo.Tratamiento = 'Fecha del Último Tratamiento (aún no formateada como fecha)/Date of the Last Treatment',
-Sustancia.de.Inicio = 'Sustancia de Inicio (debiese colapsarse en menos categorías)/Starting Substance',
-Edad.Inicio.Consumo = 'Edad de Inicio de Consumo/Age of Beginning Consumption',
+Sustancia.de.Inicio = '(original, Recodificado en sus_ini)/',
+Edad.Inicio.Consumo = '(original, Recodificado en edad_ini_cons)/', 
 X.Se.trata.de.una.mujer.embarazada. = 'Mujer Embarazada al Ingreso/Pregnant at Admission',
-Escolaridad..último.año.cursado. = 'Escolaridad: Último Año Cursado/Education: Last Year/Academic Year',
-Condicion.Ocupacional = 'Condición Ocupacional/Occupational Status',
-Categoría.Ocupacional = 'Categoría Ocupacional/Occupational Category',
+Escolaridad..último.año.cursado. = '(original, Recodificado en escolaridad)/', 
+Condicion.Ocupacional = '(original, Recodificado en estatus_ocupacional)/', 
+Categoría.Ocupacional = '(original, Recodificado en cat_ocupacional)/',
 Rubro.Trabaja = 'Rubro de Trabajo/Area of Work',
 Con.Quién.Vive = 'Persona con la que vive el Usuario/People that Share Household with the User',
 Tipo.de.vivienda = 'Tipo de Vivienda/Type of Housing',
 Tenencia.de.la.vivienda = 'Tenencia de la Vivienda/Tenure status of Households',
-Sustancia.Principal = 'Sustancia Principal de Consumo/Main Substance of Consumption',
-Otras.Sustancias.nº1 = 'Otras Sustancias (1)/Other Substances (1)',
-Otras.Sustancias.nº2 = 'Otras Sustancias (2)/Other Substances (2)',
-Otras.Sustancias.nº3 = 'Otras Sustancias (3)/Other Substances (3)',
-Frecuencia.de.Consumo..Sustancia.Principal. = 'Frecuencia de Consumo de la Sustancia Principal/Frequency of Consumption of the Main Substance',
-Edad.Inicio..Sustancia.Principal. = 'Edad Inicio Sustancia Principal (es necesario normalizar sus límites de acuerdo a los parámetros establecidos por los profesionales SENDA)/Age of Beginning Consumption of the Main Substance',
-Vía.Administración..Sustancia.Principal. = 'Vía de Administración de la Sustancia Principal/Route of Administration of the Main Substance',
+Sustancia.Principal = '(original, Recodificado en sus_principal)/',
+Otras.Sustancias.nº1 = '(original, Recodificado en otras_sus1)/',
+Otras.Sustancias.nº2 = '(original, Recodificado en otras_sus2)/',
+Otras.Sustancias.nº3 = '(original, Recodificado en otras_sus3)/',
+Frecuencia.de.Consumo..Sustancia.Principal. = '(original, Recodificado en freq_cons_sus_ini)/',
+Edad.Inicio..Sustancia.Principal. = '(original, Recodificado en edad_ini_sus_prin)/',
+Vía.Administración..Sustancia.Principal. = '(original, Recodificado en via_adm_sus_ini)/',
 Diagnóstico.Trs..Consumo.Sustancia = 'Diagnósico de Trastorno por Consumo de Sustancias/Diagnosed of Substance Use Disorder',
 Diagnóstico.Trs..Psiquiátrico.DSM.IV = 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV/Diagnosis of Psychiatric Disorders, DSM-IV criteria',
 Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV = 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification)',
@@ -946,13 +1148,37 @@ fech_ing_ano = 'Año de Ingreso (numérico)/Year of Admission (numeric)',
 fech_ing_mes = 'Mes de Ingreso (numérico)/Month of Admission (numeric)',
 fech_ing_dia = 'Día de Ingreso (numérico)/Day of Admission (numeric)',
 concat = 'ID de SENDA y HASH Concatenado (permite discriminar más de un HASH en un mismo ID)/Combination of SENDAs ID & HASH',
-dup_todo = 'Concatenación de 103 variables (para contrastar entradas duplicadas)/Combination of 103 variables (to discard duplicated rows)',
 dias_trat_inv = 'Días de Tratamiento Invertidos (fecha más reciente, menor valor numérico)/Treatment Days (Reversed)',
 fech_nac = 'Fecha de Nacimiento/Date of Birth',
-Edad_al_ing = 'Edad a la Fecha de Ingreso a Tratamiento (numérico continuo)/Age at Admission to Treatment')
+Edad_al_ing = 'Edad a la Fecha de Ingreso a Tratamiento (numérico continuo)/Age at Admission to Treatment',
+edad_ini_cons= 'Edad de Inicio de Consumo/ Age of Onset of Drug Use',
+edad_ini_sus_prin =  'Edad de Inicio de Consumo Sustancia Principal/ Age of Onset of Drug Use Principal Substance',
+dias_trat_alta_temprana = 'Días de tratamiento (<90)/ Less than 90 days in treatment',
+motivodeegreso_mod = 'Motivo de Egreso (con abandono temprano y tardío)/Cause of Discharge (with late and early withdrawal)',
+sus_principal = 'Sustancia Principal de Consumo/Main Substance of Consumption',
+otras_sus1= 'Otras Sustancias (1)/Other Substances (1)',
+otras_sus2= 'Otras Sustancias (2)/Other Substances (2)',
+otras_sus3= 'Otras Sustancias (3)/Other Substances (3)',
+sus_ini= 'Sustancia de Inicio/Starting Substance',
+estado_conyugal='Estado Conyugal/Marital Status',
+estatus_ocupacional= 'Condición Ocupacional/Occupational Status',
+cat_ocupacional= 'Categoría Ocupacional/Occupational Category',
+Edad_grupos	= 'Edad agrupada/Age in groups',
+origen_ingreso= 'Origen de Ingreso/Motive of Admission to Treatment',
+escolaridad= 'Escolaridad: Nivel Eduacional/Education Attainment',
+freq_cons_sus_ini = 'Frecuencia de Consumo de la Sustancia Principal/Frequency of Consumption of the Main Substance',
+via_adm_sus_ini = 'Vía de Administración de la Sustancia Principal/Route of Administration of the Main Substance')
 
+#PARA EXPORTAR LABELS A EXCEL
+#data.table::data.table(table(CONS_C1_df_dup_ENE_2020$identidad.de.genero, exclude=NULL)) %>% mutate(export=paste0(row_number(),".",V1)) %>% select(-V1) %>% select(export,N)%>% copiar_nombres()
+
+#save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/3.Rdata")
+```
+
+```{r saving dataset in 3 Rdata, echo=F, paged.print=TRUE}
 save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/3.Rdata")
 ```
+
 <br>
 
 Leaving behind the last questions that may condition the analysis, we ran a probabilistic match based on the criteria defined above in the **`dtalink`** software. In Table 17 there is a selection of probabilistics matches that have elements that are worth of discussion.  Most of them have many information in common, describing derivations to another center or parallel treatments, and others do not overlap but were match due to the span of +/-5 days as calliper in the date of admission. However, some characteristics change and are different between them, requiring to be precautious to not automatically delete one of them and drop information that might be useful.

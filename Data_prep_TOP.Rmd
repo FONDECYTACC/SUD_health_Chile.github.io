@@ -101,8 +101,6 @@ As can be seen in Table 2, every date was formatted into dates in a format dispo
 <br>
 
 ```{r changes_dates, cache=T}
-
-
 #change dates
 CONS_TOP_df %>%
   dplyr::mutate(fech_ing= lubridate::parse_date_time(Fecha.de.Ingreso.a.Tratamiento, c("%d/%m/%Y"),exact=T)) %>% #No parse failures
@@ -460,7 +458,6 @@ One of them is the date of application of the TOP questionnaire. As can be seen 
 ```{r Duplicated2}
     duplicated_rows_concat_TOP2 <- data.frame(duplicated_HASH_date = duplicated(CONS_TOP_df_dup_ENE_2020_prev2.2[,c("HASH_KEY","fech_ap_top")]), 
                                          row_dup_HASH_date = 1:nrow(CONS_TOP_df_dup_ENE_2020_prev2.2[,c("HASH_KEY","fech_ap_top")])) #%>%
-
     as.data.table(CONS_TOP_df_dup_ENE_2020_prev2.2)[, dup_hash_date_ap := .N, by = c("HASH_KEY","fech_ap_top")] %>% ##dim()
       dplyr::group_by(dup_hash_date_ap) %>%
       dplyr::summarise(n=n()) %>%
@@ -502,7 +499,6 @@ dplyr::select(-ID, -ID.y) %>%
 We need reduce the number of cases, but in the meantime, reduce the loss of information due to specific changes in each entry, despite it could be originated by different mechanisms (eg. different professionals evaluated the same users for an specific stage of the treatment, but highlighting different things), other than comming from the same yearly dataset.
 
 <br>
-
 
 ```{r deduplication1, echo=T, cache=T, paged.print=TRUE}
 #create vector with variable names
@@ -651,7 +647,6 @@ CONS_TOP_df_dup_ENE_2020_prev6 %>%
     dplyr::filter(!duplicated(fech_ing.y)) %>%
       #134 cases may be affected with this problem, 67 concatenations of hash date and ap top.
       write.csv2(file ="G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/Maureen/_9.mismo_HASH_y_fecha_de_aplicacion_TOP_mas_de_una_fecha_de_ingreso.csv")
-
 ```   
 
 Considering these cases are still being cleared, we would only consider as our key date the date of application only.
@@ -760,10 +755,12 @@ CONS_TOP_df_dup_ENE_2020_prev6 %>%
   assign("CONS_TOP_df_dup_ENE_2020_prev7",.,envir = .GlobalEnv)
 ```
 <br>
-Considering the abovementioned observation, we changed those cases with Masculine identitiy (obtained from C1 dataset) into a general population  (PR) plan.
+Considering the abovementioned observation, we changed those Mens with Masculine identitiy (obtained from C1 dataset) into a general population  (PR) plan.
 <br>
 
 ```{r change_type_plan2, echo=F, paged.print=TRUE, cache=T, warning=F}
+#CONS_TOP_df_dup_ENE_2020_prev7 %>% dplyr::filter(tipo_de_plan=="M-PAI"|tipo_de_plan=="M-PR", Sexo=="Mujer") %>% #dplyr::inner_join(dplyr::select(CONS_C1_df_dup_ENE_2020,HASH_KEY, identidad.de.genero), by="HASH_KEY") %>% dplyr::select(HASH_KEY, id_mod, #tipo_de_plan, identidad.de.genero) %>% dplyr::filter(!is.na(identidad.de.genero)) %>% data.table::as.data.table() %>% print()
+
 CONS_TOP_df_dup_ENE_2020_prev7 %>% dplyr::filter(tipo_de_plan=="M-PAI"|tipo_de_plan=="M-PR", Sexo=="Hombre") %>% dplyr::inner_join(dplyr::select(CONS_C1_df_dup_ENE_2020,HASH_KEY, identidad.de.genero), by="HASH_KEY") %>% dplyr::select(HASH_KEY, id_mod, tipo_de_plan, identidad.de.genero) %>% dplyr::filter(!is.na(identidad.de.genero)) %>%
   data.table::as.data.table() %>%
     knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
@@ -776,8 +773,8 @@ CONS_C1_df_dup_ENE_2020_unique_gender<- dplyr::select(CONS_C1_df_dup_ENE_2020,HA
 
 CONS_TOP_df_dup_ENE_2020_prev7 %>%
     dplyr::left_join(CONS_C1_df_dup_ENE_2020_unique_gender, by="HASH_KEY") %>%
-    dplyr::mutate(tipo_de_plan=ifelse(identidad.de.genero=="Masculino" & tipo_de_plan=="M-PAI","PG-PAI", tipo_de_plan)) %>%
-    dplyr::mutate(tipo_de_plan=ifelse(identidad.de.genero=="Masculino" & tipo_de_plan=="M-PR","PG-PR", tipo_de_plan)) %>% 
+    dplyr::mutate(tipo_de_plan=ifelse(identidad.de.genero=="Masculino" & Sexo=="Hombre" & tipo_de_plan=="M-PAI","PG-PAI", tipo_de_plan)) %>%
+    dplyr::mutate(tipo_de_plan=ifelse(identidad.de.genero=="Masculino" & Sexo=="Hombre" & tipo_de_plan=="M-PR","PG-PR", tipo_de_plan)) %>% 
     #PARA VER LO QUE PASA
 #    dplyr::count(tipo_de_plan, Sexo) %>% 
 #    dplyr::group_by(Sexo) %>% 
@@ -790,7 +787,6 @@ CONS_TOP_df_dup_ENE_2020_prev7 %>%
   dplyr::select(-TABLE, -row_leftjoin,-dup_todo_TOP,-dup_contents_TOP) %>%
   as.data.frame() %>%
   assign("CONS_TOP_df_dup_ENE_2020_prev8",.,envir = .GlobalEnv)
-
 ```
 
 Also we generated an ID code of the center of treatment, in order to mask this name and avoid any possible identification of specific cases. However, 2 centers could not be obtained from C1 dataset because they were not available: "Centro de Tratamiento San Francisco" and "Kausana CIP CRC Antofagasta". **These centers will be consulted to the SENDAs professional in order to clarify if they can be replace for another one that has a center ID number** .
@@ -896,6 +892,10 @@ codebook::var_label(CONS_TOP_df_dup_ENE_2020_prev9) <- list(HASH_KEY = 'Codifica
 
   as.data.frame(CONS_TOP_df_dup_ENE_2020_prev9) %>%
   assign("CONS_TOP_df_dup_ENE_2020_prev9",.,envir = .GlobalEnv)
+  
+  #PARA EXPORTAR LABELS A EXCEL
+  #data.table::data.table(table(CONS_TOP_df_dup_ENE_2020_prev9$identidad.de.genero, exclude=NULL)) %>% mutate(export=paste0(row_number(),".",V1)) %>% select(-V1) %>% select(export,N)%>% copiar_nombres()
+  #es mejor hacerlo con el paquete RIO, en el caso de STATA
 
 save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/4.Rdata")
 ```
