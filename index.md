@@ -10,9 +10,9 @@ This page is composed by the following main topics:
 
     1.1. [Preliminary Results for SER 2020](SER_Stata.html)
     
-    1.2. [Dedupication of C1](Duplicates)
+    1.2. [Deduplication of C1](Duplicates)
     
-    1.3. [Dedupication of C1, Part 2](Duplicates2)
+    1.3. [Deduplication of C1, Part 2](Duplicates2)
     
     1.4. [Codebook of C1](codebook)
   
