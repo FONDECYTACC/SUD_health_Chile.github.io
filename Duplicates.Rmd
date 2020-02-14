@@ -57,7 +57,10 @@ CONS_C1_df%>%
 
 ```{r setup, include = FALSE, cache=T}
 #Libraries used in the routine. Dont change the order
-
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
 #https://github.com/RevolutionAnalytics/checkpoint
 if(!require(checkpoint)){install.packages("checkpoint")}
 if(!require(here)){install.packages("here")}
@@ -71,6 +74,7 @@ if(!require(here)){install.packages("here")}
 #.libPaths()
 if(!require(tidyr)){install.packages("tidyr")}
 if(!require(DataExplorer)){install.packages("DataExplorer")}
+if(!require(janitor)){install.packages("janitor")}
 if(!require(stringi)){install.packages("stringi")}
 if(!require(stringr)){install.packages("stringr")}
 if(!require(ggplot2)){install.packages("ggplot2")}
@@ -1013,17 +1017,17 @@ Figure 4 let us observe how many treatments overlap. Many users start from 2000 
 CONS_C1_df_dup_intervals<- CONS_C1_df_dup_ENE_2020 %>%
   dplyr::mutate(fech_ing_num2=as.numeric(as.Date(fech_ing))) %>%
   dplyr::mutate(fech_egres_num2=as.numeric(as.Date(fech_egres))) %>%
-  dplyr::mutate(HASH_KEY_2=HASH_KEY) %>%
-  dplyr::select(row,HASH_KEY_2, id_mod, ano_bd,fech_ing, fech_ing_num2,fech_egres,fech_egres_num2,Edad, Nombre.Centro, motivodeegreso, SENDA) %>% 
+  dplyr::rename("HASH_KEY_2"="HASH_KEY", "row2"="row") %>%
+  dplyr::select(row2,HASH_KEY_2, id_mod, ano_bd,fech_ing, fech_ing_num2,fech_egres,fech_egres_num2,Edad, Nombre.Centro, motivodeegreso, SENDA) %>% 
   dplyr::filter(motivodeegreso!="Derivación") %>%
-  as.data.table()
+  data.table::as.data.table()
 
 c26 <- c(
   "dodgerblue2", "#E31A1C", # red
   "green4",
   "#6A3D9A", # purple
   "#FF7F00", # orange
-  "black", "gold1",
+  "gray16", "gold1",
   "skyblue2", "#FB9A99", # lt pink
   "palegreen2",
   "#CAB2D6", # lt purple
@@ -1035,17 +1039,19 @@ c26 <- c(
 
 require(sqldf)
 require(gridExtra)
-  ans3 <- sqldf("SELECT *
+  ans3 <- janitor::clean_names(sqldf("SELECT *
                  FROM CONS_C1_df_dup_intervals AS x  
                  INNER JOIN CONS_C1_df_dup_intervals AS y 
                  ON x.HASH_KEY_2 == y.HASH_KEY_2 AND 
-                 x.fech_ing_num2 < y.fech_egres_num2 AND x.fech_egres_num2 > y.fech_ing_num2 AND x.row != y.row AND x.SENDA==y.SENDA") 
+                 x.fech_ing_num2 < y.fech_egres_num2 AND x.fech_egres_num2 > y.fech_ing_num2 AND x.row2 != y.row2"))
+  
   #busca mismo hash, distinto row,pero fecha de ingreso menor o igual a la fecha de egreso del otro, y fecha de egreso mayor o igual a la fecha de ingreso del otro. ESTO ES PARA VER SI SE SUPERPONEN.
+  set.seed(4321)
   random<-round(runif(1, 1, 100),0)
-total_plot <- ans3 %>%
-    dplyr::arrange(HASH_KEY_2, fech_ing_num2, row) %>% ggplot(.) + 
+total_plot <- as.data.table(ans3) %>%
+    dplyr::arrange(hash_key_2, fech_ing_num2, row2) %>% ggplot(.) + 
   geom_segment(aes(x = fech_ing, xend = fech_egres,
-                   y = HASH_KEY_2, yend = HASH_KEY_2)) + theme(axis.line=element_blank(),
+                   y = hash_key_2, yend = hash_key_2)) + theme(axis.line=element_blank(),
           axis.text.y=element_blank(),axis.ticks=element_blank(),
           axis.title.x=element_text(""),legend.position="none",
           panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
@@ -1054,12 +1060,12 @@ total_plot <- ans3 %>%
     labs(x = "Dates of admission and discharge", y = "", caption="Note. Only users that share characteristics and overlap between them")+
     ggtitle("Figure 4.1 Trajectories of HASHs from dates of admission to discharge")
 sample_plot <- ans3 %>% 
-    dplyr::arrange(HASH_KEY_2, fech_ing_num2, row) %>% 
+    dplyr::arrange(hash_key_2, fech_ing_num2, row2) %>% 
   dplyr::slice(random:(random+25)) %>%
   mutate(Date = format(as.Date(fech_ing, format = "%Y-%m-%d"))) %>% 
   ggplot(aes(x=Date)) + 
   geom_segment(aes(x = fech_ing, xend = fech_egres,
-                   y = HASH_KEY_2, yend = HASH_KEY_2,colour=as.factor(row),size=1/100)) + theme(axis.line=element_blank(),axis.text.y=element_blank(),
+                   y = hash_key_2, yend = hash_key_2,colour=as.factor(row2),size=1/100)) + theme(axis.line=element_blank(),axis.text.y=element_blank(),
           axis.ticks=element_blank(),
           axis.title.x=element_text(""),legend.position="none",axis.title.y=element_text("HASHs"),
           panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
