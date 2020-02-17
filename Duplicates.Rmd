@@ -31,6 +31,14 @@ code.r{
 body{ /* Normal  */
       text-align: justify;
   }
+.superbigimage{
+    overflow-y:scroll;
+    white-space: nowrap;
+}
+.superbigimage img{
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
 </style>
 
 ```{r prev, include=FALSE, cache=T}
@@ -964,10 +972,17 @@ drop if missing(_score)
 qui save "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\Stata Duplicates Match\_CONS_C1_df_match70_2020_02_11.dta", replace
 ```
 
-```{r  dta_import, include=F, echo=T, eval=T, cache=T,results='hide'}
+```{r  dta_import, include=T, echo=T, eval=T, cache=T}
 matches_from_stata_c1 <- haven::read_dta("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/Stata Duplicates Match/_CONS_C1_df_match70_2020_02_11.dta")
+matches_from_stata_c1 %>%
+  dplyr::arrange(`_score`,`_matchID`,hash_key) %>%
+  dplyr::select(`_score`, `_matchID`, hash_key, ano_bd, idcentro, date_in, fech_ing, fech_egres, edad, dias_trat) %>%
+  as.data.frame() %>%
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+                   caption="Table 13. Preliminary View of Matches from Stata", align =rep('c', 100)) %>%
+     kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+    kableExtra::scroll_box(width = "100%", height = "350px")
 ```
-
 <br>
 
 An a analysis of probabilistic matches between events by the requirements listed above, showed us 1 case with a missing value in the date of admission, (correspondent to the HASH KEY "6c409c18bf7cc518819dc63c4e8e98ef"), 71 matches with a value of 90 points, and 429 matches with 100 points. Must note that around a 93% of HASHs involved in matching appear around 2 times (very possible considering the match would be produced by the coincidence of HASH Keys), and the remaining 7%, 4 times or more.
@@ -987,18 +1002,10 @@ CONS_C1_df_dup_ENE_2020 %>%
 
 ```{r  Fig 3, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center", message=F}
 #quantile(matches_hash_freq$n, .80)
-
-#matches_hash_freq <- read.table(file = "clipboard", sep = "\t", header=TRUE)
-#matches_hash_freq
-prob<- c(1:200)/200 #generate options
-
 #summary(matches_hash_freq)
 #
-require(readxl)
-Duplicates_Matching_ene_2020 <- read_excel("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/Stata Duplicates Match/Duplicates_Matching_ene_2020.xlsx", 
-    sheet = "unique value")
 #quantile(Duplicates_Matching_ene_2020$n, prob)
-hist(Duplicates_Matching_ene_2020$n, main=paste0("Figure 3. Histogram of HASH Keys in matches (n=",nrow(Duplicates_Matching_ene_2020),")"), breaks=10,xlab="Repetitions", ylab="Freq.")
+hist(matches_from_stata_c1 %>% group_by(hash_key) %>% summarise(n=n()) %>% as.data.frame() %>%dplyr::select(n), main=paste0("Figure 3. Histogram of HASH Keys in matches (n=",matches_from_stata_c1 %>% group_by(hash_key) %>% summarise(n=n()) %>% as.data.frame() %>% summarise(length(n)),")"), breaks=20,xlab="Repetitions", ylab="Freq.")
 ```
 
 <br>
@@ -1012,8 +1019,8 @@ Figure 4 let us observe how many treatments overlap. Many users start from 2000 
 
 <br>
 
-```{r  Fig 4, fig.height=14, fig.width=8, warning=FALSE, fig.align = "center", message=F, cache=T}
-
+<div class="superbigimage">
+```{r  Fig 4, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center", message=F, cache=T}
 CONS_C1_df_dup_intervals<- CONS_C1_df_dup_ENE_2020 %>%
   dplyr::mutate(fech_ing_num2=as.numeric(as.Date(fech_ing))) %>%
   dplyr::mutate(fech_egres_num2=as.numeric(as.Date(fech_egres))) %>%
@@ -1021,7 +1028,29 @@ CONS_C1_df_dup_intervals<- CONS_C1_df_dup_ENE_2020 %>%
   dplyr::select(row2,HASH_KEY_2, id_mod, ano_bd,fech_ing, fech_ing_num2,fech_egres,fech_egres_num2,Edad, Nombre.Centro, motivodeegreso, SENDA) %>% 
   dplyr::filter(motivodeegreso!="Derivación") %>%
   data.table::as.data.table()
+require(sqldf)
+require(gridExtra)
+  ans3 <- janitor::clean_names(sqldf("SELECT *
+                 FROM CONS_C1_df_dup_intervals AS x  
+                 INNER JOIN CONS_C1_df_dup_intervals AS y 
+                 ON x.HASH_KEY_2 == y.HASH_KEY_2 AND 
+                 x.fech_ing_num2 < y.fech_egres_num2 AND x.fech_egres_num2 > y.fech_ing_num2 AND x.row2 != y.row2"))  
+  #busca mismo hash, distinto row,pero fecha de ingreso menor o igual a la fecha de egreso del otro, y fecha de egreso mayor o igual a la fecha de ingreso del otro. ESTO ES PARA VER SI SE SUPERPONEN.
+as.data.table(ans3) %>%
+    dplyr::arrange(hash_key_2, fech_ing_num2, row2) %>% ggplot(.) + 
+  geom_segment(aes(x = fech_ing, xend = fech_egres,
+                   y = hash_key_2, yend = hash_key_2)) + theme(axis.line=element_blank(),
+          axis.text.y=element_blank(),axis.ticks=element_blank(),
+          axis.title.x=element_text(""),legend.position="none",
+          panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank(),plot.background=element_blank()) +
+  theme(plot.caption = element_text(hjust = 0, face= "italic")) +
+    labs(x = "Dates of admission and discharge", y = "", caption="Note. Only users that share characteristics and overlap between them")+
+    ggtitle("Figure 4.1 Trajectories of HASHs from dates of admission to discharge")
+```
+</div>
 
+```{r  Fig 4_v2, fig.height=14, fig.width=8, warning=FALSE, fig.align = "center", message=F, cache=T}
 c26 <- c(
   "dodgerblue2", "#E31A1C", # red
   "green4",
@@ -1037,28 +1066,8 @@ c26 <- c(
   "darkturquoise", "green1", "yellow4", "yellow3",
   "darkorange4", "brown", "gray40")
 
-require(sqldf)
-require(gridExtra)
-  ans3 <- janitor::clean_names(sqldf("SELECT *
-                 FROM CONS_C1_df_dup_intervals AS x  
-                 INNER JOIN CONS_C1_df_dup_intervals AS y 
-                 ON x.HASH_KEY_2 == y.HASH_KEY_2 AND 
-                 x.fech_ing_num2 < y.fech_egres_num2 AND x.fech_egres_num2 > y.fech_ing_num2 AND x.row2 != y.row2"))
-  
-  #busca mismo hash, distinto row,pero fecha de ingreso menor o igual a la fecha de egreso del otro, y fecha de egreso mayor o igual a la fecha de ingreso del otro. ESTO ES PARA VER SI SE SUPERPONEN.
   set.seed(4321)
   random<-round(runif(1, 1, 100),0)
-total_plot <- as.data.table(ans3) %>%
-    dplyr::arrange(hash_key_2, fech_ing_num2, row2) %>% ggplot(.) + 
-  geom_segment(aes(x = fech_ing, xend = fech_egres,
-                   y = hash_key_2, yend = hash_key_2)) + theme(axis.line=element_blank(),
-          axis.text.y=element_blank(),axis.ticks=element_blank(),
-          axis.title.x=element_text(""),legend.position="none",
-          panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
-          panel.grid.minor=element_blank(),plot.background=element_blank()) +
-  theme(plot.caption = element_text(hjust = 0, face= "italic")) +
-    labs(x = "Dates of admission and discharge", y = "", caption="Note. Only users that share characteristics and overlap between them")+
-    ggtitle("Figure 4.1 Trajectories of HASHs from dates of admission to discharge")
 sample_plot <- ans3 %>% 
     dplyr::arrange(hash_key_2, fech_ing_num2, row2) %>% 
   dplyr::slice(random:(random+25)) %>%
@@ -1103,7 +1112,7 @@ clean_plot <- CONS_C1_df_dup_ENE_2020 %>%
          subtitle="Example of 4 clean trajectories. Colored lines represent different rows in the dataset, but same HASH")+
     ggtitle("Figure 4.3 Trajectories of every HASH from dates of admission to discharge")
 
-grid.arrange(total_plot,sample_plot, clean_plot)
+grid.arrange(sample_plot, clean_plot)
 ```
 
 In Figure 4, we may notice that `r nrow(ans3)` entries from `r ans3 %>% distinct(HASH_KEY_2) %>% nrow()` different HASHs may share the same HASH Key, both are SENDA programs, but the date of admission is lesser than the date of discharge of another case, and the date of discharge is greater than the date of admission of that other case; and does not include derivation as a cause of discharge. These conditions let us see how many cases overlap with another entry in the dataset.
