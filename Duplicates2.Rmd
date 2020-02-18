@@ -31,8 +31,15 @@ code.r{
 body{ /* Normal  */
       text-align: justify;
   }
+.superbigimage{
+    overflow-y:scroll;
+    white-space: nowrap;
+}
+.superbigimage img{
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
 </style>
-
 
 ```{r setup, include = FALSE, cache=T}
 #Libraries used in the routine. Dont change the order
@@ -64,16 +71,50 @@ if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
 if(!require(data.table)){install.packages("data.table")}
 if(!require(dplyr)){install.packages("dplyr")}
 
-load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/3.Rdata")
+load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/4.Rdata")
 ```
+<!--- SÍ O SÍ, HACER LA LIMPIEZA DE LOS SENDA NO, PRINCIPALMENTE DE LOS QUE SE SUPERPONGAN, TAMBIÉN PREGUNTAR A ACC SI LOS CON 0 DÍAS DE TRATAMIENTO SE BORRARÁN O NO; DE AHI EMPEZAR A NORMALIZAR LOS PROGRAMAS Y PLANES DE ACUERDO CON CRITERIOS MAUREEN, PARA NO GENERAR DIFERENCIAS AHI Y PODER DEDUPLICAR TRANQUILO --->
 
-## 1. HASH and date of admission
+<!--- tipo_centro, convertir en factor 1. Privado, 2. Público; DataExplorer::create_report(CONS_1_4)  --->
+
+## 0. Raw Deduplication
+
+&nbsp;
+<br>
+The dataset discarded duplicated rows in almost every variable, excepting the row number in the whole consolidated dataset and the year of the dataset in which the row was obtained. For the purpose of this page, we use the terms "rows" and "cases" as equal to refer to the entries of the dataset.
+<br>
+
+### 0.a. Deduplication based on standardized columns of interest for the study
+
+
+&nbsp;
+<br>
+We need to discard cases that may be duplicated or with information overlapped 
+<br>
+
+
+require(data.table)
+names_c1_stage2 <- c("HASH_KEY","fech_ing", "tipo_centro", "ID.centro", "Tipo.de.Programa", "Tipo.de.Plan", "SENDA", "Sustancia.Principal", "Otras.Sustancias.nº1","Otras.Sustancias.nº2","Otras.Sustancias.nº3", "Frecuencia.de.Consumo..Sustancia.Principal.","Sustancia.de.Inicio", "Edad.Inicio.Consumo")
+require(dplyr)
+data.table::data.table(CONS_C1_df_dup_ENE_2020_prev) %>%
+  dplyr::mutate(dias_trat_inv=ifelse(dias_trat<0,0,dias_trat*-1))%>% #transforma los erroneos en 0
+  #dplyr::group_by(dias_trat_inv) %>%summarise(n()) %>% View() para probarlo
+  dplyr::arrange(desc(ano_bd),HASH_KEY, desc(fech_ing), desc(fech_egres),dias_trat_inv) %>%
+  dplyr::distinct_(.dots = names_c1_stage2, .keep_all = TRUE) %>%
+#  dplyr::arrange(HASH_KEY, fech_ing, desc(ano_bd)) %>%
+  data.table::as.data.table() %>% #para contar las filas
+ # dplyr::select(row) %>%  summarise(mean(row), sd(row)) #, lo mismo que en STATA. Se supone que una row es sensible a cambios distintos.
+  assign("CONS_C1_df_dup_ENE_2020_prev2",.,envir = .GlobalEnv)
+#Lo mismo que en STATA: Ahora hay 118,121. Una vez que introduje 
+#  dplyr::arrange(HASH_KEY, fech_ing, desc(ano_bd), desc(fech_egres)) %>% criterio anterior
 
 &nbsp;
 <br>
 The dataset was configured to find duplicated rows in almost every variable, excepting the row number in the whole consolidated dataset and the year of the dataset in which the row was obtained. For the purpose of this page, we will use the terms "rows" and "cases" as equal to refer to the entries of the dataset.
 
 <br>
+
+
 
 ```{r edad_fecha_nac, echo=T, paged.print=TRUE}
     CONS_C1_df_dup_ENE_2020_prev2 %>%
