@@ -100,6 +100,7 @@ if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
 if(!require(haven)){install.packages("haven")}
 if(!require(data.table)){install.packages("data.table")}
 if(!require(dplyr)){install.packages("dplyr")}
+
 ```
 
 ## 1. Deletion of nearly exact duplicated cases
@@ -1255,13 +1256,13 @@ CONS_C1_df_dup_intervals<- CONS_C1_df_dup_ENE_2020 %>%
   data.table::as.data.table()
 require(sqldf)
 require(gridExtra)
-  ans3 <- janitor::clean_names(sqldf("SELECT *
+  overlap_dates_C1 <- janitor::clean_names(sqldf("SELECT *
                  FROM CONS_C1_df_dup_intervals AS x  
                  INNER JOIN CONS_C1_df_dup_intervals AS y 
                  ON x.HASH_KEY_2 == y.HASH_KEY_2 AND 
                  x.fech_ing_num2 < y.fech_egres_num2 AND x.fech_egres_num2 > y.fech_ing_num2 AND x.row2 != y.row2"))  
   #busca mismo hash, distinto row,pero fecha de ingreso menor o igual a la fecha de egreso del otro, y fecha de egreso mayor o igual a la fecha de ingreso del otro. ESTO ES PARA VER SI SE SUPERPONEN.
-as.data.table(ans3) %>%
+as.data.table(overlap_dates_C1) %>%
     dplyr::arrange(hash_key_2, fech_ing_num2, row2) %>% ggplot(.) + 
   geom_segment(aes(x = fech_ing, xend = fech_egres,
                    y = hash_key_2, yend = hash_key_2)) + theme(axis.line=element_blank(),
@@ -1293,7 +1294,7 @@ c26 <- c(
 
   set.seed(4321)
   random<-round(runif(1, 1, 100),0)
-sample_plot <- ans3 %>% 
+sample_plot <- overlap_dates_C1 %>% 
     dplyr::arrange(hash_key_2, fech_ing_num2, row2) %>% 
   dplyr::slice(random:(random+25)) %>%
   mutate(Date = format(as.Date(fech_ing, format = "%Y-%m-%d"))) %>% 
@@ -1340,7 +1341,7 @@ clean_plot <- CONS_C1_df_dup_ENE_2020 %>%
 grid.arrange(sample_plot, clean_plot)
 ```
 
-In Figure 4, we may notice that `r nrow(ans3)` matches of entries that may share the same HASH Key, but the date of admission is lesser than the date of discharge of another entry in the dataset, and the date of discharge is greater than the date of admission of that other case; and does not include derivation as a cause of discharge. These conditions let us see how many cases overlap with another entry in the dataset.
+In Figure 4, we may notice that `r nrow(overlap_dates_C1)` matches of entries that may share the same HASH Key, but the date of admission is lesser than the date of discharge of another entry in the dataset, and the date of discharge is greater than the date of admission of that other case; and does not include derivation as a cause of discharge. These conditions let us see how many cases overlap with another entry in the dataset.
 
 As can be seen in Table 15, many treatment discharge dates were NULL values, deriving in a misleading count of treatment days, which were calculated as the difference between the date in which the datasets were retrieved and the date of admission. This one of the reasons that this variable may confound the analysis of duplicated data because it can be explained by different but overlapping treatments, or by duplicated treatments. However, it is necessary to clarify the intervals in which cases were overlapping, by getting the days of treatment and determine whether an specific HASH may already have finished a treatment or not. Table 14 shows the entries with missing dates of discharge, and the difference between the date that the dataset were possibly retrieved (Second week of november of 2019), and the days of treatment showed, by each yearly dataset obtained.  NA's show cases in which even the number of treatment days was not available.  Considering the numbers exposed, we think that **cases in datasets from 2018 and after may be available and not be a part of incompleteness due to right censoring because they may still be in treatment up until the date of retrieval of the datasets (leaving an approximate of 272 HASHs and date of admissions left to analyse). We asked for this information to SENDAs professionals.**
 
@@ -1673,10 +1674,12 @@ dplyr::filter(row %in% c(149670,142875,8809,6864,151245,145140,160070,160066,135
 
 Many selections for the purposes of the study are still being necessary until today, in order to  keep the greater amount of information about each event. 
 
-```{r  Fig 5, warning=FALSE, fig.align = "center", message=F, cache=T}
-knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Figure_Duplicates.svg")
+```{r  Fig 5, warning=FALSE, fig.align = "center", message=F, out.width='0.75\\linewidth',cache=T}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Figure_Duplicates.pdf")
 ```
-
+```{r image-ref-for-in-text, echo=FALSE, fig.align='center', fig.cap='Some cool caption', fig.pos='H', message=FALSE, out.width='0.75\\linewidth'}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Figure_Duplicates.pdf")
+```
 
 <!--- SÍ O SÍ, HACER LA LIMPIEZA DE LOS SENDA NO, PRINCIPALMENTE DE LOS QUE SE SUPERPONGAN, TAMBIÉN PREGUNTAR A ACC SI LOS CON 0 DÍAS DE TRATAMIENTO SE BORRARÁN O NO; DE AHI EMPEZAR A NORMALIZAR LOS PROGRAMAS Y PLANES DE ACUERDO CON CRITERIOS MAUREEN, PARA NO GENERAR DIFERENCIAS AHI Y PODER DEDUPLICAR TRANQUILO --->
 
