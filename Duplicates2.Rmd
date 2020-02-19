@@ -47,30 +47,52 @@ rm(list=ls());gc()
 #rm(list=c("")
 unlink('SUD_CL/Duplicates2_cache', recursive = TRUE)
 load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/4.Rdata")
-
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
 #https://github.com/RevolutionAnalytics/checkpoint
 #if(!require(checkpoint)){install.packages("checkpoint")}
 #if(!require(here)){install.packages("here")}
 #checkpoint::checkpoint("2020-02-11",project=here::here(),checkpointLocation=paste0(here::here(),"/Duplicates"), use.lock=F, use.knitr=T, auto.install.knitr = T,scan.rnw.with.knitr=T, forceInstall=T,scanForPackages = TRUE)
 #checkpointArchives(tempdir(), full.names = TRUE)
-if(!require(tidyr)){install.packages("tidyr")}
-if(!require(DataExplorer)){install.packages("DataExplorer")}
-if(!require(stringi)){install.packages("stringi")}
-if(!require(stringr)){install.packages("stringr")}
-if(!require(ggplot2)){install.packages("ggplot2")}
-if(!require(Hmisc)){install.packages("Hmisc")}
-if(!require(kableExtra)){install.packages("kableExtra")}
-if(!require(plotly)){install.packages("plotly")}
-if(!require(rbokeh)){install.packages("rbokeh")}
-if(!require(altair)){install.packages("altair")}
-if(!require(zoo)){install.packages("zoo")}
-if(!require(codebook)){install.packages("codebook")}
-if(!require(broom)){install.packages("broom")}
-if(!require(sqldf)){install.packages("sqldf")} 
-if(!require(devtools)){install.packages("devtools")}
-if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
-if(!require(data.table)){install.packages("data.table")}
-if(!require(dplyr)){install.packages("dplyr")}
+
+#if(!require(tidyr)){install.packages("tidyr")}
+#if(!require(DataExplorer)){install.packages("DataExplorer")}
+#if(!require(stringi)){install.packages("stringi")}
+#if(!require(stringr)){install.packages("stringr")}
+#if(!require(ggplot2)){install.packages("ggplot2")}
+#if(!require(Hmisc)){install.packages("Hmisc")}
+#if(!require(kableExtra)){install.packages("kableExtra")}
+#if(!require(plotly)){install.packages("plotly")}
+#if(!require(rbokeh)){install.packages("rbokeh")}
+#if(!require(altair)){install.packages("altair")}
+#if(!require(zoo)){install.packages("zoo")}
+#if(!require(codebook)){install.packages("codebook")}
+#if(!require(broom)){install.packages("broom")}
+#if(!require(sqldf)){install.packages("sqldf")} 
+#if(!require(devtools)){install.packages("devtools")}
+#if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
+#if(!require(data.table)){install.packages("data.table")}
+#if(!require(dplyr)){install.packages("dplyr")}
+library(knitr)
+library(tidyr)
+library(stringi)
+library(stringr)
+library(ggplot2)
+library(Hmisc)
+library(kableExtra)
+library(plotly)
+library(rbokeh)
+library(altair)
+library(zoo)
+library(broom)
+library(sqldf)
+library(devtools)
+library(Statamarkdown)
+library(codebook)
+library(data.table)
+library(dplyr)
 ```
 
 <!--- SÍ O SÍ, HACER LA LIMPIEZA DE LOS SENDA NO, PRINCIPALMENTE DE LOS QUE SE SUPERPONGAN, TAMBIÉN PREGUNTAR A ACC SI LOS CON 0 DÍAS DE TRATAMIENTO SE BORRARÁN O NO; DE AHI EMPEZAR A NORMALIZAR LOS PROGRAMAS Y PLANES DE ACUERDO CON CRITERIOS MAUREEN, PARA NO GENERAR DIFERENCIAS AHI Y PODER DEDUPLICAR TRANQUILO --->
@@ -81,27 +103,23 @@ if(!require(dplyr)){install.packages("dplyr")}
 
 &nbsp;
 <br>
-The dataset discarded duplicated rows in almost every variable, excepting the row number in the whole consolidated dataset and the year of the dataset in which the row was obtained. For the purpose of this page, we use the terms "rows" and "cases" as equal to refer to the entries of the dataset. In many of the processes made along the deduplication of entries in C1 dataset, we used unstandardized columns or many other data that was in fact duplicated by HASHs. In order to find duplicated data in which that does not add information relevant for the purposes of the study, we now may use these standardized variables as a criteria to achieve the goal of having a unique event per HASH.
+The dataset discarded duplicated rows in almost every variable, excepting the row number in the whole consolidated dataset and the year of the dataset in which the row was obtained. For the purpose of this page, we use the terms "rows" and "cases" as equal to refer to the entries of the dataset. In many of the processes made along the deduplication of entries in C1 dataset, we used unstandardized columns or many other data that was in fact duplicated by HASHs. In order to find duplicated data in which that does not add information relevant for the purposes of the study, we now may **use these standardized variables as a criteria to achieve the goal of having a unique event per HASH, by reducing its complexity**.
 <br>
 
+#### Duplicated data by HASH
 
-- Age (Edad) (`r CONS_C1_df_dup_ENE_2020_prev5 %>% group_by(HASH_KEY) %>% dplyr::mutate(Edad_por_hash=n_distinct(Edad)) %>% ungroup() %>% dplyr::filter(Edad_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-- SENDAs ID (id) (`r CONS_C1_df_dup_ENE_2020_prev5 %>% group_by(HASH_KEY) %>% dplyr::mutate(id_por_hash=n_distinct(id)) %>% ungroup() %>% dplyr::filter(id_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-- Masked SENDAs ID (id_mod) (`r CONS_C1_df_dup_ENE_2020_prev5 %>% group_by(HASH_KEY) %>% dplyr::mutate(id_mod_por_hash=n_distinct(id_mod)) %>% ungroup() %>% dplyr::filter(id_mod_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-- Year of Birth (ano_nac) (`r CONS_C1_df_dup_ENE_2020_prev5 %>% group_by(HASH_KEY) %>% dplyr::mutate(ano_nac_por_hash=n_distinct(ano_nac)) %>% ungroup() %>% dplyr::filter(ano_nac_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-- Date of Birth (fech_nac) (`r CONS_C1_df_dup_ENE_2020_prev5 %>% group_by(HASH_KEY) %>% dplyr::mutate(fech_nac_por_hash=n_distinct(fech_nac)) %>% ungroup() %>% dplyr::filter(fech_nac_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-
-- Age of Onset of Drug Use (edad_ini_cons)
-- Age of Onset of Drug Use Principal Substance (edad_ini_sus_prin)
-- Year of Birth (ano_nac) (`r CONS_C1_df_dup_ENE_2020_prev4 %>% group_by(HASH_KEY) %>% dplyr::mutate(ano_nac_por_hash=n_distinct(ano_nac)) %>% ungroup() %>% dplyr::filter(ano_nac_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-- Date of Birth (fech_nac) (`r CONS_C1_df_dup_ENE_2020_prev4 %>% group_by(HASH_KEY) %>% dplyr::mutate(fech_nac_por_hash=n_distinct(fech_nac)) %>% ungroup() %>% dplyr::filter(fech_nac_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-- Starting Substance (sus_ini)
-- Sex (sexo) (`r CONS_C1_df_dup_ENE_2020_prev4 %>% group_by(HASH_KEY) %>% dplyr::mutate(sexo_por_hash=n_distinct(sexo)) %>% ungroup() %>% dplyr::filter(sexo_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-- Age (Edad) (`r CONS_C1_df_dup_ENE_2020_prev4 %>% group_by(HASH_KEY) %>% dplyr::mutate(Edad_por_hash=n_distinct(Edad)) %>% ungroup() %>% dplyr::filter(Edad_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-- Ethnicity (Etnia) (`r CONS_C1_df_dup_ENE_2020_prev4 %>% group_by(HASH_KEY) %>% dplyr::mutate(Etnia_por_hash=n_distinct(Etnia)) %>% ungroup() %>% dplyr::filter(Etnia_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-- Nationallity (Nacionalidad) (`r CONS_C1_df_dup_ENE_2020_prev4 %>% group_by(HASH_KEY) %>% dplyr::mutate(Nacionalidad_por_hash=n_distinct(Nacionalidad)) %>% ungroup() %>% dplyr::filter(Nacionalidad_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-- SENDAs ID (id) (`r CONS_C1_df_dup_ENE_2020_prev4 %>% group_by(HASH_KEY) %>% dplyr::mutate(id_por_hash=n_distinct(id)) %>% ungroup() %>% dplyr::filter(id_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-- Masked SENDAs ID (id_mod) (`r CONS_C1_df_dup_ENE_2020_prev4 %>% group_by(HASH_KEY) %>% dplyr::mutate(id_mod_por_hash=n_distinct(id_mod)) %>% ungroup() %>% dplyr::filter(id_mod_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
+- Sex (sexo) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(sexo_por_hash=n_distinct(sexo)) %>% ungroup() %>% dplyr::filter(sexo_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
+- Age (Edad) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(Edad_por_hash=n_distinct(Edad)) %>% ungroup() %>% dplyr::filter(Edad_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
+- SENDAs ID (id) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(id_por_hash=n_distinct(id)) %>% ungroup() %>% dplyr::filter(id_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
+- Masked SENDAs ID (id_mod) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(id_mod_por_hash=n_distinct(id_mod)) %>% ungroup() %>% dplyr::filter(id_mod_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
+- Year of Birth (ano_nac) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(ano_nac_por_hash=n_distinct(ano_nac)) %>% ungroup() %>% dplyr::filter(ano_nac_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
+- Date of Birth (fech_nac) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(fech_nac_por_hash=n_distinct(fech_nac)) %>% ungroup() %>% dplyr::filter(fech_nac_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
+- Nationallity (Nacionalidad) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(Nacionalidad_por_hash=n_distinct(Nacionalidad)) %>% ungroup() %>% dplyr::filter(Nacionalidad_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
+- Age of Onset of Drug Use (edad_ini_cons) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(edad_ini_cons_por_hash=n_distinct(edad_ini_cons)) %>% ungroup() %>% dplyr::filter(edad_ini_cons_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
+- Age of Onset of Drug Use Principal Substance (edad_ini_sus_prin) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(edad_ini_sus_prin_por_hash=n_distinct(edad_ini_sus_prin)) %>% ungroup() %>% dplyr::filter(edad_ini_sus_prin_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
+- Starting Substance (sus_ini) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(sus_ini_por_hash=n_distinct(sus_ini)) %>% ungroup() %>% dplyr::filter(sus_ini_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
+- Age (Edad) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(Edad_por_hash=n_distinct(Edad)) %>% ungroup() %>% dplyr::filter(Edad_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
+- Ethnicity (Etnia) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(Etnia_por_hash=n_distinct(Etnia)) %>% ungroup() %>% dplyr::filter(Etnia_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
 
 ### 0.a. Repeated information in each case
 
@@ -110,34 +128,6 @@ The dataset discarded duplicated rows in almost every variable, excepting the ro
 <br>
 
 ### 0.b. Deduplication based on standardized columns of interest for the study
-
-require(data.table)
-names_c1_stage2 <- c("HASH_KEY","fech_ing", "tipo_centro", "ID.centro", "Tipo.de.Programa", "Tipo.de.Plan", "SENDA", "Sustancia.Principal", "Otras.Sustancias.nº1","Otras.Sustancias.nº2","Otras.Sustancias.nº3", "Frecuencia.de.Consumo..Sustancia.Principal.","Sustancia.de.Inicio", "Edad.Inicio.Consumo")
-require(dplyr)
-data.table::data.table(CONS_C1_df_dup_ENE_2020_prev) %>%
-  dplyr::mutate(dias_trat_inv=ifelse(dias_trat<0,0,dias_trat*-1))%>% #transforma los erroneos en 0
-  #dplyr::group_by(dias_trat_inv) %>%summarise(n()) %>% View() para probarlo
-  dplyr::arrange(desc(ano_bd),HASH_KEY, desc(fech_ing), desc(fech_egres),dias_trat_inv) %>%
-  dplyr::distinct_(.dots = names_c1_stage2, .keep_all = TRUE) %>%
-#  dplyr::arrange(HASH_KEY, fech_ing, desc(ano_bd)) %>%
-  data.table::as.data.table() %>% #para contar las filas
- # dplyr::select(row) %>%  summarise(mean(row), sd(row)) #, lo mismo que en STATA. Se supone que una row es sensible a cambios distintos.
-  assign("CONS_C1_df_dup_ENE_2020_prev2",.,envir = .GlobalEnv)
-#Lo mismo que en STATA: Ahora hay 118,121. Una vez que introduje 
-#  dplyr::arrange(HASH_KEY, fech_ing, desc(ano_bd), desc(fech_egres)) %>% criterio anterior
-
-&nbsp;
-<br>
-The dataset was configured to find duplicated rows in almost every variable, excepting the row number in the whole consolidated dataset and the year of the dataset in which the row was obtained. For the purpose of this page, we will use the terms "rows" and "cases" as equal to refer to the entries of the dataset.
-
-<br>
-
-```{r  Fig 5, warning=FALSE, fig.align = "center", message=F, out.width='0.75\\linewidth',cache=T}
-knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Figure_Duplicates.pdf")
-```
-```{r image-ref-for-in-text, echo=FALSE, fig.align='center', fig.cap='Some cool caption', fig.pos='H', message=FALSE, out.width='0.75\\linewidth'}
-knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Figure_Duplicates.pdf")
-```
 
 ```{r edad_fecha_nac, echo=T, paged.print=TRUE}
     CONS_C1_df_dup_ENE_2020_prev2 %>%
@@ -155,6 +145,39 @@ knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figu
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
   kableExtra::scroll_box(width = "100%", height = "350px")
 ```
+
+```{r edad_fecha_nac2, echo=T, paged.print=TRUE}
+require(data.table)
+names_c1_stage2 <- c("HASH_KEY","fech_ing", "tipo_centro", "ID.centro", "Tipo.de.Programa", "Tipo.de.Plan", "SENDA", "Sustancia.Principal", "Otras.Sustancias.nº1","Otras.Sustancias.nº2","Otras.Sustancias.nº3", "Frecuencia.de.Consumo..Sustancia.Principal.","Sustancia.de.Inicio", "Edad.Inicio.Consumo")
+require(dplyr)
+data.table::data.table(CONS_C1_df_dup_ENE_2020_prev) %>%
+  dplyr::mutate(dias_trat_inv=ifelse(dias_trat<0,0,dias_trat*-1))%>% #transforma los erroneos en 0
+  #dplyr::group_by(dias_trat_inv) %>%summarise(n()) %>% View() para probarlo
+  dplyr::arrange(desc(ano_bd),HASH_KEY, desc(fech_ing), desc(fech_egres),dias_trat_inv) %>%
+  dplyr::distinct_(.dots = names_c1_stage2, .keep_all = TRUE) %>%
+#  dplyr::arrange(HASH_KEY, fech_ing, desc(ano_bd)) %>%
+  data.table::as.data.table() %>% #para contar las filas
+ # dplyr::select(row) %>%  summarise(mean(row), sd(row)) #, lo mismo que en STATA. Se supone que una row es sensible a cambios distintos.
+  assign("CONS_C1_df_dup_FEB_2020_prev1",.,envir = .GlobalEnv)
+#Lo mismo que en STATA: Ahora hay 118,121. Una vez que introduje 
+#  dplyr::arrange(HASH_KEY, fech_ing, desc(ano_bd), desc(fech_egres)) %>% criterio anterior
+```
+&nbsp;
+<br>
+The dataset was configured to find duplicated rows in almost every variable, excepting the row number in the whole consolidated dataset and the year of the dataset in which the row was obtained. For the purpose of this page, we will use the terms "rows" and "cases" as equal to refer to the entries of the dataset.
+
+<br>
+
+```{r  Fig 5, warning=FALSE, fig.align = "center", message=F, cache=T}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Figure_Duplicates.pdf")
+```
+
+```{r image-ref-for-in-text, echo=FALSE, fig.align='center', fig.cap='Some cool caption', fig.pos='H', message=FALSE}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Figure_Duplicates.svg")
+```
+
+<embed src="G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Figure_Duplicates.svg" type="image/svg+xml" />
+
 
 ## 2. Overlap Between Dates of Admission & Discharge
 

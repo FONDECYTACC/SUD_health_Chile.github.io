@@ -80,6 +80,7 @@ if(!require(here)){install.packages("here")}
 #installed.packages(.libPaths()[1])[, "Package"]
 #unCheckpoint()
 #.libPaths()
+if(!require(knitr)){install.packages("knitr")}
 if(!require(tidyr)){install.packages("tidyr")}
 if(!require(janitor)){install.packages("janitor")}
 if(!require(stringi)){install.packages("stringi")}
@@ -100,7 +101,6 @@ if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
 if(!require(haven)){install.packages("haven")}
 if(!require(data.table)){install.packages("data.table")}
 if(!require(dplyr)){install.packages("dplyr")}
-
 ```
 
 ## 1. Deletion of nearly exact duplicated cases
@@ -492,6 +492,7 @@ CONS_TOP_df_dup_age <- dplyr::select(CONS_TOP, HASH_KEY, ID, Sexo, Edad)%>%
 #CONS_C1_df_dup_ENE_2020_prev4 %>%
   #dplyr::filter(HASH_KEY=="17427b747a8e5d8ecdcdec6a781a277b"|HASH_KEY=="636046ed13f419997e2c05bfd3ac6ae6") %>%
   #print()
+  #rows 57716 9972 6736, están perdidos en las bases de datos.
 ```
 <br>
     
@@ -699,9 +700,12 @@ By doing this, we lowered as much as possible the quantity of distinct informati
 - Year of Birth (ano_nac) (`r CONS_C1_df_dup_ENE_2020_prev5 %>% group_by(HASH_KEY) %>% dplyr::mutate(ano_nac_por_hash=n_distinct(ano_nac)) %>% ungroup() %>% dplyr::filter(ano_nac_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
 - Date of Birth (fech_nac) (`r CONS_C1_df_dup_ENE_2020_prev5 %>% group_by(HASH_KEY) %>% dplyr::mutate(fech_nac_por_hash=n_distinct(fech_nac)) %>% ungroup() %>% dplyr::filter(fech_nac_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
 
+
 ```{r final_assignment_change_factors_recode, echo=F,cache=T, paged.print=TRUE}
 CONS_C1_df_dup_ENE_2020_prev5 %>%
-  dplyr::filter(Tipo.de.Plan!="PAI LV") %>% #Deletion of cases in Parole
+  dplyr::filter(is.na(Tipo.de.Plan) | Tipo.de.Plan != "PAI LV") %>% #Deletion of cases in Parole. OJO, TAMBIÉN ELIMINO A NA'S, BAJO A 188086 CASOS. Rows= 57716, 9972 Y 6736.
+# Ver si se pueden reemlpazar. La verdad es que no hay otro ingreso.
+#CONS_C1_df_dup_ENE_2020_prev5 %>% dplyr::filter(concat %in% c("ebc40285ab6f4db453d9830453ec578a_2014_5_19", #"72c54d822de128e52f10511f3eb2d19f_2009_12_14", "03390de37aa8a95707905d07c33c0a97_2010_7_30"))
 #LV se elimina el tipo de plan
   dplyr::mutate(tipo_de_plan=dplyr::recode(Tipo.de.Plan,"M-PAI2"= "M-PAI", "M-PR2"="M-PR","PG PAI 2"="PG-PAI", "Otro"="PG-PR", "CALLE"="PG-PR"))%>%
 #Table 10. Type of Plan by Gender Identity and Sex
@@ -1196,7 +1200,7 @@ qui save "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\Stata Duplicates Match\_CO
 matches_from_stata_c1 <- haven::read_dta("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/Stata Duplicates Match/_CONS_C1_df_match70_2020_02_11.dta")
 matches_from_stata_c1 <-matches_from_stata_c1 %>% dplyr::rename(score = 3, matchID = 1, row_id=2) 
 matches_from_stata_c1  %>%
-  dplyr::arrange(`_score`,`_matchID`,hash_key) %>%
+  dplyr::arrange(score,matchID,hash_key) %>%
   dplyr::select(score, matchID, hash_key, ano_bd, idcentro, date_in, fech_ing, fech_egres, edad, dias_trat) %>%
   as.data.frame() %>%
     knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
@@ -1674,12 +1678,11 @@ dplyr::filter(row %in% c(149670,142875,8809,6864,151245,145140,160070,160066,135
 
 Many selections for the purposes of the study are still being necessary until today, in order to  keep the greater amount of information about each event. 
 
-```{r  Fig 5, warning=FALSE, fig.align = "center", message=F, out.width='0.75\\linewidth',cache=T}
-knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Figure_Duplicates.pdf")
+```{r image-ref-for-in-text, echo=T, fig.align='center', message=FALSE}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Figure_Duplicates.svg")
 ```
-```{r image-ref-for-in-text, echo=FALSE, fig.align='center', fig.cap='Some cool caption', fig.pos='H', message=FALSE, out.width='0.75\\linewidth'}
-knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Figure_Duplicates.pdf")
-```
+
+<embed src="G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Figure_Duplicates.svg" type="image/svg+xml" />
 
 <!--- SÍ O SÍ, HACER LA LIMPIEZA DE LOS SENDA NO, PRINCIPALMENTE DE LOS QUE SE SUPERPONGAN, TAMBIÉN PREGUNTAR A ACC SI LOS CON 0 DÍAS DE TRATAMIENTO SE BORRARÁN O NO; DE AHI EMPEZAR A NORMALIZAR LOS PROGRAMAS Y PLANES DE ACUERDO CON CRITERIOS MAUREEN, PARA NO GENERAR DIFERENCIAS AHI Y PODER DEDUPLICAR TRANQUILO --->
 
