@@ -109,7 +109,7 @@ For the purpose of this page, we use the terms "rows" and "cases" as equal to re
 #### Different Information Within User, Concerning Personal Information
 
 The first variable that may impact in ID
-- Sex (sexo) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(sexo_por_hash=n_distinct(sexo)) %>% ungroup() %>% dplyr::filter(sexo_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
+- Sex (sexo) (`r CONS_C1_df_dup_ENE_2020 %>% dplyr::group_by(HASH_KEY) %>% dplyr::mutate(sexo_por_hash=dplyr::n_distinct(sexo)) %>% ungroup() %>% dplyr::filter(sexo_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
 
 ```{r pers_info_sex, echo=T, paged.print=TRUE}
 CONS_C1_df_dup_ENE_2020_sex <- CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(sexo_por_hash=n_distinct(sexo)) %>% ungroup() %>% dplyr::filter(sexo_por_hash>1) %>% dplyr::distinct(HASH_KEY)
@@ -149,7 +149,7 @@ dplyr::select(row, HASH_KEY, ano_bd, sexo, identidad.de.genero,Edad_al_ing, fech
 - Year of Birth (ano_nac) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(ano_nac_por_hash=n_distinct(ano_nac)) %>% ungroup() %>% dplyr::filter(ano_nac_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
 - Nationallity (Nacionalidad) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(Nacionalidad_por_hash=n_distinct(Nacionalidad)) %>% ungroup() %>% dplyr::filter(Nacionalidad_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
 - Ethnicity (Etnia) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(Etnia_por_hash=n_distinct(Etnia)) %>% ungroup() %>% dplyr::filter(Etnia_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-<!--- La fecha de nacimiento puede no haberse corregido del todo porque hay muchos casos en que no se crea una edad distinta, por lo que el programa no  los filtra  --->
+<!--- La fecha de nacimiento puede no haberse corregido del todo porque hay muchos casos en que no tienen una edad distinta, por lo que el programa no  los filtra  --->
 - Age of Birht (fech_nac) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(fech_nac_por_hash=n_distinct(fech_nac)) %>% ungroup() %>% dplyr::filter(fech_nac_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
 - Age of Onset of Drug Use (edad_ini_cons) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(edad_ini_cons_por_hash=n_distinct(edad_ini_cons)) %>% ungroup() %>% dplyr::filter(edad_ini_cons_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
 - Age of Onset of Drug Use Principal Substance (edad_ini_sus_prin) (`r CONS_C1_df_dup_ENE_2020 %>% group_by(HASH_KEY) %>% dplyr::mutate(edad_ini_sus_prin_por_hash=n_distinct(edad_ini_sus_prin)) %>% ungroup() %>% dplyr::filter(edad_ini_sus_prin_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
@@ -164,23 +164,89 @@ dplyr::select(row, HASH_KEY, ano_bd, sexo, identidad.de.genero,Edad_al_ing, fech
 
 ### 0.b. Deduplication based on standardized columns of interest for the study
 
+First, we selected the following variables as a criteria to identify duplicated treatmenst per user:
 
+- Masked Identifier (HASH_KEY)
+- Date of Admission to Treatment (fech_ing)
+- Center ID (ID.centro)
+- Main Substance of Consumption (sus_principal)
+- Other Substances (1) (otras_sus1)
+- Other Substances (2) (otras_sus2)
+- Other Substances (3) (otras_sus3)
+- Frequency of Consumption of the Main Substance (freq_cons_sus_prin)
+- Starting Substance (sus_ini)
+- Age of Onset of Drug Use (edad_ini_cons)
+- Marital Status (estado_conyugal)
+- Occupational Status (estatus_ocupacional)
+- Occupational Category (cat_ocupacional)
+- Age in groups (Edad_grupos)
+- Motive of Admission to Treatment (origen_ingreso)
+- Education Attainment (escolaridad)
+- Route of Administration of the Main Substance (via_adm_sus_prin)
+- 
 
-```{r edad_fecha_nac2, echo=T, paged.print=TRUE}
+```{r dedup_manual, echo=T, paged.print=TRUE}
 require(data.table)
-names_c1_stage2 <- c("HASH_KEY","fech_ing", "ID.centro", "tipo_de_plan", "sus_prin", "otras_sus1","otras_sus2","otras_sus3", "freq_cons_sus_ini","sus_ini", "edad_ini_cons")
+names_c1_stage3 <- c("HASH_KEY","fech_ing", "ID.centro", "sus_principal", "otras_sus1","otras_sus2","otras_sus3","sus_ini","edad_ini_cons", "estado_conyugal","estatus_ocupacional","cat_ocupacional","Edad_grupos","origen_ingreso", "escolaridad","via_adm_sus_prin", "freq_cons_sus_prin")
+
 require(dplyr)
 data.table::data.table(CONS_C1_df_dup_ENE_2020) %>%
-  dplyr::mutate(dias_trat_inv=ifelse(dias_trat<0,0,dias_trat*-1))%>% #transforma los erroneos en 0
-  #dplyr::group_by(dias_trat_inv) %>%summarise(n()) %>% View() para probarlo
   dplyr::arrange(desc(ano_bd),HASH_KEY, desc(fech_ing), desc(fech_egres),dias_trat_inv) %>%
-  dplyr::distinct_(.dots = names_c1_stage2, .keep_all = TRUE) %>%
+  dplyr::distinct_(.dots = names_c1_stage3, .keep_all = TRUE) %>%
 #  dplyr::arrange(HASH_KEY, fech_ing, desc(ano_bd)) %>%
   data.table::as.data.table() %>% #para contar las filas
  # dplyr::select(row) %>%  summarise(mean(row), sd(row)) #, lo mismo que en STATA. Se supone que una row es sensible a cambios distintos.
   assign("CONS_C1_df_dup_FEB_2020_prev1",.,envir = .GlobalEnv)
-#Lo mismo que en STATA: Ahora hay 118,121. Una vez que introduje 
+#Lo mismo que en STATA: Ahora hay 118,072. Una vez que introduje 
+#Ahora, 118035
 #  dplyr::arrange(HASH_KEY, fech_ing, desc(ano_bd), desc(fech_egres)) %>% criterio anterior
+```
+
+```{r dedup_manual, echo=T, include=F, paged.print=TRUE}
+#Tengo que llegar a este número
+###117,619
+criterios<-c('HASH_KEY', 'id', 'tipo_centro', 'Región.del.Centro', 'dias_trat', 
+  'Edad', 'Nacionalidad', 'Etnia', 'Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
+  'X2.Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'X2.Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
+  'X3.Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'X3.Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
+  'Diagnóstico.Trs..Psiquiátrico.CIE.10', 'Diagnóstico.Trs..Psiquiátrico.SUB.CIE.10', 
+  'X2.Diagnóstico.Trs..Psiquiátrico.CIE.10', 'X2.Diagnóstico.Trs..Psiquiátrico.SUB.CIE.10', 
+  'X3.Diagnóstico.Trs..Psiquiátrico.CIE.10', 'X3.Diagnóstico.Trs..Psiquiátrico.SUB.CIE.10', 'fech_ing', 'fech_egres', 
+  'motivodeegreso', 'ID.centro', 'identidad.de.genero', 'sexo', 'embarazo', 'tipo_de_plan', 'tipo_de_programa', 
+  'id_mod', 'ano_nac', 'Edad_al_ing', 'edad_ini_cons', 'edad_ini_sus_prin', 'dias_trat_alta_temprana', 
+  'motivodeegreso_mod', 'sus_principal', 'otras_sus1', 'otras_sus2', 'otras_sus3', 'sus_ini', 'estado_conyugal', 
+  'estatus_ocupacional', 'cat_ocupacional', 'Edad_grupos', 'origen_ingreso', 'escolaridad', 
+  'via_adm_sus_ini', 'freq_cons_sus_ini')
+
+CONS_C1_df_dup_FEB_2020_prev1 %>%
+  dplyr::group_by(HASH_KEY, fech_ing) %>% #primero genero la variable
+  dplyr::mutate(HASH_fech_ing_reps = n(), HASH_fech_ing_apariciones=row_number()) %>%  #number of different variables by HASH.
+  dplyr::ungroup() %>% #desagrupo
+  dplyr::filter(HASH_fech_ing_reps>1) %>% #names() %>% copiar_nombres() #para rescatar nombres de la base de datos
+  dplyr::group_by(HASH_KEY, fech_ing) %>% #primero genero la variable
+  dplyr::mutate_at(vars(c('HASH_KEY', 'id', 'tipo_centro', 'Región.del.Centro', 'dias_trat', 
+                   'Edad', 'Nacionalidad', 'Etnia', 'Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
+                   'X2.Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'X2.Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
+                   'X3.Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'X3.Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
+                   'Diagnóstico.Trs..Psiquiátrico.CIE.10', 'Diagnóstico.Trs..Psiquiátrico.SUB.CIE.10', 
+                   'X2.Diagnóstico.Trs..Psiquiátrico.CIE.10', 'X2.Diagnóstico.Trs..Psiquiátrico.SUB.CIE.10', 
+                   'X3.Diagnóstico.Trs..Psiquiátrico.CIE.10', 'X3.Diagnóstico.Trs..Psiquiátrico.SUB.CIE.10', 'fech_ing', 'fech_egres', 
+                   'motivodeegreso', 'ID.centro', 'identidad.de.genero', 'sexo', 'embarazo', 'tipo_de_plan', 'tipo_de_programa', 
+                   'id_mod', 'ano_nac', 'Edad_al_ing', 'edad_ini_cons', 'edad_ini_sus_prin', 'dias_trat_alta_temprana', 
+                   'motivodeegreso_mod', 'sus_principal', 'otras_sus1', 'otras_sus2', 'otras_sus3', 'sus_ini', 'estado_conyugal', 
+                   'estatus_ocupacional', 'cat_ocupacional', 'Edad_grupos', 'origen_ingreso', 'escolaridad', 
+                   'via_adm_sus_ini', 'freq_cons_sus_ini')), .funs = list(dups_hash_ing = ~n_distinct(.))) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate_at(vars(contains('_dups_hash_ing')), .funs = list(~ifelse(.>1,1,0))) %>% #el ptaje no depende de cuantos duplicados tenga
+  dplyr::mutate(n_of_diffs_within = rowSums(select(., contains("_dups_hash_ing")))) %>% 
+#  janitor::tabyl(n_of_matches) #para ver cómo se distirbuye
+#  dplyr::select(-contains("_dups_hash_ing")) %>% 
+#  dplyr::select(,contains("_dups_hash_ing")) %>%
+  dplyr::select(c(criterios, contains("_dups_hash_ing"), "ano_bd", "SENDA", "n_of_diffs_within","HASH_fech_ing_apariciones")) %>%
+  dplyr::arrange(n_of_diffs_within, HASH_KEY, desc(ano_bd)) %>% as.data.frame() %>% guardar_tablas("_matches_feb_2020")
+#write.csv(.,"_matches_feb_2020.csv", row.names = FALSE)
+#anyDuplicated returns the index i of the first duplicated entry if there is one, and 0 otherwise.
+ #anyDuplicated(CONS_C1_df_dup_FEB_2020_prev1_dt, by=c("HASH_KEY", "fech_ing"))
 ```
 
 &nbsp;
@@ -206,7 +272,41 @@ The dataset was configured to find duplicated rows in almost every variable, exc
 ## 3. Probabilistic Matches
 
 &nbsp;
+
+
+The code used in stata is shown here:
+
+&nbsp;
 <br>
+
+```{stata, collectcode=TRUE}
+import delimited "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\CONS_C1_df_dup_FEB_2020.csv", delimiter(";") clear 
+
+cap gen date_in = mdy(real_fech_ing_mes, real_fech_ing_dia, real_fech_ing_ano)
+cap gen date_in = mdy(fech_ing_mes, fech_ing_dia, fech_ing_ano)
+
+generate id_match = _n
+cap drop _id
+dtalink hash_key 25 -25 idcentro 10 0 date_in 30 -30 5, block(edad) cutoff(70)
+drop if missing(_score)
+qui save "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\Stata Duplicates Match\_CONS_C1_df_match70_2020_02_20.dta", replace
+```
+<br>
+
+```{r  dta_import, include=T, echo=T, eval=T, cache=T}
+matches_from_stata_c1_feb <- haven::read_dta("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/Stata Duplicates Match/_CONS_C1_df_match70_2020_02_20.dta")
+matches_from_stata_c1_feb <-matches_from_stata_c1 %>% dplyr::rename(score = 3, matchID = 1, row_id=2) 
+matches_from_stata_c1_feb  %>%
+  dplyr::arrange(score,matchID,hash_key) %>%
+  dplyr::select(score, matchID, hash_key, ano_bd, idcentro, date_in, fech_ing, fech_egres, edad, dias_trat) %>%
+  as.data.frame() %>%
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+                   caption="Table 14. Preliminary View of Matches from Stata", align =rep('c', 100)) %>%
+     kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+    kableExtra::scroll_box(width = "100%", height = "350px")
+```
+<br>
+
 The dataset was configured to find duplicated rows in almost every variable, excepting the row number in the whole consolidated dataset and the year of the dataset in which the row was obtained. For the purpose of this page, we will use the terms "rows" and "cases" as equal to refer to the entries of the dataset.
 
 <br>
