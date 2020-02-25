@@ -233,14 +233,27 @@ CONS_C1_df_dup_FEB_2020_prev1 %>%
                    'id_mod', 'ano_nac', 'Edad_al_ing', 'edad_ini_cons', 'edad_ini_sus_prin', 'dias_trat_alta_temprana', 
                    'motivodeegreso_mod', 'sus_principal', 'otras_sus1', 'otras_sus2', 'otras_sus3', 'sus_ini', 'estado_conyugal', 
                    'estatus_ocupacional', 'cat_ocupacional', 'Edad_grupos', 'origen_ingreso', 'escolaridad', 
-                   'via_adm_sus_prin', 'freq_cons_sus_prin')), .funs = list(dups_hash_ing = ~n_distinct(.))) %>%
-  dplyr::ungroup() %>%
-  dplyr::mutate_at(vars(contains('_dups_hash_ing')), .funs = list(~ifelse(.>1,1,0))) %>% #el ptaje no depende de cuantos duplicados tenga
-  dplyr::mutate(n_of_diffs_within = rowSums(select(., contains("_dups_hash_ing")))) %>% 
-#  janitor::tabyl(n_of_matches) #para ver cómo se distirbuye
-#  dplyr::select(-contains("_dups_hash_ing")) %>% 
-#  dplyr::select(,contains("_dups_hash_ing")) %>%
-  dplyr::select("row", "ano_bd","HASH_fech_ing_reps","HASH_fech_ing_apariciones","n_of_diffs_within","id_mod", c(criterios_show, contains("_dups_hash_ing"), "SENDA")) %>%
+                   'via_adm_sus_prin', 'freq_cons_sus_prin')), .funs = funs(`dups_hash_ing`=ifelse(n_distinct(.)>1,as.character(.),""))) %>% #el ptaje no depende de 
+#cuantos duplicados tenga
+    dplyr::mutate_at(vars(c('HASH_KEY', 'id', 'tipo_centro', 'Región.del.Centro', 'dias_trat', 
+                   'Edad', 'Nacionalidad', 'Etnia', 'Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
+                   'X2.Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'X2.Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
+                   'X3.Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'X3.Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
+                   'Diagnóstico.Trs..Psiquiátrico.CIE.10', 'Diagnóstico.Trs..Psiquiátrico.SUB.CIE.10', 
+                   'X2.Diagnóstico.Trs..Psiquiátrico.CIE.10', 'X2.Diagnóstico.Trs..Psiquiátrico.SUB.CIE.10', 
+                   'X3.Diagnóstico.Trs..Psiquiátrico.CIE.10', 'X3.Diagnóstico.Trs..Psiquiátrico.SUB.CIE.10', 'fech_ing', 'fech_egres', 
+                   'motivodeegreso', 'ID.centro', 'identidad.de.genero', 'sexo', 'embarazo', 'tipo_de_plan', 'tipo_de_programa', 
+                   'id_mod', 'ano_nac', 'Edad_al_ing', 'edad_ini_cons', 'edad_ini_sus_prin', 'dias_trat_alta_temprana', 
+                   'motivodeegreso_mod', 'sus_principal', 'otras_sus1', 'otras_sus2', 'otras_sus3', 'sus_ini', 'estado_conyugal', 
+                   'estatus_ocupacional', 'cat_ocupacional', 'Edad_grupos', 'origen_ingreso', 'escolaridad', 
+                   'via_adm_sus_prin', 'freq_cons_sus_prin')), .funs = list(dups_hash_ing2 = ~n_distinct(.))) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate_at(vars(contains('_dups_hash_ing2')), .funs = list(~ifelse(.>1,1,0))) %>% #el ptaje no depende de cuantos duplicados tenga
+    dplyr::mutate(n_of_diffs_within = rowSums(select(., contains("_dups_hash_ing2")))) %>% 
+#   janitor::tabyl(n_of_matches) #para ver cómo se distirbuye
+#   dplyr::select(-contains("_dups_hash_ing")) %>% 
+#   dplyr::select(,contains("_dups_hash_ing")) %>%
+    dplyr::select("row", "ano_bd","HASH_fech_ing_reps","HASH_fech_ing_apariciones","n_of_diffs_within","id_mod", c(criterios_show, ends_with("_dups_hash_ing"), "SENDA")) %>%
   dplyr::arrange(n_of_diffs_within, HASH_KEY, desc(ano_bd)) %>% as.data.frame() %>%  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption="Table 1. Cases with the same date of admission and HASH, for visual analysis",
                  align =rep('c', 101))  %>%
@@ -251,7 +264,7 @@ CONS_C1_df_dup_FEB_2020_prev1 %>%
 
 &nbsp;
 
-The process applied is shown in Figure 1.
+The process applied is shown in Figure 1. We must recognize that the election of the word "consider" is not arbitrary, principally because this stage required a more careful analysis of each case. So, more than the application of strict partial rules, we applied these criteria as the combination of the whole.
 
 <br>
 
@@ -281,6 +294,18 @@ CONS_C1_df_dup_FEB_2020_prev1 %>%
   dplyr::ungroup() %>% #desagrupo
   dplyr::filter(HASH_fech_ing_reps>1) %>% #names() %>% copiar_nombres() #para rescatar nombres de la base de datos
   dplyr::group_by(HASH_KEY, fech_ing) %>% #primero genero la variable
+   dplyr::mutate_at(vars(c('HASH_KEY', 'id', 'tipo_centro', 'Región.del.Centro', 'dias_trat', 
+                   'Edad', 'Nacionalidad', 'Etnia', 'Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
+                   'X2.Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'X2.Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
+                   'X3.Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'X3.Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
+                   'Diagnóstico.Trs..Psiquiátrico.CIE.10', 'Diagnóstico.Trs..Psiquiátrico.SUB.CIE.10', 
+                   'X2.Diagnóstico.Trs..Psiquiátrico.CIE.10', 'X2.Diagnóstico.Trs..Psiquiátrico.SUB.CIE.10', 
+                   'X3.Diagnóstico.Trs..Psiquiátrico.CIE.10', 'X3.Diagnóstico.Trs..Psiquiátrico.SUB.CIE.10', 'fech_ing', 'fech_egres', 
+                   'motivodeegreso', 'ID.centro', 'identidad.de.genero', 'sexo', 'embarazo', 'tipo_de_plan', 'tipo_de_programa', 
+                   'id_mod', 'ano_nac', 'Edad_al_ing', 'edad_ini_cons', 'edad_ini_sus_prin', 'dias_trat_alta_temprana', 
+                   'motivodeegreso_mod', 'sus_principal', 'otras_sus1', 'otras_sus2', 'otras_sus3', 'sus_ini', 'estado_conyugal', 
+                   'estatus_ocupacional', 'cat_ocupacional', 'Edad_grupos', 'origen_ingreso', 'escolaridad', 
+                   'via_adm_sus_prin', 'freq_cons_sus_prin')), .funs = funs(`dups_hash_ing`=ifelse(n_distinct(.)>1,as.character(.),""))) %>%
   dplyr::mutate_at(vars(c('HASH_KEY', 'id', 'tipo_centro', 'Región.del.Centro', 'dias_trat', 
                    'Edad', 'Nacionalidad', 'Etnia', 'Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
                    'X2.Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'X2.Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
@@ -292,17 +317,15 @@ CONS_C1_df_dup_FEB_2020_prev1 %>%
                    'id_mod', 'ano_nac', 'Edad_al_ing', 'edad_ini_cons', 'edad_ini_sus_prin', 'dias_trat_alta_temprana', 
                    'motivodeegreso_mod', 'sus_principal', 'otras_sus1', 'otras_sus2', 'otras_sus3', 'sus_ini', 'estado_conyugal', 
                    'estatus_ocupacional', 'cat_ocupacional', 'Edad_grupos', 'origen_ingreso', 'escolaridad', 
-                   'via_adm_sus_prin', 'freq_cons_sus_prin')), .funs = list(dups_hash_ing = ~n_distinct(.))) %>%
-  dplyr::ungroup() %>%
-  dplyr::mutate_at(vars(contains('_dups_hash_ing')), .funs = list(~ifelse(.>1,1,0))) %>% #el ptaje no depende de cuantos duplicados tenga
-  dplyr::mutate(n_of_diffs_within = rowSums(select(., contains("_dups_hash_ing")))) %>% 
+                   'via_adm_sus_prin', 'freq_cons_sus_prin')), .funs = list(dups_hash_ing2 = ~n_distinct(.))) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate_at(vars(contains('_dups_hash_ing2')), .funs = list(~ifelse(.>1,1,0))) %>% #el ptaje no depende de cuantos duplicados tenga
+    dplyr::mutate(n_of_diffs_within = rowSums(select(., contains("_dups_hash_ing2")))) %>% 
 #  janitor::tabyl(n_of_matches) #para ver cómo se distirbuye
 #  dplyr::select(-contains("_dups_hash_ing")) %>% 
 #  dplyr::select(,contains("_dups_hash_ing")) %>%
-  dplyr::select("row", "ano_bd","HASH_fech_ing_reps","HASH_fech_ing_apariciones","n_of_diffs_within", c(criterios, contains("_dups_hash_ing"), "SENDA")) %>%
+  dplyr::select("row", "ano_bd","HASH_fech_ing_reps","HASH_fech_ing_apariciones","n_of_diffs_within", c(criterios, ends_with("_dups_hash_ing"), "SENDA")) %>%
   dplyr::arrange(n_of_diffs_within, HASH_KEY, desc(ano_bd)) %>% as.data.frame() %>% guardar_tablas("_matches_feb_2020")
-
-#write.csv(.,"_matches_feb_2020.csv", row.names = FALSE)
 #anyDuplicated returns the index i of the first duplicated entry if there is one, and 0 otherwise.
  #anyDuplicated(CONS_C1_df_dup_FEB_2020_prev1_dt, by=c("HASH_KEY", "fech_ing"))
 ```
@@ -313,8 +336,6 @@ We seen that many cases had different sexes, others are registries mostly from 2
 
 <br>
 
-
-CONS_C1_df_dup_FEB_2020_prev1
 ```{r filter_cases_duplicated, echo=T, include=T, paged.print=TRUE}
 dup_rows_by_obs_an <-c('44441', '59632', '4118', '83870', '33668', '38147', '13748', '24327', '7161', '6547', '37013', '96781', '57407', '15363', '63133', '196', '93528', '30670', '58550', '72253', '54650', '25716', '70547', '8320', '22332', '25251', '79519', '59842', '30734', '1105', '53959', '37294', '24936', '49352', '61282', '28687', '13729', '59555', '21165', '28500', '61274', '74897', '22331', '36731', '80950', '54760', '48977', '15410', '14641', '71758', '15744', '15526', '9099', '29791', '22330', '61287', '60502', '59556', '4739', '46724', '30276', '21166', '41795', '60507', '54776', '21574', '18237', '22228', '23061', '74444', '72556', '39592', '450', '54383', '35913', '30644', '23062', '3874', '3957', '72933', '8590', '13236', '30717', '54745', '31417', '23949', '24776', '9433', '45379', '53402', '71735', '37885', '21664', '14645', '25817', '9092', '31514', '2682', '37166', '57409', '38288', '18774', '6331', '67013', '34282', '77761', '2038', '84270', '22347', '41793', '30178', '22307', '57171', '27222', '25562', '39361', '3702', '28830', '14291', '137746', '20396', '4530', '53672', '42633', '29792', '15480', '55412', '57056', '89084', '59799', '57052', '6943', '61275', '14280', '17704', '45685', '9006', '35723', '23583', '83762', '4490', '57391', '7328', '15237', '14664', '77874', '12979', '36160', '62447', '121921', '3854', '66842', '15235', '46461', '74484', '15412', '5497', '25123', '47029', '45781', '6332', '13945', '52207', '45018', '44514', '2665', '52774', '8159', '37243', '13482', '31500', '26528', '549', '39944', '15386', '70295', '45306', '30352', '15688', '4735', '3191', '61079', '42627', '40610', '12495', '62097', '46463', '22612', '44794', '25013', '2284', '32219', '61281', '64011', '9318', '135017', '16319', '23355', '20118', '18281', '41599', '63035', '5493', '23280', '7698', '21397', '8352', '31750', '58055', '25429', '22249', '18952', '4984', '40210', '27202', '31341', '35645', '57410', '68566', '77886', '15416', '13309', '20154', '37926', '7250', '34556', '76210', '30713', '322', '20041', '18232', '14457', '1866', '59271', '25117', '31743', '26552', '58187', '28481', '18099', '16185', '1798', '23372', '57885', '46333', '6508', '16275', '27262', '17379', '10900', '14656', '7581', '11641', '39151', '78898', '24269', '5072', '21080', '63034', '20479', '15278', '70927', '7604', '6799', '34933', '14814', '340', '26721', '31621', '23299', '462', '12510', '7160', '46351', '5074', '12839', '4713', '6864', '4976', '37220', '23362', '11969', '37722', '35729', '441', '16189', '5536', '24449', '77163', '46455', '8767', '36167', '30552', '14616', '13956', '30568', '31424', '29523', '20704', '132268', '6346', '14051', '12484', '25164', '13276', '1618', '18713', '10495', '18468', '13128', '12838', '7182', '2523', '9719', '18651', '23586', '74757', '6334', '5571', '26424', '6794', '4801', '35841', '35831', '29608', '41005', '18712', '18649', '18934', '18170', '27956', '37271', '29885', '6202', '32299', '16172', '3865', '2319', '11163', '27214', '11552', '29380', '28514', '11365', '1794', '429', '61631', '12540', '21363', '23326', '38864', '11300', '14040', '9473', '36039', '27721', '63525', '43722', '19448', '18950', '8403', '22188', '3862', '2629', '15904', '15256', '8765', '23581', '16082', '74024', '14096', '75750', '1789', '27712', '25180', '21231', '17566', '72221', '31361', '16212', '8334', '17664', '11117', '31628', '31558', '23842', '16836', '27226', '16326', '57544', '30563', '54953', '22028', '11465', '7623', '27964', '23588', '31266', '16173', '11837', '6867', '4641', '15768', '23437', '16807', '11807', '3974', '14057', '12517', '8752', '8013', '23300', '12516', '8153', '5031', '582')
 ###igual creo que si uno quisiese automatizar el proceso, sólo necesitaría sacar el primero de cada fila con slice row number grouped by hash fech ing y no se complica más.
@@ -324,12 +345,19 @@ CONS_C1_df_dup_FEB_2020_prev1 %>%
 #117,619
 ```
 
+<br>
+
+Once done the manual discard of duplicated cases, we ended having `r nrow(CONS_C1_df_dup_FEB_2020_prev2) %>% formatC(, format="f", big.mark=",", digits=0)` cases.
+
+<br>
+
+
 ### 0.b. Different Information Within User, Concerning Personal Information
 
 We may see that many users have more than one disctinct personal information. In fact, these inconsistencies within users (incluiding those related to the date of birth) may impact in their SENDA's ID, making it difficult to detect changes along users in the datasets. Fortunately, we have the encripted code of the national identity number, which can replace SENDAs ID.
 
 - Sex (sexo) (`r CONS_C1_df_dup_FEB_2020_prev2 %>% dplyr::group_by(HASH_KEY) %>% dplyr::mutate(sexo_por_hash=dplyr::n_distinct(sexo)) %>% ungroup() %>% dplyr::filter(sexo_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-<!--- considerar la identidad de género. Esto puede haber afectado la imputación de casos para tipo_ed_plan y tipo_de_programa  --->
+<!--- considerar la identidad de género. Esto puede haber afectado la imputación de casos para tipo_de_plan y tipo_de_programa  --->
 
 ```{r pers_info_sex, echo=T, paged.print=TRUE}
 CONS_C1_df_dup_FEB_2020_prev2_sex <- CONS_C1_df_dup_FEB_2020_prev2 %>% group_by(HASH_KEY) %>% dplyr::mutate(sexo_por_hash=n_distinct(sexo)) %>% ungroup() %>% dplyr::filter(sexo_por_hash>1) %>% dplyr::distinct(HASH_KEY)
@@ -368,7 +396,7 @@ CONS_C1_df_dup_FEB_2020_prev2 %>%
 - Masked SENDAs ID (id_mod) (`r CONS_C1_df_dup_FEB_2020_prev2 %>% group_by(HASH_KEY) %>% dplyr::mutate(id_mod_por_hash=n_distinct(id_mod)) %>% ungroup() %>% dplyr::filter(id_mod_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
 - SENDAs ID (id) (`r CONS_C1_df_dup_FEB_2020_prev2 %>% group_by(HASH_KEY) %>% dplyr::mutate(id_por_hash=n_distinct(id)) %>% ungroup() %>% dplyr::filter(id_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
 
-<!--- considerar la fecha de nacimiento y el sexo--->
+<!---# considerar la fecha de nacimiento y el sexo--->
 
 ```{r pers_info_id, echo=T, paged.print=TRUE}
 CONS_C1_df_dup_FEB_2020_prev2_ids <- CONS_C1_df_dup_FEB_2020_prev2 %>% group_by(HASH_KEY) %>% dplyr::mutate(id_por_hash=n_distinct(id)) %>% ungroup() %>% dplyr::filter(id_por_hash>1) %>% dplyr::distinct(HASH_KEY)
@@ -531,7 +559,7 @@ dplyr::select(row, HASH_KEY, ano_bd, Nacionalidad, Etnia, sexo, fech_nac,Edad_al
 #CONS_C1_df_dup_FEB_2020_prev2 %>%
 #    #dplyr::filter(HASH_KEY %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev2_nat)))))) %>% 
 #    dplyr::mutate(concat_hash_id=paste0(HASH_KEY,"_",id)) %>%
-#    dplyr::group_by(concat_hash_id) %>%
+#    dplyr::group_by(concat_hash_id) %>%x
 #    dplyr::add_tally() %>% 
 #    dplyr::ungroup() %>%  
 #    dplyr::select(HASH_KEY,id, id_mod, ano_bd, Edad, fech_nac,ano_nac,n) %>%
@@ -585,7 +613,7 @@ dplyr::select(row, HASH_KEY, ano_bd, edad_ini_cons, sexo, fech_nac,Edad_al_ing, 
 ```
 
 - Age of Onset of Drug Use Principal Substance (edad_ini_sus_prin) (`r CONS_C1_df_dup_FEB_2020_prev2 %>% group_by(HASH_KEY) %>% dplyr::mutate(edad_ini_sus_prin_por_hash=n_distinct(edad_ini_sus_prin)) %>% ungroup() %>% dplyr::filter(edad_ini_sus_prin_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-<!--- considerar que no sea mayor a la edad de inicio de consumo --->
+<!--- #considerar que no sea mayor a la edad de inicio de consumo --->
 
 ```{r pers_info_edad_ini_sus_prin, echo=T, paged.print=TRUE}
 CONS_C1_df_dup_FEB_2020_prev2_edad_ini_sus_prin <- CONS_C1_df_dup_FEB_2020_prev2 %>% group_by(HASH_KEY) %>% dplyr::mutate(edad_ini_sus_prin_por_hash=n_distinct(edad_ini_sus_prin)) %>% ungroup() %>% dplyr::filter(edad_ini_sus_prin_por_hash>1) %>% dplyr::distinct(HASH_KEY)
@@ -622,7 +650,7 @@ dplyr::select(row, HASH_KEY, ano_bd, edad_ini_cons,edad_ini_cons, sexo, fech_nac
 ```
 
 - Starting Substance (sus_ini) (`r CONS_C1_df_dup_FEB_2020_prev2 %>% group_by(HASH_KEY) %>% dplyr::mutate(sus_ini_por_hash=n_distinct(sus_ini)) %>% ungroup() %>% dplyr::filter(sus_ini_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`)
-<!--- considerar que no sea mayor a la edad de inicio de consumo --->
+<!---# considerar que no sea mayor a la edad de inicio de consumo --->
 
 ```{r pers_info_sus_ini, echo=T, paged.print=TRUE}
 CONS_C1_df_dup_FEB_2020_prev2_sus_ini <- CONS_C1_df_dup_FEB_2020_prev2 %>% group_by(HASH_KEY) %>% dplyr::mutate(sus_ini_por_hash=n_distinct(sus_ini)) %>% ungroup() %>% dplyr::filter(sus_ini_por_hash>1) %>% dplyr::distinct(HASH_KEY)
@@ -661,7 +689,7 @@ dplyr::select(row, HASH_KEY, ano_bd, sus_ini, edad_ini_cons,edad_ini_cons, sexo,
 &nbsp;
 <br>
 
-## 2. Overlap Between Dates of Admission & Discharge
+## 1. Overlap Between Dates of Admission & Discharge
 
 &nbsp;
 <br>
@@ -674,7 +702,7 @@ CONS_C1_df_dup_intervals_FEB_2020<- CONS_C1_df_dup_FEB_2020_prev2 %>%
   #as.numeric(as.Date("2019-11-13")) #18213
   dplyr::mutate(fech_ing_num2=as.numeric(as.Date(fech_ing))) %>%
   dplyr::mutate(fech_egres_num2=as.numeric(as.Date(fech_egres))) %>%
-  dplyr::mutate(fech_egres_num2=ifelse(is.na(fech_egres),18213,fech_egres_num2)) %>%
+  dplyr::mutate(fech_egres_num2=ifelse(is.na(fech_egres),18213,fech_egres_num2)) %>% #equivalente a 2019-11-13
   dplyr::rename("HASH_KEY_2"="HASH_KEY", "row2"="row") %>%
   dplyr::select(row2,HASH_KEY_2, ano_bd,fech_ing, fech_ing_num2,fech_egres,fech_egres_num2,Edad, dias_trat,ID.centro, motivodeegreso, SENDA) %>% 
   #dplyr::filter(motivodeegreso!="Derivación") %>%
@@ -715,11 +743,14 @@ CONS_C1_df_dup_FEB_2020_overlaps %>%
   dplyr::mutate(mas_dias_trat=ifelse(dias_trat_2>dias_trat_1,1,0)) %>%
   dplyr::select(-caso_2_mas_reciente, -filter_row,-prod_row,-sum_row,-hash_key_2) %>%
     assign("CONS_C1_df_dup_FEB_2020_overlaps_COMP",.,envir = .GlobalEnv)
+####
 CONS_C1_df_dup_FEB_2020_overlaps_COMP %>%
+  dplyr::mutate(fech_egres_num_1=lead(fech_ing_num_2)) %>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption="Table 11. Cases with overlapped treatment ranges",
                  align =rep('c', 101))  %>%
-   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  kableExtra::add_footnote( c("Note.Each row represents an overlap. Variables ending with '_1' are the first case, and variables ending with '_2' correspond to the second case;", "bd_2_mas_reciente= Year of the yearly dataset is more recent in the second case;", "senda= If both cases are financed by SENDA;", "Derivación= If the cause of discharge is the referral from another center (1= Referral);","days_overlapped= Difference between the date of admission of the earlier treatment, and the date of discharge of the latter treatment","mas_dias_trat= Earlier treatment has more days of treatment"), notation = "none") %>%
   kableExtra::scroll_box(width = "100%", height = "375px")
 
 #FOR COMPARISON
@@ -730,22 +761,40 @@ CONS_C1_df_dup_FEB_2020_overlaps_COMP %>%
 ```
 
 
-We identified `r CONS_C1_df_dup_FEB_2020_overlaps_COMP %>%  nrow() %>% formatC(, format="f", big.mark=",", digits=0)` overlappings. We substracted the days overlapped between the date of discharge of the first treatment and the date of admission of the second treatment. 
+We identified `r CONS_C1_df_dup_FEB_2020_overlaps_COMP %>%  nrow() %>% formatC(, format="f", big.mark=",", digits=0)` overlappings. We substracted the days overlapped between the date of discharge of the first treatment and the date of admission of the next treatment. 
 <!--- eso requiere cambiar los días de tratamiento, el motivodeegreso mod, el de late withdrawal y todo, dias_trat, etc --->
-<!--- ¿y qué pasa con los casos que tienen más de un HASH overlapiado??, `r CONS_C1_df_dup_FEB_2020_overlaps_COMP %>%group_by(hash_key_1) %>% dplyr::mutate(mas_de_un_row=n_distinct(row_1)) %>% ungroup() %>% filter(mas_de_un_row>1) %>% nrow()` --->
-<!--- qué pasa con los casos que tenian la fecha perdida de egreso por mucho tiempo y por tanto estoy perdiendo casos intermedios? `r CONS_C1_df_dup_FEB_2020_overlaps_COMP %>% dplyr::filter(is.na(fech_egres_1)) %>% nrow()`. AQUÍ HAY 2 PROBLEMAS.--->
+<!--- ¿y qué pasa con los casos que tienen más de un HASH overlapiado??, `r CONS_C1_df_dup_FEB_2020_overlaps_COMP %>%group_by(hash_key_1) %>% dplyr::mutate(mas_de_un_row=n_distinct(row_1)) %>% ungroup() %>% filter(mas_de_un_row>1) %>% nrow()` #137, 2 y #38 +2 --->
+<!--- qué pasa con los casos que tenian la fecha perdida de egreso por mucho tiempo y por tanto estoy perdiendo casos intermedios? `r CONS_C1_df_dup_FEB_2020_overlaps_COMP %>% dplyr::filter(is.na(fech_egres_1)) %>% nrow()`.#19. AQUÍ HAY 2 PROBLEMAS.--->
 
 **DEBO ESCRIBIR LO QUE HAY EN LOS COMENTARIOS AQUÍ!!!!**
+
+<br>
+
+Of the overlapping variables dates, `r CONS_C1_df_dup_FEB_2020_overlaps_COMP %>% dplyr::filter(is.na(fech_egres_1)) %>% nrow()` cases had missing values in the date of discharge, generating confusion when it comes to analyse the trajectories of a user from 2010 to 2019. In Table 12, we may find the different treatments available for users that have at least one treatment with a missing date of discharge. **These cases were sent to SENDA's professional previously, and filtered and resended on February 24**. Meanwhile, two possible alternatives would be to fill the date of discharge with the date of admission of the next treatment, or to impute those missing data based on other cases. However, this imputation must avoid overlapping with the following date.
+
 
 ```{r  overlap2,echo=T, paged.print=TRUE}
 fech_egres_na_overlap<- CONS_C1_df_dup_FEB_2020_overlaps_COMP %>% dplyr::filter(is.na(fech_egres_1)) %>% distinct(hash_key_1)
 #son 14 hashs con datos perdidos en la fecha de egreso
 #probablemente los otros casos perdidos correspondan a personas que sólo tenían un evento no más.
-
 CONS_C1_df_dup_FEB_2020_prev2 %>%
   dplyr::filter(HASH_KEY %in% as.character(as.vector(unlist(as.data.table(unlist(fech_egres_na_overlap)))))) %>% # select hashs of wrongly assigned ages
-  dplyr::arrange(HASH_KEY) %>% 
-  dplyr::select(HASH_KEY, ano_bd, fech_ing, fech_egres, dias_trat, SENDA) %>% print()
+  dplyr::arrange(HASH_KEY, desc(fech_ing)) %>% 
+  dplyr::group_by(HASH_KEY) %>% 
+  dplyr::mutate(fech_egres_imp = dplyr::lag(fech_ing, n = 1, default = NA), fech_egres_imp=ifelse(is.na(fech_egres),as.character(fech_egres_imp),as.character(fech_egres))) %>%
+  dplyr::mutate(dias_trat_imp= as.numeric(as.Date(fech_egres_imp))-as.numeric(as.Date(fech_ing))) %>%
+  dplyr::mutate(dias_trat_alta_temprana_imp=ifelse(dias_trat_imp>=90,0,1)) %>%
+  dplyr::mutate(dias_trat_alta_temprana_imp=as.factor(dias_trat_alta_temprana_imp)) %>%
+  dplyr::mutate(dias_trat_alta_temprana_imp= dplyr::recode(dias_trat_alta_temprana_imp, "1"="Menos de 90 días", "0"="Mayor o igual a 90 días")) %>%
+  dplyr::mutate(motivodeegreso_mod_imp= ifelse(dias_trat_alta_temprana_imp=="Menos de 90 días" & motivodeegreso=="Abandono", "Abandono Temprano",as.character(motivodeegreso))) %>% ## CONSTE QUE ESTO NO VA A FUNCIONAR
+  dplyr::mutate(motivodeegreso_mod_imp= ifelse(dias_trat_alta_temprana_imp=="Mayor o igual a 90 días" & motivodeegreso=="Abandono", "Abandono Tardio",as.character(motivodeegreso_mod_imp))) %>% 
+  dplyr::mutate(motivodeegreso_mod_imp=as.factor(motivodeegreso_mod_imp)) %>%
+  dplyr::select(row,HASH_KEY, ano_bd, fech_ing, fech_egres, fech_egres_imp,dias_trat_alta_temprana_imp, dias_trat, dias_trat_imp,motivodeegreso_mod_imp,motivodeegreso, SENDA, ID.centro, motivodeegreso_mod, tipo_de_plan) %>% #print()
+  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 12. Cases with missing values in the date of discharge",
+                 align =rep('c', 101))  %>%
+   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
 #si tiene un caso más, significa que con ese caso se detectó el overlap.
 #001022ffb28057b24dd76900bbf1e3de   no hay problemas. sólo tiene 1 caso más
 #0d7fe0ff18f5b16868a68ca5ee5d4b87   no hay problemas. sólo tiene 1 caso más
@@ -756,13 +805,13 @@ CONS_C1_df_dup_FEB_2020_prev2 %>%
 #2a9e74353a3177ed278508f91265e4b4   debiese quedar con fecha 2010-04-29
 #3e23f3c3cbedb2aa1003e6a9d03eb070   podría ser el 2011-04-12 en el primer caso.
 #57b4de7542dfab3c29b6705cb392ff8a   2012-02-16
-
+#9803638c4b8ca2a0920ea15bcc024da5
 
 #CREO QUE PODRÍA ORDENAR TODOS LOS DATOS POR FECHA DE INGRESO, Y OCUPAR LEAD Y LAG PARA REEMPLAZAR Y CHAO. AUTOMATIZAR EL PROCESO
 ```
 
 
-## 3. Probabilistic Matches
+## 2. Probabilistic Matches
 
 &nbsp;
 
@@ -770,6 +819,17 @@ The code used in stata is shown here:
 
 &nbsp;
 <br>
+
+```{r generate data in csv, echo=F, paged.print=TRUE}
+write.csv2(CONS_C1_df_dup_FEB_2020, file ="G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/CONS_C1_df_dup_FEB_2020.csv")
+#write.csv(.,"_matches_feb_2020.csv", row.names = FALSE)
+#
+CONS_C1_df_dup_FEB_2020_prev2 %>%
+  dplyr::arrange(HASH_KEY, desc(fech_ing)) %>% 
+  dplyr::group_by(HASH_KEY) %>% 
+  dplyr::mutate(fech_ing_imp = dplyr::lag(fech_ing, n = 1, default = NA), fech_ing_imp=tidyr::replace_na(fech_ing)) %>%
+  rio::export(file = "CONS_C1_df_dup_FEB_2020.dta")
+```
 
 ```{stata, collectcode=TRUE}
 import delimited "G:\Mi unidad\Alvacast\SISTRAT 2019 (github)\SUD_CL\CONS_C1_df_dup_FEB_2020.csv", delimiter(";") clear 
@@ -794,15 +854,16 @@ matches_from_stata_c1_feb  %>%
   dplyr::select(score, matchID, hash_key, ano_bd, idcentro, date_in, fech_ing, fech_egres, edad, dias_trat) %>%
   as.data.frame() %>%
     knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 11. Preliminary View of Matches from Stata", align =rep('c', 100)) %>%
+                   caption="Table 13. Preliminary View of Matches from Stata", align =rep('c', 100)) %>%
      kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
     kableExtra::scroll_box(width = "100%", height = "350px")
 ```
 <br>
 
-The dataset was configured to find duplicated rows in almost every variable, excepting the row number in the whole consolidated dataset and the year of the dataset in which the row was obtained. For the purpose of this page, we will use the terms "rows" and "cases" as equal to refer to the entries of the dataset.
 
 <br>
+
+## 3. Data Editing / Deductive Imputation
 
 There are `r CONS_C1_df_dup_FEB_2020_prev1 %>% dplyr::filter(sus_principal=="Cocaína", via_adm_sus_prin!="Intranasal  ( aspiración de polvo por la nariz)") %>% nrow() %>% formatC(, format="f", big.mark=",", digits=0)` cases that does not snort Cocaine.
 
