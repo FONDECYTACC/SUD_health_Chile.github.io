@@ -1251,7 +1251,7 @@ Figure 4 let us observe how many treatments overlap. Many users start from 2000 
 <br>
 
 <div class="superbigimage">
-```{r  Fig 4, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center", message=F, cache=T}
+```{r  Fig 4, fig.height=8, fig.width=10, warning=FALSE, fig.align = "center", message=F, cache=T}
 CONS_C1_df_dup_intervals<- CONS_C1_df_dup_ENE_2020 %>%
   dplyr::mutate(fech_ing_num2=as.numeric(as.Date(fech_ing))) %>%
   dplyr::mutate(fech_egres_num2=as.numeric(as.Date(fech_egres))) %>%
@@ -1270,7 +1270,11 @@ require(gridExtra)
 as.data.table(overlap_dates_C1) %>%
     dplyr::arrange(hash_key_2, fech_ing_num2, row2) %>% ggplot(.) + 
   geom_segment(aes(x = fech_ing, xend = fech_egres,
-                   y = hash_key_2, yend = hash_key_2)) + theme(axis.line=element_blank(),
+                   y = hash_key_2, yend = hash_key_2)) + 
+      scale_x_datetime(breaks=scales::date_breaks("1 year"), 
+                  limits = as.POSIXct(c('2000-01-01 09:00:00','2020-01-01 09:00:00')),
+                  labels = scales::date_format("%m/%y")) +
+  theme(axis.line=element_blank(),
           axis.text.y=element_blank(),axis.ticks=element_blank(),
           axis.title.x=element_text(""),legend.position="none",
           panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
@@ -1297,15 +1301,19 @@ c26 <- c(
   "darkturquoise", "green1", "yellow4", "yellow3",
   "darkorange4", "brown", "gray40")
 
-  set.seed(4321)
-  random<-round(runif(1, 1, 100),0)
+  set.seed(667)
+  random<-round(runif(1, 1, 26),0)
 sample_plot <- overlap_dates_C1 %>% 
     dplyr::arrange(hash_key_2, fech_ing_num2, row2) %>% 
-  dplyr::slice(random:(random+25)) %>%
+  dplyr::slice(random:(random+26)) %>%
   mutate(Date = format(as.Date(fech_ing, format = "%Y-%m-%d"))) %>% 
-  ggplot(aes(x=Date)) + 
+  ggplot(aes()) + 
   geom_segment(aes(x = fech_ing, xend = fech_egres,
-                   y = hash_key_2, yend = hash_key_2,colour=as.factor(row2),size=1/100)) + theme(axis.line=element_blank(),axis.text.y=element_blank(),
+                   y = hash_key_2, yend = hash_key_2,colour=as.factor(row2),size=1/100)) + 
+    scale_x_datetime(breaks=scales::date_breaks("1 year"), 
+                  limits = as.POSIXct(c('2014-01-01 09:00:00','2020-01-01 09:00:00')),
+                  labels = scales::date_format("%m/%y")) +
+  theme(axis.line=element_blank(),axis.text.y=element_blank(),
           axis.ticks=element_blank(),
           axis.title.x=element_text(""),legend.position="none",axis.title.y=element_text("HASHs"),
           panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
@@ -1314,7 +1322,7 @@ sample_plot <- overlap_dates_C1 %>%
     theme(plot.caption = element_text(hjust = 0, face= "italic")) +
   scale_color_manual(values=c26) +
     labs(x = "Dates of admission and discharge", y = "", caption="Note. Only users that share characteristics overlap between them",
-         subtitle="Sample of 25 cases. Colored lines represent different rows in the dataset, but same HASH")+
+         subtitle="Random sample of 25 cases. Colored lines represent different rows in the dataset, but same HASH")+
     ggtitle("Figure 4.2 Trajectories of every HASH from dates of admission to discharge")
     #+
   #geom_text(vjust = -0.5, hjust=0, size = 1,
@@ -1328,10 +1336,13 @@ clean_plot <- CONS_C1_df_dup_ENE_2020 %>%
   dplyr::select(row,HASH_KEY_2, id_mod, ano_bd,fech_ing, fech_ing_num2,fech_egres,fech_egres_num2,Edad, Nombre.Centro, motivodeegreso, SENDA)%>%     as.data.table() %>%
   dplyr::filter(HASH_KEY_2 %in% c("07b0d5b1e32b62374685e48039ae6a67",	"0b810dfb7988e5e795b03a9cadc771fe", "0c3aa4566acbeb996e4bf645c7210f83", "01a95b45fa9acf445fe1a7106f2f6664")) %>%
   dplyr::arrange(HASH_KEY_2, fech_ing_num2, row) %>% 
-  mutate(Date = format(as.Date(fech_ing, format = "%Y-%m-%d"))) %>% 
-  ggplot(aes(x=Date)) + 
-  geom_segment(aes(x = fech_ing, xend = fech_egres,
+  #mutate(Date = format(as.Date(fech_ing, format = "%Y-%m-%d"))) %>% 
+  ggplot(aes()) + 
+  geom_segment(aes(x = as.POSIXct(as.Date(fech_ing_num2)), xend = as.POSIXct(as.Date(fech_egres_num2)),
                    y = HASH_KEY_2, yend = HASH_KEY_2,colour=as.factor(row),size=1/100)) + 
+    scale_x_datetime(breaks=scales::date_breaks("1 year"), 
+                  limits = as.POSIXct(c('2014-01-01 09:00:00','2020-01-01 09:00:00')),
+                  labels = scales::date_format("%m/%y")) +
   theme(axis.line=element_blank(),
           axis.ticks=element_blank(),axis.title.y=element_text("HASHs"),axis.text.y=element_blank(),
           axis.title.x=element_text(""),legend.position="none",
