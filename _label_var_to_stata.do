@@ -136,6 +136,7 @@ cap label variable motivodeegreso_imp "Motivo de Egreso(Imputados KNN & Lógico)
 cap label variable motivodeegreso_mod_imp "Motivo de Egreso (con abandono temprano y tardío)(Imputados KNN & Lógico)/Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic)"
 cap label variable dias_trat_imp "Días de Tratamiento (Imputados KNN & Lógico)/Days of Treatment (Imputed KNN & Logic)"
 cap label variable dias_trat_alta_temprana_imp "Días de Tratamiento con Alta Temprana (<90) (Imputados KNN & Lógico)/Days of Treatment w Early Withdrawal (Imputed KNN & Logic)"
+cap label variable via_adm_sus_prin_act "Vía de Administración de la Sustancia Principal (Se aplicaron criterios de limpieza)/Route of Administration of the Main Substance (Tidy)"
 cap label variable nacionalidad_2 "Segunda Nacionalidad/Second Nationallity"
 cap label variable etnia_2 "Etnia/Second Ethnic Group"
 cap label variable sus_ini_2 "Segunda Sustancia de Inicio/Second Starting Substance"
