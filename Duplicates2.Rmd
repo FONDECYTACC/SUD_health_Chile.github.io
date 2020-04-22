@@ -46,7 +46,9 @@ body{ /* Normal  */
 rm(list=ls());gc()
 #rm(list=c("")
 unlink('SUD_CL/Duplicates2_cache', recursive = TRUE)
-load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/4.Rdata")
+unlink('Duplicates2--UMAYOR-_cache', recursive = TRUE)
+load("H:/sud_cl/4.Rdata")
+#load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/4.Rdata")
 local({r <- getOption("repos")
        r["CRAN"] <- "http://cran.r-project.org" 
        options(repos=r)
@@ -113,10 +115,10 @@ For the purpose of this page, we use the terms "rows" and "cases" as equal to re
 
 First, we selected the following standardized variables as a criteria to identify duplicated treatments per user:
 
-- Masked Identifier (HASH_KEY)
+- Masked Identifier (hash_key)
 - Date of Admission to Treatment (fech_ing)
-- Center ID (ID.centro)
-- Main Substance of Consumption (sus_principal)
+- Center ID (id_centro)
+- Primary or Main Substance of Consumption at Admission (sus_principal)
 - Other Substances (1) (otras_sus1)
 - Other Substances (2) (otras_sus2)
 - Other Substances (3) (otras_sus3)
@@ -125,7 +127,7 @@ First, we selected the following standardized variables as a criteria to identif
 - Marital Status (estado_conyugal)
 - Occupational Status (estatus_ocupacional)
 - Occupational Category (cat_ocupacional)
-- Age in groups (Edad_grupos)
+- Age in groups (edad_grupos)
 - Motive of Admission to Treatment (origen_ingreso)
 - Education Attainment (escolaridad)
 - Route of Administration of the Main Substance (via_adm_sus_prin)
@@ -133,18 +135,20 @@ First, we selected the following standardized variables as a criteria to identif
 
 ```{r dedup_manual, echo=T, paged.print=TRUE}
 require(data.table)
-names_c1_stage3 <- c("HASH_KEY","fech_ing", "ID.centro", "sus_principal", "otras_sus1","otras_sus2","otras_sus3","sus_ini","edad_ini_cons", "estado_conyugal","estatus_ocupacional","cat_ocupacional","Edad_grupos","origen_ingreso", "escolaridad","via_adm_sus_prin", "freq_cons_sus_prin")
+names_c1_stage3 <- c("hash_key","fech_ing", "id_centro", "sus_principal", "otras_sus1","otras_sus2","otras_sus3","sus_ini","edad_ini_cons", "estado_conyugal","estatus_ocupacional","cat_ocupacional","edad_grupos","origen_ingreso", "escolaridad","via_adm_sus_prin", "freq_cons_sus_prin")
 
 require(dplyr)
 CONS_C1_df_dup_ENE_2020 %>%
-  dplyr::arrange(desc(ano_bd),HASH_KEY, desc(fech_ing), desc(fech_egres),dias_trat_inv) %>%
-  dplyr::distinct_(.dots = names_c1_stage3, .keep_all = TRUE) %>%
+  dplyr::mutate(dias_trat_inv=ifelse(dias_trat<0,0,dias_trat*-1))%>% #transforma los erroneos en 0 -- APR 2020, eliminé los fecha de egreso, y actualicé dias_trat_inv
+  dplyr::arrange(desc(ano_bd),hash_key, desc(fech_ing), dias_trat_inv) %>%
+  dplyr::distinct_at(.vars=names_c1_stage3, .keep_all = TRUE) %>%
+#  dplyr::distinct_(.dots = , .keep_all = TRUE) %>%
 #  dplyr::select(concat,dup_todo) %>%
 #  dplyr::arrange(HASH_KEY, fech_ing, desc(ano_bd)) %>%
  # dplyr::select(row) %>%  summarise(mean(row), sd(row)) #, lo mismo que en STATA. Se supone que una row es sensible a cambios distintos.
   assign("CONS_C1_df_dup_FEB_2020_prev1",.,envir = .GlobalEnv)
 #Lo mismo que en STATA: Ahora hay 118,072. Una vez que introduje 
-#Ahora, 118035
+#Ahora, 118035 (MAR 2020), ahora tengo 118036 casos. (APR 2020)
 #  dplyr::arrange(HASH_KEY, fech_ing, desc(ano_bd), desc(fech_egres)) %>% criterio anterior
 ```
 
@@ -156,21 +160,21 @@ Once exact matches were discarded, we ended having `r nrow(CONS_C1_df_dup_FEB_20
 
 An analysis based on the following criteria, ended with an index of how many differences within cases with the same HASH and date of admission, and in which variables can be tolerable to have differences. For example, if two or more cases share the same date of admission and hash, but most of the variables are different, it is possible to think that information may be lost if one of them is deleted. In another example, if two or more cases share the same date of admission and hash, but the only differences are observed in the days of treatment, one may think that only the case with more treatment days must be preserved.
 
-- HASH_KEY=	Masked Identifier (RUT)
-- Región.del.Centro=	Chilean Region of the Center
+- hash_key=	Masked Identifier (RUT)
+- region_del_centro=	Chilean Region of the Center
 - dias_trat=	Days of Treatment
-- Edad=	Year (Discrete Number)
+- edad=	Age (Discrete Number)
 - fech_ing=	Date of Admission to Treatment
 - fech_egres=	Date of Discharge from Treatment
-- ID.centro	Center ID
+- id_centro= Center ID
 - id_mod=	SENDAs ID (mask characters 5 & 6)
 - ano_nac=	Year of Birth (numeric)
-- Edad_al_ing=	Age at Admission to Treatment
+- edad_al_ing=	Age at Admission to Treatment
 - edad_ini_cons=	Age of Onset of Drug Use
-- edad_ini_sus_prin= Age of Onset of Drug Use Principal Substance
+- edad_ini_sus_prin= Age of Onset of Drug Use Primary Substance
 - tipo_centro= Type of Center
-- Nacionalidad= Nationallity
-- Etnia= Ethnicity
+- nacionalidad= Nationality
+- etnia= Ethnicity
 - Diagnóstico.Trs..Psiquiátrico.DSM.IV= Diagnosis of Psychiatric Disorders, DSM-IV criteria
 - Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV= Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification)
 - X2.Diagnóstico.Trs..Psiquiátrico.DSM.IV= Diagnosis of Psychiatric Disorders, DSM-IV criteria (2)
@@ -191,7 +195,7 @@ An analysis based on the following criteria, ended with an index of how many dif
 - tipo_de_programa= Type of Program
 - dias_trat_alta_temprana= Less than 90 days in treatment
 - motivodeegreso_mod= Cause of Discharge (with late and early withdrawal)
-- sus_principal= Main Substance of Consumption
+- sus_principal= Primary or Main Substance of Consumption
 - otras_sus1= Other Substances (1)
 - otras_sus2= Other Substances (2)
 - otras_sus3= Other Substances (3)
@@ -205,7 +209,7 @@ An analysis based on the following criteria, ended with an index of how many dif
 - via_adm_sus_prin= Route of Administration of the Main Substance
 - freq_cons_sus_prin= Frequency of Consumption of the Main Substance
 
-```{r dedup_analisis_manual, echo=T, paged.print=TRUE}
+```{r tab1_dedup_analisis_manual, echo=T, paged.print=TRUE}
 criterios_show<-c('HASH_KEY', 'tipo_centro', 'Región.del.Centro', 'dias_trat', 
   'Edad', 'Nacionalidad', 'Etnia', 'Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
   'X2.Diagnóstico.Trs..Psiquiátrico.DSM.IV', 'X2.Diagnóstico.Trs..Psiquiátrico.SUB.DSM.IV', 
@@ -1990,12 +1994,12 @@ nmesesentratamiento = 'Número de Meses en Tratamiento/Number of Months in Treat
 dias_en_senda = 'Días en SENDA/Days in SENDA',
 n_meses_en_senda = 'Número de Meses en SENDA/Number of Months in SENDA',
 sexo = '(original, Recodificado en sexo_2)/',
-edad = 'Edad (número entero)/Year (Discrete Number)',
+edad = 'Edad (número entero)/Age (Discrete Number)',
 nombre_usuario = 'Nombre del Usuario (OCULTO y no accesible)/Name of the User (Not Accessible)',
-comuna_residencia = 'Comuna de Residencia/Municipality of Residence',
+comuna_residencia = 'Comuna de Residencia/Municipality or District of Residence',
 origen_de_ingreso = '(original, Recodificado en origen_ingreso)/',
 pais_nacimiento = 'País de Nacimiento/Country of Birth',
-nacionalidad = 'Nacionalidad/Nationallity',
+nacionalidad = 'Nacionalidad/Nationality',
 etnia = 'Etnia/Ethnicity',
 estado_conyugal = '(original, Recodificado en estado_conyugal_2)/',
 numero_de_hijos = 'Número de Hijos/Number of Children',
@@ -2087,7 +2091,7 @@ edad_ini_cons= 'Edad de Inicio de Consumo/ Age of Onset of Drug Use',
 edad_ini_sus_prin =  'Edad de Inicio de Consumo Sustancia Principal/ Age of Onset of Drug Use Principal Substance',
 dias_trat_alta_temprana = 'Días de tratamiento (<90)/ Less than 90 days in treatment',
 motivodeegreso_mod = 'Motivo de Egreso (con abandono temprano y tardío)/Cause of Discharge (with late and early withdrawal)',
-sus_principal = 'Sustancia Principal de Consumo/Main Substance of Consumption',
+sus_principal = 'Sustancia Principal de Consumo/Primary or Main Substance of Consumption at Admission',
 otras_sus1= 'Otras Sustancias (1)/Other Substances (1)',
 otras_sus2= 'Otras Sustancias (2)/Other Substances (2)',
 otras_sus3= 'Otras Sustancias (3)/Other Substances (3)',
@@ -2098,8 +2102,8 @@ cat_ocupacional= 'Categoría Ocupacional/Occupational Category',
 edad_grupos	= 'Edad agrupada/Age in groups',
 origen_ingreso= 'Origen de Ingreso/Motive of Admission to Treatment',
 escolaridad= 'Escolaridad: Nivel Eduacional/Educational Attainment',
-freq_cons_sus_prin = 'Frecuencia de Consumo de la Sustancia Principal/Frequency of Consumption of the Main Substance',
-via_adm_sus_prin = 'Vía de Administración de la Sustancia Principal/Route of Administration of the Main Substance',
+freq_cons_sus_prin = 'Frecuencia de Consumo de la Sustancia Principal/Frequency of Consumption of the Primary or Main Substance',
+via_adm_sus_prin = 'Vía de Administración de la Sustancia Principal/Route of Administration of the Primary or Main Substance',
 dias_trat_knn_imp= 'Días de Tratamiento (Imputados KNN)/Days of Treatment (Imputed KNN)',
 fech_egres_knn_imp= 'Fecha de Egreso (Imputados KNN)/Date of Discharge (Imputed KNN)',
 dias_trat_alta_temprana_knn_imp= 'Días de Tratamiento con Alta Temprana (<90) (Imputados KNN)/Days of Treatment w Early Withdrawal (Imputed KNN)',
@@ -2108,8 +2112,8 @@ motivodeegreso_imp= 'Motivo de Egreso(Imputados KNN & Lógico)/Cause of Discharg
 motivodeegreso_mod_imp= 'Motivo de Egreso (con abandono temprano y tardío)(Imputados KNN & Lógico)/Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic)',
 dias_trat_imp= 'Días de Tratamiento (Imputados KNN & Lógico)/Days of Treatment (Imputed KNN & Logic)', 
 dias_trat_alta_temprana_imp= 'Días de Tratamiento con Alta Temprana (<90) (Imputados KNN & Lógico)/Days of Treatment w Early Withdrawal (Imputed KNN & Logic)',
-via_adm_sus_prin_act= 'Vía de Administración de la Sustancia Principal (Se aplicaron criterios de limpieza)/Route of Administration of the Main Substance (Tidy)',
-nacionalidad_2 = 'Segunda Nacionalidad/Second Nationallity',
+via_adm_sus_prin_act= 'Vía de Administración de la Sustancia Principal (Se aplicaron criterios de limpieza)/Route of Administration of the Primary or Main Substance (Tidy)',
+nacionalidad_2 = 'Segunda Nacionalidad/Second Nationality',
 etnia_2 = 'Etnia/Second Ethnic Group',
 sus_ini_2 = 'Segunda Sustancia de Inicio/Second Starting Substance')
 #PARA EXPORTAR LABELS A EXCEL

@@ -33,11 +33,17 @@ body{ /* Normal  */
   }
 </style>
 
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
+</style>
+
+
 ```{r setup, include=FALSE}
 rm(list=ls());gc()
 unlink('SUD_CL/Data_prep_TOP_cache', recursive = TRUE)
 load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/3.RData")
-#setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL")
+#load("H:/sud_cl/3.RData")
+setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL")
 #path <-"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL"
 #Libraries used in the routine. Dont change the order
 #if(!require(tidyr)){install.packages("tidyr")}
@@ -76,18 +82,24 @@ library(Statamarkdown)
 library(codebook)
 library(data.table)
 library(dplyr)
+library(DT)
+library(janitor)
+library(glue)
 ```
 
 &nbsp;
 
-TOP or Treatment Outcomes Profile ("Perfil de Resultados de Tratamiento") serves as a tool for monitoring and follow up of SUD treatments. This questionnaire must be completed at entry to treatment, each 3 months during treatment, at treatment discharge and some centers may aaply it after discharg. Hence, it is important to capture the date of application and the date of admission, and in order to characterize each user, it is important to standardize his birth date.
+<div class = "blue">
+TOP or Treatment Outcomes Profile (“Perfil de Resultados de Tratamiento”) serves as a tool for monitoring and follow-up of SUD treatments. It is a questionnaire that every user must complete at the beginning of treatment, every 3 months during treatment, at treatment discharge, and some centers may apply it after discharge. **Hence, it is crucial to distinguish between the date of application and the date of admission. Additionally, to characterize each user and their profile in each phase of life, it is necessary to standardize his birth date**.
+</div>
+
 
 &nbsp;
 <br>
 
 ### 1. Relationship of TOP Dataset with C1.
 
-```{r first_changes, cache=T}
+```{r tab1_first_changes, cache=T}
 #create the first changes into TOP dataset
 CONS_TOP %>%
   dplyr::mutate(ano_bd=as.numeric(substr(TABLE,4,7))) %>%
@@ -107,15 +119,15 @@ as.data.frame(cbind("Vars. of TOP"=c(names(CONS_TOP_df), rep("",65)),"Vars. of C
 
 <br>
 
-As seen in Table 1, clearly C1 has more variables than the TOPs dataset. One of the variables that appear in both datasets is the age, sex, name of the center of treatment, region of the center and type of center, main substanes, date of admission to treatment and type of plan of the treament. Considering this, it might be possible to replace missing or invalid information of C1 to TOP.
+As seen in Table 1, C1 dataset had more variables than the TOPs dataset. One of the variables that appear in both datasets is age, sex, the center of treatment, the region of the center and type of center, primary substances, date of admission to treatment, and type of plan of the treatment. Considering the above, we might replace missing or invalid information of C1 to TOP.
 
 ### 2. Change Dates of Admission, Aplication of TOP and Birth
 
-As can be seen in Table 2, every date was formatted into dates in a format disposed to show first a 4-digit year, 2-digit month and 2-digit day. Additionally, SENDA's ID was masked to avoid recognition from third parties.
+As can be seen in Table 2, we brought a new format to every date to show first a 4-digit year, 2-digit month, and 2-digit day. This format also matches the format of these variables in the C1 dataset. Additionally, we masked SENDA’s IDs to avoid the eventual identification of users from third parties.
 
 <br>
 
-```{r changes_dates, cache=T}
+```{r tab2_changes_dates, cache=T}
 #change dates
 CONS_TOP_df %>%
   dplyr::mutate(fech_ing= lubridate::parse_date_time(Fecha.de.Ingreso.a.Tratamiento, c("%d/%m/%Y"),exact=T)) %>% #No parse failures
@@ -139,11 +151,12 @@ CONS_TOP_df %>%
 &nbsp;
 <br>
 
-In the transformation of the dates of admission, we found an important amount of missing values. However, **there were `r CONS_TOP_df %>% dplyr::filter(is.na(fech_ap_top)) %>% summarise(n())` missing dates of application of the TOP** and  `r CONS_TOP_df %>% dplyr::filter(is.na(fech_nac)) %>% summarise(n())` missing birth dates (despite `r CONS_TOP_df %>% dplyr::select(Edad) %>% dplyr::filter(Edad<18|Edad>90) %>% nrow()` cases could be invalid according to the criteria stated by SENDA's professionals). **Considering the characteristics of TOP programs and monitoring, it may be possible to replace dates from the cases that share the same information within the TOP dataset, or obtain it from C1 dataset, using the date of application as a reference to determine the adequate date of admission.**
+WIn the transformation of the dates of admission, we found a considerable amount of missing values (n= `r formatC(CONS_TOP_df %>% dplyr::filter(is.na(fech_ing)) %>% summarise(n()) %>% as.numeric(),format="f", big.mark=",", digits=0)`). However, **there were `r CONS_TOP_df %>% dplyr::filter(is.na(fech_ap_top)) %>% summarise(n())` missing dates of application of the TOP** and  `r CONS_TOP_df %>% dplyr::filter(is.na(fech_nac)) %>% summarise(n())` missing birth dates (despite that `r CONS_TOP_df %>% dplyr::select(Edad) %>% dplyr::filter(Edad<18|Edad>90) %>% nrow()` cases could be invalid according to the criteria stated by SENDA's professionals). **The fact of having a few missing values in the date of admission is problematic because treatments are conceived as the unit in the C1 dataset  (understood as the combination of the date of admission and user ID). If we do not obtain the remaining dates of admission missed, it is difficult to understand these profiles in the context of a treatment, and if they change within a treatment or in comparison to previous or following treatments**.
+
 
 <br>
 
-```{r fech_ing_nas, echo=FALSE, fig.align='center',fig.cap= "Figure 1. Pie Chart of Missing Dates of Admission"}
+```{r fig1_fech_ing_nas, echo=T, fig.align='center',fig.cap= "Figure 1. Pie Chart of Missing Dates of Admission"}
 #Hay un 1% de casos perdidos
 CONS_TOP_df %>%
   dplyr::group_by(is.na(Fecha.de.Ingreso.a.Tratamiento)) %>% 
@@ -169,13 +182,17 @@ CONS_TOP_df %>%
 
 <br>
 
-Considering that the dates of admission to the treatment and discharge may let us merge the dataset with the correspondent to C1, we need to obtain the remining dates that were missed.
+
+**We adopted the following guidelines:**
+
+- Replace dates from the cases that share the same information within the TOP dataset (1), or
+- Replace them from C1 dataset, using the date of application and the stage of application as a reference to determine the closest date of admission (2)
 
 <br>
 
-In order to replace the dates of admission, we should obtain it not only from the TOP dataset, but also using the C1 agreement. First, we should identify applications of the TOP that were done for the same stage and for the same HASH, but this specific registry have a date of admission. 
+First, we identified applications of the TOP that were applied for the same stage (TOP at Admission) and the same user on the same dates of application. These cases could replace missing dates of admission.
 
-```{r replace_date_adm_table_top}
+```{r tab3_replace_date_adm_table_top}
 CONS_TOP_df_dup_fech_ing_adm <- dplyr::select(CONS_TOP_df, HASH_KEY, fech_ap_top, fech_ing, TOP)%>% 
   dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% as.data.frame()
 CONS_TOP_df_dup_fech_ing <- dplyr::select(CONS_TOP_df, HASH_KEY, fech_ap_top, fech_ing, TOP)%>% 
@@ -183,7 +200,7 @@ CONS_TOP_df_dup_fech_ing <- dplyr::select(CONS_TOP_df, HASH_KEY, fech_ap_top, fe
 ######################################
 #nrow(CONS_TOP_df_dup_fech_ing) ##DESPITE HAS MORE ROWS, DOES NOT MAKE A DIFFERENCE IN THE QUANTITY
 #nrow(CONS_TOP_df_dup_fech_ing_adm)
-#################################
+######################################
 #Join datasets 
 dplyr::left_join(CONS_TOP_df,CONS_TOP_df_dup_fech_ing, by = c("HASH_KEY", "fech_ap_top"), suffix = c("", ".y")) %>% #names() #junto con la BD que hice
   dplyr::filter(!is.na(fech_ing.y), is.na(fech_ing)) %>%  #filtro los casos que en que sí tengo fecha de ingreso en el merge, pero no la tengo en la BD.
@@ -205,7 +222,8 @@ CONS_TOP_df_dup_fech_ing_adm <- dplyr::select(CONS_TOP_df, HASH_KEY, fech_ap_top
 CONS_TOP_df %>%
   dplyr::group_by(HASH_KEY, fech_ap_top) %>% dplyr::mutate(row_leftjoin=row_number()) %>% ungroup() %>%
 dplyr::left_join(CONS_TOP_df_dup_fech_ing_adm, by = c("HASH_KEY", "fech_ap_top","row_leftjoin"), suffix = c("", ".y")) %>% #names() #junto con la BD que hice, sólo tomo una.
-  dplyr::mutate(fech_ing= ifelse(is.na(fech_ing),as.Date(as.character(fech_ing.y), format="%Y-%m-%d"), as.Date(as.character(fech_ing), format="%Y-%m-%d"))) %>%
+  dplyr::mutate(OBS= ifelse(is.na(fech_ing) & !is.na(fech_ing.y), "1.1.Replace miss date admission w TOPs w same stage & user","")) %>%
+  dplyr::mutate(fech_ing= ifelse(is.na(fech_ing)& !is.na(fech_ing.y),as.Date(as.character(fech_ing.y), format="%Y-%m-%d"), as.Date(as.character(fech_ing), format="%Y-%m-%d"))) %>%
   dplyr::mutate(fech_ing=as.Date(fech_ing)) %>%
   dplyr::mutate(fech_ap_top=as.Date(as.character(fech_ap_top))) %>% #APROVECHO DE NORMALIZAR ESTAS VARIABLES PARA QUE TENGAN LA MISMA ESTRUCTURA
   dplyr::mutate(fech_nac=as.Date(as.character(fech_nac))) %>%
@@ -218,17 +236,24 @@ dplyr::left_join(CONS_TOP_df_dup_fech_ing_adm, by = c("HASH_KEY", "fech_ap_top",
 #str(CONS_TOP_df_dup_ENE_2020_prev0) #TENGO PROBLEMAS PARA FORMATEAR LA ECHA DE INGRESO SIN HORAS
 ```
 
-Done this, we still find many cases (`r formatC(CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(is.na(fech_ing)) %>% nrow(), format="f", big.mark=",", digits=0)`) that do not have a date of admission. Another option would be to replace the date of admission from the date of application, in the event of application. However, this was not possible due to an inaccuracy of data, observed in the difference between those that have both dates available (Mean=`r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Mean)`; Mdn= `r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Median)` [Q1= `r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Q25)`, Q3= `r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Q75)`]).
+Done this, we still found many cases that do not have a date of admission (n= `r formatC(CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(is.na(fech_ing)) %>% nrow(), format="f", big.mark=",", digits=0)`). Another option would be to replace the date of admission from the date of application, in the event of application. However, this was not possible due to inaccuracy of data, observed in the difference between the date of admission and the date of application of those that have both dates available (Mean=`r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Mean)`; Mdn= `r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Median)` [Q1= `r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Q25)`, Q3= `r CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(Mean= mean(diff_fech_ing_ap), Median=quantile(diff_fech_ing_ap, c(.5)), Q25=quantile(diff_fech_ing_ap, c(.25)), Q75=quantile(diff_fech_ing_ap, c(.75))) %>% round(2) %>% dplyr::select(Q75)`]). **This means that TOP at admission were applied some days after being admitted to treatments**. 
 
-```{r diff_dates_adm_application, echo=FALSE, fig.align='center',fig.cap= "Figure 2. Histogram of Differences Between Dates of Admission and Dates of Application of TOP, among those questionnaires applied in the stage of admission"}
-CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% dplyr::select(diff_fech_ing_ap) %>% dplyr::rename("Diff. in Dates of Admission & Date of Application of TOP"="diff_fech_ing_ap") %>% hist()
+```{r fig2_diff_dates_adm_application, echo=T, fig.align='center',fig.cap= "Figure 2. Histogram of Differences Between Dates of Admission and Dates of Application of TOP, among those questionnaires applied in the stage of admission"}
+CONS_TOP_df_dup_ENE_2020_prev0 %>% 
+  dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% 
+  dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% 
+  dplyr::select(diff_fech_ing_ap) %>% 
+  ggplot(aes(x=as.numeric(diff_fech_ing_ap))) +
+  geom_histogram(color="black", fill="white") +
+  theme_classic() +
+  labs(x= "Diff. in Dates of Admission & Date of Application of TOP", y ="Frequencies", caption=paste0("no. of cases= ",CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(!is.na(fech_ing), TOP=="Ingreso") %>% dplyr::mutate(diff_fech_ing_ap=as.numeric(fech_ing-fech_ap_top, units="days")) %>% summarise(n())))
 ```
 
 <br>
 
-In Table 4, we may see how many dates could be replaced by the dates in C1. We replace these dates by filtering the applications correspondent to the event of admission that had missing data. Then, we pair them with cases in C1 with the same HASH and the same date of admission (in which the date of application of the TOP for admission coincides with the date of admission in C1), and finally we replace it with this corresponding date.
+In Table 4, we may see how many dates could be replaced by the dates in C1. We replaced these dates by selecting the applications correspondent to the stage of admission that had missing data. Then, we paired them with cases in C1 with the same HASH and the same date of admission (in which the date of application of the TOP for admission coincides with the date of admission in C1). Finally, we replaced it with this corresponding date.
 
-```{r replace_date_adm_table_c1}
+```{r tab4_replace_date_adm_table_c1}
   #debiese poner una, HASHs with missing dates of admission that can be replaced by cases in C1 with the same characteristics",
 CONS_TOP_df_dup_ENE_2020_prev0 %>% dplyr::filter(TOP=="Ingreso", is.na(fech_ing)) %>% #son aplicación Ingreso, les falta la fecha de ingreso
   dplyr::inner_join(dplyr::select(CONS_C1_df,HASH_KEY, fech_ing) %>% mutate(fech_ing=as.Date(as.character(fech_ing))), by=c("HASH_KEY"="HASH_KEY", "fech_ap_top"="fech_ing"), suffix=c(".TOP",".C1")) %>% as.data.frame() %>%
@@ -261,8 +286,9 @@ CONS_C1_df_rownum <-CONS_C1_df %>% mutate(fech_ing_C1=fech_ing) %>%  #Actualizac
 CONS_TOP_df_dup_ENE_2020_prev0 %>% 
   mutate(fech_ing_na=fech_ing) %>%# solo hecha para visibilizar los que fueron reemplazados
   data.frame() %>%
-  dplyr::left_join(CONS_C1_df_rownum, by=c("HASH_KEY"="HASH_KEY", "fech_ap_top"="fech_ing"), suffix=c(".TOP",".C1"))%>%
-  dplyr::mutate(fech_ing= ifelse((is.na(fech_ing))&(TOP=="Ingreso"),fech_ing_C1, fech_ing)) %>%
+  dplyr::left_join(CONS_C1_df_rownum, by=c("HASH_KEY"="HASH_KEY", "fech_ap_top"="fech_ing"), suffix=c(".TOP",".C1"))%>% #names()
+  dplyr::mutate(OBS=ifelse((is.na(fech_ing))&(TOP=="Ingreso")&(!is.na(fech_ing_C1)),glue::glue("{OBS};1.2.Replaced missing dates of admission from C1"),OBS))%>% 
+  dplyr::mutate(fech_ing= ifelse((is.na(fech_ing))&(TOP=="Ingreso")&(!is.na(fech_ing_C1)),fech_ing_C1, fech_ing)) %>%
   dplyr::mutate(fech_ing= as.Date(as.numeric(fech_ing), format="%Y-%m-%d")) %>% #tuve q agregarle más días para equipararlo
   #dplyr::select(-fech_ing_C1, -row_leftjoin) %>%
 #para probar como SE COMPORTA LA TRANSFORMACIÓN
@@ -270,7 +296,10 @@ CONS_TOP_df_dup_ENE_2020_prev0 %>%
 #    dplyr::filter(HASH_KEY %in% c("9b74476e88c81cb019a468106d65ac85","f0210e3f219b7c4b85d9767fc5446c73","d4eeee40471666533d3cbbda0901fada", "c6b57a1ddf9555842bd46216851bf2ee", "92be85e2ace88e24a99fe3980bcd5fc0", "2adfa7e2f6d763c1c6c2b5ed35889243", "ec15af2d6521535ae5bdc50459a62f8c", "978988a1c417f54963eb9f5d84f07c60"), TOP=="Ingreso", is.na(fech_ing_na)) %>% #c6b57a1ddf9555842bd46216851bf2ee  este no debería incorporarlo, porque debiese ser NA
  # dplyr::select(fech_ing, fech_ing_sin_fmt,fech_ing_C1, fech_ap_top) %>% print()
  # View()
-    as.data.frame() %>% 
+  dplyr::mutate(Edad_al_ing=lubridate::time_length(difftime(as.Date(fech_ing), as.Date(fech_nac)),"years")) %>%
+  dplyr::mutate(Edad_al_ing=replace(Edad_al_ing, is.na(Edad), NA)) %>%
+  as.data.frame() %>% 
+  #dplyr::select(fech_nac,Edad_al_ing, fech_ing)
   #View()
   assign("CONS_TOP_df_dup_ENE_2020_prev1",., envir = .GlobalEnv) 
 ```
@@ -278,24 +307,52 @@ CONS_TOP_df_dup_ENE_2020_prev0 %>%
 
 <br>
 
-And what about another important event that is present along the C1 dataset?. Unfortunatelly, dates of admission could not be replaced by the dates in C1 following this criteria. We filtered the applications correspondent to the event of discharge that had missing data in the date of admission (n= `r CONS_TOP_df_dup_ENE_2020_prev1 %>% dplyr::filter(TOP=="Egreso", is.na(fech_ing)) %>% nrow()`). Then, we paired them with cases in C1 with the same HASH and the same date of discharge (in which the date of application of the TOP for discharge coincides with the date of discharge in C1), ending with `r CONS_TOP_df_dup_ENE_2020_prev1 %>% dplyr::filter(TOP=="Egreso", is.na(fech_ing)) %>% dplyr::inner_join(dplyr::select(CONS_C1_df,HASH_KEY, fech_ing, fech_egres) %>%   mutate(fech_egres=as.Date(as.character(fech_egres))), by=c("HASH_KEY"="HASH_KEY", "fech_ap_top"="fech_egres"), suffix=c(".TOP",".C1")) %>% as.data.frame() %>% nrow()` cases to match.
+**And what about another important event that is present along the C1 dataset?**. Despite that the C1 datast had 2 types of events, unfortunately, no other dates of admission could be replaced by the dates in C1. We filtered the applications correspondent to the event of discharge that had missing data in the date of admission (n= `r CONS_TOP_df_dup_ENE_2020_prev1 %>% dplyr::filter(TOP=="Egreso", is.na(fech_ing)) %>% nrow()`). Then, we paired them with cases in C1 with the same HASH and the same date of discharge (in which the date of application of the TOP for discharge coincides with the date of discharge in C1), ending with `r CONS_TOP_df_dup_ENE_2020_prev1 %>% dplyr::filter(TOP=="Egreso", is.na(fech_ing)) %>% dplyr::inner_join(dplyr::select(CONS_C1_df,HASH_KEY, fech_ing, fech_egres) %>%   mutate(fech_egres=as.Date(as.character(fech_egres))), by=c("HASH_KEY"="HASH_KEY", "fech_ap_top"="fech_egres"), suffix=c(".TOP",".C1")) %>% as.data.frame() %>% nrow()` cases to match.
 
 <br>
 
-Another alternative could be the matching by coincing HASHs and years at the time of admission. However, we require to have valid ages in the TOP dataset. There were `r CONS_TOP_df_dup_ENE_2020_prev1 %>% dplyr::filter(!is.na(fech_nac)) %>% dplyr::select(fech_nac) %>% dplyr::filter(fech_nac<"1929-03-19"|fech_nac>"2001-11-01")  %>% nrow()` cases with invalid values in age. In the following table, these cases are presented in depth.
+Another alternative could be the match by coincing HASHs and years at the time of admission. However, we require to have valid dates of birth in the TOP datasetm to calculate years at a given time. There were `r CONS_TOP_df_dup_ENE_2020_prev1 %>% dplyr::filter(!is.na(fech_nac)) %>% dplyr::select(fech_nac) %>% dplyr::filter(fech_nac<"1929-03-19"|fech_nac>"2001-11-01")  %>% nrow()` dates of birth that might represent invalid values along the dataset, depending on contextual factors (such as the time in which the user was interviewed). That is why we decided to **get the age at the time of application of the TOP as a valid filter of valid dates of birth**. This criterion aims to bring consistency over both datasets in terms of admitted ages into programs. In the following table, these cases are presented in depth. 
 
 <br>
 
-```{r edad, cache=T}
+```{r tab5_edad, cache=T}
 #CONS_TOP_df_dup_ENE_2020_prev1 %>% dplyr::filter(!is.na(fech_nac)) %>% dplyr::select(fech_nac, Edad) %>% dplyr::filter(fech_nac<"1929-03-19"|fech_nac>"2001-11-01")  %>% nrow()
 
 #El filtro que hice yo no sirvió mucho, los rangos de edad. Ahí lo corregí por la influencia de 1929-03-20
 #INVESTIGAR ESTE CASO.
-  CONS_TOP_df_dup_ENE_2020_prev1 %>% dplyr::filter(Edad<18|Edad>90) %>%
-    dplyr::select(row, HASH_KEY, id_mod, fech_nac, ano_bd,Edad,fech_ing) %>%
+
+  CONS_TOP_df_dup_ENE_2020_prev1 %>% 
+  #dplyr::mutate(fech_nac=lubridate::parse_date_time(stringi::stri_sub(ID,-8,-1),"dmY")) %>% 
+  dplyr::mutate(Edad_at_ap=lubridate::time_length(difftime(as.Date(fech_ap_top), as.Date(fech_nac)),"years")) %>% #AGREGADO EN APR 2020.
+  dplyr::mutate(Edad_at_ap=replace(Edad_at_ap, is.na(fech_nac), NA)) %>% #AGREGADO EN APR 2020.
+  #dplyr::filter(Edad<18|Edad>90) %>%
+  dplyr::filter(Edad_at_ap<18|Edad_at_ap>90) %>%
+  dplyr::mutate(Edad_at_ap=round(Edad_at_ap,2))%>%
+  dplyr::filter(Edad_at_ap<18&Edad_at_ap>16) %>%
+  nrow() -> edad_adolescentes_menores_18
+
+  CONS_TOP_df_dup_ENE_2020_prev1 %>% 
+  #dplyr::mutate(fech_nac=lubridate::parse_date_time(stringi::stri_sub(ID,-8,-1),"dmY")) %>% 
+  dplyr::mutate(Edad_at_ap=lubridate::time_length(difftime(as.Date(fech_ap_top), as.Date(fech_nac)),"years")) %>% #AGREGADO EN APR 2020.
+  dplyr::mutate(Edad_at_ap=replace(Edad_at_ap, is.na(fech_nac), NA)) %>% #AGREGADO EN APR 2020.
+  #dplyr::filter(Edad<18|Edad>90) %>%
+  dplyr::filter(Edad_at_ap<18|Edad_at_ap>90) %>%
+  dplyr::mutate(Edad_at_ap=round(Edad_at_ap,2))%>%
+  dplyr::filter(Edad_at_ap>17&Edad_at_ap<18) %>%
+  nrow() -> edad_adolescentes_17
+
+  
+  CONS_TOP_df_dup_ENE_2020_prev1 %>% 
+  #dplyr::mutate(fech_nac=lubridate::parse_date_time(stringi::stri_sub(ID,-8,-1),"dmY")) %>% 
+  dplyr::mutate(Edad_at_ap=lubridate::time_length(difftime(as.Date(fech_ap_top), as.Date(fech_nac)),"years")) %>% #AGREGADO EN APR 2020.
+  dplyr::mutate(Edad_at_ap=replace(Edad_at_ap, is.na(fech_nac), NA)) %>% #AGREGADO EN APR 2020.
+  #dplyr::filter(Edad<18|Edad>90) %>%
+  dplyr::filter(Edad_at_ap<18|Edad_at_ap>90) %>%
+  dplyr::mutate(Edad_at_ap=round(Edad_at_ap,2))%>%
+  dplyr::select(row, HASH_KEY, id_mod, fech_nac, ano_bd,Edad,Edad_at_ap,fech_ing) %>%
  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 5. Cases that have a wrongly assigned age",
-              col.names = c("Row ID","HASH KEY","SENDA's ID","Year of Birth","Year of Dataset",  "Age", "Date of Admission"),
+               caption="Table 5. Cases that have a wrongly calculated age at the time of admission",
+              col.names = c("Row ID","HASH KEY","SENDA's ID","Year of Birth","Year of Dataset",  "Age", "Age at Application\nof TOP", "Date of Admission"),
                  align =rep('c', 101))  %>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
   kableExtra::scroll_box(width = "100%", height = "350px")
@@ -303,51 +360,111 @@ Another alternative could be the matching by coincing HASHs and years at the tim
 
 <br>
 
-An important amount of cases were available in the TOP dataset, permitting to replace invalid ages with the right information. The next table presents those HASHs that had other registries with a valid age.
+An important amount of cases were available in the TOP dataset, permitting to replace invalid ages with the right information. Must note that `r edad_adolescentes_17` cases had around 17 years of the `r edad_adolescentes_menores_18` cases that were not adults at the time of the application of TOP.  The next table presents those HASHs that had other registries with a valid age.
 
 <br>
 
-```{r wrong ages duplicates, echo=T,cache=T, paged.print=TRUE}
+```{r tab6_wrong ages duplicates, echo=T,cache=T, paged.print=TRUE}
 #list of distinct HASHs that have a wrongly assigned age
-CONS_TOP_df_dup_ENE_2020_prev1 %>% dplyr::filter(Edad<18|Edad>90) %>%
-   dplyr::select(HASH_KEY, Edad) %>%
-  dplyr::distinct(HASH_KEY) %>%
-  assign("distinct_hash_wrong_age2_top",., envir = .GlobalEnv)
+CONS_TOP_df_dup_ENE_2020_prev1 %>% 
+    dplyr::mutate(Edad_at_ap=lubridate::time_length(difftime(as.Date(fech_ap_top), as.Date(fech_nac)),"years")) %>% #AGREGADO EN APR 2020.
+  dplyr::mutate(Edad_at_ap=replace(Edad_at_ap, is.na(fech_nac), NA)) %>% #AGREGADO EN APR 2020.
+  #dplyr::filter(Edad<18|Edad>90) %>%
+  dplyr::filter(Edad_at_ap>=18,Edad_at_ap<=90) %>%
+  #dplyr::filter(Edad<18|Edad>90) %>%
+#  dplyr::mutate(Edad_al_ing=round(Edad_al_ing,2))%>%
+#  dplyr::filter(Edad<18|Edad>90) %>%
+   dplyr::select(HASH_KEY,fech_ap_top, Edad_at_ap) %>%
+  dplyr::group_by(HASH_KEY,fech_ap_top) %>% 
+  mutate(rn = row_number()) %>%
+  dplyr::ungroup()%>%
+  assign("distinct_hash_correct_age_adm_top",., envir = .GlobalEnv)
+#dim(distinct_hash_wrong_age2_adm_top) #288 casos
+
+dates_replace_invalid_value <- CONS_TOP_df_dup_ENE_2020_prev1 %>%
+      dplyr::mutate(Edad_at_ap=lubridate::time_length(difftime(as.Date(fech_ap_top), as.Date(fech_nac)),"years")) %>% #AGREGADO EN APR 2020.
+      dplyr::mutate(Edad_at_ap=replace(Edad_at_ap, is.na(fech_nac), NA)) %>% #AGREGADO EN APR 2020.
+          #dplyr::filter(Edad<18|Edad>90) %>%
+      dplyr::group_by(HASH_KEY,Edad_at_ap) %>% 
+      dplyr::mutate(rn = row_number()) %>%
+      dplyr::ungroup()%>%
+      dplyr::left_join(distinct_hash_correct_age_adm_top, by=c("HASH_KEY", "fech_ap_top","rn"), suffix=c("",".corr_age_adm_top")) %>% #mantiene la misma cantidad de filas
+      dplyr::arrange(HASH_KEY) %>% #order by hashs 
+      #dplyr::filter(Edad<18|Edad>90) %>%
+        dplyr::filter(Edad_at_ap<18|Edad_at_ap>90) %>%
+        dplyr::filter(!is.na(Edad_at_ap.corr_age_adm_top)) %>% nrow()
 
 #Then, apply these cases to the whole population
 CONS_TOP_df_dup_ENE_2020_prev1 %>%
-dplyr::filter(HASH_KEY %in% as.character(as.vector(unlist(as.data.table(unlist(distinct_hash_wrong_age2_top)))))) %>% # select hashs of wrongly assigned ages
+dplyr::mutate(Edad_at_ap=lubridate::time_length(difftime(as.Date(fech_ap_top), as.Date(fech_nac)),"years")) %>% #AGREGADO EN APR 2020.
+dplyr::mutate(Edad_at_ap=replace(Edad_at_ap, is.na(fech_nac), NA)) %>% #AGREGADO EN APR 2020.
+    #dplyr::filter(Edad<18|Edad>90) %>%
+dplyr::group_by(HASH_KEY,Edad_at_ap) %>% 
+dplyr::mutate(rn = row_number()) %>%
+dplyr::ungroup()%>%
+dplyr::left_join(distinct_hash_correct_age_adm_top, by=c("HASH_KEY", "fech_ap_top","rn"), suffix=c("",".corr_age_adm_top")) %>% #mantiene la misma cantidad de filas
 dplyr::arrange(HASH_KEY) %>% #order by hashs 
-  dplyr::filter(Edad>=18,Edad<=90) %>% #nrow() #if you want to see how many cases would be changed: 58
-      dplyr::select(row, ano_bd, HASH_KEY, id_mod, fech_nac, ano_bd,Edad, fech_ing, fech_ap_top, everything()) %>%
+#dplyr::filter(Edad<18|Edad>90) %>%
+  dplyr::filter(Edad_at_ap<18|Edad_at_ap>90) %>%
+  dplyr::filter(!is.na(Edad_at_ap.corr_age_adm_top)) %>% #nrow() # sólo 1 caso.
+  dplyr::select(row, ano_bd, HASH_KEY, id_mod, fech_nac, ano_bd,Edad, Edad_at_ap,Edad_at_ap.corr_age_adm_top,fech_ing, fech_ap_top, everything()) %>%
   dplyr::select(-ID) %>%
  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 6. Total cases with wrong ages but their HASH had a valid age along the dataset",
+               caption="Table 6. Total cases with wrong ages at the time of admission, but their HASH had a valid age along the dataset",
                  align =rep('c', 101))  %>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
-  kableExtra::scroll_box(width = "100%", height = "350px")
+  kableExtra::scroll_box(width = "100%", height = "150px")
 ```
 
 <br>
 
-We replaced SENDA's ID, age, ID and date of birth to those cases, to get a much cleaner dataset of valid cases. **One observation that come from this transformation, is that many of TOPs applications that had missing values in one value, had missing values in many other more. Possibly, there were duplicated events, and some of them were invalid. If this is true, we only need to discard events with incomplete data instead of replacing them with valid information. But first we need to check whether this happens frequently or not. This have to be contrasted in the next stages of data preparation**.
+As seen in Table 6, only `r dates_replace_invalid_value` `r ifelse(dates_replace_invalid_value>1,"values","value")` could be replaced. We replaced SENDAs ID, age, ID and date of birth to `r ifelse(dates_replace_invalid_value>1,"to those cases","to this case")`, to get a much cleaner dataset of valid cases. 
+
+<div class = "blue">
+**One observation that come from these transformations, is that many of TOPs applications that had missing values in one value, had missing values in many other more. Possibly, there were duplicated events, and some of them were invalid. If this is true, we only need to discard events with incomplete data instead of replacing them with valid information. But first we need to check whether this happens frequently or not. This have to be contrasted in the next stages of data preparation**.
+</div>
 
 <br>
 
-```{r edad_save, cache=T}
-CONS_TOP_df_dup_age <- dplyr::select(CONS_TOP_df_dup_ENE_2020_prev1, HASH_KEY, ID, id_mod, Edad, fech_nac)%>% 
-                      dplyr::filter(Edad>=18, Edad<=90) %>% #%>%  #dim rows 85490, 4 columns
-                      dplyr::filter(!duplicated(HASH_KEY)) #lo mismo que  dplyr::distinct(HASH_KEY)
-##CON EL DISTINCT ME SALVO DE SUMAR MÁS FILAS A LA BASE DE DATOS.
+```{r guardar3_edad_save, cache=T}
+#PARA OBTENER LAS EDADES DE APLICACION VALIDAS POR FECHA DE APLICACION DEL TOP
+CONS_TOP_df_dup_ENE_2020_prev1 %>% 
+    dplyr::mutate(Edad_at_ap=lubridate::time_length(difftime(as.Date(fech_ap_top), as.Date(fech_nac)),"years")) %>% #AGREGADO EN APR 2020.
+  dplyr::mutate(Edad_at_ap=replace(Edad_at_ap, is.na(fech_nac), NA)) %>% #AGREGADO EN APR 2020.
+  #dplyr::filter(Edad<18|Edad>90) %>%
+  dplyr::filter(Edad_at_ap>=18,Edad_at_ap<=90) %>%
+  #dplyr::filter(Edad<18|Edad>90) %>%
+#  dplyr::mutate(Edad_al_ing=round(Edad_al_ing,2))%>%
+#  dplyr::filter(Edad<18|Edad>90) %>%
+   #dplyr::select(HASH_KEY,fech_ap_top, Edad_at_ap) %>%
+  dplyr::group_by(HASH_KEY,fech_ap_top) %>% 
+  mutate(rn = row_number()) %>%
+  dplyr::ungroup()%>%
+  assign("distinct_hash_correct_age_adm_top2",., envir = .GlobalEnv)
+#dim(distinct_hash_wrong_age2_adm_top) #288 casos
+
+CONS_TOP_df_dup_ENE_2020_prev1 %>%
+      dplyr::mutate(Edad_at_ap=lubridate::time_length(difftime(as.Date(fech_ap_top), as.Date(fech_nac)),"years")) %>% #AGREGADO EN APR 2020.
+      dplyr::mutate(Edad_at_ap=replace(Edad_at_ap, is.na(fech_nac), NA)) %>% #AGREGADO EN APR 2020.
+          #dplyr::filter(Edad<18|Edad>90) %>%
+      dplyr::group_by(HASH_KEY,Edad_at_ap) %>% 
+      dplyr::mutate(rn = row_number()) %>%
+      dplyr::ungroup()%>%
+      dplyr::left_join(distinct_hash_correct_age_adm_top2, by=c("HASH_KEY", "fech_ap_top","rn"), suffix=c("",".corr_age_adm_top")) %>% 
 #Join datasets 
-  dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev1,dplyr::select(CONS_TOP_df_dup_age,HASH_KEY,Edad, ID,id_mod, fech_nac), by = "HASH_KEY", suffix = c("", ".y")) %>% # dim()
-    dplyr::mutate(ID= ifelse((Edad<18 & !is.na(Edad.y))|(Edad>90 & !is.na(Edad.y)),ID.y, ID)) %>%
-    dplyr::mutate(id_mod=ifelse((Edad<18 & !is.na(Edad.y))|(Edad>90 & !is.na(Edad.y)),id_mod.y,id_mod)) %>% 
-    dplyr::mutate(fech_nac=ifelse((Edad<18 & !is.na(Edad.y))|(Edad>90 & !is.na(Edad.y)),fech_nac.y,fech_nac)) %>% 
-    dplyr::mutate(Edad= ifelse(Edad<18|Edad>90,Edad.y, Edad)) %>% #treat as invalID
+    dplyr::mutate(OBS=ifelse((Edad_at_ap<18 & !is.na(Edad_at_ap.corr_age_adm_top))|(Edad_at_ap>90 & !is.na(Edad_at_ap.corr_age_adm_top)),glue::glue("{OBS};1.3.Replaced invalid age at TOP application"),OBS))%>% 
+    dplyr::mutate(OBS=ifelse(Edad_at_ap<18|Edad_at_ap>90,glue::glue("{OBS};1.3.Invalid Age at the Time of Application of TOP"),OBS))%>% 
+    dplyr::mutate(ID= ifelse((Edad_at_ap<18 & !is.na(Edad_at_ap.corr_age_adm_top))|(Edad_at_ap>90 & !is.na(Edad_at_ap.corr_age_adm_top)),ID.corr_age_adm_top, ID)) %>%
+    dplyr::mutate(id_mod=ifelse((Edad_at_ap<18 & !is.na(Edad_at_ap.corr_age_adm_top))|(Edad_at_ap>90 & !is.na(Edad_at_ap.corr_age_adm_top)),id_mod.corr_age_adm_top,id_mod)) %>% 
+    dplyr::mutate(fech_nac=ifelse((Edad_at_ap<18 & !is.na(Edad_at_ap.corr_age_adm_top))|(Edad_at_ap>90 & !is.na(Edad_at_ap.corr_age_adm_top)),fech_nac.corr_age_adm_top,fech_nac))%>%
+    dplyr::mutate(Edad=ifelse((Edad_at_ap<18 & !is.na(Edad_at_ap.corr_age_adm_top))|(Edad_at_ap>90 & !is.na(Edad_at_ap.corr_age_adm_top)),Edad.corr_age_adm_top,Edad))%>%      
     dplyr::mutate(fech_nac=as.Date(fech_nac)) %>%
-    dplyr::mutate(Edad_al_ing=lubridate::time_length(difftime(as.Date(fech_ing), as.Date(fech_nac)),"years")) %>%
-    dplyr::mutate(Edad_al_ing=replace(Edad_al_ing, is.na(Edad), NA)) %>% 
+    dplyr::mutate(Edad_at_ap=lubridate::time_length(difftime(as.Date(fech_ap_top), as.Date(fech_nac)),"years")) %>% #AGREGADO EN APR 2020.
+    dplyr::mutate(Edad_at_ap=replace(Edad_at_ap, is.na(fech_nac), NA)) %>% #AGREGADO EN APR 2020.
+    dplyr::select(-ends_with(".corr_age_adm_top")) %>%
+    dplyr::select(-rn,-TABLE,-fech_ing_na, -row_leftjoin, -fech_ing_C1) %>%
+
+
 ##un resumen   
      #dplyr::group_by(Edad) %>% summarise(n=n())  #baja de 273 a 227
 #PARA REVISAR
@@ -363,7 +480,7 @@ assign("CONS_TOP_df_dup_ENE_2020_prev2",., envir = .GlobalEnv)
   #dplyr::select(HASH_KEY, id_mod, Fecha.Aplicación, fech_ing, fech_nac, Edad, Edad_al_ing)
 ```
 
-```{r edad_save_correction, cache=T}
+```{r guardar3_edad_save_correction, cache=T, eval=F}
 #EL CASO QUEDÓ PERDIDO EN ESTA TRANSFORMACIÓN. INVESTIGAR POR QUÉ, PERO POR MIENTRAS RESOLVERLO MANUALMENTE.
 #POR QUÉ ESTE CASO NO QUEDO INCORPORADO  
   #CONS_TOP_df_dup_ENE_2020_prev2 %>% dplyr::filter(!is.na(fech_ing), !is.na(Edad),is.na(Edad_al_ing)) %>% View()
@@ -373,6 +490,7 @@ assign("CONS_TOP_df_dup_ENE_2020_prev2",., envir = .GlobalEnv)
 #    dplyr::select(HASH_KEY, id_mod, Fecha.Nacimiento, fech_ing, fech_nac, Edad, Edad_al_ing)
 
 CONS_TOP_df_dup_ENE_2020_prev2 %>% 
+dplyr::select(-TABLE,-fech_ing_na, -row_leftjoin, -fech_ing_C1) %>%
   as.data.frame() %>%
 #    dplyr::mutate(Edad_al_ing=lubridate::time_length(difftime(as.Date(fech_ing), as.Date(fech_nac)))/(3*60*60)) %>%
 #    dplyr::mutate(Edad_al_ing=replace(Edad_al_ing, is.na(Edad), NA)) %>%
@@ -386,15 +504,15 @@ CONS_TOP_df_dup_ENE_2020_prev2 %>%
 assign("CONS_TOP_df_dup_ENE_2020_prev2.2",., envir = .GlobalEnv) 
 ```
 
-### 3. Inconsistencies between SENDA's ID and HASH Key
+### 3. Inconsistencies between SENDAs ID and HASH Key
 
-```{r inconsistencies_in_id_inconsistent_hashs, cache=T}
+```{r inconsistencies_in_id_inconsistent_hashs, cache=T,eval=T}
     #Take which has a combination of IDs and HASH Keys distinct to the rest
     #With this I may be subestimating the number of cases with a different concatenation.
     #Considering all the distinct combinations, i take what they have a duplicate ID
     #Select the duplicate IDs, it orders and...
     #Filter only cases that has distinct id.
-    CONS_TOP_df_dup_ENE_2020_prev2.2 %>% dplyr::mutate(concat=paste0(ID,"_",HASH_KEY)) %>% 
+    CONS_TOP_df_dup_ENE_2020_prev2 %>% dplyr::mutate(concat=paste0(ID,"_",HASH_KEY)) %>% 
     dplyr::distinct(concat, .keep_all = TRUE) %>% 
       dplyr::filter(duplicated(ID)) %>% #filter cases that have than one 
   dplyr::arrange(ID) %>%  #filter cases in which there is more than one ID, 
@@ -407,13 +525,13 @@ assign("CONS_TOP_df_dup_ENE_2020_prev2.2",., envir = .GlobalEnv)
     #IMPORTANT: IF THE ID IS DUPLICATED, MIGHT NOT BE REFLECTED IN THIS RESUME IN TERMS OF QUANTITY.
 ```
 
-In order to check whether individual IDs (RUT) masked into HASH keys are consistent by each SENDA's ID and do not depend on other factors (eg., how the individual ID was written in the computer), we searched for more than one HASH Key in each SENDA's ID. There were `r nrow(ids_more_one_hash_TOP)` IDs that had more than one HASH key. These `r nrow(ids_more_one_hash_TOP)` IDs affect 183 registries. **They have been sent to SENDA's professional, who made clear that these cases (every one of them also present in C1 dataset) correspond to users with different RUTs, so their HASHs should be different**.
+The official individual IDs (RUT) were masked into HASH keys by an informatics professional (For more information about this process, visit the [encryption phase](https://fondecytacc.github.io/SUD_health_Chile.github.io/Encript.html)). We checked whether they were consistent with each SENDAs ID and do not depend on other factors in their identification (eg., individual ID was not well processed), by searching for more than one HASH Key in each SENDAs ID. There were `r nrow(ids_more_one_hash_TOP)` IDs that had more than one HASH key. These `r nrow(ids_more_one_hash_TOP)` IDs affect 183 registries.
 
 <br>
 
-```{r inconsistencies_in_id}
+```{r tab7_inconsistencies_in_id}
     # Then, apply these cases to the whole population. 
-    CONS_TOP_df_dup_ENE_2020_prev2.2 %>%
+    CONS_TOP_df_dup_ENE_2020_prev2 %>%
       dplyr::filter(ID %in% as.character(as.vector(unlist(as.data.table(unlist(ids_more_one_hash_TOP)))))) %>% # Select IDs of cited cases
       dplyr::arrange(ID) %>% #ordeno por ids 
       #183 cases may be affected with this problem
@@ -426,8 +544,8 @@ In order to check whether individual IDs (RUT) masked into HASH keys are consist
             scroll_box(width = "100%", height = "350px")
 ```
     
-```{r gen more_one_hash_per_id, echo=F, paged.print=TRUE}
-    CONS_TOP_df_dup_ENE_2020_prev2.2 %>%
+```{r gen more_one_hash_per_id_enviado_Senda_prof, echo=T, paged.print=TRUE}
+    CONS_TOP_df_dup_ENE_2020_prev2 %>%
       dplyr::filter(ID %in% as.character(as.vector(unlist(as.data.table(unlist(ids_more_one_hash_TOP)))))) %>% # Select IDs of cited cases
       dplyr::arrange(ID) %>% #ordeno por ids 
       dplyr::group_by(ID) %>%
@@ -436,21 +554,23 @@ In order to check whether individual IDs (RUT) masked into HASH keys are consist
       write.csv2(file ="G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/Maureen/_8.mismo_ID_mas_de_un_HASH_TOP.csv")
 ##33 casos con 66 hashs distintos.
 #aCTUALIZACIÓN: estos coinciden con los que consulté por C1. No es necesario volverlos a preguntar.
-```   
-<br>
-&nbsp;
+```
 
-### 4. Duplicated cases
-
-<br>
-To define what can be considered as a unique event, we identified how many unique combinations of dates of admission and HASH keys. We found that only `r prop.table(table(duplicated(CONS_TOP_df_dup_ENE_2020_prev2.2[,c("HASH_KEY","fech_ing")])))[1] %>% round(3)*100` percent of the registries are unique combinations. Attending the characteristics of the questionnaires, it is possible to explore more specific time points.
+**These inconsistent HASHs have been sent to SENDAs professional, who made clear that these cases (every one of them also present in C1 dataset) corresponded to users with different RUTs, so their HASHs should be different**.
 
 <br>
 
+### 4. Define criteria to classify duplicated cases
 
-```{r Duplicated}
+<br>
+To define what can be considered as a unique event, we identified how many unique combinations of dates of admission and HASH keys. We found that only `r prop.table(table(duplicated(CONS_TOP_df_dup_ENE_2020_prev2[,c("HASH_KEY","fech_ing")])))[1] %>% round(3)*100` percent of the registries are unique combinations. Attending the characteristics of the questionnaires, it is possible to explore more specific time units (See Table 8).
+
+<br>
+
+
+```{r tab8_Duplicated}
 #create the duplicated dataset, following the recommendation to separate columns
-    as.data.table(CONS_TOP_df_dup_ENE_2020_prev2.2)[, dup_hash_date_adm_top := .N, by = c("HASH_KEY","fech_ing")] %>% ##dim()
+    as.data.table(CONS_TOP_df_dup_ENE_2020_prev2)[, dup_hash_date_adm_top := .N, by = c("HASH_KEY","fech_ing")] %>% ##dim()
       dplyr::group_by(dup_hash_date_adm_top) %>%
       dplyr::summarise(n=n()) %>%
       mutate(perc = round(n / sum(n),2)*100) %>%
@@ -464,16 +584,13 @@ To define what can be considered as a unique event, we identified how many uniqu
       kable_styling(bootstrap_options = c("striped", "hover"),font_size = 11) %>%
   scroll_box(width = "100%", height = "350px")
 ```
-<br>
-
-One of them is the date of application of the TOP questionnaire. As can be seen in Table 8, `r prop.table(table(duplicated(CONS_TOP_df_dup_ENE_2020_prev2.2[,c("HASH_KEY","fech_ap_top")])))[1] %>% round(3)*100` % of the registries are unique combinations of date of application of the TOP questionnaire and HASH key.
 
 <br>
 
-```{r Duplicated2}
-    duplicated_rows_concat_TOP2 <- data.frame(duplicated_HASH_date = duplicated(CONS_TOP_df_dup_ENE_2020_prev2.2[,c("HASH_KEY","fech_ap_top")]), 
-                                         row_dup_HASH_date = 1:nrow(CONS_TOP_df_dup_ENE_2020_prev2.2[,c("HASH_KEY","fech_ap_top")])) #%>%
-    as.data.table(CONS_TOP_df_dup_ENE_2020_prev2.2)[, dup_hash_date_ap := .N, by = c("HASH_KEY","fech_ap_top")] %>% ##dim()
+```{r tab9_Duplicated2}
+    duplicated_rows_concat_TOP2 <- data.frame(duplicated_HASH_date = duplicated(CONS_TOP_df_dup_ENE_2020_prev2[,c("HASH_KEY","fech_ap_top")]), 
+                                         row_dup_HASH_date = 1:nrow(CONS_TOP_df_dup_ENE_2020_prev2[,c("HASH_KEY","fech_ap_top")])) #%>%
+    as.data.table(CONS_TOP_df_dup_ENE_2020_prev2)[, dup_hash_date_ap := .N, by = c("HASH_KEY","fech_ap_top")] %>% ##dim()
       dplyr::group_by(dup_hash_date_ap) %>%
       dplyr::summarise(n=n()) %>%
       mutate(perc = round(n / sum(n),3)*100) %>%
@@ -488,16 +605,16 @@ One of them is the date of application of the TOP questionnaire. As can be seen 
 ```
 <br>
 
-  As can be seen in Table 10, in some cases the only thing that varies is the stage of treatment ot the TOP variable; in others also varies the qualitative observations or "comments" section;and in very few, there are changes in variables relative to the content of the evaluation. **Can a single combination of date of application and HASH have different dates of admission?**
+One of them is the date of application of the TOP questionnaire. As can be seen in Table 9, `r prop.table(table(duplicated(CONS_TOP_df_dup_ENE_2020_prev2[,c("HASH_KEY","fech_ap_top")])))[1] %>% round(3)*100`% of the registries are unique combinations of date of application of the TOP questionnaire and HASH key.
 
 <br>
 
-```{r Duplicated2.2}
-as.data.table(CONS_TOP_df_dup_ENE_2020_prev2.2)[, dup_hash_date_ap := .N, by = c("HASH_KEY","fech_ap_top")] %>%
+```{r tab10_Duplicated2.2}
+as.data.table(CONS_TOP_df_dup_ENE_2020_prev2)[, dup_hash_date_ap := .N, by = c("HASH_KEY","fech_ap_top")] %>%
   dplyr::filter(dup_hash_date_ap>1) %>% #Aquí veo quienes aparecen más de una vez
   dplyr::arrange(HASH_KEY,fech_ap_top) %>% 
   dplyr::slice(2000:2200) %>%
-dplyr::select(-ID, -ID.y) %>%
+dplyr::select(-ID) %>%
   #  dplyr::select(HASH_KEY, hash_rut_completo, id_mod, ano_bd, fech_ap_top, TOP,fech_nac, Edad, Sexo, Plan.de.Tratamiento, Nombre.del.Centro, #Sustancia.Principal.1, Sustancia.Principal.2, Sustancia.Principal.3, starts_with("Total"),starts_with("Dósis")) %>%
       knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                    caption="Table 10. Sample of Duplicated rows of the combination of HASH-Key & Date of Application of TOP", 
@@ -506,20 +623,34 @@ dplyr::select(-ID, -ID.y) %>%
       kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
   scroll_box(width = "100%", height = "350px")
 ```
+<br>
 
+As can be seen in Table 10, in some cases the only thing that varies is the stage of treatment ot the TOP variable; in others also varies the qualitative observations or "comments" section;and in very few, there are changes in variables relative to the content of the evaluation. **Can a single combination of date of application and HASH have different dates of admission?**
 
 ### 5. Deletion of nearly exact duplicated cases
 
 <br>
-We need reduce the number of cases, but in the meantime, reduce the loss of information due to specific changes in each entry, despite it could be originated by different mechanisms (eg. different professionals evaluated the same users for an specific stage of the treatment, but highlighting different things), other than comming from the same yearly dataset.
+
+We needed to reduce the number of cases, but in the meantime, reduce the loss of information due to specific changes in each entry. That is why we selected almost every variable to detect duplicated cases, excepting the following:
+
+- SENDAs ID (ID) : The HASH Key identifier was the one recommended by SENDAs Professionals.
+- SENDAs ID (masked characters 5 & 6) (id_mod): The HASH Key identifier was the one recommended by SENDAs Professionals.
+- Year of the Dataset (Source) (ano_bd) (TABLE): Let us detect cases that repeat among different yearly datasets.
+- Events in the Dataset/ Row Number (row): We excluded this identifier because it is a unique number of each event that we arbitrarely generated.
+- Name of the TOP Interviewer (Nombre.Apliacador.del.TOP): Identify each interviewer is not relevant for characterizing each user and their transitions at this stage.
+- Observations (OBS): This variable was created in the context of the study, to include part of the process of standardization of the dataset. Not relevant to characterize each user and their transitions.
+- Age at the Time of Admission (Edad_al_ing): Not included because depends mainly on already present variables (Date of Birth and Date of Admission)
+- Age at the Time of Application (Edad_at_ap): Not included because depends mainly on already present variables (Date of Birth and Date of Application of TOP)
 
 <br>
 
-```{r deduplication1, echo=T, cache=T, paged.print=TRUE}
+```{r tab11_deduplication1, echo=T, cache=T, paged.print=TRUE}
 #create vector with variable names
-names_top <- names(CONS_TOP_df_dup_ENE_2020_prev2.2[,c(1,2,4,8,10:48)])
+#names_top <- names(CONS_TOP_df_dup_ENE_2020_prev2[,-c("id_mod","ano_bd","row","TABLE","Nombre.Apliacador.del.TOP")])
+names_top <-names(subset(CONS_TOP_df_dup_ENE_2020_prev2, select = -c(ID,id_mod, ano_bd, row, Nombre.Apliacador.del.TOP, OBS, Edad_al_ing, Edad_at_ap)))
 #Group by duplicated rows 
-as.data.table(CONS_TOP_df_dup_ENE_2020_prev2.2)[, dup_todo_TOP := .N, by = names_top] %>%
+as.data.table(CONS_TOP_df_dup_ENE_2020_prev2)[, dup_todo_TOP := .N, by = names_top] %>%
+dplyr::mutate(OBS=ifelse(dup_todo_TOP>1,glue::glue("{OBS};1.4.Had a duplicated events with almost every variable in common"),OBS))%>% 
   data.table::as.data.table() %>%
   assign("CONS_TOP_df_dup_ENE_2020_prev3",.,envir = .GlobalEnv)
 #summarise duplicates and times
@@ -537,11 +668,10 @@ as.data.table(CONS_TOP_df_dup_ENE_2020_prev3)[, dup_todo_TOP := .N, by = names_t
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10)
 ```
 
-```{r dataset_creation, echo=F, paged.print=TRUE, cache=T, warning=F}
+```{r guardar4_dataset_creation, echo=T, paged.print=TRUE, cache=T, warning=F}
 data.table::data.table(CONS_TOP_df_dup_ENE_2020_prev3) %>%
   dplyr::arrange(desc(ano_bd)) %>%
-  dplyr::distinct_(.dots = names_top, .keep_all = TRUE) %>%
-  dplyr::select(-fech_ing_na,	-Edad.y,	-ID.y,	-id_mod.y,	-fech_nac.y) %>%
+  dplyr::distinct_at(.vars=names_top, .keep_all = TRUE) %>%
   dplyr::arrange(HASH_KEY, fech_ing, fech_ap_top, desc(ano_bd)) %>%
   data.table::as.data.table() %>%
   assign("CONS_TOP_df_dup_ENE_2020_prev4",.,envir = .GlobalEnv)
@@ -555,48 +685,53 @@ As seen in Table 11, not many cases were dropped, which can be interpreted that 
 
 <br>
 
-Considering that this dataset is focused in the contents of the treatment outcomes profile, and as seen in Table 10, **many entries with the same dates of applcation and HASH had nearly the same values in each application**, we excluded variables related to the source of the information provided (e.g. if comes from one yearly or another, and the name of the interviewer). Additionally, must note that variables related to the stage of treatment (TOP or Etapa.del.Tratamiento) were not considered, because in many cases, registries with the same date of application were nominated as different stages, and even some variables relative to the characteristics of the center will be omitted (such as the cregion of the center or "Región.Centro" and their name "Nombre.Centro"). The following variables were used as a criteria to estimate duplicated rows in the dataset, meaning that any lost information by the deduplication would not correspond to a loss of information relatd to the questionnaire itself.
+We must consider that this dataset is focused on the contents of the treatment outcomes profile. Additionally, in Table 10 we observed that **many entries with the same dates of application and HASH had nearly the same values in variables of each application**, we excluded variables related to the source of information provided (e.g., it comes from one yearly or another, and the name of the interviewer), among others not relevant for the study. Must note that variables related to the stage of treatment (TOP or Etapa.del.Tratamiento) were not considered, because in many cases, registries with the same date of application were categorized with different stages. Even some variables relative to the characteristics of the center were omitted (such as the region of the center or "Región.Centro" and their name "Nombre.Centro").
 
-* HASH_KEY
-* Tipo.Centro
-* Sustancia.Principal.1
-* Sustancia.Principal.2
-* Sustancia.Principal.3
-* Total.OH
-* Dósis.OH
-* Total.THC
-* Dósis.THC
-* Total.PBC
-* Dósis.PBC
-* Total.COC
-* Dósis.COC
-* Total.BZD
-* Dósis.BZD
-* Total.Otra
-* Dósis.Otra
-* Hurto
-* Robo
-* Venta.Drogas
-* Riña
-* Total.VIF
-* Otro
-* Total.Transgresión
-* Salud.Psicológica
-* Total.Trabajo
-* Total.Educación
-* Salud.Física
-* Lugar.Vivir
-* Vivienda
-* Calidad.Vida
-* fech_ing
-* fech_ap_top
+<br>
+
+The following variables were used as a criteria to estimate duplicated rows in the dataset, meaning that any lost information by the deduplication would not correspond to a loss of information related to the questionnaire itself.
+
+* Masked Identifier (RUT) (HASH_KEY)
+* Type of Center (Tipo.Centro)
+* Primary Substance of Consumption (1) (Sustancia.Principal.1)
+* Primary Substance of Consumption (2) (Sustancia.Principal.2)
+* Primary Substance of Consumption (3) Sustancia.Principal.3)
+* Total Alcohol (Total.OH)
+* Dose of Alcohol (Dósis.OH)
+* Total Marijuana (Total.THC)
+* Dose of Marijuana (Dósis.THC)
+* Total Cocaine Paste Base (Total.PBC)
+* Amount of Cocaine Paste Base (Dósis.PBC)
+* Total Snort Cocaine (Total.COC)
+* Dose of Snort Cocaine (Dósis.COC)
+* Total Sedatives and Tranquillizers (Total.BZD)
+* Dose of Sedatives and Tranquillizers (Dósis.BZD)
+* Total Other Substances (Total.Otra)
+* Dose of Other Substances (Dósis.Otra)
+* Theft (Hurto)
+* Robbery (Robo)
+* Drug selling (Venta.Drogas)
+* Fights (Riña)
+* Total Domestic Violence (Total.VIF)
+* Another Action (Otro)
+* Total Behavior that transgresses social norms (Total.Transgresión)
+* Psychological Health (Salud.Psicológica)
+* Total of Paid Work (Total.Trabajo)
+* Total College or school (Total.Educación)
+* Total Physical Health (Salud.Física)
+* Stable Place to Live (Lugar.Vivir)
+* Housing conditions (Vivienda)
+* Total Quality of Life (QoL) (Calidad.Vida)
+* Date of Admission to Treatment (fech_ing)
+* Date of Application of TOP (fech_ap_top)
 
 
-```{r deduplication2, echo=T, cache=T, paged.print=TRUE}
+```{r tab12_deduplication2, echo=T, cache=T, paged.print=TRUE}
 #create vector with variable names
 names_top2 <- c('HASH_KEY', 'Tipo.Centro', 'Sustancia.Principal.1', 'Sustancia.Principal.2', 'Sustancia.Principal.3', 'Total.OH', 'Dósis.OH', 'Total.THC', 'Dósis.THC', 'Total.PBC', 'Dósis.PBC', 'Total.COC', 'Dósis.COC', 'Total.BZD', 'Dósis.BZD', 'Total.Otra', 'Dósis.Otra', 'Hurto', 'Robo', 'Venta.Drogas', 'Riña', 'Total.VIF', 'Otro', 'Total.Transgresión', 'Salud.Psicológica', 'Total.Trabajo', 'Total.Educación', 'Salud.Física', 'Lugar.Vivir', 'Vivienda', 'Calidad.Vida', 'fech_ing', 'fech_ap_top')
 #Group by duplicated rows 
 as.data.table(CONS_TOP_df_dup_ENE_2020_prev4)[, dup_contents_TOP := .N, by = names_top2] %>%
+  dplyr::mutate(OBS=ifelse(dup_contents_TOP>1,glue::glue("{OBS};1.5.Had a duplicated event with relevant variables in common"),OBS))%>% 
   data.table::as.data.table() %>%
   assign("CONS_TOP_df_dup_ENE_2020_prev5",.,envir = .GlobalEnv)
 #summarise duplicates and times
@@ -614,21 +749,21 @@ as.data.table(CONS_TOP_df_dup_ENE_2020_prev5)[, dup_contents_TOP := .N, by = nam
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10)
 ```
 
-```{r dataset_creation2, echo=F, paged.print=TRUE, cache=T, warning=F}
+```{r guardar6_dataset_creation2, echo=T, paged.print=TRUE, cache=T, warning=F}
 data.table::data.table(CONS_TOP_df_dup_ENE_2020_prev5) %>%
   dplyr::arrange(desc(ano_bd)) %>%
-  dplyr::distinct_(.dots = names_top2, .keep_all = TRUE) %>%
+  dplyr::distinct_at(.vars=names_top2, .keep_all = TRUE) %>%
   dplyr::arrange(HASH_KEY, fech_ing, fech_ap_top, desc(ano_bd)) %>%
   data.table::as.data.table() %>%
   assign("CONS_TOP_df_dup_ENE_2020_prev6",.,envir = .GlobalEnv)
 #Unlike base sorting with sort(), NA are: always sorted to the end for local data, even when wrapped with desc().
 ```
-&nbsp;
+
 <br>
 
-What happens if a case have the same date of application, but a different date of admission?. Is it possible that a user could be interviewed in the same date of  We should consider these inconsistencies in order to provide valid cases. There are around `r CONS_TOP_df_dup_ENE_2020_prev6 %>%   dplyr::mutate(concatenation_hash_date_ing_date_adm=paste0(HASH_KEY, fech_ing, fech_ap_top)) %>% dplyr::distinct(concatenation_hash_date_ing_date_adm, .keep_all = TRUE) %>% dplyr::mutate(concatenation_hash_date_ap_top=paste0(HASH_KEY, fech_ap_top)) %>% dplyr::filter(duplicated(concatenation_hash_date_ap_top)) %>% nrow() ` users with the same dates of application but different date of admission. **These will be sent to SENDA's professional in order to discard any error**.
+What happens if a case have the same date of application, but a different date of admission?. Is it possible that a user could be interviewed in the same date for different treatments? We should consider these inconsistencies in order to provide valid cases. There are around `r CONS_TOP_df_dup_ENE_2020_prev6 %>%   dplyr::mutate(concatenation_hash_date_ing_date_adm=paste0(HASH_KEY, fech_ing, fech_ap_top)) %>% dplyr::distinct(concatenation_hash_date_ing_date_adm, .keep_all = TRUE) %>% dplyr::mutate(concatenation_hash_date_ap_top=paste0(HASH_KEY, fech_ap_top)) %>% dplyr::filter(duplicated(concatenation_hash_date_ap_top)) %>% nrow() ` users with the same dates of application but different date of admission. **We sent thse cases to SENDA's professional in order to discard any error**.
 
-```{r diff_dates_of_application, echo=F, paged.print=TRUE, cache=T, warning=F}
+```{r tab13_diff_dates_of_application, echo=T, paged.print=TRUE, cache=T, warning=F}
 CONS_TOP_df_dup_ENE_2020_prev6 %>% 
   dplyr::mutate(concatenation_hash_date_ing_date_adm=paste0(HASH_KEY, fech_ing, fech_ap_top)) %>% 
   dplyr::distinct(concatenation_hash_date_ing_date_adm, .keep_all = TRUE) %>% #descartar todas las combinaciones de filas con la misma fecha de todo y el mismo HASH.
@@ -637,7 +772,7 @@ CONS_TOP_df_dup_ENE_2020_prev6 %>%
       dplyr::arrange(concatenation_hash_date_ap_top) %>%  
       dplyr::select(HASH_KEY,fech_ing, fech_ap_top,concatenation_hash_date_ap_top) %>% 
   dplyr::inner_join(CONS_TOP_df_dup_ENE_2020_prev6, by=c("HASH_KEY", "fech_ap_top")) %>% #
-  dplyr::select(-concatenation_hash_date_ap_top, -ID, -TABLE, -fech_ing.x) %>%
+  dplyr::select(-concatenation_hash_date_ap_top, -ID, -fech_ing.x) %>%
   dplyr::select(HASH_KEY, fech_ap_top, fech_ing.y,id_mod, ano_bd, TOP, Etapa.del.Tratamiento,everything()) %>%
   dplyr::rename("HASH Key"=HASH_KEY, "Date of\nAdmission"=fech_ing.y, "Date of\nApplication"=fech_ap_top, "ID"=id_mod, "Stage of\n Treatment"=Etapa.del.Tratamiento) %>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
@@ -647,7 +782,7 @@ CONS_TOP_df_dup_ENE_2020_prev6 %>%
   scroll_box(width = "100%", height = "350px")
 ```
 
-```{r gen more_one_date_admission_per_app_date_and_hash, echo=F, paged.print=TRUE}
+```{r gen more_one_date_admission_per_app_date_and_hash_env_prof_senda, echo=T, paged.print=TRUE}
     CONS_TOP_df_dup_ENE_2020_prev6 %>% 
     dplyr::filter(!is.na(fech_ing)) %>%
     dplyr::mutate(concatenation_hash_date_ing_date_adm=paste0(HASH_KEY, fech_ing, fech_ap_top)) %>% 
@@ -657,7 +792,6 @@ CONS_TOP_df_dup_ENE_2020_prev6 %>%
     dplyr::arrange(concatenation_hash_date_ap_top) %>%  
     dplyr::select(HASH_KEY,fech_ing, fech_ap_top,concatenation_hash_date_ap_top) %>% 
     dplyr::inner_join(CONS_TOP_df_dup_ENE_2020_prev6, by=c("HASH_KEY", "fech_ap_top")) %>% #
-    dplyr::select(-TABLE, -fech_ing.x) %>%
     dplyr::select(ID,HASH_KEY, fech_ap_top, fech_ing.y,id_mod, ano_bd, TOP, Etapa.del.Tratamiento,everything()) %>%
     dplyr::group_by(concatenation_hash_date_ap_top) %>%
     dplyr::filter(!duplicated(fech_ing.y)) %>%
@@ -665,9 +799,13 @@ CONS_TOP_df_dup_ENE_2020_prev6 %>%
       write.csv2(file ="G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/Maureen/_9.mismo_HASH_y_fecha_de_aplicacion_TOP_mas_de_una_fecha_de_ingreso.csv")
 ```   
 
+<br>
+
 Considering these cases are still being cleared, we would only consider as our key date the date of application only.
 
-```{r generate data in csv, echo=F, paged.print=TRUE}
+<br>
+
+```{r generate_data_in_csv_to_stata, echo=T, paged.print=TRUE}
 CONS_TOP_df_dup_ENE_2020_prev6 %>%
     dplyr::rename("dosisoh"=`Dósis.OH`, "dosisthc"=`Dósis.THC`, "dosispbc"=`Dósis.PBC`, "dosiscoc"=`Dósis.COC`, "dosisbzd"=`Dósis.BZD`, "dosisotra"=`Dósis.Otra`,"rina"=`Riña`, "totaltransgresion"=`Total.Transgresión`, "saludpsicologica"=`Salud.Psicológica`, "totaleducacion"=`Total.Educación`, "saludfisica"=`Salud.Física`) %>%
   as.data.frame() %>%
@@ -679,10 +817,14 @@ CONS_TOP_df_dup_ENE_2020_prev6 %>%
 ### 6. TOPs in C1
 
 
-```{r deduplication3, echo=F, cache=T, paged.print=TRUE,warning=F}
-CONS_C1_df_dup_ENE_2020_unique_HASH_date<- dplyr::select(CONS_C1_df_dup_ENE_2020, HASH_KEY, fech_ing) %>% dplyr::mutate(fech_ing= as.Date(as.character(fech_ing))) %>% group_by(HASH_KEY, fech_ing) %>% dplyr::mutate(row_first=row_number()) %>% ungroup() %>% dplyr::filter(row_first==1) 
+```{r tab14_deduplication3, echo=T, cache=T, paged.print=TRUE,warning=F}
+CONS_C1_df_dup_ENE_2020_unique_HASH_date<- dplyr::select(CONS_C1_df_dup_ENE_2020, hash_key, fech_ing) %>% dplyr::mutate(fech_ing= as.Date(as.character(fech_ing))) %>% group_by(hash_key, fech_ing) %>% dplyr::mutate(row_first=row_number()) %>% ungroup() %>% dplyr::filter(row_first==1) 
 
-dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev6,CONS_C1_df_dup_ENE_2020_unique_HASH_date, by= c("HASH_KEY", "fech_ing")) %>% dplyr::filter(is.na(row_first)) %>% group_by(is.na(fech_ing)) %>% summarise(n=n()) %>%
+n_cases_hash1<-dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev6,CONS_C1_df_dup_ENE_2020_unique_HASH_date, by= c("HASH_KEY"="hash_key", "fech_ing")) %>% dplyr::filter(is.na(row_first)) %>% nrow()
+n_cases_hash2<-dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev6,CONS_C1_df_dup_ENE_2020_unique_HASH_date, by= c("HASH_KEY"="hash_key", "fech_ing")) %>% dplyr::filter(is.na(row_first)) %>% distinct(HASH_KEY) %>% nrow()
+
+
+dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev6,CONS_C1_df_dup_ENE_2020_unique_HASH_date, by= c("HASH_KEY"="hash_key", "fech_ing")) %>% dplyr::filter(is.na(row_first)) %>% group_by(is.na(fech_ing)) %>% summarise(n=n()) %>%
   data.frame() %>% 
   dplyr::rename("Missing Data in\n Date of Admission"=is.na.fech_ing., "Number of Rows"=`n`) %>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
@@ -691,8 +833,9 @@ dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev6,CONS_C1_df_dup_ENE_2020_unique_H
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10)
 ```
 
-As seen in Table 14, a small fraction of the combination of dates and HASHs is not present in C1 Dataset. Many of them due to missing variables in the date of admission. There are `r dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev6,CONS_C1_df_dup_ENE_2020_unique_HASH_date, by= "HASH_KEY") %>% dplyr::filter(is.na(row_first)) %>% nrow()` cases of `r dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev6,CONS_C1_df_dup_ENE_2020_unique_HASH_date, by= "HASH_KEY") %>% dplyr::filter(is.na(row_first)) %>% distinct(HASH_KEY) %>% nrow()` distinct HASHs that are not included in C1 dataset.
+As seen in Table 14, a small fraction of the combination of dates and HASHs was not present in C1 Dataset. Many of them due to missing variables in the date of admission. There are `r n_cases_hash1` cases of `r n_cases_hash2` distinct HASHs that were not included in C1 dataset.
 
+<br>
 
 ### 7. Probabilistic Deduplication
 
@@ -732,13 +875,13 @@ información sobre el peso de las variables está en: weight_dedup_top.xlsx
 matches_from_stata_TOP <- haven::read_dta("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/Stata Duplicates Match/_CONS_TOP_df_match75_05_02_2020.dta")
 ```
 
-There were 8,014 cases with probabilistic matches, and 3,128 HASHs involved in these matches.
+There were `r nrow(matches_from_stata_TOP)/2` cases with probabilistic matches, and `r length(unique(matches_from_stata_TOP$hash_key))` HASHs involved in these matches.
 
 ### 8. Transformations in TOPs Dataset
 
 First, we can see that there are many type of plans that are variations from the original ones, such as PG-PAI 2. Following the indications of SENDAs professionals, we recoded these variations and collapsed the categories in M-PAI, P-PR, PG-PAI, and PG-PR. Must note that there are some cases that are identified as men but they are in women-specific treatments.
 
-```{r change_type_plan, echo=F, paged.print=TRUE, cache=T, warning=F}
+```{r tab15_change_type_plan, echo=T, paged.print=TRUE, cache=T, warning=F}
 CONS_TOP_df_dup_ENE_2020_prev6 %>%
     dplyr::count(Plan.de.Tratamiento, Sexo) %>% 
     dplyr::group_by(Sexo) %>% 
@@ -764,6 +907,7 @@ CONS_TOP_df_dup_ENE_2020_prev6 %>%
 #replace tipo_de_plan = "PG-PAB" if tipo_de_plan=="CALLE"
 #replace tipo_de_plan = "" if tipo_de_plan=="NA"
 CONS_TOP_df_dup_ENE_2020_prev6 %>%
+  dplyr::mutate(OBS=ifelse(Plan.de.Tratamiento %in% c("M-PAI2","M-PR2","PG PAI 2","Otro","CALLE"),paste0(OBS,";","1.6. Collapsed Treatment Plans"),OBS))%>%
   dplyr::mutate(tipo_de_plan=dplyr::recode(Plan.de.Tratamiento,"M-PAI2"= "M-PAI", "M-PR2"="M-PR","PG PAI 2"="PG-PAI", "Otro"="PG-PR")) %>%
 #PARA VER LO QUE PASA
   #  dplyr::count(Plan.de.Tratamiento, Sexo) %>% 
@@ -780,23 +924,24 @@ CONS_TOP_df_dup_ENE_2020_prev6 %>%
 Considering the abovementioned observation, we changed those Mens with Masculine identitiy (obtained from C1 dataset) into a general population  (PR) plan.
 <br>
 
-```{r change_type_plan2, echo=F, paged.print=TRUE, cache=T, warning=F}
+```{r tab16_change_type_plan2, echo=T, paged.print=TRUE, cache=T, warning=F}
 #CONS_TOP_df_dup_ENE_2020_prev7 %>% dplyr::filter(tipo_de_plan=="M-PAI"|tipo_de_plan=="M-PR", Sexo=="Mujer") %>% #dplyr::inner_join(dplyr::select(CONS_C1_df_dup_ENE_2020,HASH_KEY, identidad.de.genero), by="HASH_KEY") %>% dplyr::select(HASH_KEY, id_mod, #tipo_de_plan, identidad.de.genero) %>% dplyr::filter(!is.na(identidad.de.genero)) %>% data.table::as.data.table() %>% print()
 
-CONS_TOP_df_dup_ENE_2020_prev7 %>% dplyr::filter(tipo_de_plan=="M-PAI"|tipo_de_plan=="M-PR", Sexo=="Hombre") %>% dplyr::inner_join(dplyr::select(CONS_C1_df_dup_ENE_2020,HASH_KEY, identidad.de.genero), by="HASH_KEY") %>% dplyr::select(HASH_KEY, id_mod, tipo_de_plan, identidad.de.genero) %>% dplyr::filter(!is.na(identidad.de.genero)) %>%
+CONS_TOP_df_dup_ENE_2020_prev7 %>% dplyr::filter(tipo_de_plan=="M-PAI"|tipo_de_plan=="M-PR", Sexo=="Hombre") %>% dplyr::inner_join(dplyr::select(CONS_C1_df_dup_ENE_2020,hash_key, identidad_de_genero), by=c("HASH_KEY"="hash_key")) %>% dplyr::select(HASH_KEY, id_mod, tipo_de_plan, identidad_de_genero) %>% dplyr::filter(!is.na(identidad_de_genero)) %>%
   data.table::as.data.table() %>%
     knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-                   caption="Table 16. Gender Identity of Men that were in Women-specific Plans", col.names= c("HASH Key", " ID", "Type of\n Plan","Gender Identity"), 
+                   caption="Table 16. Gender Identity of Men that were in Women-specific Plans", col.names= c("HASH Key", " ID", "Type of\n Plan","Gender Identity"),
                  align =rep('c', 5))  %>%
     kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10) %>%
   add_footnote( c("Femenino= Femenine Gender Identity","Masculino= Masculine Gender Identity","PAI= Intensive Outpatient Treatment","PR= Residential Program"), notation = "none")
 
-CONS_C1_df_dup_ENE_2020_unique_gender<- dplyr::select(CONS_C1_df_dup_ENE_2020,HASH_KEY, identidad.de.genero) %>% dplyr::filter(!is.na(identidad.de.genero)) %>% group_by(HASH_KEY) %>% dplyr::mutate(row_join=row_number()) %>%ungroup() %>% dplyr::filter(row_join==1) %>% data.table::as.data.table(.)
+CONS_C1_df_dup_ENE_2020_unique_gender<- dplyr::select(CONS_C1_df_dup_ENE_2020,hash_key, identidad_de_genero) %>% dplyr::filter(!is.na(identidad_de_genero)) %>% group_by(hash_key) %>% dplyr::mutate(row_join=row_number()) %>%ungroup() %>% dplyr::filter(row_join==1) %>% data.table::as.data.table(.)
 
 CONS_TOP_df_dup_ENE_2020_prev7 %>%
-    dplyr::left_join(CONS_C1_df_dup_ENE_2020_unique_gender, by="HASH_KEY") %>%
-    dplyr::mutate(tipo_de_plan=ifelse(identidad.de.genero=="Masculino" & Sexo=="Hombre" & tipo_de_plan=="M-PAI","PG-PAI", tipo_de_plan)) %>%
-    dplyr::mutate(tipo_de_plan=ifelse(identidad.de.genero=="Masculino" & Sexo=="Hombre" & tipo_de_plan=="M-PR","PG-PR", tipo_de_plan)) %>% 
+    dplyr::left_join(CONS_C1_df_dup_ENE_2020_unique_gender, by=c("HASH_KEY"="hash_key")) %>%
+    dplyr::mutate(OBS= ifelse(identidad_de_genero=="Masculino" & Sexo=="Hombre" & tipo_de_plan %in% c("M-PAI", "M-PR", "M-PAB"), paste0(OBS,";","1.7. Standardized Plans By Sex & Gender Id"),OBS))%>%
+    dplyr::mutate(tipo_de_plan=ifelse(identidad_de_genero=="Masculino" & Sexo=="Hombre" & tipo_de_plan=="M-PAI","PG-PAI", tipo_de_plan)) %>%
+    dplyr::mutate(tipo_de_plan=ifelse(identidad_de_genero=="Masculino" & Sexo=="Hombre" & tipo_de_plan=="M-PR","PG-PR", tipo_de_plan)) %>% 
     #PARA VER LO QUE PASA
 #    dplyr::count(tipo_de_plan, Sexo) %>% 
 #    dplyr::group_by(Sexo) %>% 
@@ -806,21 +951,21 @@ CONS_TOP_df_dup_ENE_2020_prev7 %>%
 #    reshape::cast(.,tipo_de_plan~Sexo+variable) %>% 
 #    data.table::as.data.table() %>%
 #  print()
-  dplyr::select(-TABLE, -row_leftjoin,-dup_todo_TOP,-dup_contents_TOP) %>%
+  dplyr::select(-dup_todo_TOP,-dup_contents_TOP,-row_join) %>%
   as.data.frame() %>%
   assign("CONS_TOP_df_dup_ENE_2020_prev8",.,envir = .GlobalEnv)
 ```
 
 Also we generated an ID code of the center of treatment, in order to mask this name and avoid any possible identification of specific cases. However, 2 centers could not be obtained from C1 dataset because they were not available: "Centro de Tratamiento San Francisco" and "Kausana CIP CRC Antofagasta". **These centers will be consulted to the SENDAs professional in order to clarify if they can be replace for another one that has a center ID number** .
  
-```{r prueba para transformar nombre centros en id, echo=F, paged.print=TRUE, cache=F, warning=F}
+```{r tab17_prueba para transformar nombre centros en id, echo=T, paged.print=TRUE, cache=F, warning=F}
 #Centro de Tratamiento San Francisco	220
 #Kausana CIP CRC Antofagasta	1
 #Ambos no tienen un par en C1 para dejarles código. El problema es que el Centro de Tratamiento San Francisco agrupa a 220 personas.
 distinct_HASH_center_not_present_in_C1<- CONS_TOP_df_dup_ENE_2020_prev8 %>% dplyr::filter(Nombre.del.Centro=="Centro de Tratamiento San Francisco") %>% distinct(HASH_KEY) 
 CONS_C1_df_dup_ENE_2020 %>%
-dplyr::filter(HASH_KEY %in% as.character(as.vector(unlist(as.data.table(unlist(distinct_HASH_center_not_present_in_C1)))))) %>%
-dplyr::select(Nombre.Centro) %>% distinct(Nombre.Centro) %>%
+dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(distinct_HASH_center_not_present_in_C1)))))) %>%
+dplyr::select(nombre_centro) %>% distinct(nombre_centro) %>%
         knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                    caption="Table 17. Different Centers of Treatment that would not be matched with C1 dataset", 
                    #col.names= c("Duplicated", " Frequencies", "Percentage"),
@@ -829,8 +974,13 @@ dplyr::select(Nombre.Centro) %>% distinct(Nombre.Centro) %>%
   scroll_box(width = "100%", height = "250px")
 ```
 
+<br>
+
 Also we collapsed the main substance of consumption into less categories that would be more representative of the patterns of consumption among the chilean population in terms of SUDs.
-```{r main_sub, echo=T, paged.print=TRUE, cache=T, warning=F}
+
+<br>
+
+```{r guardar5_main_sub, echo=T, paged.print=TRUE, cache=T, warning=F}
 #data.table(table(CONS_TOP_df_dup_ENE_2020_prev8$Sustancia.Principal.1))
 CONS_TOP_df_dup_ENE_2020_prev8 %>% 
   dplyr::mutate(sus_prin1=as.character(Sustancia.Principal.1)) %>%
@@ -851,6 +1001,7 @@ CONS_TOP_df_dup_ENE_2020_prev8 %>%
                                               "Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
                                               "Esteroides Anabólicos"="Otros",
                                               "Hongos"="Alucinógenos")) %>%
+dplyr::mutate(OBS=ifelse(sus_prin1=="SIN CONSUMO",paste0(OBS,";","1.8.Primary Substance1, Invalid due to No Consumption"),OBS))%>%    
 dplyr::mutate(sus_prin1= dplyr::na_if(sus_prin1, "SIN CONSUMO")) %>%
   dplyr::mutate(sus_prin2=as.character(Sustancia.Principal.2)) %>%
   dplyr::mutate(sus_prin2= dplyr::recode(sus_prin2,
@@ -870,6 +1021,7 @@ dplyr::mutate(sus_prin1= dplyr::na_if(sus_prin1, "SIN CONSUMO")) %>%
                                               "Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
                                               "Esteroides Anabólicos"="Otros",
                                               "Hongos"="Alucinógenos")) %>%
+dplyr::mutate(OBS=ifelse(sus_prin2=="SIN CONSUMO",paste0(OBS,";","1.8.Primary Substance2, Invalid due to No Consumption"),OBS))%>%
 dplyr::mutate(sus_prin2= dplyr::na_if(sus_prin2, "SIN CONSUMO")) %>%
   dplyr::mutate(sus_prin3=as.character(Sustancia.Principal.3)) %>%
   dplyr::mutate(sus_prin3= dplyr::recode(sus_prin3,
@@ -889,27 +1041,25 @@ dplyr::mutate(sus_prin2= dplyr::na_if(sus_prin2, "SIN CONSUMO")) %>%
                                               "Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
                                               "Esteroides Anabólicos"="Otros",
                                               "Hongos"="Alucinógenos")) %>%
+dplyr::mutate(OBS=ifelse(sus_prin3=="SIN CONSUMO",paste0(OBS,";","1.8.Primary Substance3, Invalid due to No Consumption"),OBS))%>%
 dplyr::mutate(sus_prin3= dplyr::na_if(sus_prin3, "SIN CONSUMO")) %>%
   assign("CONS_TOP_df_dup_ENE_2020_prev9",.,envir = .GlobalEnv)
 ```
 
-```{r tidy_of_dataset, echo=T, paged.print=TRUE, cache=T, warning=F}
+```{r guardar6_tidy_of_dataset, echo=T, paged.print=TRUE, cache=T, warning=F}
 CONS_TOP_df_dup_ENE_2020_prev9 %>% 
-  dplyr::left_join(dplyr::select(CONS_C1_df_dup_ENE_2020, Nombre.Centro, ID.centro) %>% 
-  dplyr::distinct(Nombre.Centro, ID.centro), by=c("Nombre.del.Centro"="Nombre.Centro")) %>% 
-  dplyr::select(-row_join) %>% 
+  dplyr::left_join(dplyr::select(CONS_C1_df_dup_ENE_2020, nombre_centro, id_centro) %>% 
+  dplyr::distinct(nombre_centro, id_centro), by=c("Nombre.del.Centro"="nombre_centro")) %>% 
+  #dplyr::select(-row_join) %>% 
   assign("CONS_TOP_df_dup_ENE_2020_prev9",.,envir = .GlobalEnv)
 ```
 
-```{r change_in_labels, echo=T, paged.print=TRUE, cache=T, warning=F}
+```{r guardar7_change_in_labels, echo=T, paged.print=TRUE, cache=T, warning=F}
 CONS_TOP_df_dup_ENE_2020_prev9 %>%
   dplyr::mutate(TOP=as.factor(TOP)) %>%
   dplyr::mutate(Etapa.del.Tratamiento=as.factor(Etapa.del.Tratamiento)) %>%
   dplyr::mutate(Sexo=as.factor(Sexo)) %>%
   dplyr::mutate(Tipo.Centro=as.factor(Tipo.Centro)) %>%
-  dplyr::mutate(Sustancia.Principal.1=as.factor(Sustancia.Principal.1)) %>%
-  dplyr::mutate(Sustancia.Principal.2=as.factor(Sustancia.Principal.2)) %>%
-  dplyr::mutate(Sustancia.Principal.3=as.factor(Sustancia.Principal.3)) %>%
   dplyr::mutate(Hurto=as.factor(Hurto)) %>%
   dplyr::mutate(Robo=as.factor(Robo)) %>%
   dplyr::mutate(Venta.Drogas=as.factor(Venta.Drogas)) %>%
@@ -950,15 +1100,15 @@ codebook::var_label(CONS_TOP_df_dup_ENE_2020_prev9) <- list(HASH_KEY = 'Codifica
     Total.OH = 'Total Alcohol/Total Alcohol',
     Dósis.OH = 'Dosis Consumo de Alcohol/Amount of Alcohol',
     Total.THC = 'Total Marihuana/Total Marijuana',
-    Dósis.THC = 'Dosis Marihuana/Amount of Marijuana',
+    Dósis.THC = 'Dosis Marihuana/Dose of Marijuana',
     Total.PBC = 'Total Pasta Base de Cocaína/Total Cocaine Paste Base',
-    Dósis.PBC = 'Dosis Pasta Base de Cocaína/Amount of Cocaine Paste Base',
+    Dósis.PBC = 'Dosis Pasta Base de Cocaína/Dose of Cocaine Paste Base',
     Total.COC = 'Total Cocaína/Total Snort Cocaine',
-    Dósis.COC = 'Dosis Cocaína/Amount of Snort Cocaine Dose',
+    Dósis.COC = 'Dosis Cocaína/Dose of Snort Cocaine',
     Total.BZD = 'Total Sedantes o Tranquilizantes/Total Sedatives and Tranquillizers',
-    Dósis.BZD = 'Dosis Sedantes o Tranquilizantes/Amount of Sedatives and Tranquillizers',
+    Dósis.BZD = 'Dosis Sedantes o Tranquilizantes/Dose of Sedatives and Tranquillizers',
     Total.Otra = 'Total Otra sustancia problema/Total Other Substances',
-    Dósis.Otra = 'Dosis Otra sustancia problema/Amount of Other Substances',
+    Dósis.Otra = 'Dosis Otra sustancia problema/Dose of Other Substances',
     Hurto = 'Hurto/Theft',
     Robo = 'Robo/Robbery',
     Venta.Drogas = 'Venta de Drogas/Drug selling',
@@ -979,16 +1129,18 @@ codebook::var_label(CONS_TOP_df_dup_ENE_2020_prev9) <- list(HASH_KEY = 'Codifica
     fech_ing_sin_fmt = 'Fecha de Ingreso de Tratamiento (Sin Formato de Fecha)/Date of Admission (unformatted)',
     fech_ap_top = 'Fecha de Aplicación de TOP/Date of Application of TOP',
     fech_nac = 'Fecha de Nacimiento/Date of Birth',
-    fech_ing_C1 = 'Fecha de Ingreso de Tratamiento (Base de Datos C1)/Date of Admission (C1 Dataset)',
     Edad_al_ing = 'Edad a la Fecha de Ingreso a Tratamiento (numérico continuo)/Age at Admission to Treatment',
+    Edad_at_ap = 'Edad a la Aplicación del Tratamiento (numérico continuo)/Age at the Application of TOP',
     tipo_de_plan = 'Tipo de Plan/Type of Plan',
-    identidad.de.genero = 'Identidad de Género/Gender Identity',
-    ID.centro = 'ID de Centro/Center ID',
-    sus_prin1 = 'Sustancia Principal de Consumo (1)/Main Substance of Consumption (1)',
-    sus_prin2 = 'Sustancia Principal de Consumo (2)/Main Substance of Consumption (2)',
-    sus_prin3 = 'Sustancia Principal de Consumo (3)/Main Substance of Consumption (3)')
+    identidad_de_genero = 'Identidad de Género/Gender Identity',
+    sus_prin1 = 'Sustancia Principal de Consumo (1)/Primary Substance of Consumption (1)',
+    sus_prin2 = 'Sustancia Principal de Consumo (2)/Primary Substance of Consumption (2)',
+    sus_prin3 = 'Sustancia Principal de Consumo (3)/Primary Substance of Consumption (3)',
+    obs = 'Observaciones al Proceso de Limpieza y Estandarización de Casos/Observations to the Process of Data Tidying & Standardization',
+    id_centro = 'ID de Centro/Center ID')
 
   as.data.frame(CONS_TOP_df_dup_ENE_2020_prev9) %>%
+  janitor::clean_names()%>%
   assign("CONS_TOP_df_dup_ENE_2020_prev9",.,envir = .GlobalEnv)
   
   #PARA EXPORTAR LABELS A EXCEL
@@ -996,4 +1148,114 @@ codebook::var_label(CONS_TOP_df_dup_ENE_2020_prev9) <- list(HASH_KEY = 'Codifica
   #es mejor hacerlo con el paquete RIO, en el caso de STATA
 
 save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/4.Rdata")
+```
+
+```{r dedup, echo=T, eval=F,paged.print=TRUE, cache=T, warning=F, eval=F}
+library(reclin)
+#load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/5.RData")
+aplicador_top2<-
+CONS_TOP_df_dup_ENE_2020_prev9 %>%
+  dplyr::group_by(nombre_apliacador_del_top) %>%
+  dplyr::mutate(rn=row_number())%>%
+  dplyr::ungroup() %>%
+  dplyr::filter(rn==1)%>%
+  dplyr::select(nombre_apliacador_del_top, region_centro,id_centro) %>%
+  dplyr::mutate(nombre_apliacador_del_top=tolower(nombre_apliacador_del_top)) %>%
+  dplyr::mutate(nombre_apliacador_del_top=stringr::str_replace_all(nombre_apliacador_del_top,c("ps." = "", "á" = "a", "é" = "e", "í"="i", "ó"="o","ú"="u","ps "=" ","ts."="","t.s."="","ã\u0081"="a","ts "=" ", "tr."="", "ì"="i"))) %>%
+  dplyr::mutate(nombre_apliacador_del_top=str_trim(nombre_apliacador_del_top))
+  
+  linked_data_set <- pair_blocking(as.data.frame(aplicador_top2), as.data.frame(aplicador_top2))
+  #Error: no se puede ubicar un vector de tamaño  36.2 Mb
+  compare_pairs(linked_data_set,c("region_centro","id_centro"),
+      default_comparator = jaro_winkler(0.9)) %>%
+  score_problink(var = "weight") %>%
+  select_n_to_m("weight", var = "ntom", threshold = 0) %>%
+  link()
+  
+try(linked_data_set <- pair_blocking(CONS_TOP_df_dup_ENE_2020_prev9, CONS_TOP_df_dup_ENE_2020_prev9, "ID.centro") 
+    %>%
+  compare_pairs(by = c("Nombre.Apliacador.del.TOP"),
+      default_comparator = jaro_winkler(0.8)) %>%
+  score_problink(var = "weight") %>%
+  select_n_to_m("weight", var = "ntom", threshold = 0) %>%
+  link()
+    )
+```
+
+```{r dedup2, echo=T, eval=F,paged.print=TRUE, cache=T, warning=F, eval=F}
+#load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/4.RData")
+library(reclin)
+try(linked_data_set <- pair_blocking(CONS_TOP_df_dup_ENE_2020_prev9, CONS_TOP_df_dup_ENE_2020_prev9, "id_centro") 
+    %>%
+  compare_pairs(by = c("", "firstname", "address", "sex"),
+      default_comparator = jaro_winkler(0.9)) %>%
+  score_problink(var = "weight") %>%
+  select_n_to_m("weight", var = "ntom", threshold = 0) %>%
+  link()
+    )
+try(linked_data_set <- pair_blocking(CONS_TOP_df_dup_ENE_2020_prev9, CONS_TOP_df_dup_ENE_2020_prev9, "ID.centro") 
+    %>%
+  compare_pairs(by = c("Nombre.Apliacador.del.TOP"),
+      default_comparator = jaro_winkler(0.8)) %>%
+  score_problink(var = "weight") %>%
+  select_n_to_m("weight", var = "ntom", threshold = 0) %>%
+  link()
+    )
+
+
+  require(RecordLinkage)
+  require(dplyr)
+
+############################# ene2020  
+#load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/5.RData")
+CONS_C1_df_dup_ENE_2020 %>%
+  dplyr::mutate(Edad= ifelse(is.na(Edad),0,Edad)) %>% #Para prevenir  Error in if (v1 == d1) return(x) : missing value where TRUE/FALSE needed
+  dplyr::filter(!is.na(fech_ing)) %>% #Para prevenir  Error in if (v1 == d1) return(x) : missing value where TRUE/FALSE needed
+dplyr::select("concat", "Edad") %>%
+assign("CONS_C1_df_dup_ENE_2020_concat",.,envir = .GlobalEnv)
+
+#Pairing
+  pairs_edad=RLBigDataDedup(CONS_C1_df_dup_ENE_2020_concat, blockfld="Edad",convert.na = TRUE,strcmp=TRUE ,strcmpfun=levenshteinSim)
+  pairs_edad_jaro=RLBigDataDedup(CONS_C1_df_dup_ENE_2020_concat, blockfld="Edad",convert.na = TRUE,strcmp=TRUE ,strcmpfun=levenshteinSim)
+  getExpectedSize(pairs_edad) #no funciona
+  getParetoThreshold(pairs_edad, quantil = 0.95) # no funciona
+  
+#Unsupervised classification by clustering  
+  bclust_edad<- classifyUnsup(pairs_edad, method="bclust")
+  k_means_edad<- classifyUnsup(pairs_edad, method="kmeans")
+  
+  p_edad=epiWeights(pairs_edad,withProgressBar=(sink.number()==0))
+  
+  edad_weights_em <- emWeights(p_edad,cutoff = 0.90, verbose = TRUE) #
+  classify_edad <- epiClassify(p_edad,0.88,withProgressBar=(sink.number()==0))  
+  classify_edad_em <- emClassify(classify_edad, 0.6)
+  match_edad <- classify_edad_em$prediction
+  results_edad <- cbind(classify_edad_em$pairs,match_edad)
+  getPairs(classify_edad_em, min.weight = 0.5)
+  getPairs(rpairs,min.weight=0.5, max.weight=0.5, filter.match="match")
+  classify_edad
+  ##strcomp
+############################# APR-2020  -TOP
+  CONS_TOP_df_dup_ENE_2020_prev9 %>%
+    dplyr::select("ID.centro","Nombre.Apliacador.del.TOP") %>%
+  dplyr::mutate(ID.centro= ifelse(is.na(ID.centro),0,ID.centro)) %>% #Para prevenir  Error in if (v1 == d1) return(x) : missing value where TRUE/FALSE needed
+  as.data.frame() %>%
+  assign("CONS_TOP_df_dup_ENE_2020_prev9_concat",.,envir = .GlobalEnv)
+    pairs_id_aplicador=RecordLinkage::RLBigDataDedup(CONS_TOP_df_dup_ENE_2020_prev9_concat, blockfld="ID.centro",strcmp=TRUE ,strcmpfun = "jarowinkler", phonetic = numeric(0),phonfun = "soundex")
+  getExpectedSize(pairs_id_aplicador) 
+  getParetoThreshold(pairs_id_aplicador, quantil = 0.95)
+bclust_ID<- classifyUnsup(pairs_id_aplicador, method="bclust") #no funciona
+k_means_ID<- classifyUnsup(pairs_id_aplicador, method="kmeans")#no funciona
+p_ID=epiWeights(pairs_id_aplicador,withProgressBar=(sink.number()==0))
+classify_ID <- epiClassify(pairs_id_aplicador,0.88,withProgressBar=(sink.number()==0))   #0s and mixed positive/negative subscripts not allowed
+classify_ID_em <- emClassify(ID_weights_em, 0.6) #No weights in rpairs!, LO PROBÉ CON PAIRS_ID_APLICADOR TAMBIÉN
+ID_weights_em <- emWeights(pairs_id_aplicador,cutoff = 0.90, verbose = TRUE) #
+getPairs(pairs_id_aplicador, min.weight = 0.5)
+getPairs(p_ID,min.weight=0.5, max.weight=0.5, filter.match="match")
+
+pairs_ID_jaro=RLBigDataDedup(CONS_TOP_df_dup_ENE_2020_prev9_concat, blockfld="ID.centro",strcmp=TRUE)
+getExpectedSize(pairs_ID_jaro) #no funciona
+getParetoThreshold(pairs_ID_jaro, quantil = 0.95) #Error in plot.window(...) : se necesitan valores finitos de 'ylim'
+getExpectedSize(pairs_ID_jaro
+classifyUnsup(pairs_ID_jaro, method="bclust") #no funciona Wrong class for rpairs!
 ```
