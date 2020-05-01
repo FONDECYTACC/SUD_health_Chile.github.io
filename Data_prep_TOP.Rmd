@@ -222,7 +222,8 @@ CONS_TOP_df_dup_fech_ing_adm <- dplyr::select(CONS_TOP_df, HASH_KEY, fech_ap_top
 CONS_TOP_df %>%
   dplyr::group_by(HASH_KEY, fech_ap_top) %>% dplyr::mutate(row_leftjoin=row_number()) %>% ungroup() %>%
 dplyr::left_join(CONS_TOP_df_dup_fech_ing_adm, by = c("HASH_KEY", "fech_ap_top","row_leftjoin"), suffix = c("", ".y")) %>% #names() #junto con la BD que hice, sólo tomo una.
-  dplyr::mutate(OBS= ifelse(is.na(fech_ing) & !is.na(fech_ing.y), "1.1.Replace miss date admission w TOPs w same stage & user","")) %>%
+  dplyr::mutate(OBS= case_when(is.na(fech_ing) & !is.na(fech_ing.y)~ "1.1.Replace miss date admission w TOPs w same stage & user",
+                               TRUE ~ "")) %>%
   dplyr::mutate(fech_ing= ifelse(is.na(fech_ing)& !is.na(fech_ing.y),as.Date(as.character(fech_ing.y), format="%Y-%m-%d"), as.Date(as.character(fech_ing), format="%Y-%m-%d"))) %>%
   dplyr::mutate(fech_ing=as.Date(fech_ing)) %>%
   dplyr::mutate(fech_ap_top=as.Date(as.character(fech_ap_top))) %>% #APROVECHO DE NORMALIZAR ESTAS VARIABLES PARA QUE TENGAN LA MISMA ESTRUCTURA
@@ -287,7 +288,8 @@ CONS_TOP_df_dup_ENE_2020_prev0 %>%
   mutate(fech_ing_na=fech_ing) %>%# solo hecha para visibilizar los que fueron reemplazados
   data.frame() %>%
   dplyr::left_join(CONS_C1_df_rownum, by=c("HASH_KEY"="HASH_KEY", "fech_ap_top"="fech_ing"), suffix=c(".TOP",".C1"))%>% #names()
-  dplyr::mutate(OBS=ifelse((is.na(fech_ing))&(TOP=="Ingreso")&(!is.na(fech_ing_C1)),glue::glue("{OBS};1.2.Replaced missing dates of admission from C1"),OBS))%>% 
+  dplyr::mutate(OBS=case_when((is.na(fech_ing))&(TOP=="Ingreso")&(!is.na(fech_ing_C1))~glue::glue("{OBS};1.2.Replaced missing dates of admission from C1"),
+                              TRUE~ OBS))%>% 
   dplyr::mutate(fech_ing= ifelse((is.na(fech_ing))&(TOP=="Ingreso")&(!is.na(fech_ing_C1)),fech_ing_C1, fech_ing)) %>%
   dplyr::mutate(fech_ing= as.Date(as.numeric(fech_ing), format="%Y-%m-%d")) %>% #tuve q agregarle más días para equipararlo
   #dplyr::select(-fech_ing_C1, -row_leftjoin) %>%
@@ -452,8 +454,10 @@ CONS_TOP_df_dup_ENE_2020_prev1 %>%
       dplyr::ungroup()%>%
       dplyr::left_join(distinct_hash_correct_age_adm_top2, by=c("HASH_KEY", "fech_ap_top","rn"), suffix=c("",".corr_age_adm_top")) %>% 
 #Join datasets 
-    dplyr::mutate(OBS=ifelse((Edad_at_ap<18 & !is.na(Edad_at_ap.corr_age_adm_top))|(Edad_at_ap>90 & !is.na(Edad_at_ap.corr_age_adm_top)),glue::glue("{OBS};1.3.Replaced invalid age at TOP application"),OBS))%>% 
-    dplyr::mutate(OBS=ifelse(Edad_at_ap<18|Edad_at_ap>90,glue::glue("{OBS};1.3.Invalid Age at the Time of Application of TOP"),OBS))%>% 
+    dplyr::mutate(OBS=case_when((Edad_at_ap<18 & !is.na(Edad_at_ap.corr_age_adm_top))|(Edad_at_ap>90 & !is.na(Edad_at_ap.corr_age_adm_top))~glue::glue("{OBS};1.3.Replaced invalid age at TOP application"),
+                                TRUE ~ OBS))%>% 
+    dplyr::mutate(OBS=case_when(Edad_at_ap<18|Edad_at_ap>90~glue::glue("{OBS};1.3.Invalid Age at the Time of Application of TOP"),
+                                TRUE ~ OBS))%>% 
     dplyr::mutate(ID= ifelse((Edad_at_ap<18 & !is.na(Edad_at_ap.corr_age_adm_top))|(Edad_at_ap>90 & !is.na(Edad_at_ap.corr_age_adm_top)),ID.corr_age_adm_top, ID)) %>%
     dplyr::mutate(id_mod=ifelse((Edad_at_ap<18 & !is.na(Edad_at_ap.corr_age_adm_top))|(Edad_at_ap>90 & !is.na(Edad_at_ap.corr_age_adm_top)),id_mod.corr_age_adm_top,id_mod)) %>% 
     dplyr::mutate(fech_nac=ifelse((Edad_at_ap<18 & !is.na(Edad_at_ap.corr_age_adm_top))|(Edad_at_ap>90 & !is.na(Edad_at_ap.corr_age_adm_top)),fech_nac.corr_age_adm_top,fech_nac))%>%
@@ -650,7 +654,8 @@ We needed to reduce the number of cases, but in the meantime, reduce the loss of
 names_top <-names(subset(CONS_TOP_df_dup_ENE_2020_prev2, select = -c(ID,id_mod, ano_bd, row, Nombre.Apliacador.del.TOP, OBS, Edad_al_ing, Edad_at_ap)))
 #Group by duplicated rows 
 as.data.table(CONS_TOP_df_dup_ENE_2020_prev2)[, dup_todo_TOP := .N, by = names_top] %>%
-dplyr::mutate(OBS=ifelse(dup_todo_TOP>1,glue::glue("{OBS};1.4.Had a duplicated events with almost every variable in common"),OBS))%>% 
+dplyr::mutate(OBS=case_when(dup_todo_TOP>1~glue::glue("{OBS};1.4.Had a duplicated events with almost every variable in common"),
+                            TRUE~OBS))%>% 
   data.table::as.data.table() %>%
   assign("CONS_TOP_df_dup_ENE_2020_prev3",.,envir = .GlobalEnv)
 #summarise duplicates and times
@@ -731,7 +736,8 @@ The following variables were used as a criteria to estimate duplicated rows in t
 names_top2 <- c('HASH_KEY', 'Tipo.Centro', 'Sustancia.Principal.1', 'Sustancia.Principal.2', 'Sustancia.Principal.3', 'Total.OH', 'Dósis.OH', 'Total.THC', 'Dósis.THC', 'Total.PBC', 'Dósis.PBC', 'Total.COC', 'Dósis.COC', 'Total.BZD', 'Dósis.BZD', 'Total.Otra', 'Dósis.Otra', 'Hurto', 'Robo', 'Venta.Drogas', 'Riña', 'Total.VIF', 'Otro', 'Total.Transgresión', 'Salud.Psicológica', 'Total.Trabajo', 'Total.Educación', 'Salud.Física', 'Lugar.Vivir', 'Vivienda', 'Calidad.Vida', 'fech_ing', 'fech_ap_top')
 #Group by duplicated rows 
 as.data.table(CONS_TOP_df_dup_ENE_2020_prev4)[, dup_contents_TOP := .N, by = names_top2] %>%
-  dplyr::mutate(OBS=ifelse(dup_contents_TOP>1,glue::glue("{OBS};1.5.Had a duplicated event with relevant variables in common"),OBS))%>% 
+  dplyr::mutate(OBS=case_when(dup_contents_TOP>1~glue::glue("{OBS};1.5.Had a duplicated event with relevant variables in common"),
+                              TRUE~OBS))%>% 
   data.table::as.data.table() %>%
   assign("CONS_TOP_df_dup_ENE_2020_prev5",.,envir = .GlobalEnv)
 #summarise duplicates and times
@@ -907,7 +913,7 @@ CONS_TOP_df_dup_ENE_2020_prev6 %>%
 #replace tipo_de_plan = "PG-PAB" if tipo_de_plan=="CALLE"
 #replace tipo_de_plan = "" if tipo_de_plan=="NA"
 CONS_TOP_df_dup_ENE_2020_prev6 %>%
-  dplyr::mutate(OBS=ifelse(Plan.de.Tratamiento %in% c("M-PAI2","M-PR2","PG PAI 2","Otro","CALLE"),paste0(OBS,";","1.6. Collapsed Treatment Plans"),OBS))%>%
+  dplyr::mutate(OBS=if_else(Plan.de.Tratamiento %in% unlist(c("M-PAI2","M-PR2","PG PAI 2","Otro","CALLE")),paste0(as.character(OBS),";","1.6. Collapsed Treatment Plans"),as.character(OBS),missing=as.character(OBS)))%>%
   dplyr::mutate(tipo_de_plan=dplyr::recode(Plan.de.Tratamiento,"M-PAI2"= "M-PAI", "M-PR2"="M-PR","PG PAI 2"="PG-PAI", "Otro"="PG-PR")) %>%
 #PARA VER LO QUE PASA
   #  dplyr::count(Plan.de.Tratamiento, Sexo) %>% 
@@ -935,12 +941,14 @@ CONS_TOP_df_dup_ENE_2020_prev7 %>% dplyr::filter(tipo_de_plan=="M-PAI"|tipo_de_p
     kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10) %>%
   add_footnote( c("Femenino= Femenine Gender Identity","Masculino= Masculine Gender Identity","PAI= Intensive Outpatient Treatment","PR= Residential Program"), notation = "none")
 
-CONS_C1_df_dup_ENE_2020_unique_gender<- dplyr::select(CONS_C1_df_dup_ENE_2020,hash_key, identidad_de_genero) %>% dplyr::filter(!is.na(identidad_de_genero)) %>% group_by(hash_key) %>% dplyr::mutate(row_join=row_number()) %>%ungroup() %>% dplyr::filter(row_join==1) %>% data.table::as.data.table(.)
+CONS_C1_df_dup_ENE_2020_unique_gender<- dplyr::select(CONS_C1_df_dup_ENE_2020,hash_key, identidad_de_genero) %>% dplyr::filter(!is.na(identidad_de_genero)) %>% group_by(hash_key) %>% dplyr::mutate(row_join=row_number()) %>%ungroup() %>% dplyr::filter(row_join==1) %>% dplyr::mutate(identidad_de_genero=as.character(identidad_de_genero)) %>% data.table::as.data.table(.)
 
 CONS_TOP_df_dup_ENE_2020_prev7 %>%
     dplyr::left_join(CONS_C1_df_dup_ENE_2020_unique_gender, by=c("HASH_KEY"="hash_key")) %>%
-    dplyr::mutate(OBS= ifelse(identidad_de_genero=="Masculino" & Sexo=="Hombre" & tipo_de_plan %in% c("M-PAI", "M-PR", "M-PAB"), paste0(OBS,";","1.7. Standardized Plans By Sex & Gender Id"),OBS))%>%
-    dplyr::mutate(tipo_de_plan=ifelse(identidad_de_genero=="Masculino" & Sexo=="Hombre" & tipo_de_plan=="M-PAI","PG-PAI", tipo_de_plan)) %>%
+    dplyr::mutate(tipo_plan_m=ifelse(tipo_de_plan %in% c("M-PAI", "M-PR", "M-PAB"),1,0)) %>%
+    dplyr::mutate(OBS= case_when((identidad_de_genero=="Masculino" & Sexo=="Hombre" & tipo_plan_m==1)~ paste0(as.character(OBS),";","1.7. Standardized Plans By Sex & Gender Id"),TRUE~as.character(OBS)))%>%
+    dplyr::mutate(tipo_de_plan=ifelse(identidad_de_genero=="Masculino" & Sexo=="Hombre" & tipo_de_plan=="M-PAB","PG-PAB", tipo_de_plan)) %>%
+      dplyr::mutate(tipo_de_plan=ifelse(identidad_de_genero=="Masculino" & Sexo=="Hombre" & tipo_de_plan=="M-PAI","PG-PAI", tipo_de_plan)) %>%
     dplyr::mutate(tipo_de_plan=ifelse(identidad_de_genero=="Masculino" & Sexo=="Hombre" & tipo_de_plan=="M-PR","PG-PR", tipo_de_plan)) %>% 
     #PARA VER LO QUE PASA
 #    dplyr::count(tipo_de_plan, Sexo) %>% 
@@ -951,7 +959,7 @@ CONS_TOP_df_dup_ENE_2020_prev7 %>%
 #    reshape::cast(.,tipo_de_plan~Sexo+variable) %>% 
 #    data.table::as.data.table() %>%
 #  print()
-  dplyr::select(-dup_todo_TOP,-dup_contents_TOP,-row_join) %>%
+  dplyr::select(-dup_todo_TOP,-dup_contents_TOP,-row_join,-tipo_plan_m) %>%
   as.data.frame() %>%
   assign("CONS_TOP_df_dup_ENE_2020_prev8",.,envir = .GlobalEnv)
 ```
@@ -1001,7 +1009,8 @@ CONS_TOP_df_dup_ENE_2020_prev8 %>%
                                               "Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
                                               "Esteroides Anabólicos"="Otros",
                                               "Hongos"="Alucinógenos")) %>%
-dplyr::mutate(OBS=ifelse(sus_prin1=="SIN CONSUMO",paste0(OBS,";","1.8.Primary Substance1, Invalid due to No Consumption"),OBS))%>%    
+dplyr::mutate(OBS=case_when(sus_prin1=="SIN CONSUMO"~paste0(OBS,";","1.8.Primary Substance1, Invalid due to No Consumption"),
+                            TRUE~OBS))%>%    
 dplyr::mutate(sus_prin1= dplyr::na_if(sus_prin1, "SIN CONSUMO")) %>%
   dplyr::mutate(sus_prin2=as.character(Sustancia.Principal.2)) %>%
   dplyr::mutate(sus_prin2= dplyr::recode(sus_prin2,
@@ -1021,7 +1030,8 @@ dplyr::mutate(sus_prin1= dplyr::na_if(sus_prin1, "SIN CONSUMO")) %>%
                                               "Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
                                               "Esteroides Anabólicos"="Otros",
                                               "Hongos"="Alucinógenos")) %>%
-dplyr::mutate(OBS=ifelse(sus_prin2=="SIN CONSUMO",paste0(OBS,";","1.8.Primary Substance2, Invalid due to No Consumption"),OBS))%>%
+dplyr::mutate(OBS=case_when(sus_prin2=="SIN CONSUMO"~paste0(OBS,";","1.8.Primary Substance2, Invalid due to No Consumption"),
+                            TRUE~OBS))%>%
 dplyr::mutate(sus_prin2= dplyr::na_if(sus_prin2, "SIN CONSUMO")) %>%
   dplyr::mutate(sus_prin3=as.character(Sustancia.Principal.3)) %>%
   dplyr::mutate(sus_prin3= dplyr::recode(sus_prin3,
@@ -1041,7 +1051,8 @@ dplyr::mutate(sus_prin2= dplyr::na_if(sus_prin2, "SIN CONSUMO")) %>%
                                               "Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
                                               "Esteroides Anabólicos"="Otros",
                                               "Hongos"="Alucinógenos")) %>%
-dplyr::mutate(OBS=ifelse(sus_prin3=="SIN CONSUMO",paste0(OBS,";","1.8.Primary Substance3, Invalid due to No Consumption"),OBS))%>%
+dplyr::mutate(OBS=case_when(sus_prin3=="SIN CONSUMO"~paste0(OBS,";","1.8.Primary Substance3, Invalid due to No Consumption"),
+                            TRUE~OBS))%>%
 dplyr::mutate(sus_prin3= dplyr::na_if(sus_prin3, "SIN CONSUMO")) %>%
   assign("CONS_TOP_df_dup_ENE_2020_prev9",.,envir = .GlobalEnv)
 ```
@@ -1077,7 +1088,8 @@ CONS_TOP_df_dup_ENE_2020_prev9 %>%
   metadata(CONS_TOP_df_dup_ENE_2020_prev9)$name <- "SENDAs Treatment Outcomes Profile"
   metadata(CONS_TOP_df_dup_ENE_2020_prev9)$description <- "Information About Treatment Outcomes Profile of users of SENDA, 2015 to 2019"
   #http://docshare03.docshare.tips/files/29337/293377101.pdf Paper de TOP Validación Chilena ACC
-codebook::var_label(CONS_TOP_df_dup_ENE_2020_prev9) <- list(HASH_KEY = 'Codificación del RUT/Masked Identifier (RUT)',
+codebook::var_label(CONS_TOP_df_dup_ENE_2020_prev9) <- 
+  list(HASH_KEY = 'Codificación del RUT/Masked Identifier (RUT)',
     hash_rut_completo = 'HASH alternativo, en el escenario en que se asuma que el individuo al que se le codificó el RUT presente mayor edad/Alternative HASH-Key',
     id_mod = 'ID de SENDA para Presentación en Página Web (enmascara caracteres 5 y 6)/SENDAs ID (masked characters 5 & 6)',
     ID = 'Codigo Identificación de SENDA/SENDAs ID',
@@ -1129,6 +1141,7 @@ codebook::var_label(CONS_TOP_df_dup_ENE_2020_prev9) <- list(HASH_KEY = 'Codifica
     fech_ing_sin_fmt = 'Fecha de Ingreso de Tratamiento (Sin Formato de Fecha)/Date of Admission (unformatted)',
     fech_ap_top = 'Fecha de Aplicación de TOP/Date of Application of TOP',
     fech_nac = 'Fecha de Nacimiento/Date of Birth',
+    OBS = 'Observaciones al Proceso de Limpieza y Estandarización de Casos/Observations to the Process of Data Tidying & Standardization',
     Edad_al_ing = 'Edad a la Fecha de Ingreso a Tratamiento (numérico continuo)/Age at Admission to Treatment',
     Edad_at_ap = 'Edad a la Aplicación del Tratamiento (numérico continuo)/Age at the Application of TOP',
     tipo_de_plan = 'Tipo de Plan/Type of Plan',
@@ -1136,7 +1149,6 @@ codebook::var_label(CONS_TOP_df_dup_ENE_2020_prev9) <- list(HASH_KEY = 'Codifica
     sus_prin1 = 'Sustancia Principal de Consumo (1)/Primary Substance of Consumption (1)',
     sus_prin2 = 'Sustancia Principal de Consumo (2)/Primary Substance of Consumption (2)',
     sus_prin3 = 'Sustancia Principal de Consumo (3)/Primary Substance of Consumption (3)',
-    obs = 'Observaciones al Proceso de Limpieza y Estandarización de Casos/Observations to the Process of Data Tidying & Standardization',
     id_centro = 'ID de Centro/Center ID')
 
   as.data.frame(CONS_TOP_df_dup_ENE_2020_prev9) %>%

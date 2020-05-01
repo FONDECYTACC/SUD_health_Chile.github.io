@@ -151,7 +151,8 @@ as.data.table(CONS_C1_df_dup)[, dup_todo := .N, by = names_c1] %>%
 ```{r dataset_creation, echo=T, warning=FALSE, cache=T, paged.print=TRUE}
 data.table::data.table(CONS_C1_df_dup_ENE_2020_prev) %>%
   dplyr::arrange(desc(ano_bd)) %>%
-  dplyr::mutate(OBS=ifelse(dup_todo>1, "1.1. Duplicated Cases in Almost Every Variable", "")) %>%
+  dplyr::mutate(OBS=case_when(dup_todo>1 ~ "1.1. Duplicated Cases in Almost Every Variable", 
+                              TRUE ~ "")) %>%
   #dplyr::distinct_(.dots = names_c1, .keep_all = TRUE) %>%
   dplyr::distinct_at(.vars=names_c1, .keep_all = TRUE) %>%
   dplyr::arrange(HASH_KEY, fech_ing, desc(ano_bd), desc(fech_egres)) %>%
@@ -166,7 +167,7 @@ Since these duplicated rows contained the same values, **we do not lose addition
 
 <br>
 
-We still needed to identify which of the repeated treatments has more recent information regarding a specific treatment. Hence, we eliminated duplicated rows but **kept events with more days of treatment, or from a more recent yearly dataset**. But how can we do it in some cases with negative days of treatment? Table 2 shows HASHs with some entries with negative days of treatment. **It was necessary to clarify some dates to avoid overlap between treatments. As can be seen in Table 2, it is possible to replace a few by an event with similar dates, but others were declared as missing and would be imputed once the dataset is normalized**.
+We still needed to identify which of the repeated treatments has more recent information regarding a specific treatment. Hence, we eliminated duplicated rows but **kept events with more days of treatment, or from a more recent yearly dataset**. But how can we do it in some cases with negative days of treatment? Table 2 shows HASHs with some entries with negative days of treatment. **It was necessary to clarify some dates to avoid overlap between treatments. As can be seen in Table 2, it is possible to replace a few with an event with similar dates, but others were declared as missing and would be imputed once the dataset is normalized**.
 
 <br>
 
@@ -216,27 +217,52 @@ Additionally, we ordered the data by the inverse of the year of the dataset (mor
 require(data.table)
 names_c1_stage2 <- c("HASH_KEY","fech_ing", "tipo_centro", "ID.centro", "Tipo.de.Programa", "Tipo.de.Plan", "SENDA", "Sustancia.Principal", "Otras.Sustancias.nº1","Otras.Sustancias.nº2","Otras.Sustancias.nº3", "Frecuencia.de.Consumo..Sustancia.Principal.","Sustancia.de.Inicio", "Edad.Inicio.Consumo")
 #genero una lista de los casos que tienen algún tipo de duplicados.
-dup_partes<-data.table::as.data.table(CONS_C1_df_dup_ENE_2020_prev)[, dup_partes := .N, by = names_c1_stage2] %>%
-distinct(row)
+dup_partes<-data.table::as.data.table(CONS_C1_df_dup_ENE_2020_prev)[, dup_partes := .N, by = names_c1_stage2]%>%dplyr::filter(dup_partes>1) %>% distinct(row)
+
+#40 missing treatment days
+#CONS_C1_df_dup_ENE_2020_prev %>%
+#  dplyr::filter(is.na(fech_egres), !is.na(dias_trat)) %>% nrow()
+
+#9394 missing dates of discharge
+#CONS_C1_df_dup_ENE_2020_prev %>%
+#  dplyr::filter(is.na(fech_egres), !is.na(dias_trat)) %>% nrow()
 
 require(dplyr)
 data.table::data.table(CONS_C1_df_dup_ENE_2020_prev) %>%
   #A VECES DA UN ERROR INEXPLICABLE DE QUE NO ENCUENTRA OBS, EN ESE CASO, BORRAR CACHÉ, CORRER LA PARTE DE PREV2 DE NUEVO Y VER QUÉ PASA
-  dplyr::mutate(OBS=ifelse(dias_trat<0,glue::glue("{OBS};1.2. Negative Days of Treatment, Changed Date of Discharge"),OBS))%>% # APLICADO EN ABRIL 2020, PARA HACER UN CONTROL A LOS CASOS EXTRAÑOS
-  dplyr::mutate(fech_egres=ifelse(dias_trat<0,NA,as.character(fech_egres)))%>% # APLICADO EN ABRIL 2020, AL VER QUE 9 CASOS FUERON OBVIADOS
+  dplyr::mutate(OBS=case_when(dias_trat<0 ~ glue::glue("{OBS};1.2. Negative Days of Treatment, Changed Date of Discharge"),
+                              TRUE ~ OBS))%>% # APLICADO EN ABRIL 2020, PARA HACER UN CONTROL A LOS CASOS EXTRAÑOS
+  #dplyr::mutate(fech_egres=case_when(dias_trat<0 ~ NA,
+  #                                   TRUE ~ as.character(fech_egres)))%>% 
+  # APLICADO EN ABRIL 2020, AL VER QUE 9 CASOS FUERON OBVIADOS. CORREGIDO NUEVAMENTE, BORRABA CASOS. Posteriormente tuve que volver a corregirlo.
+  dplyr::mutate(fech_egres=if_else(dias_trat>=0,as.character(fech_egres),"",missing=as.character(fech_egres)))%>%
   dplyr::mutate(fech_egres=lubridate::parse_date_time(fech_egres, c("%Y-%m-%d"),exact=T))%>%
+  dplyr::mutate(dias_trat=if_else(!is.na(fech_egres), as.numeric(difftime(fech_egres,fech_ing, units="days")),as.numeric(dias_trat)))%>%
+  dplyr::mutate(dias_trat=ifelse(is.na(fech_egres)&dias_trat==0,NA,dias_trat))%>%
+  dplyr::mutate(dias_trat=ifelse(as.numeric(dias_trat)<0,NA,as.numeric(dias_trat)))%>%
   dplyr::mutate(dias_trat_inv=ifelse(dias_trat<0,0,dias_trat*-1))%>% #transforma los erroneos en 0
   #dplyr::group_by(dias_trat_inv) %>%summarise(n()) %>% View() para probarlo
   #INCORPORADO EN ABRIL 2020, PARA PESQUISAR CASOS DEDUPLICADOS
   dplyr::arrange(desc(ano_bd),HASH_KEY, desc(fech_ing), dias_trat_inv) %>% ##ABRIL 2020, SAQUÉ FECHA DE EGRESO COMO ORDENADOR
-  dplyr::mutate(OBS=ifelse(HASH_KEY %in% as.character(as.vector(unlist(as.data.table(unlist(dup_partes))))),
-                           paste0(OBS,";","1.3. Duplicated Cases In Treatment and Substance Use Characteristics"), OBS)) %>%
+# dplyr::filter(row %in% as.character(as.vector(unlist(as.data.table(unlist(dup_partes))))))
+  dplyr::mutate(OBS=case_when(row %in% as.character(as.vector(unlist(as.data.table(unlist(dup_partes))))) ~ paste0(as.character(OBS),";","1.3. Duplicated Cases In Treatment and Substance Use Characteristics"), 
+                              TRUE ~ as.character(OBS))) %>%
   #dplyr::distinct_(.dots = names_c1_stage2, .keep_all = TRUE) %>%
   dplyr::distinct_at(.vars=names_c1_stage2, .keep_all = TRUE) %>%
 #  dplyr::arrange(HASH_KEY, fech_ing, desc(ano_bd)) %>%
   data.table::as.data.table() %>% #para contar las filas
  # dplyr::select(row) %>%  summarise(mean(row), sd(row)) #, lo mismo que en STATA. Se supone que una row es sensible a cambios distintos.
   assign("CONS_C1_df_dup_ENE_2020_prev2",.,envir = .GlobalEnv)
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#VER CASOS PERDIDOS POR LA NORMALIZACION DE FECHAS
+#CONS_C1_df_dup_ENE_2020_prev2%>%
+#    dplyr::filter(!is.na(fech_egres_sin_fmt),is.na(fech_egres))%>%
+#    dplyr::select(row, HASH_KEY, fech_ing, fech_egres, fech_egres_sin_fmt,dias_trat)
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
 #Lo mismo que en STATA: Ahora hay 118,121. Una vez que introduje 
 #  dplyr::arrange(HASH_KEY, fech_ing, desc(ano_bd), desc(fech_egres)) %>% criterio anterior
 ```
@@ -551,7 +577,8 @@ CONS_C1_df_dup_age <- dplyr::select(CONS_C1_df, HASH_KEY, id, id_mod, Edad)%>%
                       dplyr::filter(!duplicated(HASH_KEY)) #lo mismo que  dplyr::distinct(HASH_KEY)
 #Join datasets 
   dplyr::left_join(CONS_C1_df_dup_ENE_2020_prev2,dplyr::select(CONS_C1_df_dup_age,HASH_KEY,Edad, id,id_mod), by = "HASH_KEY", suffix = c("", ".y")) %>% # dim()
-  dplyr::mutate(OBS=ifelse((Edad<18 & !is.na(Edad.y))|(Edad>90 & !is.na(Edad.y)),paste0(OBS,";","1.4. Replaced invalid ages with same users within the dataset"), OBS))%>%
+  dplyr::mutate(OBS=case_when((Edad<18 & !is.na(Edad.y))|(Edad>90 & !is.na(Edad.y)) ~ paste0(OBS,";","1.4. Replaced invalid ages with same users within the dataset"), 
+                              TRUE ~ OBS))%>%
     dplyr::mutate(id= ifelse((Edad<18 & !is.na(Edad.y))|(Edad>90 & !is.na(Edad.y)),id.y, id)) %>%
     dplyr::mutate(id_mod=ifelse((Edad<18 & !is.na(Edad.y))|(Edad>90 & !is.na(Edad.y)),id_mod.y,id_mod)) %>% 
     dplyr::mutate(Edad= ifelse(Edad<18|Edad>90,Edad.y, Edad)) %>% #treat as invalid
@@ -627,7 +654,8 @@ CONS_TOP_df_dup_age <- dplyr::select(CONS_TOP, HASH_KEY, ID, Sexo, Edad)%>%
 
   dplyr::left_join(CONS_C1_df_dup_ENE_2020_prev3, CONS_TOP_df_dup_age, by="HASH_KEY", suffix= c("",".TOP")) %>%
     #dplyr::mutate(Edad_error=Edad) %>%
-    dplyr::mutate(OBS=ifelse(is.na(Edad) & !is.na(id.TOP),paste0(OBS,";","1.5. Replaced invalid ages with TOP information"), OBS))%>%
+  dplyr::mutate(OBS=case_when((is.na(Edad) & !is.na(id.TOP))~paste0(OBS,";","1.5. Replaced invalid ages with TOP information"),
+                              TRUE ~ OBS))%>%
     dplyr::mutate(id= ifelse(is.na(Edad) & !is.na(id.TOP),id.TOP, id)) %>%
     dplyr::mutate(id_mod=ifelse(is.na(Edad) & !is.na(id_mod.TOP),id_mod.TOP,id_mod)) %>% 
     dplyr::mutate(Edad= ifelse(is.na(Edad) & !is.na(Edad.TOP),Edad.TOP, Edad)) %>%
@@ -791,21 +819,24 @@ CONS_C1_df_dup_ENE_2020_prev4 %>%
   dplyr::left_join(CONS_C1_df_dup_ENE_2020_prev4_most_frequent_age_dataset, by="HASH_KEY", suffix= c("",".C1_mf_age")) %>%
   #nrow()  #para ver si se han agregado más filas.
   #si hay más de 1 ID y hay más de 2 casos por HASH
-  dplyr::mutate(OBS=ifelse((edades_por_hash>1 & ids_por_hash>1 & HASH_reps>2 & !is.na(id.C1_mf_age)),paste0(OBS,";","1.6.1. Replaced diff ages w/ MF age"), OBS))%>%
+  dplyr::mutate(OBS=case_when((edades_por_hash>1 & ids_por_hash>1 & HASH_reps>2 & !is.na(id.C1_mf_age))~paste0(OBS,";","1.6.1. Replaced diff ages w/ MF age"),
+                              TRUE ~ OBS))%>%
   dplyr::mutate(id= ifelse((edades_por_hash>1 & ids_por_hash>1 & HASH_reps>2 & !is.na(id.C1_mf_age)),id.C1_mf_age, id)) %>%
   dplyr::mutate(id_mod= ifelse((edades_por_hash>1 & ids_por_hash>1 & HASH_reps>2 & !is.na(id_mod.C1_mf_age)),id_mod.C1_mf_age, id_mod)) %>%
   dplyr::mutate(fech_nac= ifelse((edades_por_hash>1 & ids_por_hash>1 & HASH_reps>2 & !is.na(fech_nac.C1_mf_age)),fech_nac.C1_mf_age, fech_nac)) %>%
   dplyr::mutate(ano_nac= ifelse((edades_por_hash>1 & ids_por_hash>1 & HASH_reps>2 & !is.na(ano_nac.C1_mf_age)),ano_nac.C1_mf_age, ano_nac)) %>%
   dplyr::mutate(Edad= ifelse((edades_por_hash>1 & ids_por_hash>1 & HASH_reps>2 & !is.na(Edad.C1_mf_age)),Edad.C1_mf_age, Edad)) %>% #edad al final
   #si hay más de 1 ID y sólo hay 2 casos
-  dplyr::mutate(OBS=ifelse((edades_por_hash>1 & ids_por_hash>1 & HASH_reps==2 & !is.na(id.C1_max_year)),paste0(OBS,";","1.6.2. Replaced diff ages w/ recent dataset"), OBS))%>%
+  dplyr::mutate(OBS=case_when((edades_por_hash>1 & ids_por_hash>1 & HASH_reps==2 & !is.na(id.C1_max_year))~paste0(OBS,";","1.6.2. Replaced diff ages w/ recent dataset"), 
+                              TRUE ~ OBS))%>%
   dplyr::mutate(id= ifelse((edades_por_hash>1 & ids_por_hash>1 & HASH_reps==2 & !is.na(id.C1_max_year)),id.C1_max_year, id)) %>%
   dplyr::mutate(id_mod= ifelse((edades_por_hash>1 & ids_por_hash>1 & HASH_reps==2 & !is.na(id_mod.C1_max_year)),id_mod.C1_max_year, id_mod)) %>%
   dplyr::mutate(fech_nac= ifelse((edades_por_hash>1 & ids_por_hash>1 & HASH_reps==2 & !is.na(fech_nac.C1_max_year)),fech_nac.C1_max_year, fech_nac)) %>%
   dplyr::mutate(ano_nac= ifelse((edades_por_hash>1 & ids_por_hash>1 & HASH_reps==2 & !is.na(ano_nac.C1_max_year)),ano_nac.C1_max_year, ano_nac)) %>%
   dplyr::mutate(Edad= ifelse((edades_por_hash>1 & ids_por_hash>1 & HASH_reps==2 & !is.na(Edad.C1_max_year)),Edad.C1_max_year, Edad)) %>% #edad al final
   #si sólo hay 1 ID, SIN IMPORTAR LA CANTIDAD DE REPS
-  dplyr::mutate(OBS=ifelse((edades_por_hash>1 & ids_por_hash==1 & !is.na(id.C1_min_diff)),paste0(OBS,";","1.6.3. Replaced diff ages w/ most precise age"), OBS))%>%
+  dplyr::mutate(OBS=case_when((edades_por_hash>1 & ids_por_hash==1 & !is.na(id.C1_min_diff))~paste0(OBS,";","1.6.3. Replaced diff ages w/ most precise age"), 
+                           TRUE ~ OBS))%>%
   dplyr::mutate(id= ifelse((edades_por_hash>1 & ids_por_hash==1 & !is.na(id.C1_min_diff)),id.C1_min_diff, id)) %>%
   dplyr::mutate(id_mod= ifelse((edades_por_hash>1 & ids_por_hash==1 & !is.na(id_mod.C1_min_diff)),id_mod.C1_min_diff, id_mod)) %>%
   dplyr::mutate(fech_nac= ifelse((edades_por_hash>1 & ids_por_hash==1 & !is.na(fech_nac.C1_min_diff)),fech_nac.C1_min_diff, fech_nac)) %>% 
@@ -885,7 +916,7 @@ By doing this, we lowered as much as possible the quantity of distinct informati
 
 In this stage, we applied most of the recommendations made by SENDAs professionals:
 
-- Deletion of cases in Parole (n= `r CONS_C1_df_dup_ENE_2020_prev5 %>% dplyr::filter(is.na(Tipo.de.Plan) | Tipo.de.Plan != "PAI LV") %>% nrow()`)
+- Deletion of cases in Parole (n= `r CONS_C1_df_dup_ENE_2020_prev5 %>% dplyr::filter(Tipo.de.Plan == "PAI LV") %>% nrow()`)
 - Collapse the different plan types into the following: PG-PAB, PG-PAI, PG-PR, M-PAB, M-PAI, and M-PR.
 - Standardize type of plan by sex and gender identity
 - Declare as invalid the age of onset of drug use if they are higher than the actual age
@@ -904,7 +935,7 @@ In this stage, we applied most of the recommendations made by SENDAs professiona
 - Declare as an invalid value the category “Unknow” of the route of administration of the main substance
 - Declare as an invalid value the category “Unknow” of the frequency of consumption of the main Substance
 
-<br>
+<br> 
 
 ```{r final_assignment_change_factors_recode, echo=T,cache=T, paged.print=TRUE}
 CONS_C1_df_dup_ENE_2020_prev5 %>%
@@ -912,37 +943,51 @@ CONS_C1_df_dup_ENE_2020_prev5 %>%
 # Ver si se pueden reemlpazar. La verdad es que no hay otro ingreso.
 #CONS_C1_df_dup_ENE_2020_prev5 %>% dplyr::filter(concat %in% c("ebc40285ab6f4db453d9830453ec578a_2014_5_19", #"72c54d822de128e52f10511f3eb2d19f_2009_12_14", "03390de37aa8a95707905d07c33c0a97_2010_7_30"))
 #LV se elimina el tipo de plan
-  dplyr::mutate(OBS= ifelse(Tipo.de.Plan %in% c("M-PAI2","M-PR2","PG PAI 2","Otro","CALLE"),paste0(OBS,";","1.7.01. Collapsed Treatment Plans"),OBS))%>%
+  dplyr::mutate(OBS= case_when(Tipo.de.Plan %in% c("M-PAI2","M-PR2","PG PAI 2","Otro","CALLE") ~paste0(as.character(OBS),";","1.7.01. Collapsed Treatment Plans"),
+                               TRUE ~ as.character(OBS)))%>%
   dplyr::mutate(tipo_de_plan=dplyr::recode(Tipo.de.Plan,"M-PAI2"= "M-PAI", "M-PR2"="M-PR","PG PAI 2"="PG-PAI", "Otro"="PG-PR", "CALLE"="PG-PR"))%>%
 #Table 10. Type of Plan by Gender Identity and Sex
 #En SER 2020, dejé los Calle y Otro en PG-PAB, pero ahora lo dejaré en PG-PR
-  dplyr::mutate(OBS= ifelse(identidad.de.genero=="Masculino" & sexo=="Hombre" & tipo_de_plan %in% c("M-PAI", "M-PR", "M-PAB"), paste0(OBS,";","1.7.02. Standardized Plans By Sex & Gender Id"),OBS))%>%
+  dplyr::mutate(OBS= case_when(identidad.de.genero=="Masculino" & sexo=="Hombre" & tipo_de_plan %in% c("M-PAI", "M-PR", "M-PAB") ~paste0(as.character(OBS),";","1.7.02. Standardized Plans By Sex & Gender Id"),
+                               TRUE ~ as.character(OBS)))%>%
   dplyr::mutate(tipo_de_plan=ifelse(identidad.de.genero=="Masculino" & sexo=="Hombre" & tipo_de_plan=="M-PAI","PG-PAI", as.character(tipo_de_plan))) %>%
   dplyr::mutate(tipo_de_plan=ifelse(identidad.de.genero=="Masculino" & sexo=="Hombre" & tipo_de_plan=="M-PR","PG-PR", as.character(tipo_de_plan))) %>%
   dplyr::mutate(tipo_de_plan=ifelse(identidad.de.genero=="Masculino" & sexo=="Hombre" & tipo_de_plan=="M-PAB","PG-PAB", as.character(tipo_de_plan))) %>%
   dplyr::mutate(tipo_de_plan=as.factor(tipo_de_plan)) %>%
 #Si la edad de inicio de consumo es mayor a la edad actual, lo mismo la edad de iniciación a la sustancia principal, las declaro perdidas.
-  dplyr::mutate(OBS=ifelse(Edad.Inicio.Consumo<=Edad, paste0(OBS,";","1.7.03. Invalid Age Of Onset of Drug Use, Higher than age"),OBS))%>%
+  dplyr::mutate(OBS=case_when(Edad.Inicio.Consumo>Edad ~ paste0(as.character(OBS),";","1.7.03. Invalid Age Of Onset of Drug Use, Higher than age"),
+                              TRUE ~ as.character(as.character(OBS))))%>% #dplyr::filter(Edad.Inicio.Consumo>Edad)
   dplyr::mutate(edad_ini_cons= ifelse(Edad.Inicio.Consumo<=Edad, Edad.Inicio.Consumo, NA)) %>%
-  dplyr::mutate(OBS=ifelse(Edad.Inicio.Consumo<=Edad, paste0(OBS,";","1.7.04. Invalid Age Of Onset of Primary Substance, Higher than age"),OBS))%>%
-  dplyr::mutate(edad_ini_sus_prin= ifelse(Edad.Inicio..Sustancia.Principal.<=Edad, Edad.Inicio..Sustancia.Principal., NA)) %>%
+  dplyr::mutate(OBS=case_when(Edad.Inicio..Sustancia.Principal.>Edad ~ paste0(as.character(OBS),";","1.7.04. Invalid Age Of Onset of Primary Substance, Higher than age"),
+                           TRUE ~ as.character(OBS)))%>%
+  dplyr::mutate(edad_ini_sus_prin= ifelse(Edad.Inicio..Sustancia.Principal.<=Edad, Edad.Inicio..Sustancia.Principal., NA)) %>% #dplyr::filter(Edad.Inicio..Sustancia.Principal.>Edad)
   #CONS_C1_df_dup_ENE_2020_prev5 %>% dplyr::filter(Edad.Inicio.Consumo>20) %>% dplyr::mutate(edad_ini_cons= ifelse(Edad.Inicio.Consumo<=Edad, Edad.Inicio.Consumo, NA)) %>% dplyr::select(Edad, Edad.Inicio.Consumo, edad_ini_cons)
 #Si se inicia en la sustancia principal o inicia el consum a una edad menor a 5 años, lo declaro como perdido.
-  dplyr::mutate(OBS=ifelse(edad_ini_cons<5, paste0(OBS,";","1.7.05. Invalid Age Of Onset of Drug Use, < 5 yrs age"),OBS))%>%
+  dplyr::mutate(OBS=case_when(edad_ini_cons<5 ~ paste0(as.character(OBS),";","1.7.05. Invalid Age Of Onset of Drug Use, < 5 yrs age"),
+                              TRUE ~ as.character(OBS)))%>%
   dplyr::mutate(edad_ini_cons= ifelse(edad_ini_cons<5,NA,edad_ini_cons)) %>%
-  dplyr::mutate(OBS=ifelse(edad_ini_cons<5, paste0(OBS,";","1.7.06. Invalid Age Of Onset of Primary Substance, < 5 yrs age"),OBS))%>%
+  dplyr::mutate(OBS=case_when(edad_ini_sus_prin<5 ~ paste0(as.character(OBS),";","1.7.06. Invalid Age Of Onset of Primary Substance, < 5 yrs age"),
+                              TRUE ~ as.character(OBS)))%>%
   dplyr::mutate(edad_ini_sus_prin= ifelse(edad_ini_sus_prin<5,NA,edad_ini_sus_prin)) %>%
   #CONS_C1_df_dup_ENE_2020_prev3 %>% dplyr::filter(embarazo=="Si") %>% group_by(sexo) %>% summarise(n())
 #Embarazos en hombres se declaran como perdidos
-  dplyr::mutate(OBS=ifelse(embarazo=="Si" & sexo=="Hombre",paste0(OBS,";","1.7.07. Invalid Pregnancy= Pregnant Man"),OBS))%>%
+ #dplyr::mutate(OBS=if_else(embarazo=="Si" & sexo=="Hombre",paste0(as.character(OBS),";","1.7.07. Invalid Pregnancy= Pregnant Man"),  as.character(OBS)))%>%
+   dplyr::mutate(OBS=case_when(embarazo=="Si" & sexo=="Hombre" ~paste0(as.character(OBS),";","1.7.07. Invalid Pregnancy= Pregnant Man"),
+                                TRUE ~ as.character(OBS)))%>%
   dplyr::mutate(embarazo= ifelse(embarazo=="Si" & sexo=="Hombre",NA,as.character(embarazo))) %>%
   #dplyr::mutate(embarazo= dplyr::recode("1"="No","2"="Si")) %>%
   dplyr::mutate(embarazo=as.factor(embarazo)) %>%
 #     mutate(mpg=replace(mpg, cyl==4, NA)) %>%
 #CAMBIOS DIAS
-  dplyr::mutate(OBS=ifelse(dias_trat<0,paste0(OBS,";","1.7.08. Negative Treatment Days, Changed Treat Days"),OBS))%>%
+  dplyr::mutate(OBS=case_when(dias_trat<0 ~ paste0(as.character(OBS),";","1.7.08. Negative Treatment Days, Changed Treat Days"),
+                           TRUE ~ as.character(OBS)))%>%
   dplyr::mutate(dias_trat=replace(dias_trat,dias_trat<0, NA)) %>%
     assign("CONS_C1_df_dup_ENE_2020_prev6",., envir = .GlobalEnv) 
+#glue::glue("{OBS};1.7.07. Invalid Pregnancy= Pregnant Man"),OBS))
+#157322 156785  dplyr::filter(row %in% c("157322", "156785"))
+#dplyr::filter(row %in% c("157322", "156775","156785"))
+#View(table(CONS_C1_df_dup_ENE_2020_prev6$OBS))
+#View(table(CONS_C1_df_dup_ENE_2020$obs))
 
   #CONS_C1_df_dup_ENE_2020_prev3 %>% dplyr::mutate(dias_trat_alta_temprana=ifelse(dias_trat>90,0,1)) %>% dplyr::group_by(dias_trat_alta_temprana,motivodeegreso) %>% summarise(n())
   CONS_C1_df_dup_ENE_2020_prev6 %>% 
@@ -990,7 +1035,8 @@ dplyr::mutate(sus_principal=as.factor(sus_principal)) %>%
                                               "Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
                                               "Esteroides Anabólicos"="Otros",
                                               "Hongos"="Alucinógenos")) %>%
-dplyr::mutate(OBS=ifelse(otras_sus1=="SIN CONSUMO",paste0(OBS,";","1.7.09. Other Substances1, Invalid due to No Consumption"),OBS))%>%
+dplyr::mutate(OBS=case_when(otras_sus1=="SIN CONSUMO" ~ paste0(OBS,";","1.7.09. Other Substances1, Invalid due to No Consumption"),
+                            TRUE ~ OBS))%>%
 dplyr::mutate(otras_sus1= dplyr::na_if(otras_sus1, "SIN CONSUMO")) %>%
 dplyr::mutate(otras_sus1=as.factor(otras_sus1)) %>%        
 #data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Otras.Sustancias.nº2))
@@ -1012,7 +1058,8 @@ dplyr::mutate(otras_sus1=as.factor(otras_sus1)) %>%
                                               "Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
                                               "Esteroides Anabólicos"="Otros",
                                               "Hongos"="Alucinógenos")) %>%
-dplyr::mutate(OBS=ifelse(otras_sus2=="SIN CONSUMO",paste0(OBS,";","1.7.10. Other Substances2, Invalid due to No Consumption"),OBS))%>%    
+dplyr::mutate(OBS=case_when(otras_sus2=="SIN CONSUMO"~paste0(OBS,";","1.7.10. Other Substances2, Invalid due to No Consumption"),
+                         TRUE ~ OBS))%>%    
 dplyr::mutate(otras_sus2= dplyr::na_if(otras_sus2, "SIN CONSUMO")) %>%
 dplyr::mutate(otras_sus2=as.factor(otras_sus2)) %>%    
 #data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Otras.Sustancias.nº3))
@@ -1034,7 +1081,8 @@ dplyr::mutate(otras_sus2=as.factor(otras_sus2)) %>%
                                               "Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
                                               "Esteroides Anabólicos"="Otros",
                                               "Hongos"="Alucinógenos")) %>%
-dplyr::mutate(OBS=ifelse(otras_sus3=="SIN CONSUMO",paste0(OBS,";","1.7.11. Other Substances3, Invalid due to No Consumption"),OBS))%>%    
+dplyr::mutate(OBS=case_when(otras_sus3=="SIN CONSUMO"~paste0(OBS,";","1.7.11. Other Substances3, Invalid due to No Consumption"),
+                         TRUE ~ OBS))%>%    
 dplyr::mutate(otras_sus3= dplyr::na_if(otras_sus3, "SIN CONSUMO")) %>%
 dplyr::mutate(otras_sus3=as.factor(otras_sus3)) %>%    
 #data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Sustancia.de.Inicio))
@@ -1062,7 +1110,8 @@ dplyr::mutate(sus_ini=as.factor(sus_ini)) %>%
 #marital status (single, married/with partner, separated/divorced, widow)
 dplyr::mutate(estado_conyugal=ifelse(as.character(Estado.Conyugal)=="Casado"|as.character(Estado.Conyugal)=="Conviviente"|as.character(Estado.Conyugal)=="conviviente civil", "Casado/Conviviente",stringr::str_trim(as.character(Estado.Conyugal)))) %>%
 dplyr::mutate(estado_conyugal=ifelse(estado_conyugal=="Separado"|estado_conyugal=="Divorciado"|estado_conyugal=="Anulado", "Separado/Divorciado",estado_conyugal)) %>% 
-dplyr::mutate(OBS=ifelse(estado_conyugal=="Nocontesta",paste0(OBS,";","1.7.12. Marital State, Invalid due to No Response"),OBS))%>%    
+dplyr::mutate(OBS=case_when(estado_conyugal=="Nocontesta"~paste0(OBS,";","1.7.12. Marital State, Invalid due to No Response"),
+                            TRUE~OBS))%>%    
 dplyr::mutate(estado_conyugal=ifelse(estado_conyugal=="Nocontesta",NA,estado_conyugal)) %>%
 dplyr::mutate(estado_conyugal=as.factor(estado_conyugal)) %>%
 #occupational status (inactive, unemployed, employed)  
@@ -1112,7 +1161,8 @@ dplyr::mutate(origen_ingreso=as.factor(origen_ingreso)) %>%
 # education attainment (completed primary school or less, completed or incomplete high school, more that high school)
 # data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Escolaridad..último.año.cursado.))
 dplyr::mutate(escolaridad=ifelse(as.character(`Escolaridad..último.año.cursado.`)=="BASICA COMPLETA"|as.character(Escolaridad..último.año.cursado.)=="BASICA INCOMPLETA"|as.character(Escolaridad..último.año.cursado.)=="SIN ESTUDIOS","Ed Primaria Completa o Menor",as.character(Escolaridad..último.año.cursado.))) %>%
-dplyr::mutate(OBS=ifelse(escolaridad=="NO SABE O NO SE APLICA",paste0(OBS,";","1.7.13. Educational Attainment, Invalid due to No Response"),OBS))%>%    
+dplyr::mutate(OBS=case_when(escolaridad=="NO SABE O NO SE APLICA"~paste0(OBS,";","1.7.13. Educational Attainment, Invalid due to No Response"),
+                            TRUE ~ OBS))%>%    
 dplyr::mutate(escolaridad=ifelse(escolaridad=="MEDIA COMPLETA"|escolaridad=="MEDIA INCOMPLETA","Ed Secundaria Completa o Menor",
       ifelse(escolaridad=="NO SABE O NO SE APLICA",NA,
       ifelse(escolaridad %in% c("TECNICA COMPLETA", "TECNICA INCOMPLETA", "UNIVERSITARIA COMPLETA O MAS", "UNIVERSITARIA INCOMPLETA"), "Mayor a Ed Secundaria",escolaridad)))) %>%
@@ -1120,12 +1170,14 @@ dplyr::mutate(escolaridad=as.factor(escolaridad)) %>%
 # pattern of drug used (daily, 4 to 6 days a week, 2 to 3 days a week, 1 day a week or less),
     #data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Vía.Administración..Sustancia.Principal.))
 dplyr::mutate(via_adm_sus_prin=as.character(`Vía.Administración..Sustancia.Principal.`))%>%
-dplyr::mutate(OBS=ifelse(via_adm_sus_prin== "No sabe",paste0(OBS,";","1.7.14. Route of Adm Primary Substance, Invalid due to Unknown"),OBS))%>%    
+dplyr::mutate(OBS=case_when(via_adm_sus_prin== "No sabe"~paste0(OBS,";","1.7.14. Route of Adm Primary Substance, Invalid due to Unknown"),
+                            TRUE ~ OBS))%>%    
 dplyr::mutate(via_adm_sus_prin=ifelse(via_adm_sus_prin== "No sabe",NA,as.character(via_adm_sus_prin))) %>%
 dplyr::mutate(via_adm_sus_prin=as.factor(via_adm_sus_prin)) %>%
 #data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Frecuencia.de.Consumo..Sustancia.Principal.))
 dplyr::mutate(freq_cons_sus_prin=as.character(Frecuencia.de.Consumo..Sustancia.Principal.))%>%
-dplyr::mutate(OBS=ifelse(freq_cons_sus_prin== "Desconocida",paste0(OBS,";","1.7.15. Frequency of Consumption Primary Substance, Invalid due to Unknown"),OBS))%>%    
+dplyr::mutate(OBS=case_when(freq_cons_sus_prin== "Desconocida"~paste0(OBS,";","1.7.15. Frequency of Consumption Primary Substance, Invalid due to Unknown"),
+                            TRUE ~ OBS))%>%    
 dplyr::mutate(freq_cons_sus_prin=ifelse(freq_cons_sus_prin== "Desconocida",NA,as.character(freq_cons_sus_prin))) %>%
 dplyr::mutate(freq_cons_sus_prin=as.factor(freq_cons_sus_prin)) %>%
 as.data.frame(.) %>%  
@@ -1661,8 +1713,8 @@ CONS_C1_df_dup_ENE_2020 %>%
   dplyr::summarize(n=n()) %>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                    caption="Table 16. Missing Date of Discharge, Difference between Treatment Dates", col.names= c("Treat Days", "Year of Dataset", "N"),  align =rep('c', 3))  %>%
-     kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 10) %>%
-  kableExtra::add_footnote(c("Assuming the date of retrieval, 2019-11-13"), notation = "none")
+     kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  kableExtra::add_footnote(c("Note= Treat Days= Difference between the treatment days reported by SENDA, and a calculated one, product of the difference between the date of retrieval, 2019-11-13, and the date of admission to treatment"), notation = "none")
 #ABRIL 2020, subió un poco, de 272 a 324-
 n_casos<-CONS_C1_df_dup_ENE_2020 %>%
   dplyr::filter(is.na(fech_egres)) %>%
@@ -1684,7 +1736,7 @@ n_casos<-CONS_C1_df_dup_ENE_2020 %>%
 ```
 <br>
 
-Table 16 shows the entries with missing dates of discharge, the difference between the date of retrieval (Second week of November of 2019), and the days of treatment, by each yearly dataset obtained. NA’s seen represent cases in which the number of treatment days was not available, **These w **. Datasets from 2010 to 2018 would have been retrieved 8 days earlier than the dataset of 2019. SENDAs professionals believed that treatments should not last more than 1005 days. That is why we think that **cases in datasets of 2018 and 2019 may still be in treatment until the date of retrieval (leaving an approximate of `r print(n_casos[[1]])` HASHs and date of admissions left to analyze). We asked SENDAs professionals about the cases that are still being treated and came from older datasets **. Meanwhile, we looked over those cases with the same dates of admission and HASH that had a recent date of discharge that could replace the missing value.
+Table 16 shows the entries with missing dates of discharge, the difference between the date of retrieval (Second week of November of 2019), and the days of treatment, by each yearly dataset obtained. NULL values represent cases in which the number of treatment days was not available. **These were produced by negative treatment days**. Datasets from 2010 to 2018 would have been retrieved 8 days earlier than the dataset of 2019 (n= `r CONS_C1_df_dup_ENE_2020 %>% dplyr::filter(is.na(dias_trat))%>% nrow()`). SENDAs professionals believed that treatments should not last more than 1095 days. That is why we think that **cases in datasets of 2018 and 2019 may still be in treatment until the date of retrieval (leaving an approximate of `r print(n_casos[[1]])` HASHs and date of admissions left to analyze). We asked SENDAs professionals about the cases that are still being treated and came from older datasets**. Meanwhile, we looked over those cases with the same dates of admission and HASH that had a recent date of discharge that could replace the missing value.
 
 <br>
 
@@ -1762,10 +1814,12 @@ CONS_C1_df_dup_w_date_discharge <- CONS_C1_df_egres2[HASHs_w_o_date_discharge, o
 #select hashs for analysis
 CONS_C1_df_dup_w_date_discharge_HKEY <-CONS_C1_df_dup_w_date_discharge %>% distinct(HASH_KEY)
 
-dplyr::left_join(CONS_C1_df_dup,CONS_C1_df_dup_w_date_discharge, by = "HASH_KEY", suffix = c("", ".disch")) %>% # dim()
-dplyr::mutate(fech_egres_corr= ifelse(is.na(fech_egres),as.character(fech_ing.disch),as.character(fech_egres))) %>% 
+dplyr::left_join(CONS_C1_df_dup_ENE_2020,CONS_C1_df_dup_w_date_discharge, by = "HASH_KEY", suffix = c("", ".disch")) %>% # dim()
+dplyr::mutate(fech_egres_corr=ifelse(is.na(fech_egres),as.character(fech_ing.disch),as.character(fech_egres))) %>% 
   dplyr::filter(HASH_KEY %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_w_date_discharge_HKEY)))))) %>%
   dplyr::select(row,ano_bd, HASH_KEY, fech_ing, fech_egres, motivodeegreso,fech_egres_corr) %>%
+  #dplyr::filter(HASH_KEY=="0b9e123cca2191c6a2b4a0fcfcca2d46")
+  dplyr::distinct(row,.keep_all=T)%>%
   dplyr::arrange(HASH_KEY, fech_ing) %>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
               caption="Table 18. HASHs with a more recent treatment, for analysis", align =rep('c', 101),
