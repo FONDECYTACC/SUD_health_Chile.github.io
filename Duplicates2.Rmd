@@ -109,7 +109,7 @@ library(panelr)
 
 <!--- tipo_centro, convertir en factor 1. Privado, 2. Público; DataExplorer::create_report(CONS_1_4)  --->
 
-## 0. Raw Deduplication
+## 0. Rule-Based Deduplication
 
 &nbsp;
 <br>
@@ -135,8 +135,8 @@ First, we selected the following standardized variables as a criteria to identif
 - Age in groups (edad_grupos)
 - Motive of Admission to Treatment (origen_ingreso)
 - Education Attainment (escolaridad)
-- Route of Administration of the Main Substance (via_adm_sus_prin)
-- Frequency of Consumption of the Main Substance (freq_cons_sus_prin)
+- Route of Administration of the Primary or Main Substance (via_adm_sus_prin)
+- Frequency of Consumption of the Primary or Main Substance (freq_cons_sus_prin)
 
 ```{r dedup_manual, echo=T, paged.print=TRUE}
 require(data.table)
@@ -419,7 +419,7 @@ CONS_C1_df_dup_FEB_2020_prev1 %>%
 
 <br>
 
-Of the `r length(criterios)` variables, we seen that many cases had different sexes, others are registries mostly from 2010 to 2015. Additionally, some diagnostics did not appear previously in the last registry. Other programs specific for women are changed in the next case for the general population. In general, we keeped most recent cases, excepting for a few rows, such as "4118", that came from the same year of the row "4842" and share almost the same information but underestimated the frequency of consumption of the principal substance. Another case is row "38147", that share almost every characteristic with row "38755", excepting that this row lacked the occupational status and underestimated the frequency of consumption of the principal substance. Same with row "9875", that shared almost every variable with row "7161", but had less information about diagnostics related to mental health, despite they had distinct information regarding to drug use (other substances 2 and 3).
+Of the `r length(criterios)` variables, we seen that many cases had different sexes, others are registries mostly from 2010 to 2015. Additionally, some diagnostics did not appear previously in the last registry. Other programs specific for women are changed in the next case for the general population. In general, we keeped most recent cases, excepting for a few rows, such as "4118", that came from the same year of the row "4842" and share almost the same information but underestimated the frequency of consumption of the primary substance. Another case is row "38147", that share almost every characteristic with row "38755", excepting that this row lacked the occupational status and underestimated the frequency of consumption of the primary substance. Same with row "9875", that shared almost every variable with row "7161", but had less information about diagnostics related to mental health, despite they had distinct information regarding to drug use (other substances 2 and 3).
 
 <br>
 
@@ -1094,7 +1094,7 @@ CONS_C1_df_dup_FEB_2020_prev14 %>%
 
 <br>
 
-We **imputed the missing dates of discharge of the cases with overlapped ranges**. We used VIM k-Nearest Neighbour Imputation, by finding the weighted median of the 50 nearest neighbors based on Gower distance. This approach assumes that missing values can be approximated by the values of the points that are closest to it, based on covariates. Here, we selected as distance covariates the main substance of use, other substances (1), Age of Onset of Drug Use, Marital Status, Age in Groups, Motive of Admission to Treatment,Educational Attainment, Sex, and Frequency of Consumption of the Main Substance (Kowarik & Templ, 2016).
+We **imputed the missing dates of discharge of the cases with overlapped ranges**. We used VIM k-Nearest Neighbour Imputation, by finding the weighted median of the 50 nearest neighbors based on Gower distance. This approach assumes that missing values can be approximated by the values of the points that are closest to it, based on covariates. Here, we selected as distance covariates the main substance of use, other substances (1), Age of Onset of Drug Use, Marital Status, Age in Groups, Motive of Admission to Treatment,Educational Attainment, Sex, and Frequency of Consumption of the Primary Substance (Kowarik & Templ, 2016).
 
 <br>
 
@@ -1879,7 +1879,11 @@ Some cases did not have a primary diagnostic in DSM-IV notation, but have a seco
 <br>
 
 ```{r  dg_replace_dsm, include=T, echo=T, eval=T, cache=T}
+dg_replace_dsm<- CONS_C1_df_dup_FEB_2020_prev22 %>% dplyr::filter(is.na(dg_trs_psiq_dsm_iv_or) & !is.na(x2_dg_trs_psiq_dsm_iv_or)) %>% dplyr::select(row) %>%unlist()
+dg_replace_dsm<- as.character(dg_replace_dsm)
+
 CONS_C1_df_dup_FEB_2020_prev22 %>% 
+  dplyr::mutate(obs=case_when(row %in% as.character(as.vector(unlist(as.data.table(unlist(dg_replace_dsm)))))~glue::glue("{obs};2.5.01.Replaced empty DSM-IV with second diagnostic"),TRUE~obs))%>%
   dplyr::mutate(dg_trs_psiq_dsm_iv_or=ifelse(is.na(dg_trs_psiq_dsm_iv_or),as.character(x2_dg_trs_psiq_dsm_iv_or),as.character(dg_trs_psiq_dsm_iv_or))) %>%
   dplyr::mutate(dg_trs_psiq_sub_dsm_iv_or=ifelse(is.na(dg_trs_psiq_sub_dsm_iv_or),as.character(x2_dg_trs_psiq_sub_dsm_iv_or),as.character(dg_trs_psiq_sub_dsm_iv_or))) %>%
   dplyr::mutate(x2_dg_trs_psiq_dsm_iv_or=ifelse(is.na(dg_trs_psiq_dsm_iv_or),as.character(x3_dg_trs_psiq_dsm_iv_or),as.character(x2_dg_trs_psiq_dsm_iv_or))) %>%
@@ -1897,16 +1901,20 @@ CONS_C1_df_dup_FEB_2020_prev22 %>%
 <br>
 
 
-Some cases did not have a primary diagnostic for CIE-10 but had a secondary (n= `r CONS_C1_df_dup_FEB_2020_prev22 %>% dplyr::filter(is.na(dg_trs_psiq_cie_10_or) & !is.na(x2_dg_trs_psiq_cie_10_or)) %>% dplyr::select(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`).
+`r CONS_C1_df_dup_FEB_2020_prev23 %>% dplyr::filter(is.na(dg_trs_psiq_cie_10_or) & !is.na(x2_dg_trs_psiq_cie_10_or)) %>% dplyr::select(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)` cases did not have a primary diagnostic for CIE-10 but had a secondary.
 
 <br>
 
-Also, some cases did not have another substances (1), but had another substances (2) (n= `r CONS_C1_df_dup_FEB_2020_prev21 %>% dplyr::filter(is.na(otras_sus1) & !is.na(otras_sus2)) %>% dplyr::select(otras_sus1,otras_sus2,otras_sus3) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`).
+Also, some cases did not have another substances (1), but had another substances (2) (n= `r CONS_C1_df_dup_FEB_2020_prev23 %>% dplyr::filter(is.na(otras_sus1) & !is.na(otras_sus2)) %>% dplyr::select(otras_sus1,otras_sus2,otras_sus3) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`).
 
 <br>
 
 ```{r  dg_replace_substances, include=T, echo=T, eval=T, cache=T}
+replace_subs<- CONS_C1_df_dup_FEB_2020_prev23 %>% dplyr::filter(is.na(otras_sus1) & !is.na(otras_sus2)) %>% dplyr::select(row) %>% unlist()
+replace_subs<- as.character(replace_subs)
+
 CONS_C1_df_dup_FEB_2020_prev23 %>%
+  dplyr::mutate(obs=case_when(row %in% as.character(as.vector(unlist(as.data.table(unlist(replace_subs)))))~glue::glue("{obs};2.5.02.Replaced empty Other Substances(1) with Other Substances(2)"),TRUE~obs))%>%
   dplyr::mutate(otras_sus1=ifelse(is.na(otras_sus1),as.character(otras_sus2),as.character(otras_sus1))) %>%
   dplyr::mutate(otras_sus2=ifelse(is.na(otras_sus1),as.character(otras_sus3),as.character(otras_sus2))) %>%
   dplyr::mutate(otras_sus3=ifelse(is.na(otras_sus1),NA,as.character(otras_sus2))) %>%
@@ -2032,6 +2040,7 @@ dplyr::ungroup() %>%
 assign("hash_sex_most_recent_db",., envir = .GlobalEnv)
 
 CONS_C1_df_dup_FEB_2020_prev23 %>%
+  dplyr::mutate(obs=case_when(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev23_sex)))))~glue::glue("{obs};2.6.01.HASH w/ more than one distinct Sex"),TRUE~obs))%>%
   dplyr::left_join(hash_sex_misma_bd_2_casos, by="hash_key",suffix=c("","_sex_misma_bd_2_casos")) %>%
   dplyr::mutate(id= ifelse(!is.na(sexo_2_sex_misma_bd_2_casos),id_sex_misma_bd_2_casos,id)) %>%
   dplyr::mutate(id_mod= ifelse(!is.na(sexo_2_sex_misma_bd_2_casos),id_mod_sex_misma_bd_2_casos,id_mod)) %>%
@@ -2055,6 +2064,7 @@ CONS_C1_df_dup_FEB_2020_prev23 %>%
     #dplyr::filter(hash_key=="00012586ea3036b7a18093c396847a87")
 #para comprobar cómo le fue
 #CONS_C1_df_dup_FEB_2020_prev24 %>% dplyr::group_by(hash_key) %>% dplyr::mutate(sexo_por_hash=dplyr::n_distinct(sexo_2)) %>% ungroup() %>% dplyr::filter(sexo_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)
+#View(CONS_C1_df_dup_FEB_2020_prev24 %>% dplyr::group_by(obs) %>% summarise(n=n()) %>% dplyr::filter(n,grepl('2.6.0', obs)))
 ```
 
 <!--- La fecha de nacimiento puede no haberse corregido del todo porque hay muchos casos en que no tienen una edad distinta, por lo que el programa no  los filtra  --->
@@ -2140,6 +2150,7 @@ dplyr::ungroup() %>%
 assign("hash_fech_nac_most_recent_db",., envir = .GlobalEnv)
 
 CONS_C1_df_dup_FEB_2020_prev24 %>%
+  dplyr::mutate(obs=case_when(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev24_fech_nac)))))~glue::glue("{obs};2.6.02.HASH w/ more than one distinct Date of Birth"),TRUE~obs))%>%  
   dplyr::left_join(hash_fech_nac_misma_bd_2_casos, by="hash_key",suffix=c("","_fechnac_misma_bd_2_casos")) %>%
   dplyr::mutate(id= ifelse(!is.na(mean_fech_nac),id_fechnac_misma_bd_2_casos,id)) %>%
   dplyr::mutate(id_mod= ifelse(!is.na(mean_fech_nac),id_mod_fechnac_misma_bd_2_casos,id_mod)) %>%
@@ -2165,11 +2176,13 @@ CONS_C1_df_dup_FEB_2020_prev24 %>%
   assign("CONS_C1_df_dup_FEB_2020_prev25",., envir = .GlobalEnv)
 
 #CONS_C1_df_dup_FEB_2020_prev25 %>% group_by(hash_key) %>% dplyr::mutate(fech_nac_por_hash=n_distinct(fech_nac)) %>% ungroup() %>% dplyr::filter(fech_nac_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)
+#View(CONS_C1_df_dup_FEB_2020_prev25 %>% dplyr::group_by(obs) %>% summarise(n=n()) %>% dplyr::filter(n,grepl('2.6.02.HASH w/ more than one distinct Date of Birth', obs)))
+
 ```
 
-- Nationallity (nacionalidad) (`r CONS_C1_df_dup_FEB_2020_prev25 %>% group_by(hash_key) %>% dplyr::mutate(nacionalidad_por_hash=n_distinct(nacionalidad)) %>% ungroup() %>% dplyr::filter(nacionalidad_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). In cases where there are only two distinct nationalities per hash and comes from the same yearly dataset, we created a second variable called `nacionalidad_2` that contains the second nationality.
+- Nationality (nacionalidad) (`r CONS_C1_df_dup_FEB_2020_prev25 %>% group_by(hash_key) %>% dplyr::mutate(nacionalidad_por_hash=n_distinct(nacionalidad)) %>% ungroup() %>% dplyr::filter(nacionalidad_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). In cases where there are only two distinct nationalities per hash and comes from the same yearly dataset, we created a second variable called `nacionalidad_2` that contains the second nationality.
 
-```{r tab10_pers_info_nationallity, eval=T,echo=T, paged.print=TRUE}
+```{r tab10_pers_info_nationality, eval=T,echo=T, paged.print=TRUE}
 CONS_C1_df_dup_FEB_2020_prev25_nat <- CONS_C1_df_dup_FEB_2020_prev25 %>% group_by(hash_key) %>% dplyr::mutate(nat_por_hash=n_distinct(nacionalidad)) %>% ungroup() %>% dplyr::filter(nat_por_hash>1) %>% dplyr::distinct(hash_key)
 CONS_C1_df_dup_FEB_2020_prev25 %>% 
  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev25_nat)))))) %>% # Select HASHs of cited cases
@@ -2177,7 +2190,7 @@ CONS_C1_df_dup_FEB_2020_prev25 %>%
 dplyr::select(row, hash_key, ano_bd, nacionalidad, etnia, sexo, fech_nac,edad_al_ing, fech_ing, fech_egres, tipo_de_plan, senda)%>%
     head(40)%>%
     knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 10. HASHs with more than one Nationallity (First 40 Cases)",
+               caption="Table 10. HASHs with more than one Nationality (First 40 Cases)",
                  align =rep('c', 101))  %>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
   kableExtra::scroll_box(width = "100%", height = "375px")
@@ -2238,6 +2251,7 @@ dplyr::ungroup() %>%
 assign("hash_nat_most_recent_db",., envir = .GlobalEnv)
 
 CONS_C1_df_dup_FEB_2020_prev25 %>%
+  dplyr::mutate(obs=case_when(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev25_nat)))))~glue::glue("{obs};2.6.03.HASH w/ more than one distinct Nationality"),TRUE~obs))%>%  
   dplyr::left_join(nat_misma_bd_2_casos, by="hash_key",suffix=c("","_nat_misma_bd_2_casos")) %>%
   dplyr::mutate(nacionalidad= ifelse(!is.na(nacionalidad_1), as.character(nacionalidad_1), as.character(nacionalidad))) %>%
   dplyr::select(-ends_with("_nat_misma_bd_2_casos")) %>% 
@@ -2343,6 +2357,7 @@ dplyr::ungroup() %>%
 assign("hash_etnia_most_recent_db",., envir = .GlobalEnv)
 
 CONS_C1_df_dup_FEB_2020_prev26 %>%
+  dplyr::mutate(obs=case_when(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev26_etnia)))))~glue::glue("{obs};2.6.04.HASH w/ more than one distinct Ethnic Group"),TRUE~obs))%>%  
   dplyr::left_join(etnia_misma_bd_2_casos, by="hash_key",suffix=c("","_etnia_misma_bd_2_casos")) %>%
   dplyr::mutate(etnia= ifelse(!is.na(etnia_1), as.character(etnia_1), as.character(etnia))) %>%
   dplyr::select(-ends_with("_etnia_misma_bd_2_casos")) %>% 
@@ -2441,7 +2456,7 @@ CONS_C1_df_dup_FEB_2020_prev27 %>%
 #CONS_C1_df_dup_FEB_2020_prev28 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_cons_por_hash=n_distinct(edad_ini_cons)) %>% ungroup() %>% dplyr::filter(edad_ini_cons_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)
 ```
 
-- Age of Onset of Drug Use Principal Substance (edad_ini_sus_prin) (`r CONS_C1_df_dup_FEB_2020_prev27 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_sus_prin_por_hash=n_distinct(edad_ini_sus_prin)) %>% ungroup() %>% dplyr::filter(edad_ini_sus_prin_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). There are too many distinct values by each user. This value should be imputed.
+- Age of Onset of Drug Use of Primary Substance (edad_ini_sus_prin) (`r CONS_C1_df_dup_FEB_2020_prev27 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_sus_prin_por_hash=n_distinct(edad_ini_sus_prin)) %>% ungroup() %>% dplyr::filter(edad_ini_sus_prin_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). There are too many distinct values by each user. This value should be imputed.
 <!--- #considerar que no sea mayor a la edad de inicio de consumo --->
 
 ```{r tab13X_pers_info_edad_ini_sus_prin,eval=F, echo=T, paged.print=TRUE}
@@ -2452,7 +2467,7 @@ CONS_C1_df_dup_FEB_2020_prev27 %>%
 dplyr::select(row, hash_key, ano_bd, edad_ini_cons, edad, fech_nac,edad_al_ing, fech_ing, fech_egres_imp, tipo_de_plan, senda)%>%
     head(40)%>%
     knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 13. HASHs with more than one Age of Onset of Drug Use Principal Substance (First 40 Cases)",
+               caption="Table 13. HASHs with more than one Age of Onset of Drug Use of Primary Substance (First 40 Cases)",
                  align =rep('c', 101))  %>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
   kableExtra::scroll_box(width = "100%", height = "375px")
@@ -2593,6 +2608,7 @@ dplyr::ungroup() %>%
 assign("hash_sus_ini_most_recent_db",., envir = .GlobalEnv)
 
 CONS_C1_df_dup_FEB_2020_prev27 %>%
+  dplyr::mutate(obs=case_when(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev27_sus_ini)))))~glue::glue("{obs};2.6.05.HASH w/ more than one distinct Starting Substance"),TRUE~obs))%>%  
   dplyr::left_join(sus_ini_misma_bd_2_casos, by="hash_key",suffix=c("","_sus_ini_misma_bd_2_casos")) %>%
   dplyr::mutate(sus_ini= ifelse(!is.na(sus_ini_1), as.character(sus_ini_1), as.character(sus_ini))) %>%
   dplyr::select(-ends_with("_sus_ini_misma_bd_2_casos")) %>% 
@@ -2605,6 +2621,7 @@ CONS_C1_df_dup_FEB_2020_prev27 %>%
   dplyr::select(-ends_with("_sus_ini_recent_db"),-concat_hash_sus_ini,-n,-sus_ini_1) %>%
   dplyr::mutate(sus_ini=as.factor(sus_ini))%>%
   dplyr::mutate(sus_ini_2=as.factor(sus_ini_2))%>%
+  dplyr::select(-dup_todo)%>%
     assign("CONS_C1_df_dup_FEB_2020",., envir = .GlobalEnv)
   #janitor::tabyl(sexo_2) %>%
 
@@ -2737,11 +2754,12 @@ fech_ing_ano = 'Año de Ingreso (numérico)/Year of Admission (numeric)',
 fech_ing_mes = 'Mes de Ingreso (numérico)/Month of Admission (numeric)',
 fech_ing_dia = 'Día de Ingreso (numérico)/Day of Admission (numeric)',
 concat = 'ID de SENDA y HASH Concatenado (permite discriminar más de un HASH en un mismo ID)/Combination of SENDAs ID & HASH',
+obs = 'Observaciones al Proceso de Limpieza y Estandarización de Casos/Observations to the Process of Data Tidying & Standardization',
 dias_trat_inv = 'Días de Tratamiento Invertidos (fecha más reciente, menor valor numérico)/Treatment Days (Reversed)',
 fech_nac = 'Fecha de Nacimiento/Date of Birth',
 edad_al_ing = 'Edad a la Fecha de Ingreso a Tratamiento (numérico continuo)/Age at Admission to Treatment',
 edad_ini_cons= 'Edad de Inicio de Consumo/ Age of Onset of Drug Use',
-edad_ini_sus_prin =  'Edad de Inicio de Consumo Sustancia Principal/ Age of Onset of Drug Use Principal Substance',
+edad_ini_sus_prin =  'Edad de Inicio de Consumo Sustancia Principal/ Age of Onset of Drug Use of Primary Substance',
 dias_trat_alta_temprana = 'Días de tratamiento (<90)/ Less than 90 days in treatment',
 motivodeegreso_mod = 'Motivo de Egreso (con abandono temprano y tardío)/Cause of Discharge (with late and early withdrawal)',
 sus_principal = 'Sustancia Principal de Consumo/Primary or Main Substance of Consumption at Admission',
