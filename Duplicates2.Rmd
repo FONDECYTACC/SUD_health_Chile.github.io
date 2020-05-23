@@ -525,10 +525,18 @@ CONS_C1_df_dup_FEB_2020_overlaps_COMP %>%
   kableExtra::add_footnote( c("Note.Each row represents an overlap. Variables ending with '_1' are the first case, and variables ending with '_2' correspond to the second case;", "Same Center ID= If both cases share the same Center ID", "bd_2_mas_reciente= Year of the yearly dataset is more recent in the second case;", "Financed By SENDA= If both cases are financed by SENDA;", "Referral= If the cause of discharge is the referral from another center (1= Referral);","Days Overlapped= Difference between the date of admission of the earlier treatment, and the date of discharge of the latter treatment","2nd treatment has more treatment days= Earlier treatment has more days of treatment"), notation = "none") %>%
   kableExtra::scroll_box(width = "100%", height = "375px")
 #FOR COMPARISON
-#panelr::long_panel(CONS_C1_df_dup_FEB_2020_overlaps, prefix = "_", label_location = "end", begin = 1, end = 2) %>% 
-#  #dplyr::select(-hash_key_2) %>%
-#  dplyr::rename("overlap_id"="id") %>%
-#  guardar_tablas("_overlaps_feb_2020")
+noejecutar=1
+if(noejecutar==0) {
+  CONS_C1_df_dup_FEB_2020_overlaps_COMP %>%
+  dplyr::ungroup()%>%
+  dplyr::mutate(fecha_ingreso_a_convenio_senda_2_num=as.numeric(as.Date(as.character(lubridate::parse_date_time(fecha_ingreso_a_convenio_senda_2, c("%d/%m/%Y"),exact=T))))) %>%
+  dplyr::mutate(days_overlapped_senda=abs(fech_egres_num_1-fecha_ingreso_a_convenio_senda_2_num)) %>%
+  dplyr::mutate(diff_days_overlapped=abs(days_overlapped_senda-days_overlapped))%>%
+  panelr::long_panel(prefix = "_", label_location = "end", begin = 1, end = 2) %>% 
+  dplyr::ungroup() %>%
+  dplyr::rename("overlap_id"="id") %>%
+  guardar_tablas("_overlaps_feb_2020")
+}
 ```
 
 
@@ -1758,10 +1766,10 @@ CONS_C1_df_dup_FEB_2020_prev18 %>%
   dplyr::select(row, everything())%>%
   dplyr::select(-exclude_cols_prev18)%>%
   dplyr::arrange(hash_key, desc(fech_ing),dias_trat_inv) %>% 
-  assign("CONS_C1_df_dup_FEB_2020_prev21",.,envir = .GlobalEnv) %>%
+  assign("CONS_C1_df_dup_FEB_2020_prev19",.,envir = .GlobalEnv) %>% #salta al 21.
   rio::export(file = "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_FEB_2020_prev.dta")
 #save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/4_post_dedup.RData")
-# 117,387 de MAY 2020, v/s 118,385 de MAR 2020
+# 117,387 de MAY 2020, v/s 118,385 de MAR 2020 # MAY 117388
 ```
 
 <br>
@@ -1822,9 +1830,9 @@ min_max_matches_c1_feb<-as.numeric(unlist(min_max_matches_c1_feb))
 
 As seen in Table 6, every case that Stata considered as a match, was in fact another treatment that lasted around 1 to 5 days in most cases, or ended inmediatelly before the next treatment. Of the abovementioned, none of them was considered as an overlap between treatments, showing differences from `r min_max_matches_c1_feb[1]` to `r min_max_matches_c1_feb[2]` days between the date of admission and the previous date of discharge.
 
-```{r comprobacion de overlap final, include=T, echo=T, eval=F, cache=T}
+```{r comprobacion de overlap final, include=T, echo=T, eval=T, cache=T}
 CONS_C1_df_dup_intervals_FEB_2020_comprobacion<- 
-                  CONS_C1_df_dup_FEB_2020_prev21 %>%
+                  CONS_C1_df_dup_FEB_2020_prev19 %>%
   #as.numeric(as.Date("2019-11-13")) #18213
   dplyr::mutate(fech_ing_num2=as.numeric(as.Date(fech_ing))) %>%
   dplyr::mutate(fech_egres_num2=as.numeric(as.Date(fech_egres_imp))) %>%
@@ -1839,21 +1847,22 @@ require(gridExtra)
                  FROM CONS_C1_df_dup_intervals_FEB_2020_comprobacion AS x  
                  INNER JOIN CONS_C1_df_dup_intervals_FEB_2020_comprobacion AS y 
                  ON x.hash_key_2 == y.hash_key_2 AND 
-                 x.fech_ing_num2 < y.fech_egres_num2 AND x.fech_egres_num2 > y.fech_ing_num2 AND x.row2 != y.row2"))  
-```
+                 x.fech_ing_num2 < y.fech_egres_num2 AND x.fech_egres_num2 > y.fech_ing_num2 AND x.row2 != y.row2")) 
 
+```
+`r   if(dim(overlap_dates_C1_FEB_2020_comprobacion)[1]>0){print(paste0("There are still",dim(overlap_dates_C1_FEB_2020_comprobacion)[1],"overlappings"))}`
 <br>
 
 ## 2. Data Editing / Deductive Imputation
 
 <br>
 
-There may be differences between the primary substance and the route of administration answered by users. For example, `r CONS_C1_df_dup_FEB_2020_prev21 %>% dplyr::filter(sus_principal=="Cocaína", via_adm_sus_prin!="Intranasal  ( aspiración de polvo por la nariz)") %>% nrow() %>% formatC(, format="f", big.mark=",", digits=0)` cases did not snort Cocaine, ¿so what is the correct route of administration of each primary substance?. A variable called `via_adm_sus_prin_act`.
+There may be differences between the primary substance and the route of administration answered by users. For example, `r CONS_C1_df_dup_FEB_2020_prev19 %>% dplyr::filter(sus_principal=="Cocaína", via_adm_sus_prin!="Intranasal  ( aspiración de polvo por la nariz)") %>% nrow() %>% formatC(, format="f", big.mark=",", digits=0)` cases did not snort Cocaine, ¿so what is the correct route of administration of each primary substance?. A variable called `via_adm_sus_prin_act` was included in the dataset to correct each route with the most frequent routes of administration: Alcohol tends to be consumed orally, cocaine, intranasally, and marijuana tends to be smoked.
 
 <br>
 
-```{r  tab7_ruta_adm_sus_prin, include=T, echo=T, eval=F, cache=T}
-CONS_C1_df_dup_FEB_2020_prev21 %>%
+```{r  tab7_ruta_adm_sus_prin, include=T, echo=T, eval=T, cache=T}
+CONS_C1_df_dup_FEB_2020_prev19 %>%
 janitor::tabyl(sus_principal, via_adm_sus_prin) %>%
   as.data.frame() %>%
     knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
@@ -1864,26 +1873,29 @@ janitor::tabyl(sus_principal, via_adm_sus_prin) %>%
 <br>
 
 ```{r  recode route of adm, include=T, echo=T, eval=T, cache=T}
-CONS_C1_df_dup_FEB_2020_prev21 %>% 
+CONS_C1_df_dup_FEB_2020_prev19 %>% 
+    dplyr::mutate(obs=case_when(sus_principal=="Alcohol"&via_adm_sus_prin!="Oral (bebida o comida)"~glue::glue("{obs};2.5.01. Recoded Route of Administration of Primary Substance"),TRUE~obs))%>%
+      dplyr::mutate(obs=case_when(sus_principal=="Cocaína"&via_adm_sus_prin!="Intranasal ( aspiración de polvo por la nariz)"~glue::glue("{obs};2.5.01. Recoded Route of Administration of Primary Substance"),TRUE~obs))%>%
+    dplyr::mutate(obs=case_when(sus_principal=="Marihuana"&via_adm_sus_prin!="Fumada o Pulmonar (aspiración de gases o vapores)"~glue::glue("{obs};2.5.01. Recoded Route of Administration of Primary Substance"),TRUE~obs))%>%
   dplyr::mutate(via_adm_sus_prin_act=ifelse(sus_principal=="Alcohol","Oral (bebida o comida)",as.character(via_adm_sus_prin))) %>%
   dplyr::mutate(via_adm_sus_prin_act=ifelse(sus_principal=="Cocaína","Intranasal ( aspiración de polvo por la nariz)",via_adm_sus_prin_act)) %>%
   dplyr::mutate(via_adm_sus_prin_act=ifelse(sus_principal=="Marihuana","Fumada o Pulmonar (aspiración de gases o vapores)",via_adm_sus_prin_act)) %>%
   dplyr::mutate(via_adm_sus_prin_act=as.factor(via_adm_sus_prin_act)) %>%
-  assign("CONS_C1_df_dup_FEB_2020_prev22",.,envir = .GlobalEnv)
+  assign("CONS_C1_df_dup_FEB_2020_prev20",.,envir = .GlobalEnv)
 ```
 
 <br>
 
-Some cases did not have a primary diagnostic in DSM-IV notation, but have a secondary or tertiary `r CONS_C1_df_dup_FEB_2020_prev22 %>% dplyr::filter(is.na(dg_trs_psiq_dsm_iv_or) & !is.na(x2_dg_trs_psiq_dsm_iv_or)) %>% dplyr::select(dg_trs_psiq_dsm_iv_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`).
+Some cases did not have a primary diagnostic in DSM-IV notation, but have a secondary or tertiary `r CONS_C1_df_dup_FEB_2020_prev20 %>% dplyr::filter(is.na(dg_trs_psiq_dsm_iv_or) & !is.na(x2_dg_trs_psiq_dsm_iv_or)) %>% dplyr::select(dg_trs_psiq_dsm_iv_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`).
 
 <br>
 
 ```{r  dg_replace_dsm, include=T, echo=T, eval=T, cache=T}
-dg_replace_dsm<- CONS_C1_df_dup_FEB_2020_prev22 %>% dplyr::filter(is.na(dg_trs_psiq_dsm_iv_or) & !is.na(x2_dg_trs_psiq_dsm_iv_or)) %>% dplyr::select(row) %>%unlist()
+dg_replace_dsm<- CONS_C1_df_dup_FEB_2020_prev20 %>% dplyr::filter(is.na(dg_trs_psiq_dsm_iv_or) & !is.na(x2_dg_trs_psiq_dsm_iv_or)) %>% dplyr::select(row) %>%unlist()
 dg_replace_dsm<- as.character(dg_replace_dsm)
 
-CONS_C1_df_dup_FEB_2020_prev22 %>% 
-  dplyr::mutate(obs=case_when(row %in% as.character(as.vector(unlist(as.data.table(unlist(dg_replace_dsm)))))~glue::glue("{obs};2.5.01.Replaced empty DSM-IV with second diagnostic"),TRUE~obs))%>%
+CONS_C1_df_dup_FEB_2020_prev20 %>% 
+  dplyr::mutate(obs=case_when(row %in% as.character(as.vector(unlist(as.data.table(unlist(dg_replace_dsm)))))~glue::glue("{obs};2.5.02.Replaced empty DSM-IV with second diagnostic"),TRUE~obs))%>%
   dplyr::mutate(dg_trs_psiq_dsm_iv_or=ifelse(is.na(dg_trs_psiq_dsm_iv_or),as.character(x2_dg_trs_psiq_dsm_iv_or),as.character(dg_trs_psiq_dsm_iv_or))) %>%
   dplyr::mutate(dg_trs_psiq_sub_dsm_iv_or=ifelse(is.na(dg_trs_psiq_sub_dsm_iv_or),as.character(x2_dg_trs_psiq_sub_dsm_iv_or),as.character(dg_trs_psiq_sub_dsm_iv_or))) %>%
   dplyr::mutate(x2_dg_trs_psiq_dsm_iv_or=ifelse(is.na(dg_trs_psiq_dsm_iv_or),as.character(x3_dg_trs_psiq_dsm_iv_or),as.character(x2_dg_trs_psiq_dsm_iv_or))) %>%
@@ -1896,24 +1908,24 @@ CONS_C1_df_dup_FEB_2020_prev22 %>%
   dplyr::mutate(x2_dg_trs_psiq_sub_dsm_iv_or=as.factor(x2_dg_trs_psiq_sub_dsm_iv_or)) %>%
   dplyr::mutate(x3_dg_trs_psiq_dsm_iv_or=as.factor(x3_dg_trs_psiq_dsm_iv_or)) %>%
   dplyr::mutate(x3_dg_trs_psiq_sub_dsm_iv_or=as.factor(x3_dg_trs_psiq_sub_dsm_iv_or)) %>%
-  assign("CONS_C1_df_dup_FEB_2020_prev23",.,envir = .GlobalEnv)
+  assign("CONS_C1_df_dup_FEB_2020_prev21",.,envir = .GlobalEnv)
 ```
 <br>
 
 
-`r CONS_C1_df_dup_FEB_2020_prev23 %>% dplyr::filter(is.na(dg_trs_psiq_cie_10_or) & !is.na(x2_dg_trs_psiq_cie_10_or)) %>% dplyr::select(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)` cases did not have a primary diagnostic for CIE-10 but had a secondary.
+`r CONS_C1_df_dup_FEB_2020_prev21 %>% dplyr::filter(is.na(dg_trs_psiq_cie_10_or) & !is.na(x2_dg_trs_psiq_cie_10_or)) %>% dplyr::select(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)` cases did not have a primary diagnostic for CIE-10 but had a secondary.
 
 <br>
 
-Also, some cases did not have another substances (1), but had another substances (2) (n= `r CONS_C1_df_dup_FEB_2020_prev23 %>% dplyr::filter(is.na(otras_sus1) & !is.na(otras_sus2)) %>% dplyr::select(otras_sus1,otras_sus2,otras_sus3) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`).
+Also, some cases did not have another substances (1), but had another substances (2) (n= `r CONS_C1_df_dup_FEB_2020_prev21 %>% dplyr::filter(is.na(otras_sus1) & !is.na(otras_sus2)) %>% dplyr::select(otras_sus1,otras_sus2,otras_sus3) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`).
 
 <br>
 
 ```{r  dg_replace_substances, include=T, echo=T, eval=T, cache=T}
-replace_subs<- CONS_C1_df_dup_FEB_2020_prev23 %>% dplyr::filter(is.na(otras_sus1) & !is.na(otras_sus2)) %>% dplyr::select(row) %>% unlist()
+replace_subs<- CONS_C1_df_dup_FEB_2020_prev21 %>% dplyr::filter(is.na(otras_sus1) & !is.na(otras_sus2)) %>% dplyr::select(row) %>% unlist()
 replace_subs<- as.character(replace_subs)
 
-CONS_C1_df_dup_FEB_2020_prev23 %>%
+CONS_C1_df_dup_FEB_2020_prev21 %>%
   dplyr::mutate(obs=case_when(row %in% as.character(as.vector(unlist(as.data.table(unlist(replace_subs)))))~glue::glue("{obs};2.5.02.Replaced empty Other Substances(1) with Other Substances(2)"),TRUE~obs))%>%
   dplyr::mutate(otras_sus1=ifelse(is.na(otras_sus1),as.character(otras_sus2),as.character(otras_sus1))) %>%
   dplyr::mutate(otras_sus2=ifelse(is.na(otras_sus1),as.character(otras_sus3),as.character(otras_sus2))) %>%
@@ -1921,21 +1933,36 @@ CONS_C1_df_dup_FEB_2020_prev23 %>%
   dplyr::mutate(otras_sus1=as.factor(otras_sus1)) %>%
   dplyr::mutate(otras_sus2=as.factor(otras_sus2)) %>%
   dplyr::mutate(otras_sus3=as.factor(otras_sus3)) %>%
-  assign("CONS_C1_df_dup_FEB_2020_prev24",.,envir = .GlobalEnv)
+  assign("CONS_C1_df_dup_FEB_2020_prev22",.,envir = .GlobalEnv)
+#CONS_C1_df_dup_FEB_2020_prev24 %>% dplyr::group_by(obs) %>% summarise(n=n()) %>% dplyr::filter(n,grepl('2.5.[0-9][0-9]', obs)) %>% summarise(sum=sum(n))
 ```
 
 <br>
 
 ```{r  dg_recode_serv_salud, include=T, echo=T, eval=T, cache=T}
-CONS_C1_df_dup_FEB_2020_prev24 %>%
+CONS_C1_df_dup_FEB_2020_prev22 %>%
   dplyr::mutate(servicio_de_salud=stringr::str_trim(as.character(servicio_de_salud))) %>%
   dplyr::mutate(servicio_de_salud=as.factor(servicio_de_salud)) %>%
-  assign("CONS_C1_df_dup_FEB_2020_prev25",.,envir = .GlobalEnv)
+  assign("CONS_C1_df_dup_FEB_2020_prev23",.,envir = .GlobalEnv)
 ```
 
 <br>
 
-## 3. Different Information Within User, Concerning Personal Information
+Also, Ethnicity had many values where users indicate not belonging to any ethnic group(n= `r CONS_C1_df_dup_FEB_2020_prev23 %>% dplyr::filter(etnia=="No pertenece") %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). This category does not add information, so we created another variable called `etnia_cor`.
+
+<br>
+
+```{r  ethnicity_change_no_pertenece, include=T, echo=T, eval=T, cache=T}
+CONS_C1_df_dup_FEB_2020_prev23 %>%
+    dplyr::mutate(obs=case_when(etnia=="No pertenece"~glue::glue("{obs};2.5.03.No Membership to Ethnic Group"),TRUE~obs))%>%
+  dplyr::mutate(etnia_cor= case_when(etnia=="No pertenece"~NA_character_,TRUE~as.character(etnia)))%>%
+  dplyr::mutate(etnia_cor=as.factor(etnia_cor))%>%
+  assign("CONS_C1_df_dup_FEB_2020_prev24",.,envir = .GlobalEnv)
+```
+
+<br>
+
+## 3. More than one Value Within User, Concerning User-Invariant Variables
 
 We may see that many users have more than one distinct personal information. These inconsistencies within users (including those related to the date of birth) may confound the construction of their SENDA’s ID, making it difficult to detect changes in users over the yearly datasets. As said and fortunately, we had the encrypted code of the national identity number, which can replace SENDAs ID. Figure 4 shows the decision tree that allowed us to keep the most suitable data for each user.
 
@@ -1945,604 +1972,713 @@ knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figu
 
 <!--- Programa Específico Mujeres	MASA1**031978, ver si es hombre o mujer de verdad --->
 
-- Sex (sexo_2) (`r CONS_C1_df_dup_FEB_2020_prev23 %>% dplyr::group_by(hash_key) %>% dplyr::mutate(sexo_por_hash=dplyr::n_distinct(sexo_2)) %>% ungroup() %>% dplyr::filter(sexo_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). If there were only two observations with distinct sexes but in the same yearly dataset, we replaced the sex to "women" if the user ever has been into a type of program specifically for women, or if it has ever been pregnant.
+- Sex (sexo_2) (`r CONS_C1_df_dup_FEB_2020_prev24 %>% dplyr::group_by(hash_key) %>% dplyr::mutate(sexo_por_hash=dplyr::n_distinct(sexo_2)) %>% ungroup() %>% dplyr::filter(sexo_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). If there were only two observations with distinct sexes but in the same yearly dataset, we replaced the sex to "women" if the user ever has been into a type of program specifically for women, or if it has ever been pregnant.
 <!--- considerar la identidad de género. Esto puede haber afectado la imputación de casos para tipo_de_plan y tipo_de_programa  --->
 
+```{r fig5_image-decision_tree_distinct_values_user_invariant_sex, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 5. Decision Tree for the Users with more than one value in Sex", message=FALSE}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/sex_same_hash_distinct_values_user_invariant.svg")
+```
+
 ```{r tab8_pers_info_sex, eval=T,echo=T, paged.print=TRUE}
-CONS_C1_df_dup_FEB_2020_prev23_sex <- CONS_C1_df_dup_FEB_2020_prev23 %>% group_by(hash_key) %>% dplyr::mutate(sexo_por_hash=n_distinct(sexo_2)) %>% ungroup() %>% dplyr::filter(sexo_por_hash>1) %>% dplyr::distinct(hash_key)
-CONS_C1_df_dup_FEB_2020_prev23 %>% 
- dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev23_sex)))))) %>% # Select HASHs of cited cases
- dplyr::arrange(hash_key) %>% #ordeno por ids 
-  dplyr::select(row,id, hash_key, ano_bd, sexo, identidad_de_genero,edad_al_ing, fech_ing, fech_egres, tipo_de_plan_2,tipo_de_programa_2, senda)%>% 
+CONS_C1_df_dup_FEB_2020_prev24_sexo_2 <- CONS_C1_df_dup_FEB_2020_prev24 %>% group_by(hash_key) %>% dplyr::mutate(sexo_2_por_hash=n_distinct(sexo_2)) %>% ungroup() %>% dplyr::filter(sexo_2_por_hash>1) %>% dplyr::distinct(hash_key)
+
+CONS_C1_df_dup_FEB_2020_prev24 %>% 
+  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev24_sexo_2)))))) %>% # Select HASHs of cited cases
+  dplyr::arrange(hash_key) %>% #ordeno por ids 
+  dplyr::select(row, hash_key, ano_bd, sexo_2)%>%
   head(40)%>%
-    knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+  knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption="Table 8. HASHs with more than one Sex (First 40 Cases)",
-                 align =rep('c', 101))  %>%
-   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+               align =rep('c', 101))  %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
   kableExtra::scroll_box(width = "100%", height = "375px")
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#
 #_______________________
 ###PARA HACER LA CONVERSION
 #_______________________
+
+#1. Más de una base de datos anual, reemplazo el valor por la de la base de datos más reciente
+#_#_#_#_#_#_
+CONS_C1_df_dup_FEB_2020_prev24 %>%
+  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev24_sexo_2)))))) %>% 
+  dplyr::group_by(hash_key) %>%
+  dplyr::add_tally() %>%  
+  dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(n_dis>1, !is.na(sexo_2)) %>% 
+  dplyr::arrange(hash_key,desc(ano_bd)) %>% #may 2020, agregué descendiente la edad, de más reciente a más antiguo
+  dplyr::select(row, hash_key, ano_bd, sexo_2, n)%>%
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(max_ano=max(ano_bd))%>%
+  #dplyr::slice(which.max(ano_bd)) %>% #MAY 2020, dejé como un procedimiento de APR 2020
+  dplyr::filter(max_ano==ano_bd) %>%
+  dplyr::rename("cases_by_concat_hash_sexo_2"="n")%>%
+  dplyr::ungroup()%>%
+  assign("hash_sexo_2_most_recent_db",., envir = .GlobalEnv) %>% #APR 2020- 352 casos // MAY 2020-  329 casos
+  dplyr::group_by(hash_key)%>%
+  distinct(sexo_2,.keep_all=T)%>%
+  dplyr::mutate(n_dis=n_distinct(sexo_2)) %>%
+  dplyr::filter(n_dis>1)%>% #45
+  dplyr::mutate(sexo_2_=paste0("sexo_2_",row_number()))%>%
+  tidyr::pivot_wider(id_cols =hash_key,names_from = sexo_2_, values_from = sexo_2,names_repair="minimal",values_fill = list(n = ""))%>%
+  dplyr::rename("sexo_2"="sexo_2_1")%>%
+  assign("hash_sexo_2_most_recent_db_more_one_value_1b",., envir = .GlobalEnv) #124, 62 usuarios; ahora sólo 3, excluyendo el No Pertence
+
+hash_sexo_2_most_recent_db_1a <- hash_sexo_2_most_recent_db%>% #329 casos
+  dplyr::select(-cases_by_concat_hash_sexo_2)%>%
+  group_by(hash_key)%>%
+  distinct(sexo_2,.keep_all=T)%>%
+  dplyr::mutate(n_dis=n_distinct(sexo_2)) %>%
+  dplyr::filter(n_dis==1) %>%
+  ungroup()%>%
+  dplyr::select(-n_dis,-row,-ano_bd,-max_ano)
+
+#2a. Misma base de datos, más de 2 casos, se selecciona el valor más frecuente
+#_#_#_#_#_#_
+CONS_C1_df_dup_FEB_2020_prev24 %>%
+  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev24_sexo_2)))))) %>% 
+  dplyr::group_by(hash_key) %>%
+  dplyr::add_tally() %>%  
+  dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(n_dis==1,n>2,!is.na(sexo_2)) %>% #más de 2 hash, pero todos dentro de la misma bd del mismo año. Excluyo los no pertenece
+  dplyr::select(-n) %>%
+  dplyr::mutate(concat_hash_sexo_2=paste0(hash_key,"_",sexo_2)) %>%
+  dplyr::group_by(concat_hash_sexo_2) %>%
+  dplyr::add_tally() %>%  #agrego un nuevo n, para contar los distintos sexo_2es
+  dplyr::select(row,concat_hash_sexo_2, hash_key, ano_bd, sexo_2, n)%>%
+  dplyr::ungroup() %>%  
+  distinct(concat_hash_sexo_2,.keep_all=T) %>%
+  dplyr::group_by(hash_key) %>%
+  #dplyr::slice(which.max(n)) %>% #me quedo con la concatenación por hash key que más se repite.
+  dplyr::top_n(1,n)%>%
+  dplyr::rename("cases_by_concat_hash_sexo_2"="n")%>%
+  dplyr::ungroup()%>%
+  assign("hash_sexo_2_most_freq_value",., envir = .GlobalEnv) #APR 2020 - 54 usuarios //  MAY 2020 - 9 casos, 3 usuarios
+tryCatch(
+  hash_sexo_2_most_freq_value%>%
+    dplyr::select(-cases_by_concat_hash_sexo_2)%>%
+    group_by(hash_key)%>%
+    add_tally()%>%
+    dplyr::filter(n>1)%>% #45
+    dplyr::mutate(sexo_2_=paste0("sexo_2_",row_number()))%>%
+    tidyr::pivot_wider(id_cols =hash_key,names_from = sexo_2_, values_from = sexo_2,names_repair="minimal",values_fill = list(n = ""))%>%
+    dplyr::rename("sexo_2"="sexo_2_1")%>%
+    assign("hash_sexo_2_most_freq_value_more_one_value_2a2",., envir = .GlobalEnv) #136
+  , error = function(e) {})
+
+#seleccionar los casos en que en la misma base de datos hay sólo un caso que es mayor
+hash_sexo_2_most_freq_value_2a1 <- hash_sexo_2_most_freq_value%>% 
+  dplyr::select(-cases_by_concat_hash_sexo_2)%>%
+  group_by(hash_key)%>%
+  add_tally()%>%
+  dplyr::filter(n==1) %>%
+  dplyr::select(-n, -row, -ano_bd,-concat_hash_sexo_2)
+
+
+#2b. Distinta base de datos, +2 casos, distintos valores en base de datos más reciente. Dejar la fecha del tratamiento más frecuente. Casos con fecha de trat + reciente
+#_#_#_#_#_#_
+CONS_C1_df_dup_FEB_2020_prev24 %>% 
+  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(hash_sexo_2_most_recent_db_more_one_value_1b["hash_key"])))))) %>% 
+  dplyr::group_by(hash_key,sexo_2) %>%
+  dplyr::add_tally(name="n_por_hash_sexo_2") %>%  
+  dplyr::ungroup()%>%
+  dplyr::group_by(hash_key) %>%
+  dplyr::add_tally(name="n_por_hash") %>%  
+  dplyr::arrange(desc(n_por_hash_sexo_2))%>%
+  #  dplyr::ungroup()%>%
+  dplyr::top_n(1,n_por_hash_sexo_2)%>%
+  dplyr::arrange(desc(n_por_hash),hash_key)%>%
+  dplyr::distinct(hash_key,sexo_2,.keep_all=T)%>%
+  dplyr::select(row,hash_key, id, id_mod, sexo_2,ano_bd,ha_estado_embarazada_egreso,x_se_trata_mujer_emb,tipo_de_programa_2,n_por_hash,n_por_hash_sexo_2) %>% 
+  dplyr::group_by(hash_key)%>%
+  dplyr::add_tally(name="n_por_hash") %>%
+  assign("hash_sexo_2_most_recent_db_more_one_value_mfv_2b1",., envir = .GlobalEnv)
+
+tryCatch(
+  hash_sexo_2_most_recent_db_more_one_value_mfv_2b1 %>%
+      dplyr::filter(n_por_hash>1)%>% #45
+      dplyr::select(hash_key,sexo_2)
+  #   dplyr::mutate(fech_nac_=paste0("sexo_2_",row_number()))%>%
+  #   tidyr::pivot_wider(id_cols =HASH_KEY,names_from = fech_nac_, values_from = fech_nac,names_repair="minimal",values_fill = list(n = ""))%>%
+  #   dplyr::rename("sexo_2"="sexo_2_1")%>%
+  #   assign("hash_sexo_2_most_recent_db_more_one_value_mfv_more_one_value_2b2",., envir = .GlobalEnv) 
+, error = function(e) {})
+# NO HAY CASOS
+
+hash_sexo_2_most_recent_db_more_one_value_mfv_2b1 <-
+  hash_sexo_2_most_recent_db_more_one_value_mfv_2b1 %>%
+  dplyr::filter(n_por_hash==1)%>%
+  dplyr::select(hash_key,sexo_2)  
+
+ #3. Misma base de datos, sólo 2 casos
+#_#_#_#_#_#_
 #ha_estado_embarazada_egreso , embarazo x_se_trata_mujer_emb,tipo_de_programa_2
-CONS_C1_df_dup_FEB_2020_prev23 %>%
-dplyr::mutate(case_when(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev23_sex)))))~glue::glue("{obs};2.5.01.Different Sex By HASH"),
-     TRUE~obs))%>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev23_sex)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis==1,n==2) %>% #casos en que hay que recurrir a otras variables
-dplyr::arrange(hash_key) %>%
+CONS_C1_df_dup_FEB_2020_prev24 %>%
+  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev24_sexo_2)))))) %>% 
+  dplyr::group_by(hash_key) %>%
+  dplyr::add_tally() %>%  
+  dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(n_dis==1,n==2) %>% #casos en que hay que recurrir a otras variables
+  dplyr::arrange(hash_key) %>%
   dplyr::mutate(sex_id=stringi::stri_sub(id,5,5)) %>%
   dplyr::select(row,hash_key, id, id_mod, sexo_2,ano_bd,ha_estado_embarazada_egreso,x_se_trata_mujer_emb,tipo_de_programa_2,sex_id) %>% 
-dplyr::group_by(hash_key) %>% 
-    dplyr::mutate(rn=row_number()) %>% 
+  dplyr::group_by(hash_key) %>% 
+  dplyr::mutate(rn=row_number()) %>% 
   as.data.frame() %>%
-reshape(idvar = "hash_key", timevar = "rn", direction = "wide") %>%
-    dplyr::mutate(sexo_2.1=as.character(sexo_2.1))%>%
-    dplyr::mutate(sexo_2.2=as.character(sexo_2.2))%>%
-    dplyr::mutate(sexo_2.1 = case_when(as.character(tipo_de_programa_2.1)=="Programa Específico Mujeres" ~ "Mujer",
-                        as.character(x_se_trata_mujer_emb.1)=="Si"  ~ "Mujer",
-                        as.character(ha_estado_embarazada_egreso.1)=="Si" ~ "Mujer",
-                    as.character(tipo_de_programa_2.2)=="Programa Específico Mujeres" ~ "Mujer",
-                        as.character(x_se_trata_mujer_emb.2)=="Si"  ~ "Mujer",
-                        as.character(ha_estado_embarazada_egreso.2)=="Si" ~ "Mujer",
-                    TRUE ~ as.character(sexo_2.1))) %>%
-    dplyr::mutate(sexo_2.2 = case_when(as.character(tipo_de_programa_2.1)=="Programa Específico Mujeres" ~ "Mujer",
-                        as.character(x_se_trata_mujer_emb.1)=="Si"  ~ "Mujer",
-                        as.character(ha_estado_embarazada_egreso.1)=="Si" ~ "Mujer",
-                    as.character(tipo_de_programa_2.2)=="Programa Específico Mujeres" ~ "Mujer",
-                        as.character(x_se_trata_mujer_emb.2)=="Si"  ~ "Mujer",
-                        as.character(ha_estado_embarazada_egreso.2)=="Si" ~ "Mujer",
-                    TRUE ~ as.character(sexo_2.2))) %>% #el sexo debiese ser el mismo.
+  reshape(idvar = "hash_key", timevar = "rn", direction = "wide") %>%
+  dplyr::mutate(sexo_2.1=as.character(sexo_2.1))%>%
+  dplyr::mutate(sexo_2.2=as.character(sexo_2.2))%>%
+  dplyr::mutate(sexo_2.1 = case_when(as.character(tipo_de_programa_2.1)=="Programa Específico Mujeres" ~ "Mujer",
+                                     as.character(x_se_trata_mujer_emb.1)=="Si"  ~ "Mujer",
+                                     as.character(ha_estado_embarazada_egreso.1)=="Si" ~ "Mujer",
+                                     as.character(tipo_de_programa_2.2)=="Programa Específico Mujeres" ~ "Mujer",
+                                     as.character(x_se_trata_mujer_emb.2)=="Si"  ~ "Mujer",
+                                     as.character(ha_estado_embarazada_egreso.2)=="Si" ~ "Mujer",
+                                     TRUE ~ as.character(sexo_2.1))) %>%
+  dplyr::mutate(sexo_2.2 = case_when(as.character(tipo_de_programa_2.1)=="Programa Específico Mujeres" ~ "Mujer",
+                                     as.character(x_se_trata_mujer_emb.1)=="Si"  ~ "Mujer",
+                                     as.character(ha_estado_embarazada_egreso.1)=="Si" ~ "Mujer",
+                                     as.character(tipo_de_programa_2.2)=="Programa Específico Mujeres" ~ "Mujer",
+                                     as.character(x_se_trata_mujer_emb.2)=="Si"  ~ "Mujer",
+                                     as.character(ha_estado_embarazada_egreso.2)=="Si" ~ "Mujer",
+                                     TRUE ~ as.character(sexo_2.2))) %>% #el sexo debiese ser el mismo.
   dplyr::mutate(id_mod.1=ifelse(sexo_2.1=="Mujer",`substr<-`(id_mod.1,5,5,"2"),`substr<-`(id_mod.1,5,5,"1"))) %>%
   dplyr::mutate(id_mod.2=ifelse(sexo_2.2=="Mujer",`substr<-`(id_mod.2,5,5,"2"),`substr<-`(id_mod.1,5,5,"1"))) %>%
   dplyr::mutate(id.1=ifelse(sexo_2.1=="Mujer",`substr<-`(id.1,5,5,"2"),`substr<-`(id.1,5,5,"1"))) %>%
   dplyr::mutate(id.2=ifelse(sexo_2.2=="Mujer",`substr<-`(id.2,5,5,"2"),`substr<-`(id.1,5,5,"1"))) %>%
   dplyr::mutate(sexo_2.1=as.factor(sexo_2.1))%>%
   dplyr::mutate(sexo_2.2=as.factor(sexo_2.2))%>%
-#2.1 es el que capturó la complejidad
-long_panel(id="comun_hash",prefix = ".", begin = 1, end = 2, label_location = "end") %>%
-as.data.table() %>%
+  #2.1 es el que capturó la complejidad
+  long_panel(id="comun_hash",prefix = ".", begin = 1, end = 2, label_location = "end") %>%
+  as.data.table() %>%
   dplyr::filter(wave==1) %>%
-assign("hash_sex_misma_bd_2_casos",., envir = .GlobalEnv)
-CONS_C1_df_dup_FEB_2020_prev23 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev23_sex)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis==1,n>2) %>% 
-dplyr::select(-n) %>%
-dplyr::mutate(concat_hash_sex=paste0(hash_key,"_",sexo)) %>%
-dplyr::group_by(concat_hash_sex) %>%
-dplyr::add_tally() %>%  #agrego un nuevo n, para contar los distintos sexos
-dplyr::select(row,concat_hash_sex,hash_key, id, id_mod, sexo_2,ano_bd,ha_estado_embarazada_egreso,x_se_trata_mujer_emb,tipo_de_programa_2,n) %>% 
-dplyr::ungroup() %>%  
-dplyr::group_by(hash_key) %>%
-dplyr::slice(which.max(n)) %>% #me quedo con la concatenación por hash key que más se repite.
-dplyr::ungroup() %>%
-assign("hash_sex_most_freq_value",., envir = .GlobalEnv)
+  assign("hash_sexo_misma_bd_2_casos_3",., envir = .GlobalEnv)
 
-CONS_C1_df_dup_FEB_2020_prev23 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev23_sex)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis>1) %>% 
-dplyr::arrange(hash_key) %>%
-dplyr::select(row,hash_key, id, id_mod, sexo_2,ano_bd,ha_estado_embarazada_egreso,x_se_trata_mujer_emb,tipo_de_programa_2,n) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::slice(which.max(ano_bd)) %>%
-dplyr::ungroup() %>%
-assign("hash_sex_most_recent_db",., envir = .GlobalEnv)
+CONS_C1_df_dup_FEB_2020_prev24 %>%
+  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev24_sexo_2)))))) %>% 
+  dplyr::group_by(hash_key) %>%
+  dplyr::add_tally() %>%  
+  dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(n_dis==1,n==2) %>% #casos en que hay que recurrir a otras variables
+  dplyr::arrange(hash_key) %>%
+  dplyr::mutate(sex_id=stringi::stri_sub(id,5,5)) %>%
+  dplyr::select(row,hash_key, id, id_mod, sexo_2,ano_bd,ha_estado_embarazada_egreso,x_se_trata_mujer_emb,tipo_de_programa_2,sex_id) %>% 
+  dplyr::group_by(hash_key) %>% 
+  dplyr::mutate(rn=row_number()) %>% 
+  as.data.frame() %>%
+  reshape(idvar = "hash_key", timevar = "rn", direction = "wide") %>%
+  dplyr::mutate(sexo_2.1=as.character(sexo_2.1))%>%
+  dplyr::mutate(sexo_2.2=as.character(sexo_2.2))%>%
+  dplyr::mutate(sexo_2.1 = case_when(as.character(tipo_de_programa_2.1)=="Programa Específico Mujeres" ~ "Mujer",
+                                     as.character(x_se_trata_mujer_emb.1)=="Si"  ~ "Mujer",
+                                     as.character(ha_estado_embarazada_egreso.1)=="Si" ~ "Mujer",
+                                     as.character(tipo_de_programa_2.2)=="Programa Específico Mujeres" ~ "Mujer",
+                                     as.character(x_se_trata_mujer_emb.2)=="Si"  ~ "Mujer",
+                                     as.character(ha_estado_embarazada_egreso.2)=="Si" ~ "Mujer",
+                                     TRUE ~ as.character(sexo_2.1))) %>%
+  dplyr::mutate(sexo_2.2 = case_when(as.character(tipo_de_programa_2.1)=="Programa Específico Mujeres" ~ "Mujer",
+                                     as.character(x_se_trata_mujer_emb.1)=="Si"  ~ "Mujer",
+                                     as.character(ha_estado_embarazada_egreso.1)=="Si" ~ "Mujer",
+                                     as.character(tipo_de_programa_2.2)=="Programa Específico Mujeres" ~ "Mujer",
+                                     as.character(x_se_trata_mujer_emb.2)=="Si"  ~ "Mujer",
+                                     as.character(ha_estado_embarazada_egreso.2)=="Si" ~ "Mujer",
+                                     TRUE ~ as.character(sexo_2.2))) %>% #el sexo debiese ser el mismo.
+  dplyr::mutate(id_mod.1=ifelse(sexo_2.1=="Mujer",`substr<-`(id_mod.1,5,5,"2"),`substr<-`(id_mod.1,5,5,"1"))) %>%
+  dplyr::mutate(id_mod.2=ifelse(sexo_2.2=="Mujer",`substr<-`(id_mod.2,5,5,"2"),`substr<-`(id_mod.1,5,5,"1"))) %>%
+  dplyr::mutate(id.1=ifelse(sexo_2.1=="Mujer",`substr<-`(id.1,5,5,"2"),`substr<-`(id.1,5,5,"1"))) %>%
+  dplyr::mutate(id.2=ifelse(sexo_2.2=="Mujer",`substr<-`(id.2,5,5,"2"),`substr<-`(id.1,5,5,"1"))) %>%
+  dplyr::mutate(sexo_2.1=as.factor(sexo_2.1))%>%
+  dplyr::mutate(sexo_2.2=as.factor(sexo_2.2))%>%
+  dplyr::filter(sexo_2.1!=sexo_2.2) %>% 
+  assign("sexo_casos_pendientes_3",., envir = .GlobalEnv)
 
-CONS_C1_df_dup_FEB_2020_prev23 %>%
-  dplyr::mutate(obs=case_when(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev23_sex)))))~glue::glue("{obs};2.6.01.HASH w/ more than one distinct Sex"),TRUE~obs))%>%
-  dplyr::left_join(hash_sex_misma_bd_2_casos, by="hash_key",suffix=c("","_sex_misma_bd_2_casos")) %>%
-  dplyr::mutate(id= ifelse(!is.na(sexo_2_sex_misma_bd_2_casos),id_sex_misma_bd_2_casos,id)) %>%
-  dplyr::mutate(id_mod= ifelse(!is.na(sexo_2_sex_misma_bd_2_casos),id_mod_sex_misma_bd_2_casos,id_mod)) %>%
-  dplyr::mutate(sexo_2= ifelse(!is.na(sexo_2_sex_misma_bd_2_casos), as.character(sexo_2_sex_misma_bd_2_casos), as.character(sexo_2))) %>%
-  dplyr::select(-ends_with("_sex_misma_bd_2_casos")) %>% 
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_______________________
+###PARA HACER REEMPLAZO DE VALORES Y CONSOLIDACION DE BASE DE DATOS
+#_______________________
+
+#hash_sexo_2_most_recent_db_more_one_value_1b #este es mas general, no corresponde
+#hash_sexo_2_most_freq_value_more_one_value_2a2
+#hash_sexo_2_most_recent_db_more_one_value_mfv_2b1
+#hash_sexo_misma_bd_2_casos_3
+
+CONS_C1_df_dup_FEB_2020_prev24 %>%
+  #Most recent dataset (sólo un valor más en la base de datos más reciente)
+  dplyr::left_join(hash_sexo_2_most_recent_db_1a, by="hash_key",suffix=c("","_sexo_2_recent_db")) %>%
+  dplyr::mutate(obs=case_when(!is.na(sexo_2_sexo_2_recent_db)~glue::glue("{obs};2.6.01.1a.HASH w/ more than one distinct Sex. Recent db"),TRUE~obs))%>%  
+  dplyr::mutate(sexo_2= ifelse(!is.na(sexo_2_sexo_2_recent_db), as.character(sexo_2_sexo_2_recent_db), as.character(sexo_2))) %>%
+  dplyr::select(-ends_with("_sexo_2_recent_db")) %>% # names()
+  #Most frequent value simple (sólo un valor más frecuente)
+  dplyr::left_join(hash_sexo_2_most_freq_value_2a1, by="hash_key",suffix=c("","_sexo_2_mfv")) %>%
+  dplyr::mutate(obs=case_when(!is.na(sexo_2_sexo_2_mfv)~glue::glue("{obs};2.6.01.2a1.HASH w/ more than one distinct Sex. Most frequent value"),TRUE~obs))%>%  
+  dplyr::mutate(sexo_2= ifelse(!is.na(sexo_2_sexo_2_mfv), as.character(sexo_2_sexo_2_mfv), as.character(sexo_2))) %>%
+  dplyr::select(-ends_with("_sexo_2_mfv")) %>%#%>% names()
+  #
+  #dplyr::left_join(hash_sexo_2_most_freq_value_more_one_value_2a2, by="hash_key",suffix=c("","_sexo_2_mfv_more_one_v")) %>%
+  #dplyr::mutate(obs=case_when(!is.na(sexo_2_sexo_2_mfv_more_one_v)~glue::glue("{obs};2.6.04.2a2.HASH w/ more than one distinct Sex. Most frequent value (>1)"),TRUE~obs))%>%  
+  #dplyr::mutate(sexo_2= ifelse(!is.na(sexo_2_sexo_2_mfv_more_one_v), as.character(sexo_2_sexo_2_mfv_more_one_v), as.character(sexo_2))) %>%
+  #dplyr::mutate(sexo_2_2= ifelse(!is.na(sexo_2_2_sexo_2_mfv_more_one_v), as.character(sexo_2_2_sexo_2_mfv_more_one_v), as.character(sexo_2_2))) %>%
+  #dplyr::select(-ends_with("_sexo_2_mfv_more_one_v")) %>% #%>% names()
+  #
+  dplyr::left_join(hash_sexo_2_most_recent_db_more_one_value_mfv_2b1, by="hash_key",suffix=c("","_sexo_2_recent_db_more_one_v")) %>%
+  dplyr::mutate(obs=case_when(!is.na(sexo_2_sexo_2_recent_db_more_one_v)~glue::glue("{obs};2.6.01.2b1.HASH w/ more than one distinct Sex. Recent db (>1)"),TRUE~obs))%>%  
+  dplyr::mutate(sexo_2= ifelse(!is.na(sexo_2_sexo_2_recent_db_more_one_v), as.character(sexo_2_sexo_2_recent_db_more_one_v), as.character(sexo_2))) %>%
+  #dplyr::mutate(sexo_2_2= ifelse(!is.na(sexo_2_2_sexo_2_recent_db_more_one_v), as.character(sexo_2_2_sexo_2_recent_db_more_one_v), as.character(sexo_2_2))) %>%
+  # dplyr::mutate(sexo_2_3= ifelse(!is.na(sexo_2_3_sexo_2_recent_db_more_one_v), as.character(sexo_2_3_sexo_2_recent_db_more_one_v), as.character(sexo_2_3))) %>%
+  dplyr::select(-ends_with("_sexo_2_recent_db_more_one_v"))%>% # names()
+  #
+  #dplyr::left_join(hash_sexo_2_most_recent_db_more_one_value_mfv_2b1, by="hash_key",suffix=c("","_sexo_2_recent_db_more_one_v")) %>%
+  #dplyr::mutate(obs=case_when(!is.na(sexo_2_sexo_2_recent_db_more_one_v)~glue::glue("{obs};2.6.04.2b1.HASH w/ more than one distinct Sex. Recent db (>1)"),TRUE~obs))%>%  
+  #dplyr::mutate(sexo_2= ifelse(!is.na(sexo_2_sexo_2_recent_db_more_one_v), as.character(sexo_2_sexo_2_recent_db_more_one_v), as.character(sexo_2))) %>%
+  #dplyr::mutate(sexo_2_2= ifelse(!is.na(sexo_2_2_sexo_2_recent_db_more_one_v), as.character(sexo_2_2_sexo_2_recent_db_more_one_v), as.character(sexo_2_2))) %>%
+  # dplyr::mutate(sexo_2_3= ifelse(!is.na(sexo_2_3_sexo_2_recent_db_more_one_v), as.character(sexo_2_3_sexo_2_recent_db_more_one_v), as.character(sexo_2_3))) %>%
+ # dplyr::select(-ends_with("_sexo_2_recent_db_more_one_v"))%>% # names()
+  #
+  dplyr::left_join(hash_sexo_misma_bd_2_casos_3, by="hash_key",suffix=c("","_sexo_2_misma_bd_2_casos")) %>%
+  dplyr::mutate(obs=case_when(!is.na(sexo_2_sexo_2_misma_bd_2_casos)~glue::glue("{obs};2.6.01.3.HASH w/ more than one distinct Sex.2 cases, same yearly dataset"),TRUE~obs))%>%  
+  dplyr::mutate(sexo_2= ifelse(!is.na(sexo_2_sexo_2_misma_bd_2_casos), as.character(sexo_2_sexo_2_misma_bd_2_casos), as.character(sexo_2))) %>%
+  dplyr::select(-ends_with("_sexo_2_misma_bd_2_casos")) %>% 
   #janitor::tabyl(sexo_2) %>%
-  dplyr::left_join(hash_sex_most_freq_value, by="hash_key",suffix=c("","_sex_mfv")) %>%
-  dplyr::mutate(id= ifelse(!is.na(sexo_2_sex_mfv),id_sex_mfv,id)) %>%
-  dplyr::mutate(id_mod= ifelse(!is.na(sexo_2_sex_mfv),id_mod_sex_mfv,id_mod)) %>%
-  dplyr::mutate(sexo_2= ifelse(!is.na(sexo_2_sex_mfv), as.character(sexo_2_sex_mfv), as.character(sexo_2))) %>%
-  dplyr::select(-ends_with("_sex_mfv")) %>%
-  dplyr::left_join(hash_sex_most_recent_db, by="hash_key",suffix=c("","_sex_recent_db")) %>%
-  dplyr::mutate(id= ifelse(!is.na(sexo_2_sex_recent_db),id_sex_recent_db,id)) %>%
-  dplyr::mutate(id_mod= ifelse(!is.na(sexo_2_sex_recent_db),id_mod_sex_recent_db,id_mod)) %>%
-  dplyr::mutate(sexo_2= ifelse(!is.na(sexo_2_sex_recent_db), as.character(sexo_2_sex_recent_db), as.character(sexo_2))) %>%
-  dplyr::select(-ends_with("_sex_recent_db"),-wave,-concat_hash_sex,-n,-sex_id,-comun_hash) %>%
-  #dplyr::select(row,id, id_mod,sexo_2,ends_with("_sex_mfv"),ends_with("_sex_recent_db"),ends_with("_sex_misma_bd_2_casos")) %>% 
-  #dplyr::filter(!is.na(sexo_2_sex_recent_db))
-  dplyr::mutate(sexo_2=as.factor(sexo_2)) %>%
-  assign("CONS_C1_df_dup_FEB_2020_prev24",., envir = .GlobalEnv)
-    #dplyr::filter(hash_key=="00012586ea3036b7a18093c396847a87")
-#para comprobar cómo le fue
-#CONS_C1_df_dup_FEB_2020_prev24 %>% dplyr::group_by(hash_key) %>% dplyr::mutate(sexo_por_hash=dplyr::n_distinct(sexo_2)) %>% ungroup() %>% dplyr::filter(sexo_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)
-#View(CONS_C1_df_dup_FEB_2020_prev24 %>% dplyr::group_by(obs) %>% summarise(n=n()) %>% dplyr::filter(n,grepl('2.6.0', obs)))
+  dplyr::mutate(sexo_2=as.factor(sexo_2))%>%
+  #dplyr::mutate(sexo_2_2=as.factor(sexo_2_2))%>%
+  dplyr::select(-ends_with("_sex_recent_db"),-wave,-sex_id,-comun_hash) %>%
+  
+  # dplyr::mutate(sexo_2_3=as.factor(sexo_2_3))%>%
+  assign("CONS_C1_df_dup_FEB_2020_prev25",., envir = .GlobalEnv)
+#janitor::tabyl(sexo_2)
+
+#CONS_C1_df_dup_FEB_2020_prev25 %>% group_by(hash_key) %>% dplyr::mutate(sexo_2_por_hash=n_distinct(sexo_2)) %>% ungroup() %>% dplyr::filter(sexo_2_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)
+#CONS_C1_df_dup_FEB_2020_prev25 %>% group_by(hash_key) %>% dplyr::mutate(sexo_2_por_hash=n_distinct(sexo_2)) %>% ungroup() %>% dplyr::filter(sexo_2_por_hash>1) %>% dplyr::arrange(hash_key) %>% dplyr::select(row, hash_key, ano_bd, sexo_2)
+#glimpse(CONS_C1_df_dup_FEB_2020_prev25$sexo_2)
+#CONS_C1_df_dup_FEB_2020_prev24 %>% dplyr::group_by(obs) %>% summarise(n=n()) %>% dplyr::filter(n,grepl('2.5.[0-9][0-9]', obs)) %>% summarise(sum=sum(n))
+
 ```
 
 <!--- La fecha de nacimiento puede no haberse corregido del todo porque hay muchos casos en que no tienen una edad distinta, por lo que el programa no  los filtra  --->
-- Date of Birth (fech_nac) (`r CONS_C1_df_dup_FEB_2020_prev24 %>% group_by(hash_key) %>% dplyr::mutate(fech_nac_por_hash=n_distinct(fech_nac)) %>% ungroup() %>% dplyr::filter(fech_nac_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`) (must note that these different dates of birth did not impact on age). In cases with nothing than 2 distinct dates of birth with datasets from the same year, we replace the date of birth with the mean between both dates.
-
-```{r tab9_pers_info_fech_nac,eval=T, echo=T, paged.print=TRUE}
-CONS_C1_df_dup_FEB_2020_prev24_fech_nac <- CONS_C1_df_dup_FEB_2020_prev24 %>% group_by(hash_key) %>% dplyr::mutate(fech_nac_por_hash=n_distinct(fech_nac)) %>% ungroup() %>% dplyr::filter(fech_nac_por_hash>1) %>% dplyr::distinct(hash_key)
-CONS_C1_df_dup_FEB_2020_prev24 %>% 
- dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev24_fech_nac)))))) %>% # Select HASHs of cited cases
- dplyr::arrange(hash_key) %>% #ordeno por ids 
-dplyr::select(row, hash_key, ano_bd, id_mod, sexo, fech_nac,ano_nac,edad,edad_al_ing, fech_ing, fech_egres,fech_egres_imp, tipo_de_plan, senda)%>%
-      head(40)%>%
-    knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 9. HASHs with more than one Date of Birth (First 40 Cases)",
-                 align =rep('c', 101))  %>%
-   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
-  kableExtra::scroll_box(width = "100%", height = "375px")
-#_______________________
-###PARA HACER LA CONVERSION
-#_______________________
-#edad_al_ingreso , ano_nac,
-##    dplyr::mutate(fech_nac=lubridate::parse_date_time(stringi::stri_sub(id,-8,-1),"dmY")) %>% 
-CONS_C1_df_dup_FEB_2020_prev24 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev24_fech_nac)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis==1,n==2) %>% #casos en que hay que recurrir a otras variables
-dplyr::arrange(hash_key) %>%
-  dplyr::select(row,hash_key, id, id_mod, edad,ano_bd,ano_nac,fech_nac) %>% 
-dplyr::group_by(hash_key) %>% 
-    dplyr::mutate(rn=row_number()) %>% 
-  as.data.frame() %>%
-reshape(idvar = "hash_key", timevar = "rn", direction = "wide") %>%
-  dplyr::mutate(fech_nac_num.1=as.numeric(as.Date(fech_nac.1)), fech_nac_num.2=as.numeric(as.Date(fech_nac.2))) %>%
-  rowwise() %>% 
-  dplyr::mutate(mean_fech_nac=rowMeans(cbind(fech_nac_num.1,fech_nac_num.2), na.rm=T)) %>%
-  dplyr::ungroup() %>%
-  dplyr::mutate(mean_fech_nac=lubridate::parse_date_time(as.character(as.Date(mean_fech_nac)),"Ymd")) %>%
-  dplyr::mutate(mean_fech_nac_char=as.character(format(as.Date(as.character(mean_fech_nac)), "%d%m%Y"))) %>%
-  dplyr::mutate(id.1=`substr<-`(id.1,6,13,mean_fech_nac_char)) %>%
-  dplyr::mutate(id.2=`substr<-`(id.2,6,13,mean_fech_nac_char)) %>%
-  dplyr::mutate(id_mod.1=sub("(.{5}).", "\\1*",id.1)) %>%
-  dplyr::mutate(id_mod.1=sub("(.{6}).", "\\1*",id_mod.1)) %>%
-  dplyr::mutate(id_mod.2=sub("(.{5}).", "\\1*",id.2)) %>%
-  dplyr::mutate(id_mod.2=sub("(.{6}).", "\\1*",id_mod.2)) %>%
-#dejo la edad al ingreso al final, para no perder la complejidad de una variable que depende de la fecha de ingreso.
-long_panel(id="comun_hash",prefix = ".", begin = 1, end = 2, label_location = "end") %>%
-as.data.table() %>%
-  dplyr::filter(wave==1) %>%
-assign("hash_fech_nac_misma_bd_2_casos",., envir = .GlobalEnv)
-CONS_C1_df_dup_FEB_2020_prev24 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev24_fech_nac)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis==1,n>2) %>% #más de 2 hash, pero todos dentro de la misma bd del mismo año
-dplyr::select(-n) %>%
-dplyr::mutate(concat_hash_fech_nac=paste0(hash_key,"_",fech_nac)) %>%
-dplyr::group_by(concat_hash_fech_nac) %>%
-dplyr::add_tally() %>%  #agrego un nuevo n, para contar los distintos sexos
-dplyr::select(row,hash_key, id, id_mod, edad,ano_bd,ano_nac,fech_nac,n) %>% 
-dplyr::ungroup() %>%  
-dplyr::group_by(hash_key) %>%
-dplyr::slice(which.max(n)) %>% #me quedo con la concatenación por hash key que más se repite.
-dplyr::ungroup() %>%
-assign("hash_fech_nac_most_freq_value",., envir = .GlobalEnv)
-
-CONS_C1_df_dup_FEB_2020_prev24 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev24_fech_nac)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis>1) %>% 
-dplyr::arrange(hash_key) %>%
-dplyr::select(row,hash_key, id, id_mod, edad,ano_bd,ano_nac,fech_nac,n) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::slice(which.max(ano_bd)) %>%
-dplyr::ungroup() %>%
-assign("hash_fech_nac_most_recent_db",., envir = .GlobalEnv)
-
-CONS_C1_df_dup_FEB_2020_prev24 %>%
-  dplyr::mutate(obs=case_when(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev24_fech_nac)))))~glue::glue("{obs};2.6.02.HASH w/ more than one distinct Date of Birth"),TRUE~obs))%>%  
-  dplyr::left_join(hash_fech_nac_misma_bd_2_casos, by="hash_key",suffix=c("","_fechnac_misma_bd_2_casos")) %>%
-  dplyr::mutate(id= ifelse(!is.na(mean_fech_nac),id_fechnac_misma_bd_2_casos,id)) %>%
-  dplyr::mutate(id_mod= ifelse(!is.na(mean_fech_nac),id_mod_fechnac_misma_bd_2_casos,id_mod)) %>%
-  dplyr::mutate(fech_nac= ifelse(!is.na(mean_fech_nac), as.character(mean_fech_nac), as.character(fech_nac))) %>%
-  dplyr::select(-ends_with("_fechnac_misma_bd_2_casos")) %>% 
-  #janitor::tabyl(sexo_2) %>%
-  dplyr::left_join(hash_fech_nac_most_freq_value, by="hash_key",suffix=c("","_fechnac_mfv")) %>%
-  dplyr::mutate(id= ifelse(!is.na(fech_nac_fechnac_mfv),id_fechnac_mfv,id)) %>%
-  dplyr::mutate(id_mod= ifelse(!is.na(fech_nac_fechnac_mfv),id_mod_fechnac_mfv,id_mod)) %>%
-  dplyr::mutate(fech_nac= ifelse(!is.na(fech_nac_fechnac_mfv), as.character(fech_nac_fechnac_mfv), as.character(fech_nac))) %>%
-  dplyr::select(-ends_with("_fechnac_mfv")) %>%
-  dplyr::left_join(hash_fech_nac_most_recent_db, by="hash_key",suffix=c("","_fechnac_recent_db")) %>%
-  dplyr::mutate(id= ifelse(!is.na(fech_nac_fechnac_recent_db),id_fechnac_recent_db,id)) %>%
-  dplyr::mutate(id_mod= ifelse(!is.na(fech_nac_fechnac_recent_db),id_mod_fechnac_recent_db,id_mod)) %>%
-  dplyr::mutate(fech_nac= ifelse(!is.na(fech_nac_fechnac_recent_db), as.character(fech_nac_fechnac_recent_db), as.character(fech_nac))) %>%
-  dplyr::select(-ends_with("_fechnac_recent_db"),-wave,-concat_hash_fech_nac,-n,-comun_hash,-mean_fech_nac,-mean_fech_nac_char,-fech_nac_num) %>%
-  #dplyr::select(row,id, id_mod,feech_nac,edad_al_ing, ano_nac,ends_with("_fechnac_mfv"),ends_with("_fechnacx_recent_db"),ends_with("_fechnac_misma_bd_2_casos")) %>% 
-  #dplyr::filter(!is.na(sexo_2_sex_recent_db))
-  dplyr::mutate(fech_nac=lubridate::parse_date_time(as.character(as.Date(fech_nac)),"Ymd")) %>%
-  dplyr::mutate(ano_nac= as.numeric(stringi::stri_sub(as.character(fech_nac),1,4))) %>%
-  dplyr::mutate(edad_al_ing=lubridate::time_length(difftime(as.Date(fech_ing), as.Date(fech_nac)),"years")) %>%
-  dplyr::mutate(edad_al_ing=replace(edad_al_ing, is.na(edad), NA)) %>%
-  assign("CONS_C1_df_dup_FEB_2020_prev25",., envir = .GlobalEnv)
-
-#CONS_C1_df_dup_FEB_2020_prev25 %>% group_by(hash_key) %>% dplyr::mutate(fech_nac_por_hash=n_distinct(fech_nac)) %>% ungroup() %>% dplyr::filter(fech_nac_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)
-#View(CONS_C1_df_dup_FEB_2020_prev25 %>% dplyr::group_by(obs) %>% summarise(n=n()) %>% dplyr::filter(n,grepl('2.6.02.HASH w/ more than one distinct Date of Birth', obs)))
-
-```
 
 - Nationality (nacionalidad) (`r CONS_C1_df_dup_FEB_2020_prev25 %>% group_by(hash_key) %>% dplyr::mutate(nacionalidad_por_hash=n_distinct(nacionalidad)) %>% ungroup() %>% dplyr::filter(nacionalidad_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). In cases where there are only two distinct nationalities per hash and comes from the same yearly dataset, we created a second variable called `nacionalidad_2` that contains the second nationality.
 
-```{r tab10_pers_info_nationality, eval=T,echo=T, paged.print=TRUE}
-CONS_C1_df_dup_FEB_2020_prev25_nat <- CONS_C1_df_dup_FEB_2020_prev25 %>% group_by(hash_key) %>% dplyr::mutate(nat_por_hash=n_distinct(nacionalidad)) %>% ungroup() %>% dplyr::filter(nat_por_hash>1) %>% dplyr::distinct(hash_key)
+```{r fig6_image-decision_tree_distinct_values_user_invariant_nat, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 6. Decision Tree for the Users with more than one value in Nationality", message=FALSE}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/nat_same_hash_distinct_values_user_invariant.svg")
+```
+
+```{r tab9_pers_info_nationality, eval=T,echo=T, paged.print=TRUE}
+CONS_C1_df_dup_FEB_2020_prev25_nacionalidad <- CONS_C1_df_dup_FEB_2020_prev25 %>% group_by(hash_key) %>% dplyr::mutate(nacionalidad_por_hash=n_distinct(nacionalidad)) %>% ungroup() %>% dplyr::filter(nacionalidad_por_hash>1) %>% dplyr::distinct(hash_key)
 CONS_C1_df_dup_FEB_2020_prev25 %>% 
- dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev25_nat)))))) %>% # Select HASHs of cited cases
+ dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev25_nacionalidad)))))) %>% # Select HASHs of cited cases
  dplyr::arrange(hash_key) %>% #ordeno por ids 
 dplyr::select(row, hash_key, ano_bd, nacionalidad, etnia, sexo, fech_nac,edad_al_ing, fech_ing, fech_egres, tipo_de_plan, senda)%>%
     head(40)%>%
     knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 10. HASHs with more than one Nationality (First 40 Cases)",
+               caption="Table 9. HASHs with more than one Nationality (First 40 Cases)",
                  align =rep('c', 101))  %>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
   kableExtra::scroll_box(width = "100%", height = "375px")
 #
-#CONS_C1_df_dup_FEB_2020_prev25 %>%
-#janitor::tabyl(nacionalidad,etnia) %>%
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#
 #_______________________
 ###PARA HACER LA CONVERSION
 #_______________________
+
+#1. Más de una base de datos anual, reemplazo el valor por la de la base de datos más reciente
+#_#_#_#_#_#_
 CONS_C1_df_dup_FEB_2020_prev25 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev25_nat)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis==1,n==2) %>% #casos en que hay que recurrir a otras variables
-dplyr::arrange(hash_key) %>%
- dplyr::select(row, hash_key, ano_bd, nacionalidad, etnia)%>%
-#dejarla como segunda nacionalidad
+  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev25_nacionalidad)))))) %>% 
+  dplyr::group_by(hash_key) %>%
+  dplyr::add_tally() %>%  
+  dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(n_dis>1, !is.na(nacionalidad)) %>% 
+  dplyr::arrange(hash_key,desc(ano_bd)) %>% #may 2020, agregué descendiente la edad, de más reciente a más antiguo
+  dplyr::select(row, hash_key, ano_bd, nacionalidad, n)%>%
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(max_ano=max(ano_bd))%>%
+  #dplyr::slice(which.max(ano_bd)) %>% #MAY 2020, dejé como un procedimiento de APR 2020
+  dplyr::filter(max_ano==ano_bd) %>% #OJO, AQUI ESTOY FILTRANDO POR GRUPO, LOS CASOS QUE NO TIENEN EL MAXIMO AÑO.
+  dplyr::rename("cases_by_concat_hash_nacionalidad"="n")%>%
+  dplyr::ungroup()%>%
+  assign("hash_nacionalidad_most_recent_db",., envir = .GlobalEnv) %>% #APR 2020- 3984 casos, de 3984 hashs // MAY 2020 4390, de 3984 usuarios
+  dplyr::group_by(hash_key)%>%
+  distinct(nacionalidad,.keep_all=T)%>%
+  dplyr::mutate(n_dis=n_distinct(nacionalidad)) %>%
+  dplyr::filter(n_dis>1)%>% #45
+  dplyr::mutate(nacionalidad_=paste0("nacionalidad_",row_number()))%>%
+  #summarise(sum(cases_by_concat_hash_nacionalidad)/2) #para contar los casos que tienen sólo 1. Pueden partirse por 2 o 3, dependiendo los valores distintos que tengan
+  tidyr::pivot_wider(id_cols =hash_key,names_from = nacionalidad_, values_from = nacionalidad,names_repair="minimal",values_fill = list(n = ""))%>%
+  dplyr::rename("nacionalidad"="nacionalidad_1")%>%
+  assign("hash_nacionalidad_most_recent_db_more_one_value_1b",., envir = .GlobalEnv) #124, 62 usuarios; ahora sólo 3, excluyendo el No Pertence
+
+hash_nacionalidad_most_recent_db_1a <- hash_nacionalidad_most_recent_db%>% #3.922casos con 3.922 hash distintos. Agregué la exclusión del No pertenece, y ahora me aparecen 999 casps
+ # dplyr::select(-cases_by_concat_hash_nacionalidad)%>%
+  group_by(hash_key)%>%
+  distinct(nacionalidad,.keep_all=T)%>%
+  dplyr::mutate(n_dis=n_distinct(nacionalidad)) %>%
+  dplyr::filter(n_dis==1) %>%
+  ungroup()%>%
+  #summarise(sum(cases_by_concat_hash_nacionalidad)) #para contar los casos que tienen sólo 1
+  dplyr::select(-n_dis,-row,-ano_bd,-max_ano,-cases_by_concat_hash_nacionalidad)
+
+#2a. Misma base de datos, más de 2 casos, se selecciona el valor más frecuente
+#_#_#_#_#_#_
+CONS_C1_df_dup_FEB_2020_prev25 %>%
+  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev25_nacionalidad)))))) %>% 
+  dplyr::group_by(hash_key) %>%
+  dplyr::add_tally() %>%  
+  dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(n_dis==1,n>2,!is.na(nacionalidad)) %>% #más de 2 hash, pero todos dentro de la misma bd del mismo año. Excluyo los no pertenece
+  dplyr::select(-n) %>%
+  dplyr::mutate(concat_hash_nacionalidad=paste0(hash_key,"_",nacionalidad)) %>%
+  dplyr::group_by(concat_hash_nacionalidad) %>%
+  dplyr::add_tally() %>%  #agrego un nuevo n, para contar los distintos nacionalidades
+  dplyr::select(row,concat_hash_nacionalidad, hash_key, ano_bd, nacionalidad, n)%>%
+  dplyr::ungroup() %>%  
+  distinct(concat_hash_nacionalidad,.keep_all=T) %>%
+  dplyr::group_by(hash_key) %>%
+  #dplyr::slice(which.max(n)) %>% #me quedo con la concatenación por hash key que más se repite.
+  dplyr::top_n(1,n)%>%
+  dplyr::rename("cases_by_concat_hash_nacionalidad"="n")%>%
+  dplyr::ungroup()%>%
+  assign("hash_nacionalidad_most_freq_value",., envir = .GlobalEnv) #APR 2020 - 54 usuarios //  MAY 2020 - 54
+tryCatch(
+  hash_nacionalidad_most_freq_value%>%
+    dplyr::select(-cases_by_concat_hash_nacionalidad)%>%
+    group_by(hash_key)%>%
+    add_tally()%>%
+    dplyr::filter(n>1)%>% #45
+    dplyr::mutate(nacionalidad_=paste0("nacionalidad_",row_number()))%>%
+    tidyr::pivot_wider(id_cols =hash_key,names_from = nacionalidad_, values_from = nacionalidad,names_repair="minimal",values_fill = list(n = ""))%>%
+    dplyr::rename("nacionalidad"="nacionalidad_1")%>%
+    assign("hash_nacionalidad_most_freq_value_more_one_value_2a2",., envir = .GlobalEnv) #136
+  , error = function(e) {})
+
+#seleccionar los casos en que en la misma base de datos hay sólo un caso que es mayor
+hash_nacionalidad_most_freq_value_2a1 <- hash_nacionalidad_most_freq_value%>% 
+  dplyr::select(-cases_by_concat_hash_nacionalidad)%>%
+  group_by(hash_key)%>%
+  add_tally()%>%
+  dplyr::filter(n==1) %>%
+  dplyr::select(-n, -row, -ano_bd)
+
+
+#3. Misma base de datos, sólo 2 casos
+#_#_#_#_#_#_
+
+CONS_C1_df_dup_FEB_2020_prev25 %>%
+  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev25_nacionalidad)))))) %>% 
+  dplyr::group_by(hash_key) %>%
+  dplyr::add_tally() %>%  
+  dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(n_dis==1,n==2) %>% #casos en que hay que recurrir a otras variables
+  dplyr::arrange(hash_key) %>%
+  dplyr::select(row, hash_key, ano_bd, nacionalidad, nacionalidad)%>%
+  #dejarla como segunda nacionalidad
   dplyr::group_by(hash_key) %>% 
-    dplyr::mutate(rn=row_number()) %>% 
+  dplyr::mutate(rn=row_number()) %>% 
   as.data.frame() %>%
   reshape(idvar = "hash_key", timevar = "rn", direction = "wide") %>%
-dplyr::select(hash_key,nacionalidad.1,nacionalidad.2) %>%
+  dplyr::select(hash_key,nacionalidad.1,nacionalidad.2) %>%
   dplyr::rename("nacionalidad_1"="nacionalidad.1","nacionalidad_2"="nacionalidad.2") %>%
-  assign("nat_misma_bd_2_casos",., envir = .GlobalEnv)
+  assign("nacionalidad_misma_bd_2_casos_3",., envir = .GlobalEnv)
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_______________________
+###PARA HACER REEMPLAZO DE VALORES Y CONSOLIDACION DE BASE DE DATOS
+#_______________________
+
+#nacionalidad_misma_bd_2_casos_3
+#hash_nacionalidad_most_recent_db_more_one_value_1b
+#hash_nacionalidad_most_recent_db_1a
+#hash_nacionalidad_most_freq_value_2a1
 
 CONS_C1_df_dup_FEB_2020_prev25 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev25_nat)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis==1,n>2) %>% #más de 2 hash, pero todos dentro de la misma bd del mismo año
-dplyr::select(-n) %>%
-dplyr::mutate(concat_hash_nat=paste0(hash_key,"_",nacionalidad)) %>%
-dplyr::group_by(concat_hash_nat) %>%
-dplyr::add_tally() %>%  #agrego un nuevo n, para contar los distintos nacionalidades
-dplyr::select(row,concat_hash_nat, hash_key, ano_bd, nacionalidad, etnia,n)%>%
-dplyr::ungroup() %>%  
-dplyr::group_by(hash_key) %>%
-dplyr::slice(which.max(n)) %>% #me quedo con la concatenación por hash key que más se repite.
-dplyr::ungroup() %>%
-assign("hash_nat_most_freq_value",., envir = .GlobalEnv)
-
-CONS_C1_df_dup_FEB_2020_prev25 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev25_nat)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis>1) %>% 
-dplyr::arrange(hash_key) %>%
-dplyr::select(row,hash_key, ano_bd, nacionalidad, etnia,n)%>%
-dplyr::group_by(hash_key) %>%
-dplyr::slice(which.max(ano_bd)) %>%
-dplyr::ungroup() %>%
-assign("hash_nat_most_recent_db",., envir = .GlobalEnv)
-
-CONS_C1_df_dup_FEB_2020_prev25 %>%
-  dplyr::mutate(obs=case_when(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev25_nat)))))~glue::glue("{obs};2.6.03.HASH w/ more than one distinct Nationality"),TRUE~obs))%>%  
-  dplyr::left_join(nat_misma_bd_2_casos, by="hash_key",suffix=c("","_nat_misma_bd_2_casos")) %>%
-  dplyr::mutate(nacionalidad= ifelse(!is.na(nacionalidad_1), as.character(nacionalidad_1), as.character(nacionalidad))) %>%
-  dplyr::select(-ends_with("_nat_misma_bd_2_casos")) %>% 
-  #janitor::tabyl(sexo_2) %>%
-  dplyr::left_join(hash_nat_most_freq_value, by="hash_key",suffix=c("","_nat_mfv")) %>%
-  dplyr::mutate(nacionalidad= ifelse(!is.na(nacionalidad_nat_mfv), as.character(nacionalidad_nat_mfv), as.character(nacionalidad))) %>%
-  dplyr::select(-ends_with("_nat_mfv")) %>%
-  dplyr::left_join(hash_nat_most_recent_db, by="hash_key",suffix=c("","_nat_recent_db")) %>%
-  dplyr::mutate(nacionalidad= ifelse(!is.na(nacionalidad_nat_recent_db), as.character(nacionalidad_nat_recent_db), as.character(nacionalidad))) %>%
-  dplyr::select(-ends_with("_nat_recent_db"),-concat_hash_nat,-n,-nacionalidad_1) %>%
-  dplyr::mutate(nacionalidad=as.factor(nacionalidad))%>%
-  dplyr::mutate(nacionalidad_2=as.factor(nacionalidad_2))%>%
+#
+    #janitor::tabyl(sexo_2) %>%
+    dplyr::left_join(hash_nacionalidad_most_freq_value_2a1, by="hash_key",suffix=c("","_nacionalidad_mfv")) %>%
+    dplyr::mutate(obs=case_when(!is.na(nacionalidad_nacionalidad_mfv)~glue::glue("{obs};2.6.02.2a.HASH w/ more than one distinct Nationality. Most frequent value"),TRUE~obs))%>%  
+    dplyr::mutate(nacionalidad= ifelse(!is.na(nacionalidad_nacionalidad_mfv), as.character(nacionalidad_nacionalidad_mfv), as.character(nacionalidad))) %>%
+    dplyr::select(-ends_with("_nacionalidad_mfv"),-concat_hash_nacionalidad) %>%
+#
+    #  dplyr::left_join(hash_nacionalidad_most_freq_value_more_one_value, by="hash_key",suffix=c("","_nacionalidad_mfv_more_one_v")) %>%
+    #  dplyr::mutate(obs=case_when(!is.na(nacionalidad_nacionalidad_mfv_more_one_v)~glue::glue("{obs};2.6.04.2b.HASH w/ more than one distinct Ethinc Group. Most frequent value (>1)"),TRUE~obs))%>%  
+    #  dplyr::mutate(nacionalidad= ifelse(!is.na(nacionalidad_nacionalidad_mfv_more_one_v), as.character(nacionalidad_nacionalidad_mfv_more_one_v), as.character(nacionalidad))) %>%
+    #  dplyr::mutate(nacionalidad_2= ifelse(!is.na(nacionalidad_2_nacionalidad_mfv_more_one_v), as.character(nacionalidad_2_nacionalidad_mfv_more_one_v), as.character(nacionalidad_2))) %>%
+    #  dplyr::select(-ends_with("_nacionalidad_mfv_more_one_v")) %>%
+#
+    dplyr::left_join(hash_nacionalidad_most_recent_db_1a, by="hash_key",suffix=c("","_nacionalidad_recent_db")) %>%
+    dplyr::mutate(obs=case_when(!is.na(nacionalidad_nacionalidad_recent_db)~glue::glue("{obs};2.6.02.1a.HASH w/ more than one distinct Nationality. Recent db"),TRUE~obs))%>%  
+    dplyr::mutate(nacionalidad= ifelse(!is.na(nacionalidad_nacionalidad_recent_db), as.character(nacionalidad_nacionalidad_recent_db), as.character(nacionalidad))) %>%
+    dplyr::select(-ends_with("_nacionalidad_recent_db")) %>%
+#
+    dplyr::left_join(hash_nacionalidad_most_recent_db_more_one_value_1b, by="hash_key",suffix=c("","_nacionalidad_recent_db_more_one_v")) %>%
+    dplyr::mutate(obs=case_when(!is.na(nacionalidad_nacionalidad_recent_db_more_one_v)~glue::glue("{obs};2.6.02.1b.HASH w/ more than one distinct Nationality. Recent db (>1)"),TRUE~obs))%>%  
+    dplyr::mutate(nacionalidad= ifelse(!is.na(nacionalidad_nacionalidad_recent_db_more_one_v), as.character(nacionalidad_nacionalidad_recent_db_more_one_v), as.character(nacionalidad))) %>%
+    dplyr::mutate(nacionalidad_2= ifelse(!is.na(nacionalidad_2), as.character(nacionalidad_2), as.character(nacionalidad_2))) %>%
+    # dplyr::mutate(nacionalidad_3= ifelse(!is.na(nacionalidad_3_nacionalidad_recent_db_more_one_v), as.character(nacionalidad_3_nacionalidad_recent_db_more_one_v), as.character(nacionalidad_3))) %>%
+    dplyr::select(-ends_with("_nacionalidad_recent_db_more_one_v"))%>%
+#3. agregar valores misma base de datos, sólo 2 valores
+      dplyr::left_join(nacionalidad_misma_bd_2_casos_3, by="hash_key",suffix=c("","_nacionalidad_misma_bd_2_casos")) %>%
+    dplyr::mutate(obs=case_when(!is.na(nacionalidad_1)~glue::glue("{obs};2.6.02.3.HASH w/ more than one distinct Nationality.2 cases, same yearly dataset"),TRUE~obs))%>%  
+    dplyr::mutate(nacionalidad= ifelse(!is.na(nacionalidad_1), as.character(nacionalidad_1), as.character(nacionalidad))) %>%
+    dplyr::mutate(nacionalidad_2= ifelse(!is.na(nacionalidad_2), as.character(nacionalidad_2), as.character(nacionalidad_2))) %>%
+    dplyr::select(-ends_with("_nacionalidad_misma_bd_2_casos"), -nacionalidad_1) %>% 
+    dplyr::mutate(nacionalidad=as.factor(nacionalidad))%>%
+    dplyr::mutate(nacionalidad_2=as.factor(nacionalidad_2))%>%
+    # dplyr::mutate(nacionalidad_3=as.factor(nacionalidad_3))%>%
     assign("CONS_C1_df_dup_FEB_2020_prev26",., envir = .GlobalEnv)
-#CONS_C1_df_dup_FEB_2020_prev26 %>% group_by(hash_key) %>% dplyr::mutate(nac_por_hash=n_distinct(nacionalidad)) %>% ungroup() %>% dplyr::filter(nac_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)
+  #janitor::tabyl(nacionalidad)
+
+
+#CONS_C1_df_dup_FEB_2020_prev26 %>% group_by(hash_key) %>% dplyr::mutate(nacionalidad_por_hash=n_distinct(nacionalidad)) %>% ungroup() %>% dplyr::filter(nacionalidad_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)
+#CONS_C1_df_dup_FEB_2020_prev26 %>% group_by(hash_key) %>% dplyr::mutate(nacionalidad_por_hash=n_distinct(nacionalidad)) %>% ungroup() %>% dplyr::filter(nacionalidad_por_hash>1) %>% dplyr::arrange(hash_key) %>% dplyr::select(row, hash_key, ano_bd, nacionalidad)
+#glimpse(CONS_C1_df_dup_FEB_2020_prev26$nacionalidad)
+CONS_C1_df_dup_FEB_2020_prev26_etnia_cor <- CONS_C1_df_dup_FEB_2020_prev26 %>% group_by(hash_key) %>% dplyr::mutate(etnia_por_hash=n_distinct(etnia_cor)) %>% ungroup() %>% dplyr::filter(etnia_por_hash>1) %>% dplyr::distinct(hash_key)
+
+etnia_no_pert_vacio_por_hash<-
+CONS_C1_df_dup_FEB_2020_prev26 %>%
+  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev26_etnia_cor)))))) %>% 
+  dplyr::group_by(hash_key) %>%
+  dplyr::add_tally(name="n_por_hash") %>%  
+  dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
+  dplyr::ungroup()%>%
+  dplyr::mutate(n_values=case_when(is.na(etnia)|etnia=="No pertenece"~1,TRUE~0))%>%
+  group_by(hash_key)%>%
+  dplyr::summarise(no_pert_vacio=sum(n_values), n_hash=sum(n_por_hash))%>%
+  dplyr::filter(no_pert_vacio>=n_hash)%>% nrow()
+# CONS_C1_df_dup_FEB_2020_prev26 %>% dplyr::group_by(obs) %>% summarise(n=n()) %>% dplyr::filter(n,grepl('2.6.03.1b.', obs))%>% summarise(sum=sum(n))#, se condice con nrow(unique(row_3a)), 74
+#CONS_C1_df_dup_FEB_2020_prev26 %>%  dplyr::filter(grepl('2.6.03.1b.', obs))%>% dplyr::select(hash_key, etnia_cor)
 ```
 
-- Ethnicity (etnia) (`r CONS_C1_df_dup_FEB_2020_prev26 %>% group_by(hash_key) %>% dplyr::mutate(etnia_por_hash=n_distinct(etnia)) %>% ungroup() %>% dplyr::filter(etnia_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). If users had two treatments in the same yearly dataset, but in each one they had a different value in this variable, we discarded missing values or "no pertenece" first, and replaced it with a valid ethnic group if in one of the treatments the user declared so. Also, we discarded missing values in other cases, because missing values were considered as a distinct value.
+- Ethnicity (etnia_cor) (`r CONS_C1_df_dup_FEB_2020_prev26_etnia_cor %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). There were `r etnia_no_pert_vacio_por_hash` users with nothing but reports on "do not belong to any ethnicity ("no pertenece") or missing values. If users had two treatments in the same yearly dataset, but in each one they had a different value in this variable, we discarded missing values or  first, and replaced it with a valid ethnic group if in one of the treatments the user declared so. Also, we discarded missing values in other cases, because missing values were considered as a distinct value.
+
+```{r fig7_image-decision_tree_distinct_values_user_invariant_etnia, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 7. Decision Tree for the Users with more than one value in Ethnicity", message=FALSE}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/etnia_same_hash_distinct_values_user_invariant.svg")
+```
 
 ```{r tab11_pers_info_etnia, eval=T,echo=T, paged.print=TRUE}
-CONS_C1_df_dup_FEB_2020_prev26_etnia <- CONS_C1_df_dup_FEB_2020_prev26 %>% group_by(hash_key) %>% dplyr::mutate(etnia_por_hash=n_distinct(etnia)) %>% ungroup() %>% dplyr::filter(etnia_por_hash>1) %>% dplyr::distinct(hash_key)
+CONS_C1_df_dup_FEB_2020_prev26_etnia_cor <- CONS_C1_df_dup_FEB_2020_prev26 %>% group_by(hash_key) %>% dplyr::mutate(etnia_cor_por_hash=n_distinct(etnia_cor)) %>% ungroup() %>% dplyr::filter(etnia_cor_por_hash>1) %>% dplyr::distinct(hash_key)
 CONS_C1_df_dup_FEB_2020_prev26 %>% 
- dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev26_etnia)))))) %>% # Select HASHs of cited cases
+ dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev26_etnia_cor)))))) %>% # Select HASHs of cited cases
  dplyr::arrange(hash_key) %>% #ordeno por ids 
-dplyr::select(row, hash_key, ano_bd, nacionalidad, etnia)%>%
+dplyr::select(row, hash_key, ano_bd, nacionalidad, etnia_cor)%>%
     head(40)%>%
     knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 11. HASHs with more than one Ethnicity (First 40 Cases)",
+               caption="Table 10. HASHs with more than one Ethnicity (First 40 Cases)",
                  align =rep('c', 101))  %>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
   kableExtra::scroll_box(width = "100%", height = "375px")
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#
 #_______________________
 ###PARA HACER LA CONVERSION
 #_______________________
+
+hash_etnia_cor_vacio_no_pertenece<-
+  CONS_C1_df_dup_FEB_2020_prev26 %>%
+  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev26_etnia_cor)))))) %>% 
+  dplyr::group_by(hash_key) %>%
+  dplyr::add_tally() %>%  
+  dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(is.na(etnia_cor)| etnia_cor=="No pertenece") %>% distinct(hash_key)
+
+#1. Más de una base de datos anual, reemplazo el valor por la de la base de datos más reciente
+#_#_#_#_#_#_
 CONS_C1_df_dup_FEB_2020_prev26 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev26_etnia)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis==1,n==2) %>% #casos en que hay que recurrir a otras variables
-dplyr::arrange(hash_key) %>%
- dplyr::select(row, hash_key, ano_bd, nacionalidad, etnia)%>%
-#dejarla como segunda nacionalidad
+  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev26_etnia_cor)))))) %>% 
+  dplyr::group_by(hash_key) %>%
+  dplyr::add_tally() %>%  
+  dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(n_dis>1, !is.na(etnia_cor), etnia_cor!="No pertenece") %>% 
+  dplyr::arrange(hash_key,desc(ano_bd)) %>% #may 2020, agregué descendiente la edad, de más reciente a más antiguo
+  dplyr::select(row, hash_key, ano_bd, etnia_cor, n)%>%
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(max_ano=max(ano_bd))%>%
+  #dplyr::slice(which.max(ano_bd)) %>% #MAY 2020, dejé como un procedimiento de APR 2020
+  dplyr::filter(max_ano==ano_bd) %>%
+  dplyr::rename("cases_by_concat_hash_etnia_cor"="n")%>%
+  #summarise(sum(cases_by_concat_hash_etnia_cor)) #para contar los casos que tienen sólo 1. Pueden partirse por 2 o 3, dependiendo los valores distintos que tengan
+  dplyr::ungroup()%>%
+  assign("hash_etnia_cor_most_recent_db",., envir = .GlobalEnv) %>% #APR 2020- 3984 casos, de 3984 hashs // MAY 2020 4390, de 3984 usuarios
+  dplyr::group_by(hash_key)%>%
+  distinct(etnia_cor,.keep_all=T)%>%
+  dplyr::mutate(n_dis=n_distinct(etnia_cor)) %>%
+  dplyr::filter(n_dis>1)%>% #45
+  #dplyr::summarise(sum(cases_by_concat_hash_etnia_cor))  # para volver 8, 6 , 6
+  dplyr::mutate(etnia_cor_=paste0("etnia_cor_",row_number()))%>%
+  tidyr::pivot_wider(id_cols =hash_key,names_from = etnia_cor_, values_from = etnia_cor,names_repair="minimal",values_fill = list(n = ""))%>%
+  dplyr::rename("etnia_cor"="etnia_cor_1")%>%
+  assign("hash_etnia_cor_most_recent_db_more_one_value_1b",., envir = .GlobalEnv) #124, 62 usuarios; ahora sólo 3, excluyendo el No Pertence
+
+hash_etnia_cor_most_recent_db_1a <- hash_etnia_cor_most_recent_db%>% #3.922casos con 3.922 hash distintos. Agregué la exclusión del No pertenece, y ahora me aparecen 999 casps
+  group_by(hash_key)%>%
+  distinct(etnia_cor,.keep_all=T)%>%
+  dplyr::mutate(n_dis=n_distinct(etnia_cor)) %>%
+  dplyr::filter(n_dis==1) %>%
+  ungroup()%>%
+  #summarise(sum(cases_by_concat_hash_etnia_cor)) #para contar los casos que tienen sólo 1. Pueden partirse por 2 o 3, dependiendo los valores distintos que tengan
+  dplyr::select(-n_dis,-row,-ano_bd,-max_ano,-cases_by_concat_hash_etnia_cor)
+
+#2a. Misma base de datos, más de 2 casos, se selecciona el valor más frecuente
+#_#_#_#_#_#_
+CONS_C1_df_dup_FEB_2020_prev26 %>%
+  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev26_etnia_cor)))))) %>% 
+  dplyr::group_by(hash_key) %>%
+  dplyr::add_tally() %>%  
+  dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(n_dis==1,n>2,!is.na(etnia_cor), etnia_cor!="No pertenece") %>% #más de 2 hash, pero todos dentro de la misma bd del mismo año. Excluyo los no pertenece
+  dplyr::select(-n) %>%
+  dplyr::mutate(concat_hash_etnia_cor=paste0(hash_key,"_",etnia_cor)) %>%
+  dplyr::group_by(concat_hash_etnia_cor) %>%
+  dplyr::add_tally() %>%  #agrego un nuevo n, para contar los distintos etnia_cores
+  dplyr::select(row,concat_hash_etnia_cor, hash_key, ano_bd, etnia_cor, n)%>%
+  dplyr::ungroup() %>%  
+  distinct(concat_hash_etnia_cor,.keep_all=T) %>%
+  dplyr::group_by(hash_key) %>%
+  #dplyr::slice(which.max(n)) %>% #me quedo con la concatenación por hash key que más se repite.
+  dplyr::top_n(1,n)%>%
+  dplyr::rename("cases_by_concat_hash_etnia_cor"="n")%>%
+  dplyr::ungroup()%>%
+  assign("hash_etnia_cor_most_freq_value",., envir = .GlobalEnv) #APR 2020 - 54 usuarios //  MAY 2020 - 54
+tryCatch(
+  hash_etnia_cor_most_freq_value%>%
+  dplyr::select(-cases_by_concat_hash_etnia_cor)%>%
+  group_by(hash_key)%>%
+  add_tally()%>%
+  dplyr::filter(n>1)%>% #45
+  dplyr::mutate(etnia_cor_=paste0("etnia_cor_",row_number()))%>%
+  tidyr::pivot_wider(id_cols =hash_key,names_from = etnia_cor_, values_from = etnia_cor,names_repair="minimal",values_fill = list(n = ""))%>%
+  dplyr::rename("etnia_cor"="etnia_cor_1")%>%
+  assign("hash_etnia_cor_most_freq_value_more_one_value",., envir = .GlobalEnv) #136
+, error = function(e) {})
+
+#seleccionar los casos en que en la misma base de datos hay sólo un caso que es mayor
+hash_etnia_cor_most_freq_value_2a1 <- hash_etnia_cor_most_freq_value%>% 
+  dplyr::select(-cases_by_concat_hash_etnia_cor)%>%
+  group_by(hash_key)%>%
+  add_tally()%>%
+  dplyr::filter(n==1) %>%
+  dplyr::select(-n, -row, -ano_bd)
+
+#2b. Misma base de datos, 2 o + casos, distintos valores en base de datos más reciente. Dejar la fecha del tratamiento más frecuente. Casos con fecha de trat + reciente
+#_#_#_#_#_#_
+
+#3. Misma base de datos, sólo 2 casos
+#_#_#_#_#_#_
+CONS_C1_df_dup_FEB_2020_prev26 %>%
+  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev26_etnia_cor)))))) %>% 
+  dplyr::group_by(hash_key) %>%
+  dplyr::add_tally() %>%  
+  dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(n_dis==1,n==2) %>% #casos en que hay que recurrir a otras variables
+  dplyr::arrange(hash_key) %>%
+  dplyr::select(row, hash_key, ano_bd, nacionalidad, etnia_cor)%>%
+  #dejarla como segunda nacionalidad
   dplyr::group_by(hash_key) %>% 
-    dplyr::mutate(rn=row_number()) %>% 
+  dplyr::mutate(rn=row_number()) %>% 
   as.data.frame() %>%
   reshape(idvar = "hash_key", timevar = "rn", direction = "wide") %>%
-dplyr::mutate(etnia.1=as.character(etnia.1)) %>%
-dplyr::mutate(etnia.2=as.character(etnia.2)) %>%
+  dplyr::mutate(etnia_cor.1=as.character(etnia_cor.1)) %>%
+  dplyr::mutate(etnia_cor.2=as.character(etnia_cor.2)) %>%
   #para que diga no pertenece en vez de nada
-dplyr::mutate(etnia.1=ifelse(is.na(etnia.1)&etnia.2=="No pertenece","No pertenece",etnia.1))  %>%
-dplyr::mutate(etnia.2=ifelse(is.na(etnia.1)&etnia.2=="No pertenece","No pertenece",etnia.2))  %>%
-dplyr::mutate(etnia.1=ifelse(is.na(etnia.2)&etnia.1=="No pertenece","No pertenece",etnia.1))   %>%
-dplyr::mutate(etnia.2=ifelse(is.na(etnia.2)&etnia.1=="No pertenece","No pertenece",etnia.2))  %>%
-#cuando una col es no pertenece o vacío, es reemplazada por la otra columna
-dplyr::mutate(etnia.1=ifelse(is.na(etnia.1)&etnia.2 %in% c("Aimara","Alacalufe","Atacame?","Colla","Diaguitas","Mapuche","Quechua","Rapa Nui","Y?na"),etnia.2,etnia.1))  %>%
-dplyr::mutate(etnia.1=ifelse(etnia.1=="No pertenece"&etnia.2 %in% c("Aimara","Alacalufe","Atacame?","Colla","Diaguitas","Mapuche","Quechua","Rapa Nui","Y?na"),etnia.2,etnia.1))  %>%
-dplyr::mutate(etnia.2=ifelse(is.na(etnia.2)&etnia.1 %in% c("Aimara","Alacalufe","Atacame?","Colla","Diaguitas","Mapuche","Quechua","Rapa Nui","Y?na"),etnia.1,etnia.2))  %>%
-dplyr::mutate(etnia.2=ifelse(etnia.2=="No pertenece"&etnia.1 %in% c("Aimara","Alacalufe","Atacame?","Colla","Diaguitas","Mapuche","Quechua","Rapa Nui","Y?na"),etnia.1,etnia.2))  %>%
-#GENERAR UNA TERCERA COLUMNA PARA CASOS CON MAS DE UNA ETNIA
-dplyr::mutate(etnia_2=ifelse(etnia.2 !=etnia.1,etnia.2,NA)) %>%
+  dplyr::mutate(etnia_cor.1=ifelse(is.na(etnia_cor.1)&etnia_cor.2=="No pertenece","No pertenece",etnia_cor.1))  %>%
+  dplyr::mutate(etnia_cor.2=ifelse(is.na(etnia_cor.1)&etnia_cor.2=="No pertenece","No pertenece",etnia_cor.2))  %>%
+  dplyr::mutate(etnia_cor.1=ifelse(is.na(etnia_cor.2)&etnia_cor.1=="No pertenece","No pertenece",etnia_cor.1))   %>%
+  dplyr::mutate(etnia_cor.2=ifelse(is.na(etnia_cor.2)&etnia_cor.1=="No pertenece","No pertenece",etnia_cor.2))  %>%
+  #cuando una col es no pertenece o vacío, es reemplazada por la otra columna
+  dplyr::mutate(etnia_cor.1=ifelse(is.na(etnia_cor.1)&etnia_cor.2 %in% c("Aimara","Alacalufe","Atacame?","Colla","Diaguitas","Mapuche","Quechua","Rapa Nui","Y?na"),etnia_cor.2,etnia_cor.1))  %>%
+  dplyr::mutate(etnia_cor.1=ifelse(etnia_cor.1=="No pertenece"&etnia_cor.2 %in% c("Aimara","Alacalufe","Atacame?","Colla","Diaguitas","Mapuche","Quechua","Rapa Nui","Y?na"),etnia_cor.2,etnia_cor.1))  %>%
+  dplyr::mutate(etnia_cor.2=ifelse(is.na(etnia_cor.2)&etnia_cor.1 %in% c("Aimara","Alacalufe","Atacame?","Colla","Diaguitas","Mapuche","Quechua","Rapa Nui","Y?na"),etnia_cor.1,etnia_cor.2))  %>%
+  dplyr::mutate(etnia_cor.2=ifelse(etnia_cor.2=="No pertenece"&etnia_cor.1 %in% c("Aimara","Alacalufe","Atacame?","Colla","Diaguitas","Mapuche","Quechua","Rapa Nui","Y?na"),etnia_cor.1,etnia_cor.2))  %>%
+  #GENERAR UNA TERCERA COLUMNA PARA CASOS CON MAS DE UNA etnia_cor
+  dplyr::mutate(etnia_cor_2=ifelse(etnia_cor.2 !=etnia_cor.1,etnia_cor.2,NA)) %>%
   long_panel(id="comun_hash",prefix = ".", begin = 1, end = 2, label_location = "end") %>%
-as.data.table() %>%
+  as.data.table() %>%
   dplyr::filter(wave==1) %>%
-dplyr::select(hash_key,etnia,etnia_2) %>%
-  dplyr::rename("etnia_1"="etnia") %>%
-  assign("etnia_misma_bd_2_casos",., envir = .GlobalEnv)
+  dplyr::select(hash_key,etnia_cor,etnia_cor_2) %>%
+  dplyr::rename("etnia_cor_1"="etnia_cor") %>%
+  assign("etnia_cor_misma_bd_2_casos_3",., envir = .GlobalEnv)
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_______________________
+###PARA HACER REEMPLAZO DE VALORES Y CONSOLIDACION DE BASE DE DATOS
+#_______________________
 
 CONS_C1_df_dup_FEB_2020_prev26 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev26_etnia)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis==1,n>2) %>% #más de 2 hash, pero todos dentro de la misma bd del mismo año
-dplyr::select(-n) %>%
-#necesario descartar valores perdidos, no son opción para reemplazo
-dplyr::filter(!is.na(etnia)) %>% 
-dplyr::mutate(concat_hash_etnia=paste0(hash_key,"_",etnia)) %>%
-dplyr::group_by(concat_hash_etnia) %>%
-dplyr::add_tally() %>%  #agrego un nuevo n, para contar los distintos nacionalidades
-dplyr::select(row,concat_hash_etnia, hash_key, ano_bd, nacionalidad, etnia,n)%>%
-dplyr::ungroup() %>%  
-dplyr::group_by(hash_key) %>%
-dplyr::slice(which.max(n)) %>% #me quedo con la concatenación por hash key que más se repite.
-dplyr::ungroup() %>%
-assign("hash_etnia_most_freq_value",., envir = .GlobalEnv)
-
-CONS_C1_df_dup_FEB_2020_prev26 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev26_etnia)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis>1) %>% 
-dplyr::arrange(hash_key) %>%
-  #debo filtrar valores perdidos
-dplyr::filter(!is.na(etnia)) %>% 
-dplyr::select(row,hash_key, ano_bd, nacionalidad, etnia,n)%>%
-dplyr::group_by(hash_key) %>%
-dplyr::slice(which.max(ano_bd)) %>%
-dplyr::ungroup() %>%
-assign("hash_etnia_most_recent_db",., envir = .GlobalEnv)
-
-CONS_C1_df_dup_FEB_2020_prev26 %>%
-  dplyr::mutate(obs=case_when(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev26_etnia)))))~glue::glue("{obs};2.6.04.HASH w/ more than one distinct Ethnic Group"),TRUE~obs))%>%  
-  dplyr::left_join(etnia_misma_bd_2_casos, by="hash_key",suffix=c("","_etnia_misma_bd_2_casos")) %>%
-  dplyr::mutate(etnia= ifelse(!is.na(etnia_1), as.character(etnia_1), as.character(etnia))) %>%
-  dplyr::select(-ends_with("_etnia_misma_bd_2_casos")) %>% 
   #janitor::tabyl(sexo_2) %>%
-  dplyr::left_join(hash_etnia_most_freq_value, by="hash_key",suffix=c("","_etnia_mfv")) %>%
-  dplyr::mutate(etnia= ifelse(!is.na(etnia_etnia_mfv), as.character(etnia_etnia_mfv), as.character(etnia))) %>%
-  dplyr::select(-ends_with("_etnia_mfv")) %>%
-  dplyr::left_join(hash_etnia_most_recent_db, by="hash_key",suffix=c("","_etnia_recent_db")) %>%
-  dplyr::mutate(etnia= ifelse(!is.na(etnia_etnia_recent_db), as.character(etnia_etnia_recent_db), as.character(etnia))) %>%
-  dplyr::select(-ends_with("_etnia_recent_db"),-concat_hash_etnia,-n,-etnia_1) %>%
-  dplyr::mutate(etnia=as.factor(etnia))%>%
-    assign("CONS_C1_df_dup_FEB_2020_prev27",., envir = .GlobalEnv)
-#CONS_C1_df_dup_FEB_2020_prev27 %>% group_by(hash_key) %>% dplyr::mutate(et_por_hash=n_distinct(etnia)) %>% ungroup() %>% dplyr::filter(et_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)
-#CONS_C1_df_dup_FEB_2020_prev27 %>% group_by(hash_key) %>% dplyr::mutate(et_por_hash=n_distinct(etnia)) %>% ungroup() %>% dplyr::filter(et_por_hash>1) %>% dplyr::arrange(hash_key) %>% dplyr::select(row,hash_key, ano_bd, nacionalidad, etnia)
+
+#  dplyr::left_join(hash_etnia_cor_most_freq_value_more_one_value, by="hash_key",suffix=c("","_etnia_cor_mfv_more_one_v")) %>%
+#  dplyr::mutate(obs=case_when(!is.na(etnia_cor_etnia_cor_mfv_more_one_v)~glue::glue("{obs};2.6.04.2b.HASH w/ more than one distinct Ethinc Group. Most frequent value (>1)"),TRUE~obs))%>%  
+#  dplyr::mutate(etnia_cor= ifelse(!is.na(etnia_cor_etnia_cor_mfv_more_one_v), as.character(etnia_cor_etnia_cor_mfv_more_one_v), as.character(etnia_cor))) %>%
+#  dplyr::mutate(etnia_cor_2= ifelse(!is.na(etnia_cor_2_etnia_cor_mfv_more_one_v), as.character(etnia_cor_2_etnia_cor_mfv_more_one_v), as.character(etnia_cor_2))) %>%
+#  dplyr::select(-ends_with("_etnia_cor_mfv_more_one_v")) %>%
+#
+  dplyr::left_join(hash_etnia_cor_most_recent_db_1a, by="hash_key",suffix=c("","_etnia_cor_recent_db")) %>%
+  dplyr::mutate(obs=case_when(!is.na(etnia_cor_etnia_cor_recent_db)~glue::glue("{obs};2.6.03.1a.HASH w/ more than one distinct Ethinc Group. Recent db"),TRUE~obs))%>%  
+  dplyr::mutate(etnia_cor= ifelse(!is.na(etnia_cor_etnia_cor_recent_db), as.character(etnia_cor_etnia_cor_recent_db), as.character(etnia_cor))) %>%
+  dplyr::select(-ends_with("_etnia_cor_recent_db")) %>%
+#
+  dplyr::left_join(hash_etnia_cor_most_recent_db_more_one_value_1b, by="hash_key",suffix=c("","_etnia_cor_recent_db_more_one_v")) %>%
+  dplyr::mutate(obs=case_when(!is.na(etnia_cor_etnia_cor_recent_db_more_one_v)~glue::glue("{obs};2.6.03.1b.HASH w/ more than one distinct Ethinc Group. Recent db (>1)"),TRUE~obs))%>%  
+  dplyr::mutate(etnia_cor= ifelse(!is.na(etnia_cor_etnia_cor_recent_db_more_one_v), as.character(etnia_cor_etnia_cor_recent_db_more_one_v), as.character(etnia_cor))) %>%
+  dplyr::mutate(etnia_cor_2= ifelse(!is.na(etnia_cor_2), as.character(etnia_cor_2),etnia_cor_2)) %>%
+# dplyr::mutate(etnia_cor_3= ifelse(!is.na(etnia_cor_3_etnia_cor_recent_db_more_one_v), as.character(etnia_cor_3_etnia_cor_recent_db_more_one_v), as.character(etnia_cor_3))) %>%
+    dplyr::select(-ends_with("_etnia_cor_recent_db_more_one_v"))%>%
+#
+  dplyr::left_join(hash_etnia_cor_most_freq_value_2a1, by="hash_key",suffix=c("","_etnia_cor_mfv")) %>%
+  dplyr::mutate(obs=case_when(!is.na(etnia_cor_etnia_cor_mfv)~glue::glue("{obs};2.6.03.2a.HASH w/ more than one distinct Ethinc Group. Most frequent value"),TRUE~obs))%>%  
+  dplyr::mutate(etnia_cor= ifelse(!is.na(etnia_cor_etnia_cor_mfv), as.character(etnia_cor_etnia_cor_mfv), as.character(etnia_cor))) %>%
+  dplyr::select(-ends_with("_etnia_cor_mfv"),-concat_hash_etnia_cor) %>%
+#
+  dplyr::left_join(etnia_cor_misma_bd_2_casos_3, by="hash_key",suffix=c("","_etnia_cor_misma_bd_2_casos")) %>%
+  dplyr::mutate(obs=case_when(!is.na(etnia_cor_1)~glue::glue("{obs};2.6.03.3.HASH w/ more than one distinct Ethinc Group.2 cases, same yearly dataset"),TRUE~obs))%>%  
+  dplyr::mutate(etnia_cor= ifelse(!is.na(etnia_cor_1), as.character(etnia_cor_1), as.character(etnia_cor))) %>%
+  dplyr::mutate(etnia_cor_2= ifelse(!is.na(etnia_cor_2_etnia_cor_misma_bd_2_casos), as.character(etnia_cor_2_etnia_cor_misma_bd_2_casos), as.character(etnia_cor_2))) %>%
+  dplyr::select(-ends_with("_etnia_cor_misma_bd_2_casos"),-etnia_cor_1) %>%  
+#
+  dplyr::mutate(etnia_cor=as.factor(etnia_cor))%>%
+  dplyr::mutate(etnia_cor_2=as.factor(etnia_cor_2))%>%
+ # dplyr::mutate(etnia_cor_3=as.factor(etnia_cor_3))%>%
+ # dplyr::select(-cases_by_concat_hash_etnia_cor)%>%
+  assign("CONS_C1_df_dup_FEB_2020_prev27",., envir = .GlobalEnv)
+#janitor::tabyl(etnia_cor)
+
+#CONS_C1_df_dup_FEB_2020_prev27 %>% group_by(hash_key) %>% dplyr::mutate(etnia_cor_por_hash=n_distinct(etnia_cor)) %>% ungroup() %>% dplyr::filter(etnia_cor_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)
+#CONS_C1_df_dup_FEB_2020_prev27 %>% group_by(hash_key) %>% dplyr::mutate(etnia_cor_por_hash=n_distinct(etnia_cor)) %>% ungroup() %>% dplyr::filter(etnia_cor_por_hash>1) %>% dplyr::arrange(hash_key) %>% dplyr::select(row, hash_key, ano_bd, etnia_cor)
+#glimpse(CONS_C1_df_dup_FEB_2020_prev27$etnia_cor)
+# CONS_C1_df_dup_FEB_2020_prev27 %>% dplyr::group_by(obs) %>% summarise(n=n()) %>% dplyr::filter(n,grepl('2.6.03.1b.', obs))%>% summarise(sum=sum(n))#, se condice con nrow(unique(row_3a)), 74
+#CONS_C1_df_dup_FEB_2020_prev27 %>%  dplyr::filter(grepl('2.6.04.1b.', obs))%>% dplyr::select(hash_key, etnia_cor)
+#CONS_C1_df_dup_FEB_2020_prev27 %>% dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(hash_etnia_cor_most_recent_db_more_one_value_1b)))))) %>%dplyr::select(hash_key,etnia, etnia_cor)
+
+#"00012586ea3036b7a18093c396847a87"
 ```
 
 - Age of Onset of Drug Use (edad_ini_cons) (`r CONS_C1_df_dup_FEB_2020_prev27 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_cons_por_hash=n_distinct(edad_ini_cons)) %>% ungroup() %>% dplyr::filter(edad_ini_cons_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). There were too many distinct values by each user. These values would be determined later
 
-```{r tab12X_pers_info_edad_ini_cons,eval=F, echo=T, paged.print=TRUE}
-CONS_C1_df_dup_FEB_2020_prev27_edad_ini_cons <- CONS_C1_df_dup_FEB_2020_prev27 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_cons_por_hash=n_distinct(edad_ini_cons)) %>% ungroup() %>% dplyr::filter(edad_ini_cons_por_hash>1) %>% dplyr::distinct(hash_key)
-CONS_C1_df_dup_FEB_2020_prev27 %>% 
- dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev27_edad_ini_cons)))))) %>% # Select HASHs of cited cases
- dplyr::arrange(hash_key) %>% #ordeno por ids 
-dplyr::select(row, hash_key, ano_bd, edad_ini_cons, edad, fech_nac,edad_al_ing, fech_ing, fech_egres_imp, tipo_de_plan, senda)%>%
-    head(40)%>%
-    knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 12. HASHs with more than one Age of Onset of Drug Use (First 40 Cases)",
-                 align =rep('c', 101))  %>%
-   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
-  kableExtra::scroll_box(width = "100%", height = "375px")
-#_______________________
-###PARA HACER LA CONVERSION
-#_______________________
-CONS_C1_df_dup_FEB_2020_prev27 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev27_edad_ini_cons)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis==1,n==2) %>% #casos en que hay que recurrir a otras variables
-dplyr::arrange(hash_key) %>%
- dplyr::select(row, hash_key, ano_bd, edad_ini_cons, edad, fech_nac,edad_al_ing)%>%
-#dejarla como segunda nacionalidad
-  dplyr::group_by(hash_key) %>% 
-    dplyr::mutate(rn=row_number()) %>% 
-  as.data.frame() %>%
-  reshape(idvar = "hash_key", timevar = "rn", direction = "wide") %>%
-  dplyr::mutate(mean_edad_ini_cons=round(rowMeans(cbind(edad_ini_cons.1,edad_ini_cons.2), na.rm=T),0)) %>%
-dplyr::select(hash_key,mean_edad_ini_cons) %>%
-  assign("edad_ini_cons_misma_bd_2_casos",., envir = .GlobalEnv)
-
-CONS_C1_df_dup_FEB_2020_prev27 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev27_edad_ini_cons)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis==1,n>2) %>% #más de 2 hash, pero todos dentro de la misma bd del mismo año
-dplyr::select(-n) %>%
-dplyr::mutate(concat_hash_edadinicons=paste0(hash_key,"_",edad_ini_cons)) %>%
-dplyr::group_by(concat_hash_edadinicons) %>%
-dplyr::add_tally() %>%  #agrego un nuevo n, para contar los distintos nacionalidades
- dplyr::select(row, hash_key, ano_bd, edad_ini_cons, edad, fech_nac,edad_al_ing,n)%>%
-dplyr::ungroup() %>%  
-dplyr::group_by(hash_key) %>%
-dplyr::slice(which.max(n)) %>% #me quedo con la concatenación por hash key que más se repite.
-dplyr::ungroup() %>%
-assign("hash_edadinicons_most_freq_value",., envir = .GlobalEnv)
-
-CONS_C1_df_dup_FEB_2020_prev27 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev27_edad_ini_cons)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis>1) %>% 
-dplyr::arrange(hash_key) %>%
-dplyr::select(row, hash_key, ano_bd, edad_ini_cons, edad, fech_nac,edad_al_ing,n)%>%
-dplyr::group_by(hash_key) %>%
-dplyr::slice(which.max(ano_bd)) %>%
-dplyr::ungroup() %>%
-assign("hash_edadinicons_most_recent_db",., envir = .GlobalEnv)
-
-CONS_C1_df_dup_FEB_2020_prev27 %>%
-  dplyr::left_join(edad_ini_cons_misma_bd_2_casos, by="hash_key",suffix=c("","_edadinicons_misma_bd_2_casos")) %>%
-  dplyr::mutate(edad_ini_cons= ifelse(!is.na(mean_edad_ini_cons), mean_edad_ini_cons, edad_ini_cons)) %>%
-  dplyr::select(-ends_with("_edadinicons_misma_bd_2_casos")) %>% 
-  #janitor::tabyl(sexo_2) %>%
-  dplyr::left_join(hash_edadinicons_most_freq_value, by="hash_key",suffix=c("","_edadinicons_mfv")) %>%
-  dplyr::mutate(etnia= ifelse(!is.na(edad_ini_cons_edadinicons_mfv), edad_ini_cons_edadinicons_mfv, edad_ini_cons)) %>%
-  dplyr::select(-ends_with("_edadinicons_mfv")) %>%
-  dplyr::left_join(hash_edadinicons_most_recent_db, by="hash_key",suffix=c("","_edadinicons_recent_db")) %>%
-  dplyr::mutate(etnia= ifelse(!is.na(edad_ini_cons_edadinicons_recent_db), edad_ini_cons_edadinicons_recent_db, edad_ini_cons)) %>%
-  dplyr::select(-ends_with("_edadinicons_recent_db"),-concat_hash_edadinicons,-n,mean_edad_ini_cons) %>%
-    assign("CONS_C1_df_dup_FEB_2020_prev28",., envir = .GlobalEnv)
-#CONS_C1_df_dup_FEB_2020_prev28 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_cons_por_hash=n_distinct(edad_ini_cons)) %>% ungroup() %>% dplyr::filter(edad_ini_cons_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)
-```
-
 - Age of Onset of Drug Use of Primary Substance (edad_ini_sus_prin) (`r CONS_C1_df_dup_FEB_2020_prev27 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_sus_prin_por_hash=n_distinct(edad_ini_sus_prin)) %>% ungroup() %>% dplyr::filter(edad_ini_sus_prin_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). There are too many distinct values by each user. This value should be imputed.
 <!--- #considerar que no sea mayor a la edad de inicio de consumo --->
 
-```{r tab13X_pers_info_edad_ini_sus_prin,eval=F, echo=T, paged.print=TRUE}
-CONS_C1_df_dup_FEB_2020_prev28_edad_ini_sus_prin <- CONS_C1_df_dup_FEB_2020_prev27 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_sus_prin_por_hash=n_distinct(edad_ini_sus_prin)) %>% ungroup() %>% dplyr::filter(edad_ini_sus_prin_por_hash>1) %>% dplyr::distinct(hash_key)
-CONS_C1_df_dup_FEB_2020_prev27 %>% 
- dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev28_edad_ini_sus_prin)))))) %>% # Select HASHs of cited cases
- dplyr::arrange(hash_key) %>% #ordeno por ids 
-dplyr::select(row, hash_key, ano_bd, edad_ini_cons, edad, fech_nac,edad_al_ing, fech_ing, fech_egres_imp, tipo_de_plan, senda)%>%
-    head(40)%>%
-    knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 13. HASHs with more than one Age of Onset of Drug Use of Primary Substance (First 40 Cases)",
-                 align =rep('c', 101))  %>%
-   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
-  kableExtra::scroll_box(width = "100%", height = "375px")
-#_______________________
-###PARA HACER LA CONVERSION
-#_______________________
-CONS_C1_df_dup_FEB_2020_prev28 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev28_edad_ini_sus_prin)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis==1,n==2) %>% #casos en que hay que recurrir a otras variables
-dplyr::arrange(hash_key) %>%
- dplyr::select(row, hash_key, ano_bd, edad_ini_sus_prin, edad, fech_nac,edad_al_ing)%>%
-#dejarla como segunda nacionalidad
-  dplyr::group_by(hash_key) %>% 
-    dplyr::mutate(rn=row_number()) %>% 
-  as.data.frame() %>%
-  reshape(idvar = "hash_key", timevar = "rn", direction = "wide") %>%
-  dplyr::mutate(mean_edad_ini_sus_prin=round(rowMeans(cbind(edad_ini_sus_prin.1,edad_ini_sus_prin.2), na.rm=T),0)) %>%
-dplyr::select(hash_key,mean_edad_ini_sus_prin) %>%
-  assign("edad_ini_sus_prin_misma_bd_2_casos",., envir = .GlobalEnv)
-
-CONS_C1_df_dup_FEB_2020_prev28 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev28_edad_ini_sus_prin)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis==1,n>2) %>% #más de 2 hash, pero todos dentro de la misma bd del mismo año
-dplyr::select(-n) %>%
-dplyr::mutate(concat_hash_edadinisusprin=paste0(hash_key,"_",edad_ini_sus_prin)) %>%
-dplyr::group_by(concat_hash_edadinisusprin) %>%
-dplyr::add_tally() %>%  #agrego un nuevo n, para contar los distintos nacionalidades
- dplyr::select(row, hash_key, ano_bd, edad_ini_sus_prin, edad, fech_nac,edad_al_ing,n)%>%
-dplyr::ungroup() %>%  
-dplyr::group_by(hash_key) %>%
-dplyr::slice(which.max(n)) %>% #me quedo con la concatenación por hash key que más se repite.
-dplyr::ungroup() %>%
-assign("hash_edadinisusprin_most_freq_value",., envir = .GlobalEnv)
-
-CONS_C1_df_dup_FEB_2020_prev28 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev28_edad_ini_sus_prin)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis>1) %>% 
-dplyr::arrange(hash_key) %>%
-dplyr::select(row, hash_key, ano_bd, edad_ini_sus_prin, edad, fech_nac,edad_al_ing,n)%>%
-dplyr::group_by(hash_key) %>%
-dplyr::slice(which.max(ano_bd)) %>%
-dplyr::ungroup() %>%
-assign("hash_edadinisusprin_most_recent_db",., envir = .GlobalEnv)
-
-CONS_C1_df_dup_FEB_2020_prev28 %>%
-  dplyr::left_join(edad_ini_sus_prin_misma_bd_2_casos, by="hash_key",suffix=c("","_edadinisusprin_misma_bd_2_casos")) %>%
-  dplyr::mutate(edad_ini_sus_prin= ifelse(!is.na(mean_edad_ini_sus_prin), mean_edad_ini_sus_prin, edad_ini_sus_prin)) %>%
-  dplyr::select(-ends_with("_edadinisusprin_misma_bd_2_casos")) %>% 
-  #janitor::tabyl(sexo_2) %>%
-  dplyr::left_join(hash_edadinisusprin_most_freq_value, by="hash_key",suffix=c("","_edadinisusprin_mfv")) %>%
-  dplyr::mutate(etnia= ifelse(!is.na(edad_ini_sus_prin_edadinisusprin_mfv), edad_ini_sus_prin_edadinisusprin_mfv, edad_ini_sus_prin)) %>%
-  dplyr::select(-ends_with("_edadinisusprin_mfv")) %>%
-  dplyr::left_join(hash_edadinisusprin_most_recent_db, by="hash_key",suffix=c("","_edadinisusprin_recent_db")) %>%
-  dplyr::mutate(etnia= ifelse(!is.na(edad_ini_sus_prin_edadinisusprin_recent_db), edad_ini_sus_prin_edadinisusprin_recent_db, edad_ini_sus_prin)) %>%
-  dplyr::select(-ends_with("_edadinisusprin_recent_db"),-concat_hash_edadinisusprin,-n,mean_edad_ini_sus_prin) %>%
-    assign("CONS_C1_df_dup_FEB_2020_prev29",., envir = .GlobalEnv)
-```
-
-- Starting Substance (sus_ini) (`r CONS_C1_df_dup_FEB_2020_prev27 %>% group_by(hash_key) %>% dplyr::mutate(sus_ini_por_hash=n_distinct(sus_ini)) %>% ungroup() %>% dplyr::filter(sus_ini_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). For users that had only two treatments but a different starting substance, we added a second variable called `sus_ini_2` that contains a second starting substance.
+- Starting Substance (sus_ini) (`r CONS_C1_df_dup_FEB_2020_prev27 %>% group_by(hash_key) %>% dplyr::mutate(sus_ini_por_hash=n_distinct(sus_ini)) %>% ungroup() %>% dplyr::filter(sus_ini_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). For users that had only two treatments but a different starting substance, or in cases or users that had ties within most recent dataset or within the most recent value,  we added a second and a third variable called `sus_ini_2` and  `sus_ini_3` that contains a second starting substance.
 
 <!---# considerar que no sea mayor a la edad de inicio de consumo --->
 
-```{r tab12_pers_info_sus_ini, eval=T, echo=T, paged.print=TRUE}
+```{r fig8_image-decision_tree_distinct_values_user_invariant_susini, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 8. Decision Tree for the Users with more than one value in Starting Substance", message=FALSE}
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/sus_ini_same_hash_distinct_values_user_invariant.svg")
+```
+
+```{r tab12_pers_info_sus_ini, eval=T, echo=T, paged.print=TRUE,warning=FALSE}
 CONS_C1_df_dup_FEB_2020_prev27_sus_ini <- CONS_C1_df_dup_FEB_2020_prev27 %>% group_by(hash_key) %>% dplyr::mutate(sus_ini_por_hash=n_distinct(sus_ini)) %>% ungroup() %>% dplyr::filter(sus_ini_por_hash>1) %>% dplyr::distinct(hash_key)
 CONS_C1_df_dup_FEB_2020_prev27 %>% 
  dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev27_sus_ini)))))) %>% # Select HASHs of cited cases
@@ -2550,13 +2686,93 @@ CONS_C1_df_dup_FEB_2020_prev27 %>%
   dplyr::select(row, hash_key, ano_bd, edad_ini_cons, edad, fech_nac,edad_al_ing, fech_ing, fech_egres_imp, tipo_de_plan, senda)%>%
     head(40)%>%
     knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 12. HASHs with more than one Starting Substance (First 40 Cases)",
+               caption="Table 11. HASHs with more than one Starting Substance (First 40 Cases)",
                  align =rep('c', 101))  %>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
   kableExtra::scroll_box(width = "100%", height = "375px")
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#
 #_______________________
 ###PARA HACER LA CONVERSION
 #_______________________
+
+#1. Más de una base de datos anual, reemplazo el valor por la de la base de datos más reciente
+#_#_#_#_#_#_
+CONS_C1_df_dup_FEB_2020_prev27 %>%
+dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev27_sus_ini)))))) %>% 
+dplyr::group_by(hash_key) %>%
+dplyr::add_tally() %>%  
+dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
+dplyr::ungroup() %>%
+dplyr::filter(n_dis>1, !is.na(sus_ini)) %>% 
+dplyr::arrange(hash_key,desc(ano_bd)) %>% #may 2020, agregué descendiente la edad, de más reciente a más antiguo
+dplyr::select(row, hash_key, ano_bd, sus_ini, n)%>%
+dplyr::group_by(hash_key)%>%
+dplyr::mutate(max_ano=max(ano_bd))%>%
+#dplyr::slice(which.max(ano_bd)) %>% #MAY 2020, dejé como un procedimiento de APR 2020
+dplyr::filter(max_ano==ano_bd) %>%
+dplyr::rename("cases_by_concat_hash_sus_ini"="n")%>%
+dplyr::ungroup()%>%
+assign("hash_sus_ini_most_recent_db",., envir = .GlobalEnv) %>% #APR 2020= 9,648 casos // #MAY 2020= 10,839
+ dplyr::group_by(hash_key)%>%
+  distinct(sus_ini,.keep_all=T)%>%
+  dplyr::mutate(n_dis=n_distinct(sus_ini)) %>%
+  dplyr::filter(n_dis>1)%>% #45
+  dplyr::mutate(sus_ini_=paste0("sus_ini_",row_number()))%>%
+  tidyr::pivot_wider(id_cols =hash_key,names_from = sus_ini_, values_from = sus_ini,names_repair="minimal",values_fill = list(n = ""))%>%
+  dplyr::rename("sus_ini"="sus_ini_1")%>%
+  assign("hash_sus_ini_most_recent_db_more_one_value_1b",., envir = .GlobalEnv) #1,268 casos de 625 HASHs
+
+hash_sus_ini_most_recent_db_1a <- hash_sus_ini_most_recent_db%>% #9,023 casos con 9,023 hash distintos
+  dplyr::select(-cases_by_concat_hash_sus_ini)%>%
+    group_by(hash_key)%>%
+    distinct(sus_ini,.keep_all=T)%>%
+    dplyr::mutate(n_dis=n_distinct(sus_ini)) %>%
+    dplyr::filter(n_dis==1) %>%
+      ungroup()%>%
+    dplyr::select(-n_dis,-row,-ano_bd,-max_ano)
+
+#2a. Misma base de datos, más de 2 casos, se selecciona el valor más frecuente
+#_#_#_#_#_#_
+CONS_C1_df_dup_FEB_2020_prev27 %>%
+dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev27_sus_ini)))))) %>% 
+dplyr::group_by(hash_key) %>%
+dplyr::add_tally() %>%  
+dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
+dplyr::ungroup() %>%
+dplyr::filter(n_dis==1,n>2,!is.na(sus_ini)) %>% #más de 2 hash, pero todos dentro de la misma bd del mismo año
+dplyr::select(-n) %>%
+dplyr::mutate(concat_hash_sus_ini=paste0(hash_key,"_",sus_ini)) %>%
+dplyr::group_by(concat_hash_sus_ini) %>%
+dplyr::add_tally() %>%  #agrego un nuevo n, para contar los distintos sus_inies
+dplyr::select(row,concat_hash_sus_ini, hash_key, ano_bd, sus_ini, n)%>%
+dplyr::ungroup() %>%  
+distinct(concat_hash_sus_ini,.keep_all=T) %>%
+dplyr::group_by(hash_key) %>%
+#dplyr::slice(which.max(n)) %>% #me quedo con la concatenación por hash key que más se repite.
+dplyr::top_n(n)%>%
+dplyr::rename("cases_by_concat_hash_sus_ini"="n")%>%
+dplyr::ungroup()%>%
+assign("hash_sus_ini_most_freq_value",., envir = .GlobalEnv)%>% #136
+dplyr::select(-cases_by_concat_hash_sus_ini)%>%
+group_by(hash_key)%>%
+add_tally()%>%
+dplyr::filter(n>1)%>% #45
+dplyr::mutate(sus_ini_=paste0("sus_ini_",row_number()))%>%
+tidyr::pivot_wider(id_cols =hash_key,names_from = sus_ini_, values_from = sus_ini,names_repair="minimal",values_fill = list(n = ""))%>%
+dplyr::rename("sus_ini"="sus_ini_1")%>%
+assign("hash_sus_ini_most_freq_value_more_one_value_2a2",., envir = .GlobalEnv) #136
+
+#seleccionar los casos en que en la misma base de datos hay sólo un caso que es mayor
+hash_sus_ini_most_freq_value_2a1 <- hash_sus_ini_most_freq_value%>% 
+  dplyr::select(-cases_by_concat_hash_sus_ini)%>%
+    group_by(hash_key)%>%
+    add_tally()%>%
+    dplyr::filter(n==1) %>%
+    dplyr::select(-n, -row, -ano_bd)
+
+#3. Misma base de datos, sólo 2 casos
+#_#_#_#_#_#_
 CONS_C1_df_dup_FEB_2020_prev27 %>%
 dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev27_sus_ini)))))) %>% 
 dplyr::group_by(hash_key) %>%
@@ -2573,64 +2789,76 @@ dplyr::arrange(hash_key) %>%
   reshape(idvar = "hash_key", timevar = "rn", direction = "wide") %>%
 dplyr::select(hash_key,sus_ini.1,sus_ini.2) %>%
   dplyr::rename("sus_ini_1"="sus_ini.1","sus_ini_2"="sus_ini.2") %>%
-  assign("sus_ini_misma_bd_2_casos",., envir = .GlobalEnv)
+  assign("sus_ini_misma_bd_2_casos_3",., envir = .GlobalEnv)
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_______________________
+###PARA HACER REEMPLAZO DE VALORES Y CONSOLIDACION DE BASE DE DATOS
+#_______________________
 
 CONS_C1_df_dup_FEB_2020_prev27 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev27_sus_ini)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis==1,n>2,!is.na(sus_ini)) %>% #más de 2 hash, pero todos dentro de la misma bd del mismo año
-dplyr::select(-n) %>%
-dplyr::mutate(concat_hash_sus_ini=paste0(hash_key,"_",sus_ini)) %>%
-dplyr::group_by(concat_hash_sus_ini) %>%
-dplyr::add_tally() %>%  #agrego un nuevo n, para contar los distintos sus_inies
-dplyr::select(row,concat_hash_sus_ini, hash_key, ano_bd, sus_ini, etnia,n)%>%
-dplyr::ungroup() %>%  
-dplyr::group_by(hash_key) %>%
-dplyr::slice(which.max(n)) %>% #me quedo con la concatenación por hash key que más se repite.
-dplyr::ungroup() %>%
-assign("hash_sus_ini_most_freq_value",., envir = .GlobalEnv)
-
-CONS_C1_df_dup_FEB_2020_prev27 %>%
-dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev27_sus_ini)))))) %>% 
-dplyr::group_by(hash_key) %>%
-dplyr::add_tally() %>%  
-dplyr::mutate(n_dis=n_distinct(ano_bd)) %>%
-dplyr::ungroup() %>%
-dplyr::filter(n_dis>1, !is.na(sus_ini)) %>% 
-dplyr::arrange(hash_key) %>%
-dplyr::select(row, hash_key, ano_bd, sus_ini, etnia,n)%>%
-dplyr::group_by(hash_key) %>%
-dplyr::slice(which.max(ano_bd)) %>%
-dplyr::ungroup() %>%
-assign("hash_sus_ini_most_recent_db",., envir = .GlobalEnv)
-
-CONS_C1_df_dup_FEB_2020_prev27 %>%
-  dplyr::mutate(obs=case_when(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_FEB_2020_prev27_sus_ini)))))~glue::glue("{obs};2.6.05.HASH w/ more than one distinct Starting Substance"),TRUE~obs))%>%  
-  dplyr::left_join(sus_ini_misma_bd_2_casos, by="hash_key",suffix=c("","_sus_ini_misma_bd_2_casos")) %>%
-  dplyr::mutate(sus_ini= ifelse(!is.na(sus_ini_1), as.character(sus_ini_1), as.character(sus_ini))) %>%
-  dplyr::select(-ends_with("_sus_ini_misma_bd_2_casos")) %>% 
   #janitor::tabyl(sexo_2) %>%
-  dplyr::left_join(hash_sus_ini_most_freq_value, by="hash_key",suffix=c("","_sus_ini_mfv")) %>%
-  dplyr::mutate(sus_ini= ifelse(!is.na(sus_ini_sus_ini_mfv), as.character(sus_ini_sus_ini_mfv), as.character(sus_ini))) %>%
-  dplyr::select(-ends_with("_sus_ini_mfv")) %>%
-  dplyr::left_join(hash_sus_ini_most_recent_db, by="hash_key",suffix=c("","_sus_ini_recent_db")) %>%
+#
+  dplyr::left_join(hash_sus_ini_most_recent_db_1a, by="hash_key",suffix=c("","_sus_ini_recent_db")) %>%
+  dplyr::mutate(obs=case_when(!is.na(sus_ini_sus_ini_recent_db)~glue::glue("{obs};2.6.04.1a.HASH w/ more than one distinct Starting Substance.Recent db"),TRUE~obs))%>%  
   dplyr::mutate(sus_ini= ifelse(!is.na(sus_ini_sus_ini_recent_db), as.character(sus_ini_sus_ini_recent_db), as.character(sus_ini))) %>%
-  dplyr::select(-ends_with("_sus_ini_recent_db"),-concat_hash_sus_ini,-n,-sus_ini_1) %>%
+  dplyr::select(-ends_with("_sus_ini_recent_db")) %>%
+#
+  dplyr::left_join(hash_sus_ini_most_recent_db_more_one_value_1b, by="hash_key",suffix=c("","_sus_ini_recent_db_more_one_v")) %>%
+  dplyr::mutate(obs=case_when(!is.na(sus_ini_sus_ini_recent_db_more_one_v)~glue::glue("{obs};2.6.04.1b.HASH w/ more than one distinct Starting Substance.Recent db (>1)"),TRUE~obs))%>%  
+  dplyr::mutate(sus_ini= ifelse(!is.na(sus_ini_sus_ini_recent_db_more_one_v), as.character(sus_ini_sus_ini_recent_db_more_one_v), as.character(sus_ini))) %>%
+  dplyr::mutate(sus_ini_2= ifelse(!is.na(sus_ini_2), as.character(sus_ini_2), as.character(sus_ini_2))) %>%
+    dplyr::mutate(sus_ini_3= ifelse(!is.na(sus_ini_3), as.character(sus_ini_3), as.character(sus_ini_3))) %>%
+  dplyr::select(-ends_with("_sus_ini_recent_db_more_one_v"))%>%
+#
+  dplyr::left_join(hash_sus_ini_most_freq_value_2a1, by="hash_key",suffix=c("","_sus_ini_mfv")) %>%
+  dplyr::mutate(obs=case_when(!is.na(sus_ini_sus_ini_mfv)~glue::glue("{obs};2.6.04.2a1.HASH w/ more than one distinct Starting Substance.Most frequent value"),TRUE~obs))%>%  
+  dplyr::mutate(sus_ini= ifelse(!is.na(sus_ini_sus_ini_mfv), as.character(sus_ini_sus_ini_mfv), as.character(sus_ini))) %>%
+  dplyr::select(-ends_with("_sus_ini_mfv"),-concat_hash_sus_ini) %>%
+#
+  dplyr::left_join(hash_sus_ini_most_freq_value_more_one_value_2a2, by="hash_key",suffix=c("","_sus_ini_mfv_more_one_v")) %>%
+  dplyr::mutate(obs=case_when(!is.na(sus_ini_sus_ini_mfv_more_one_v)~glue::glue("{obs};2.6.04.2a2.HASH w/ more than one distinct Starting Substance.Most frequent value (>1)"),TRUE~obs))%>%  
+  dplyr::mutate(sus_ini= ifelse(!is.na(sus_ini_sus_ini_mfv_more_one_v), as.character(sus_ini_sus_ini_mfv_more_one_v), as.character(sus_ini))) %>%
+  dplyr::mutate(sus_ini_2= ifelse(!is.na(sus_ini_2_sus_ini_mfv_more_one_v), as.character(sus_ini_2_sus_ini_mfv_more_one_v), as.character(sus_ini_2))) %>%
+    dplyr::mutate(sus_ini_3= ifelse(!is.na(sus_ini_3_sus_ini_mfv_more_one_v), as.character(sus_ini_3_sus_ini_mfv_more_one_v), as.character(sus_ini_3))) %>%
+  dplyr::select(-ends_with("_sus_ini_mfv_more_one_v")) %>%
+# 3. 
+  dplyr::left_join(sus_ini_misma_bd_2_casos_3, by="hash_key",suffix=c("","_sus_ini_misma_bd_2_casos")) %>%
+    dplyr::mutate(obs=case_when(!is.na(sus_ini_1)~glue::glue("{obs};2.6.04.3.HASH w/ more than one distinct Starting Substance.2 cases, same yearly dataset"),TRUE~obs))%>%  
+  dplyr::mutate(sus_ini= ifelse(!is.na(sus_ini_1), as.character(sus_ini_1), as.character(sus_ini))) %>%
+    dplyr::mutate(sus_ini_2= ifelse(!is.na(sus_ini_2_sus_ini_misma_bd_2_casos), as.character(sus_ini_2_sus_ini_misma_bd_2_casos), as.character(sus_ini_2))) %>%
+  dplyr::select(-ends_with("_sus_ini_misma_bd_2_casos"),-sus_ini_1) %>% 
+  
   dplyr::mutate(sus_ini=as.factor(sus_ini))%>%
   dplyr::mutate(sus_ini_2=as.factor(sus_ini_2))%>%
+  dplyr::mutate(sus_ini_3=as.factor(sus_ini_3))%>%
   dplyr::select(-dup_todo)%>%
     assign("CONS_C1_df_dup_FEB_2020",., envir = .GlobalEnv)
-  #janitor::tabyl(sexo_2) %>%
+  #janitor::tabyl(sus_ini)
 
-#CONS_C1_df_dup_FEB_2020_prev27 %>% group_by(hash_key) %>% dplyr::mutate(sus_ini_por_hash=n_distinct(sus_ini)) %>% ungroup() %>% dplyr::filter(sus_ini_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)
+#CONS_C1_df_dup_FEB_2020 %>% group_by(hash_key) %>% dplyr::mutate(sus_ini_por_hash=n_distinct(sus_ini)) %>% ungroup() %>% dplyr::filter(sus_ini_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)
 #CONS_C1_df_dup_FEB_2020 %>% group_by(hash_key) %>% dplyr::mutate(sus_ini_por_hash=n_distinct(sus_ini)) %>% ungroup() %>% dplyr::filter(sus_ini_por_hash>1) %>% dplyr::arrange(hash_key) %>% dplyr::select(row, hash_key, ano_bd, sus_ini)
 #glimpse(CONS_C1_df_dup_FEB_2020$sus_ini)
+
+#CONS_C1_df_dup_FEB_2020 %>% group_by(hash_key) %>% dplyr::mutate(etnia_cor_por_hash=n_distinct(etnia_cor)) %>% ungroup() %>% dplyr::filter(etnia_cor_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)
+#CONS_C1_df_dup_FEB_2020 %>% group_by(hash_key) %>% dplyr::mutate(etnia_cor_por_hash=n_distinct(etnia_cor)) %>% ungroup() %>% dplyr::filter(etnia_cor_por_hash>1) %>% dplyr::arrange(hash_key) %>% dplyr::select(row, hash_key, ano_bd, etnia_cor)
+#glimpse(CONS_C1_df_dup_FEB_2020$etnia_cor)
+# CONS_C1_df_dup_FEB_2020 %>% dplyr::group_by(obs) %>% summarise(n=n()) %>% dplyr::filter(n,grepl('2.6.03.1b.', obs))%>% summarise(sum=sum(n))#, se condice con nrow(unique(row_3a)), 74
+#CONS_C1_df_dup_FEB_2020 %>%  dplyr::filter(grepl('2.6.05.1b.', obs))%>% dplyr::select(hash_key, etnia_cor)
+#CONS_C1_df_dup_FEB_2020 %>% dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist(hash_sus_ini_most_recent_db_1a)))))) %>%dplyr::select(hash_key,sus_ini, sus_ini_2,sus_ini_3)
+
+#CONS_C1_df_dup_FEB_2020 %>% dplyr::group_by(obs) %>% summarise(n=n()) %>% dplyr::filter(n,grepl('2.6.[0-9][0-9].', obs))%>% summarise(sum=sum(n))
+
+#hash_sus_ini_most_recent_db_1a 
+#hash_sus_ini_most_recent_db_more_one_value_1b 
+#hash_sus_ini_most_freq_value_2a1 
+#hash_sus_ini_most_freq_value_more_one_value_2a2 
+#sus_ini_misma_bd_2_casos_3
 ```
 
-&nbsp;
+---
+
 <br>
 
 ## 4. Final Treatments to dataset
@@ -2670,7 +2898,7 @@ comuna_residencia = 'Comuna de Residencia/Municipality or District of Residence'
 origen_de_ingreso = '(original, Recodificado en origen_ingreso)/',
 pais_nacimiento = 'País de Nacimiento/Country of Birth',
 nacionalidad = 'Nacionalidad/Nationality',
-etnia = 'Etnia/Ethnicity',
+etnia = '(original, recodificado en etnia_cor)/',
 estado_conyugal = '(original, Recodificado en estado_conyugal_2)/',
 numero_de_hijos = 'Número de Hijos/Number of Children',
 num_hijos_ing_trat_res = 'Número de Hijos para Ingreso a Tratamiento Residencial/Number of Children to Residential Treatment',
@@ -2688,9 +2916,9 @@ con_quien_vive = 'Persona con la que vive el Usuario/People that Share Household
 tipo_de_vivienda = 'Tipo de Vivienda/Type of Housing',
 tenencia_de_la_vivienda = 'Tenencia de la Vivienda/Tenure status of Households',
 sustancia_principal = '(original, Recodificado en sus_principal)/',
-otras_sustancias_nº1 = '(original, Recodificado en otras_sus1)/',
-otras_sustancias_nº2 = '(original, Recodificado en otras_sus2)/',
-otras_sustancias_nº3 = '(original, Recodificado en otras_sus3)/',
+`otras_sustancias_nº1` = '(original, Recodificado en otras_sus1)/',
+`otras_sustancias_nº2` = '(original, Recodificado en otras_sus2)/',
+`otras_sustancias_nº3` = '(original, Recodificado en otras_sus3)/',
 freq_cons_sus_prin_original = '(original, Recodificado en freq_cons_sus_prin)/',
 edad_inicio_sustancia_principal = '(original, Recodificado en edad_ini_sus_prin)/',
 via_adm_sus_prin_original = '(original, Recodificado en via_adm_sus_prin)/',
@@ -2783,11 +3011,13 @@ motivodeegreso_imp= 'Motivo de Egreso(Imputados KNN & Lógico)/Cause of Discharg
 motivodeegreso_mod_imp= 'Motivo de Egreso (con abandono temprano y tardío)(Imputados KNN & Lógico)/Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic)',
 dias_trat_imp= 'Días de Tratamiento (Imputados KNN & Lógico)/Days of Treatment (Imputed KNN & Logic)', 
 dias_trat_alta_temprana_imp= 'Días de Tratamiento con Alta Temprana (<90) (Imputados KNN & Lógico)/Days of Treatment w Early Withdrawal (Imputed KNN & Logic)',
+etnia_cor = 'Etnia/ Ethnic Group',
 via_adm_sus_prin_act= 'Vía de Administración de la Sustancia Principal (Se aplicaron criterios de limpieza)/Route of Administration of the Primary or Main Substance (Tidy)',
 nacionalidad_2 = 'Segunda Nacionalidad/Second Nationality',
-etnia_2 = 'Etnia/Second Ethnic Group',
-sus_ini_2 = 'Segunda Sustancia de Inicio/Second Starting Substance')
-
+etnia_cor_2 = 'Etnia (2)/Second Ethnic Group',
+sus_ini_2 = 'Segunda Sustancia de Inicio/Second Starting Substance',
+sus_ini_3 = 'Tercera Sustancia de Inicio/Third Starting Substance'
+)
  
 codebook::val_labels(CONS_C1_df_dup_ENE_2020$dg_trs_psiq_cie_10_or) <- c('En estudio(NA)' = 1,
 'Esquizofrenia, trastorno esquizotípico y trastornos de ideas delirantes(F20-29)' = 2,
@@ -3027,8 +3257,13 @@ To keep a more considerable amount of information about each event, many selecti
 
 <br> 
 
-```{r fig_brief_summary, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 5. Diagram of Process of Data Tidying and Cleaning"}
+```{r fig8_brief_summary, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 8. Diagram of Process of Data Tidying and Cleaning"}
 knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Diagram_STROBE.svg")
 ```
 
+---
+
+```{r session_info, echo=T, paged.print=TRUE}
+sessionInfo()
+```
 
