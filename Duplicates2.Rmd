@@ -58,6 +58,33 @@ local({r <- getOption("repos")
        r["CRAN"] <- "http://cran.r-project.org" 
        options(repos=r)
 })
+copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
+  if(class(ungroup(x))[1]=="tbl_df"){
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)    
+        }
+  } else {
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)       
+  }
+ }
+}  
 #packageVersion("codebook")
 #https://github.com/RevolutionAnalytics/checkpoint
 #if(!require(checkpoint)){install.packages("checkpoint")}
@@ -103,6 +130,10 @@ library(codebook)
 library(data.table)
 library(dplyr)
 library(panelr)
+library(tidylog)
+library(radiant)
+library(neuralnet)
+library(radiant.update)
 ```
 
 <!--- SÍ O SÍ, HACER LA LIMPIEZA DE LOS SENDA NO, PRINCIPALMENTE DE LOS QUE SE SUPERPONGAN, TAMBIÉN PREGUNTAR A ACC SI LOS CON 0 DÍAS DE TRATAMIENTO SE BORRARÁN O NO; DE AHI EMPEZAR A NORMALIZAR LOS PROGRAMAS Y PLANES DE ACUERDO CON CRITERIOS MAUREEN, PARA NO GENERAR DIFERENCIAS AHI Y PODER DEDUPLICAR TRANQUILO --->
@@ -2239,6 +2270,7 @@ CONS_C1_df_dup_FEB_2020_prev24 %>%
   # dplyr::mutate(sexo_2_3= ifelse(!is.na(sexo_2_3_sexo_2_recent_db_more_one_v), as.character(sexo_2_3_sexo_2_recent_db_more_one_v), as.character(sexo_2_3))) %>%
  # dplyr::select(-ends_with("_sexo_2_recent_db_more_one_v"))%>% # names()
   #
+  #Misma bd, 2 casos
   dplyr::left_join(hash_sexo_misma_bd_2_casos_3, by="hash_key",suffix=c("","_sexo_2_misma_bd_2_casos")) %>%
   dplyr::mutate(obs=case_when(!is.na(sexo_2_sexo_2_misma_bd_2_casos)~glue::glue("{obs};2.6.01.3.HASH w/ more than one distinct Sex.2 cases, same yearly dataset"),TRUE~obs))%>%  
   dplyr::mutate(sexo_2= ifelse(!is.na(sexo_2_sexo_2_misma_bd_2_casos), as.character(sexo_2_sexo_2_misma_bd_2_casos), as.character(sexo_2))) %>%
@@ -2259,11 +2291,188 @@ CONS_C1_df_dup_FEB_2020_prev24 %>%
 
 ```
 
+<br>
+
+We used a neural network model to obtain a definitive value of the `r CONS_C1_df_dup_FEB_2020_prev25 %>% dplyr::filter(hash_key %in% as.character(unlist(sexo_casos_pendientes_3["hash_key"])))%>% nrow()/2` users that had two different sexes entered into the system.
+
+<br>
+
+```{r tab8_pers_info_sex, eval=T,echo=T, paged.print=TRUE}
+library(radiant)
+
+#genero la base de datos de entrenamiento.
+CONS_C1_df_dup_FEB_2020_prev24_train_nn<- CONS_C1_df_dup_FEB_2020_prev24 %>% 
+                                          dplyr::filter(!hash_key %in% as.character(unlist(sexo_casos_pendientes_3["hash_key"])))
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_
+#First training model
+#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+#corro el modelo con la base de entrenamiento
+  neuralnet_sex_train0<-
+        nn(
+          CONS_C1_df_dup_FEB_2020_prev24_train_nn, 
+           "sexo_2", #The response variable in the model
+         c("estatus_ocupacional","edad", "estado_conyugal_2","tenencia_de_la_vivienda","numero_de_hijos","escolaridad"), 
+           lev = "Mujer", #lev	The level in the response variable defined as _success_
+           seed = 1245 # seed	Random seed to use as the starting point
+           )
+ 
+#hago la validación cruzada
+  
+           #The best way to determine the optimal values for Size and Decays is to use Cross-Validation. 
+            #In radiant, you can use the cv.nn function for this purpose. 
+            
+            #cv.nn: Cross-validation for a Neural Network
+            #https://radiant-rstats.github.io/radiant.model/reference/cv.nn.html
+            #K= número de cv pasa para usar
+            #repeats= cv repetido
+            #decay= decaimiento en parámetros
+            #size=número de nodos en la capa oculta
+            #seed= semilla aleatoria como inicio
+            #trace= imprimir progreso
+            #fun= función para usar evaluación del modelo (auc para clasificación, RMSE para regresión; también está Rsq)
+            #https://rdrr.io/cran/radiant.model/man/auc.html
+            #https://rdrr.io/cran/radiant.model/man/RMSE.html
+            #https://rdrr.io/cran/radiant.model/man/profit.html
+  
+#_#_#_#_#_#_#_#_#_#_#_#_#_
+#Cross-validation
+#_#_#_#_#_#_#_#_#_#_#_#_#_
+    
+result_sex_all_cv<- cv.nn(neuralnet_sex_train0, K= 10, decay = seq(0, 1, .5), size = 1:5, fun = auc, trace=T, seed=1245)
+
+nn_sex_par<- result_sex_all_cv[order(-result_sex_all_cv$"auc (mean)"),]
+
+ #selecciono los parámetros que permitan hacer la mejor estimación
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_
+#Final Model
+#_#_#_#_#_#_#_#_#_#_#_#_#_
+        
+neuralnet_sex<- nn(
+                CONS_C1_df_dup_FEB_2020_prev24_train_nn[c("sexo_2",
+                                                          "estatus_ocupacional",
+                                                         "edad",
+                                                         "estado_conyugal_2",
+                                                         "tenencia_de_la_vivienda",
+                                                         "numero_de_hijos",
+                                                         "escolaridad")], 
+                "sexo_2", #The response variable in the model
+                 c("estatus_ocupacional",
+                   "edad",
+                   "estado_conyugal_2",
+                  "tenencia_de_la_vivienda",
+                  "numero_de_hijos",
+                  "escolaridad"), 
+                  lev = "Mujer", #lev	The level in the response variable defined as _success_
+                  size = nn_sex_par[1,"size"],
+                  decay = nn_sex_par[1,"decay"],
+                  seed = 1245 # seed	Random seed to use as the starting point
+                    )
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_
+#Prediction
+#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+CONS_C1_df_dup_FEB_2020_prev24_test_nn<- CONS_C1_df_dup_FEB_2020_prev24 %>% 
+                                          dplyr::filter(hash_key %in% as.character(unlist(sexo_casos_pendientes_3["hash_key"])))%>%
+                                          dplyr::select(row,hash_key,sexo_2,estatus_ocupacional, edad,estado_conyugal_2, tenencia_de_la_vivienda, numero_de_hijos, escolaridad)
+
+          #predict(result, pred_cmd = "carat = 1:3")
+            #https://radiant-rstats.github.io/radiant.model/reference/predict.nn.html
+            #pred_data= Provide the dataframe to generate predictions (e.g., diamonds). The dataset must contain all columns used in the estimation
+            #pred_cmd= Generate predictions using a command. For example, `pclass = levels(pclass)` would produce predictions 
+              #for the different levels of factor `pclass`. To add another variable, create a vector of prediction strings, 
+              #(e.g., c('pclass = levels(pclass)', 'age = seq(0,100,20)')
+              #dec=  Number of decimals to show
+              #envir= Environment to extract data from
+            
+        result_sex_all_cv_pred<- predict(neuralnet_sex, pred_data = CONS_C1_df_dup_FEB_2020_prev25_test_nn)
+```
+
+<br>
+
+The model was trained using the rest of the dataset with valid attributes on the variable sex (n= `r formatC(nrow(CONS_C1_df_dup_FEB_2020_prev25_train_nn),big.mark = ",")`). We generated a total of 10 cross-validations, with alternatives of 1 to 5 layers, and a threshold of 0, .5 and 1 in every model (10x5x3). The model that obtained the highest area under the curve  (AUC (mean)= `r round(nn_sex_par[1,"auc (mean)"],2)`) had a size of `r as.numeric(nn_sex_par[1,"size"])` `r ifelse(as.numeric(nn_sex_par[1,"size"])<2,"layer","layers")`, and a threshold for weights of `r as.numeric(nn_sex_par[1,"decay"])` (L2 penalty). THe following figure shows the neural network structure Due to the great amount of categories, we generated a garson plot of importance of variables into the weight.
+
+<br>
+
+```{r fig7a_image-decision_tree_distinct_values_user_invariant_nat,fig.height=4, fig.width=8, echo=T, fig.align='center', fig.pos='H', fig.cap="Figure 7a. Neural Network of Sex", message=FALSE}
+#sexo_casos_pendientes_3
+
+mar <- par(mar = c(0, 0, 0, 0))
+
+on.exit(par(mar = mar$mar))
+
+plot(neuralnet_sex, plots = "net", custom=T,size = 9, pad_x = 0.8, nrobs = -1,cex_val = 3)
+
+```
+
+```{r fig7a_image-decision_tree_distinct_values_user_invariant_nat,fig.height=4, fig.width=8, echo=T, fig.align='center', fig.pos='H', fig.cap="Figure 7b. Garson Plot of Variable Importance", message=FALSE}
+#sexo_casos_pendientes_3
+
+mar <- par(mar = c(0, 0, 0, 0))
+
+on.exit(par(mar = mar$mar))
+
+plot(neuralnet_sex, plots = "olden", custom=T,size = 9, pad_x = 0.8, nrobs = -1,cex_val = 3)+
+  ggtitle("")
+
+```
+
+<br>
+
+The plot presented showed the product of the weights through the model from each predictor to the output and the target category of classifying a user as a women. As seen, the number of kids and an inactive employment status had an important and positive contribution to the weights of the model. In contrast, the condition of a household that is divested, or the condition of widowhood, had a small contribution. Lastly, the condition of employment contributed but in a negative direction into the model, just as the fact that the interviewed did not answer the question about housing tenure,
+
+<br>
+
+```{r nnet_sex_transformation, echo=T,cache=T, paged.print=TRUE}
+#sexo_casos_pendientes_3
+
+  fech_nac_edad_al_ing_replace <-
+                  result_sex_all_cv_pred%>%
+                     cbind(CONS_C1_df_dup_FEB_2020_prev25_test_nn[c("row","hash_key","sexo_2")])%>%
+                    dplyr::select(row, hash_key, everything())%>%
+                    as.data.frame()%>%
+                    dplyr::mutate(sexo_2_corr= if_else(Prediction>=.5,"Mujer","Hombre",NA_character_))%>%
+                    dplyr::arrange(hash_key)%>%
+                    dplyr::group_by(hash_key)%>%
+                    dplyr::mutate(sexo_2_corr2=lag(sexo_2_corr))%>%
+                    dplyr::mutate(sexo_2_2=lag(sexo_2))%>%
+                    dplyr::filter(!is.na(sexo_2_corr2))%>%
+                    dplyr::mutate(sexo_2_corr_final=ifelse(sexo_2_corr==sexo_2_corr2,sexo_2_corr,NA_character_))
+
+#Misma bd, 2 casos
+              CONS_C1_df_dup_FEB_2020_prev25%>%
+                  dplyr::left_join(hash_sexo_misma_bd_2_casos_3, by="hash_key",suffix=c("","_sexo_2_misma_bd_2_casos")) %>%
+                  dplyr::mutate(obs=case_when(!is.na(sexo_2_sexo_2_misma_bd_2_casos)~glue::glue("{obs};2.6.01.3.HASH w/ more than one distinct Sex.2 cases, same yearly dataset"),TRUE~obs))%>%  
+                  dplyr::mutate(sexo_2= ifelse(!is.na(sexo_2_sexo_2_misma_bd_2_casos), as.character(sexo_2_sexo_2_misma_bd_2_casos), as.character(sexo_2))) %>%
+                  dplyr::select(-ends_with("_sexo_2_misma_bd_2_casos")) %>% 
+                  #janitor::tabyl(sexo_2) %>%
+                  dplyr::mutate(sexo_2=as.factor(sexo_2))%>%
+                  #dplyr::mutate(sexo_2_2=as.factor(sexo_2_2))%>%
+                  dplyr::select(-ends_with("_sex_recent_db"),-wave,-sex_id,-comun_hash) %>%
+                  
+                  # dplyr::mutate(sexo_2_3=as.factor(sexo_2_3))%>%
+                  assign("CONS_C1_df_dup_FEB_2020_prev25",., envir = .GlobalEnv)
+#janitor::tabyl(sexo_2)
+
+#CONS_C1_df_dup_FEB_2020_prev25 %>% group_by(hash_key) %>% dplyr::mutate(sexo_2_por_hash=n_distinct(sexo_2)) %>% ungroup() %>% dplyr::filter(sexo_2_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)
+  
+```
+
+<br>
+
+We replaced  cases that in both 
+
+<br>
+
+
 <!--- La fecha de nacimiento puede no haberse corregido del todo porque hay muchos casos en que no tienen una edad distinta, por lo que el programa no  los filtra  --->
 
 - Nationality (nacionalidad) (`r CONS_C1_df_dup_FEB_2020_prev25 %>% group_by(hash_key) %>% dplyr::mutate(nacionalidad_por_hash=n_distinct(nacionalidad)) %>% ungroup() %>% dplyr::filter(nacionalidad_por_hash>1) %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). In cases where there are only two distinct nationalities per hash and comes from the same yearly dataset, we created a second variable called `nacionalidad_2` that contains the second nationality.
 
-```{r fig6_image-decision_tree_distinct_values_user_invariant_nat, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 6. Decision Tree for the Users with more than one value in Nationality", message=FALSE}
+```{r fig7_image-decision_tree_distinct_values_user_invariant_nat, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 7. Decision Tree for the Users with more than one value in Nationality", message=FALSE}
 knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/nat_same_hash_distinct_values_user_invariant.svg")
 ```
 
@@ -2459,7 +2668,7 @@ CONS_C1_df_dup_FEB_2020_prev26 %>%
 
 - Ethnicity (etnia_cor) (`r CONS_C1_df_dup_FEB_2020_prev26_etnia_cor %>% nrow() %>%  formatC(, format="f", big.mark=",", digits=0)`). There were `r etnia_no_pert_vacio_por_hash` users with nothing but reports on "do not belong to any ethnicity ("no pertenece") or missing values. If users had two treatments in the same yearly dataset, but in each one they had a different value in this variable, we discarded missing values or  first, and replaced it with a valid ethnic group if in one of the treatments the user declared so. Also, we discarded missing values in other cases, because missing values were considered as a distinct value.
 
-```{r fig7_image-decision_tree_distinct_values_user_invariant_etnia, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 7. Decision Tree for the Users with more than one value in Ethnicity", message=FALSE}
+```{r fig8_image-decision_tree_distinct_values_user_invariant_etnia, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 8. Decision Tree for the Users with more than one value in Ethnicity", message=FALSE}
 knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/etnia_same_hash_distinct_values_user_invariant.svg")
 ```
 
@@ -2674,7 +2883,7 @@ CONS_C1_df_dup_FEB_2020_prev26 %>%
 
 <!---# considerar que no sea mayor a la edad de inicio de consumo --->
 
-```{r fig8_image-decision_tree_distinct_values_user_invariant_susini, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 8. Decision Tree for the Users with more than one value in Starting Substance", message=FALSE}
+```{r fig9_image-decision_tree_distinct_values_user_invariant_susini, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 9. Decision Tree for the Users with more than one value in Starting Substance", message=FALSE}
 knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/sus_ini_same_hash_distinct_values_user_invariant.svg")
 ```
 
@@ -3257,7 +3466,7 @@ To keep a more considerable amount of information about each event, many selecti
 
 <br> 
 
-```{r fig8_brief_summary, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 8. Diagram of Process of Data Tidying and Cleaning"}
+```{r fig10_brief_summary, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 10. Diagram of Process of Data Tidying and Cleaning"}
 knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Diagram_STROBE.svg")
 ```
 
