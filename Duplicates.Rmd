@@ -1382,7 +1382,7 @@ After this process, we still ended with `r CONS_C1_df_dup_ENE_2020_prev52 %>%dpl
 
 ###4.2.Imputation of inconsistent dates of birth through Neural Networks
 
-We used a neural network model to obtain valid dates of birth of the `r CONS_C1_df_dup_ENE_2020_prev52 %>% dplyr::filter(is.na(fech_nac))%>% distinct(HASH_KEY) %>% nrow()` users that did not have a valid date of birth, or those cases that had a date at admission of less than 15 years old. We did not selected the cutpoint at 16 years old, because one user (616a9f5147684b5bb649eff9936db849) had an age at admission of 15 years old, but also had another entry with the same date of birth in the dataset of 2019.  This led us to think that in specific cases, users of 15 years old could be admissible.
+We used a neural network model to obtain valid dates of birth for the `r CONS_C1_df_dup_ENE_2020_prev52 %>% dplyr::filter(is.na(fech_nac))%>% distinct(HASH_KEY) %>% nrow()` users that did not have a valid date of birth, and for those cases that had a date at admission of less than 15 years old. We did not selected the cutpoint at 16 years old, because one user (616a9f5147684b5bb649eff9936db849) had an age at admission of 15 years old, but also had another entry with the same date of birth in the dataset of 2019.  This led us to think that in specific cases, users of 15 years old could be admissible (n= `r   CONS_C1_df_dup_ENE_2020_prev52 %>% dplyr::filter(Edad_al_ing<15)%>% nrow()`).
 
 <br>
 
@@ -1709,7 +1709,8 @@ CONS_C1_df_dup_ENE_2020_prev52_NA<-
    dplyr::select(-ends_with("_y"),-edad_inicio_sustancia_principal2, -edad_inicio_consumo2)%>%
    #sacar fechas de nacimiento inválidas, es decir, aquellas que son menores a la edad de inicio de consumo. Sólo un caso
    dplyr::mutate(edad_invalida=ifelse((edad_inicio_sustancia_principal>Prediction)|(edad_inicio_consumo>Prediction),1,0))%>%
-   dplyr::filter(edad_invalida==0)
+   dplyr::filter(edad_invalida==0)%>%
+    dplyr::mutate(fech_nac_corr=as.character(fech_nac_corr))
 
 #39 usuarios
 less_15_hash_more_one_age<-
@@ -1730,7 +1731,8 @@ CONS_C1_df_dup_ENE_2020_prev52 %>%
    dplyr::select(-ends_with("_y"),-edad_inicio_sustancia_principal2, -edad_inicio_consumo2)%>%
    #sacar fechas de nacimiento inválidas, es decir, aquellas que son menores a la edad de inicio de consumo. Sólo un caso
    dplyr::mutate(edad_invalida=ifelse((edad_inicio_sustancia_principal>Prediction)|(edad_inicio_consumo>Prediction),1,0))%>%
-   dplyr::filter(edad_invalida==0)
+   dplyr::filter(edad_invalida==0)%>%
+    dplyr::mutate(fech_nac_corr=as.character(fech_nac_corr))
 
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
@@ -1745,7 +1747,7 @@ CONS_C1_df_dup_ENE_2020_prev52 %>%
 #NAs
   dplyr::left_join(CONS_C1_df_dup_ENE_2020_prev52_NA, by=c("HASH_KEY"="hash_key"),suffix=c("","_NAs")) %>%
   dplyr::mutate(OBS=case_when(HASH_KEY %in% as.character(as.vector(unlist(as.data.table(unlist(CONS_C1_df_dup_ENE_2020_prev52_NA["hash_key"])))))~glue::glue("{OBS};1.6.XX.NAs_ANN"),TRUE~OBS))%>%  
-  dplyr::mutate(fech_nac= ifelse(!is.na(fech_nac_corr),fech_nac_corr,as.character(fech_nac))) %>%
+  dplyr::mutate(fech_nac= ifelse(!is.na(fech_nac_corr),as.character(fech_nac_corr),as.character(fech_nac))) %>%
   dplyr::select(-ends_with("_NAs")) %>% 
   dplyr::select(-edad_al_ing, -escolaridad_ultimo_ano_cursado, -estado_conyugal, -numero_de_hijos,
                 -numero_de_hijos_ingreso_tratamiento_residencial, -edad_inicio_consumo, -edad_inicio_sustancia_principal, -fech_nac_corr,
