@@ -25,7 +25,16 @@ This page is composed by the following main topics:
 
 <br>
 
-The main processes implied in the preparation of datasets is presented as follows.
+The main processes are summarized in the following figures.
+
+<br>
 
 ##### Figure 1. Diagram of data preparation
+<a href="https://fondecytacc.github.io/SUD_health_Chile.github.io/Figures/RUT_Administraci%C3%B3n.svg" target="_blank">To open in a new window</a>
+
 ![Diagram](Figures/RUT_Administración.svg) 
+
+##### Figure 2. STROBE Diagram
+<a href="https://fondecytacc.github.io/SUD_health_Chile.github.io/Figures/Diagram_STROBE.svg" target="_blank">To open in a new window</a>
+
+![STROBE](Figures/Diagram_STROBE.svg)
