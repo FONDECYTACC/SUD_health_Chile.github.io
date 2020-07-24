@@ -28,10 +28,14 @@ pander::panderOptions("table.split.table", Inf)
 #https://cran.r-project.org/web/packages/codebook/vignettes/codebook_tutorial.html
 if(!require(codebook)){install.packages("codebook")}
 if(!require(future)){install.packages("future")}
+if(!require(dplyr)){install.packages("dplyr")}
 ```
 
 ```{r prepare_codebook, include=F}
-codebook_data <- codebook::bfi
+load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/6.RData")
+
+codebook_data <- cCONS_C1_df_dup_JUN_2020%>%
+dplyr::mutate_at(c('dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_cie_10_or','x3_dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_sub_cie_10_or','x3_dg_trs_psiq_sub_cie_10_or','compromiso_biopsicosocial','pais_nacimiento','nacionalidad','dg_trs_psiq_sub_dsm_iv_or','x2_dg_trs_psiq_sub_dsm_iv_or','x3_dg_trs_psiq_sub_dsm_iv_or','dg_trs_psiq_sub_cie_10_or','etnia_cor_2','motivodeegreso_mod_imp','fecha_ultimo_tratamiento','fecha_ultimo_tratamiento','tiene_menores_de_edad_a_cargo'),~as.factor(.))
 # to import an SPSS file from the same folder uncomment and edit the line below
 # codebook_data <- rio::import("mydata.sav")
 # for Stata
@@ -63,37 +67,32 @@ In the following Tables and graphics, there is a summary of the variables and do
 <br>
 
 ```{r codebook}
-load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/6.RData")
-
-CONS_C1_df_dup_JUN_2020%>%
-dplyr::mutate_at(c('dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_cie_10_or','x3_dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_sub_cie_10_or','x3_dg_trs_psiq_sub_cie_10_or','compromiso_biopsicosocial','pais_nacimiento','nacionalidad','dg_trs_psiq_sub_dsm_iv_or','x2_dg_trs_psiq_sub_dsm_iv_or','x3_dg_trs_psiq_sub_dsm_iv_or','dg_trs_psiq_sub_cie_10_or','etnia_cor_2','motivodeegreso_mod_imp','fecha_ultimo_tratamiento','fecha_ultimo_tratamiento','tiene_menores_de_edad_a_cargo'),~as.factor(.)) %>%
+codebook_data%>%
+  dplyr::select(-consentimiento_informado)%>%
 #dplyr::mutate_at(c('fech_ing','fech_egres','fech_nac','fech_egres_knn_imp','fech_egres_imp'),~as.Date(as.character(.))) %>%
 codebook()
-
-
 
 #fecha_ultimo_tratamiento
 #
 
 #Permite exportar los valores de cada variable de tipo factor.
 invisible=9
-
-if(invisible==1){
-  CONS_C1_df_dup_JUN_2020<-
-  CONS_C1_df_dup_JUN_2020%>%
-    dplyr::mutate_at(c('dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_cie_10_or','x3_dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_sub_cie_10_or','x3_dg_trs_psiq_sub_cie_10_or','compromiso_biopsicosocial','pais_nacimiento','nacionalidad','dg_trs_psiq_sub_dsm_iv_or','x2_dg_trs_psiq_sub_dsm_iv_or','x3_dg_trs_psiq_sub_dsm_iv_or','dg_trs_psiq_sub_cie_10_or','etnia_cor_2','motivodeegreso_mod_imp','fecha_ultimo_tratamiento','fecha_ultimo_tratamiento','tiene_menores_de_edad_a_cargo'),~as.factor(.))
-  df_titulo<-data.frame(variable=NA,export=NA, N=999)
-  df<- data.frame()
-  for (i in names(Filter(is.factor,CONS_C1_df_dup_JUN_2020))) { 
-        fac<-data.table::data.table(table(CONS_C1_df_dup_JUN_2020[i], exclude=NULL))%>% 
+df<- data.frame()
+  for (i in names(Filter(is.factor,codebook_data))) { 
+        fac<-data.table::data.table(table(codebook_data[i], exclude=NULL))%>% 
             dplyr::mutate(variable=paste0(i),export=paste0(row_number(),".",V1))%>%
             dplyr::select(-V1)%>%
             dplyr::select(variable,export,N)%>%
-          dplyr::filter(!grepl(".NA",export))
-      
-        df<- rbind(df,df_titulo,fac)
+          dplyr::filter(!grepl("\\.NA",export))
+      df_titulo<-data.frame(variable=paste0(i),export=NA, N=999)
+      df<- rbind(df,df_titulo,fac)
   }
+df<-
+  as.data.frame(df)%>%
+    dplyr::group_by(variable)%>%
+    dplyr::mutate(rn=row_number())%>%
+    select(variable,rn,everything())
+
   guardar_tablas(df, "labels_codebook")
-}
 
 ```

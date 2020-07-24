@@ -45,14 +45,18 @@ body{ /* Normal  */
 div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
 </style>
 
+```{r setup0, include = FALSE, cache=T}
+rm(list=ls());gc()
+load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/5.Rdata")
+
+```
+
 ```{r setup, include = FALSE, cache=T}
 #Libraries used in the routine. Dont change the order
-rm(list=ls());gc()
+
 #setwd("H:/")
 #rm(list=c("")
-unlink('SUD_CL/Duplicates2_cache', recursive = TRUE)
-unlink('Duplicates2--UMAYOR-_cache', recursive = TRUE)
-load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/5.Rdata")
+
 local({r <- getOption("repos")
        r["CRAN"] <- "http://cran.r-project.org" 
        options(repos=r)
@@ -2145,12 +2149,132 @@ We also created `sus_ini_mod` and `sus_principal_mod` which includes only the ma
 CONS_C1_df_dup_MAY_2020_prev_6a%>%
   dplyr::mutate(sus_ini_mod= dplyr::case_when(sus_ini!="Alcohol"&sus_ini!="Cocaína"&sus_ini!="Marihuana"&sus_ini!="Pasta Base"~"Otros",TRUE~as.character(sus_ini)))%>%
     dplyr::mutate(sus_principal_mod= dplyr::case_when(sus_principal!="Alcohol"&sus_principal!="Cocaína"&sus_principal!="Marihuana"&sus_principal!="Pasta Base"~"Otros",TRUE~as.character(sus_principal)))%>%
-  dplyr::mutate(origen_ingreso_mod= dplyr::case_when(origen_ingreso=="Otro Centro Tratamiento Drogas/ FONODROGAS/Previene"~"Derivación Asistida", TRUE~as.character(origen_ingreso)))%>%
+    dplyr::mutate(origen_ingreso_mod= dplyr::case_when(grepl("Otro Centro Tratamiento",as.character(origen_ingreso))~"Derivación Asistida", TRUE~as.character(origen_ingreso)))%>%
+      dplyr::mutate(motivodeegreso_mod= dplyr::case_when(grepl("trativa",as.character(motivodeegreso_mod))~"Alta Administrativa", TRUE~as.character(motivodeegreso_mod)))%>%
   dplyr::mutate(sus_ini_mod=factor(sus_ini_mod),
                 sus_principal_mod=factor(sus_principal_mod),
                 origen_ingreso_mod=factor(origen_ingreso_mod))%>%
       assign("CONS_C1_df_dup_MAY_2020_prev_6b",., envir = .GlobalEnv)
 ```
+
+<br>
+
+#### 4.3. Related to social support and socioeconomical variables
+
+<br>
+
+We also recoded a variable that serves as a proxy of the social resources of each user, and some other socioeconomical variables such as . We created the variables  `sus_ini_mod` and `sus_principal_mod` which includes only the major categories related to drug use, leaving the rest of the categories as "other" drugs.
+
+<br>
+
+Relative to the tenure status of households, many of them had discrepancies when responding to the type of housing they lived in. We discarded those cases that answered "caleta o punto de calle" (living on streets), "hospedería" (guesthouses), and "residencial, pensión, hostal" (pension and hostels), but qualified their tenure status as "owned" or "yielded". The resulting variable is called `tenencia_de_la_vivienda_mod`.
+
+<br>
+
+Regarding to the area of work, we found several sources of discrepancies, such as self-employed directors and managers and professions in the military, or professions in the military in an area in which a person that declares that run his/her own enterprise ("empleador"). Does not apply values ("N/A") were treated as null values. The resulting variable is `rubro_trabaja_mod`.
+
+<br>
+
+Lastly, we generated a variable to group ages at admission (`edad_al_ing_grupos`) into 5 groups: 18-24, 25- 29, 30-35, 36-45, and 45+. 
+
+<br>
+
+```{r 6c_std_var_occ_hous,eval=T, echo=T, paged.print=TRUE}
+CONS_C1_df_dup_MAY_2020_prev_6b%>%  
+#CONS_C1_df_dup_MAY_2020_prev_6b%>%  
+#  janitor::tabyl(tenencia_de_la_vivienda,tipo_de_vivienda)%>% copiar_nombres
+      dplyr::mutate(motivodeegreso_mod_imp= dplyr::case_when(grepl("trativa",as.character(motivodeegreso_mod_imp))~"Alta Administrativa",TRUE~as.character(motivodeegreso_mod_imp)))%>%
+  dplyr::mutate(motivodeegreso_mod_imp=as.factor(motivodeegreso_mod_imp)) %>%
+  dplyr::mutate(tipo_de_vivienda_mod=
+                  ifelse(as.character(tipo_de_vivienda)=="<NA>",NA,as.character(tipo_de_vivienda)))%>%
+  dplyr::mutate(tipo_de_vivienda_mod=
+                  ifelse(as.character(tipo_de_vivienda)=="Residencial, pensi?hostal","Residencial, pensión, hostal",as.character(tipo_de_vivienda_mod)))%>%
+  dplyr::mutate(tipo_de_vivienda_mod=
+                  ifelse(as.character(tipo_de_vivienda_mod)=="Hospeder?","Hospedería",as.character(tipo_de_vivienda_mod)))%>%
+dplyr::mutate(tipo_de_vivienda_mod=
+                  ifelse(as.character(tipo_de_vivienda_mod)=="Ocupaci?rregular","Ocupación irregular",as.character(tipo_de_vivienda_mod)))%>%
+  dplyr::mutate(tipo_de_vivienda_mod=as.factor(tipo_de_vivienda_mod))%>%
+  dplyr::mutate(tenencia_de_la_vivienda_mod=
+                  dplyr::case_when(as.character(tenencia_de_la_vivienda)=="N/A"~NA_character_,
+                                     as.character(tipo_de_vivienda_mod)=="Caleta o punto de calle" & (tenencia_de_la_vivienda=="Propia"|tenencia_de_la_vivienda=="Arrienda"|tenencia_de_la_vivienda=="Cedida")~NA_character_, 
+                                   as.character(tipo_de_vivienda_mod)=="Hospedería?" & (tenencia_de_la_vivienda=="Propia"|tenencia_de_la_vivienda=="Cedida")~NA_character_,
+                                   as.character(tipo_de_vivienda_mod)=="Residencial, pensión, hostal" & (tenencia_de_la_vivienda=="Propia"|tenencia_de_la_vivienda=="Cedida")~NA_character_,
+                                    is.na(tipo_de_vivienda_mod)~NA_character_,
+                  TRUE~as.character(tenencia_de_la_vivienda)))%>%
+  dplyr::mutate(rubro_trabaja_mod=if_else(as.character(estatus_ocupacional)=="Empleado",as.character(rubro_trabaja),NA_character_,NA_character_))%>%
+  dplyr::mutate(rubro_trabaja_mod= 
+                  dplyr::case_when(as.character(cat_ocupacional)=="Cuenta propia" & (as.character(rubro_trabaja)== "Ocupaciones Militares"|as.character(rubro_trabaja)== "Directores y Gerentes")~ NA_character_, as.character(cat_ocupacional)=="Empleador" & as.character(rubro_trabaja)== "Ocupaciones Militares"~ NA_character_,           TRUE~ as.character(rubro_trabaja_mod)))%>%
+  dplyr::mutate(rubro_trabaja_mod= as.factor(rubro_trabaja_mod))%>%
+#CONS_C1_df_dup_MAY_2020_prev_6b%>%  
+#    janitor::tabyl(estatus_ocupacional,cat_ocupacional,rubro_trabaja)%>% unlist()%>% data.frame()%>% #data.table::data.table(keep.rownames = T)%>% tidyr::pivot_wider(names_sep="")  
+
+#CONS_C1_df_dup_MAY_2020_prev_6b%>%  
+#    dplyr::group_by(estatus_ocupacional, cat_ocupacional,rubro_trabaja)%>%
+#    dplyr::summarise(n=n())%>%
+#    copiar_nombres()  
+  
+ #CONS_C1_df_dup_MAY_2020_prev_6b%>%
+#    dplyr::mutate(fech_nac=as.character(fech_nac))%>%
+#    dplyr::select(fech_nac,,edad_grupos)%>%
+#    copiar_nombres()    
+#18-24, 25- 29, 30-35, 36-45, and 45+.
+dplyr::mutate(edad_al_ing_grupos=ifelse(edad_al_ing>45,">45",
+      ifelse(edad_al_ing>=36,"36-45",
+      ifelse(edad_al_ing>=30,"30-35",
+      ifelse(edad_al_ing>=25,"25-29",
+      ifelse(edad_al_ing>=18,"18-24",
+      NA)))))) %>%
+dplyr::mutate(edad_al_ing_grupos=as.factor(edad_al_ing)) %>%  
+    #edad_al_ing_grupos
+    #Edad a la fecha de ingreso a tratamiento en grupos (numérico continuo) //Age at admission in groups
+  assign("CONS_C1_df_dup_MAY_2020_prev_6c",., envir = .GlobalEnv)
+```
+
+<br>
+
+#### 4.4. Related to days of treatment
+
+<br>
+
+We observed the cases that remained with more or equal than 1,095 days (n= `r CONS_C1_df_dup_JUN_2020%>% dplyr::filter(dias_trat_imp>1095)`). Must take note that SENDAs professionals believed that treatments should not last more than 1095 days.
+
+<br>
+
+```{r 6d_tab5_days_treat,eval=T, echo=T, paged.print=TRUE}
+mas_1095_usuarios<-
+      CONS_C1_df_dup_MAY_2020_prev_6c%>%
+        dplyr::filter(dias_trat_imp>1095)%>%
+        dplyr::distinct(hash_key)%>%
+        unlist()%>%
+        as.character()
+
+mas_1095_usuarios_bd_original<-
+CONS_C1_df%>% dplyr::select(HASH_KEY, fech_ing)%>% dplyr::mutate(fech_ing=as.character(fech_ing))%>% dplyr::group_by(HASH_KEY)%>% dplyr::arrange(HASH_KEY,fech_ing)%>% dplyr::mutate(rn=row_number())%>% tidyr::pivot_wider(names_from=rn,values_from=fech_ing)%>% dplyr::filter(HASH_KEY %in% mas_1095_usuarios)
+
+df_tab5<-
+CONS_C1_df_dup_MAY_2020_prev_6c%>%
+    dplyr::filter(hash_key %in% mas_1095_usuarios)%>%
+    dplyr::select(hash_key, ano_bd, fech_ing, dias_trat_imp, fech_egres_imp,tipo_de_plan_2,senda)%>%
+    dplyr::left_join(mas_1095_usuarios_bd_original,by=c("hash_key"="HASH_KEY"))
+
+df_tab5%>%
+  knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+            caption="Table 5. Trajectories of users with more than 1,095 days (w/ dates of the original dataset)",
+            align= rep('c', 101))  %>%
+        kableExtra::kable_styling() %>%
+        kableExtra::row_spec(which(df_tab5$dias_trat_imp>1095), bold= F, color= "white", background= "steelblue")%>%
+        kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 8)%>%
+        kableExtra::scroll_box(width= "100%", height = "375x")
+
+CONS_C1_df_dup_MAY_2020_prev_6c%>%
+  dplyr::filter(hash_key %in% mas_1095_usuarios)%>%
+  assign("CONS_C1_df_dup_MAY_2020_prev_6d",., envir = .GlobalEnv)
+
+```
+
+<br>
+
+As seen in the Table above, most of the users appeared in more than one yearly database with the same date of admission. 
 
 <br>
 
@@ -2161,8 +2285,8 @@ At this point, it was necessary to differentiate between intermediate treatment 
 <br>
 
 ```{r tab5_spaces_treatments2,eval=T, echo=T, paged.print=TRUE}
-CONS_C1_df_dup_MAY_2020_prev_6b_exp_spaces<-
-      CONS_C1_df_dup_MAY_2020_prev_6b %>%
+CONS_C1_df_dup_MAY_2020_prev_6c_exp_spaces<-
+      CONS_C1_df_dup_MAY_2020_prev_6c %>%
           dplyr::group_by(hash_key) %>%
           dplyr::mutate(fech_ing_num_may20=as.numeric(as.Date(fech_ing))) %>%
           dplyr::mutate(fech_egres_num_may20=as.numeric(as.Date(fech_egres_imp))) %>%
@@ -2172,11 +2296,10 @@ CONS_C1_df_dup_MAY_2020_prev_6b_exp_spaces<-
           dplyr::filter(!is.na(dias_trat_imp))%>%
           #dplyr::select(hash_key,fech_ing,fech_ing_num_may20,fech_egres_imp, fech_egres_num_may20,dias_trat_imp,fech_ing_next_treat,diff_bet_treat)
           dplyr::select(row,hash_key,fech_ing,fech_egres_imp, dias_trat_imp,diff_bet_treat,motivodeegreso_imp,motivodeegreso_mod_imp,id_centro)
-  
 
-knitr::kable(cbind(data.frame(psych::describe(CONS_C1_df_dup_MAY_2020_prev_6b_exp_spaces$diff_bet_treat)),t(quantile(CONS_C1_df_dup_MAY_2020_prev_6b_exp_spaces$diff_bet_treat,c(.10,.25,.5,.75,.9),na.rm=T))),
+knitr::kable(cbind(data.frame(psych::describe(CONS_C1_df_dup_MAY_2020_prev_6c_exp_spaces$diff_bet_treat)),t(quantile(CONS_C1_df_dup_MAY_2020_prev_6c_exp_spaces$diff_bet_treat,c(.10,.25,.5,.75,.9),na.rm=T))),
             format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-            caption="Table 5. Summary Table for Difference Between Treatments (with the following entry)",
+            caption="Table 6. Summary Table for Difference Between Treatments (with the following entry)",
             align =rep('c', 101))  %>%
         kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
         kableExtra::scroll_box(width = "100%", height = "150px")
@@ -2185,7 +2308,7 @@ knitr::kable(cbind(data.frame(psych::describe(CONS_C1_df_dup_MAY_2020_prev_6b_ex
 # 109,268 = 8119 fechas de egreso perdidas
 #
 #quantile(CONS_C1_df_dup_MAY_2020_prev_2_exp_spaces$diff_bet_treat,c(seq(1,100)/100),na.rm=T)
-quantiles_diff_bet_treat<-data.table::data.table(cbind(quantile(CONS_C1_df_dup_MAY_2020_prev_6b_exp_spaces$diff_bet_treat,c(seq(1,100)/100),na.rm=T)),keep.rownames = T)
+quantiles_diff_bet_treat<-data.table::data.table(cbind(quantile(CONS_C1_df_dup_MAY_2020_prev_6c_exp_spaces$diff_bet_treat,c(seq(1,100)/100),na.rm=T)),keep.rownames = T)
 #117387-31665
 
 #diff_bet_treat= siempre es la diferencia con el siguiente tratmaiento
@@ -2197,18 +2320,36 @@ Considering the distribution of differences in days between each entry and what 
 
 <br>
 
+```{r fig8_hist_spaces_treatments2,eval=T, echo=T, paged.print=TRUE, fig.cap="Figure 8. Histogram of Diff Between Treatments"}
+p<-ggplot(CONS_C1_df_dup_MAY_2020_prev_6c_exp_spaces,aes(x=diff_bet_treat), alpha=.7)+
+  geom_histogram_interactive(bins=120)+
+  geom_vline(aes(xintercept=30), color="darkred", linetype="dashed")+
+  geom_vline(aes(xintercept=45), color="darkmagenta", linetype="solid")+
+  geom_vline(aes(xintercept=60), color="darkblue", linetype="dotted")+
+  sjPlot::theme_sjplot2() +
+  #facet_wrap(~motivodeegreso_mod_imp)+
+labs(y = "Frequency",x="Diff. Between Treatments", caption= "Blue dotted line= 60 days; Violet solid line= 45 days; Red dashed line= 30 days")#+
+# xlim(c(-1,2000))
+
+ggiraph(code = {print(p)}, tooltip_extra_css = tooltip_css, tooltip_opacity = .75 )
+
+```
+
+
+
+
 #### 5.1. Cause of Discharge
 
 We explored how was the distribution between the causes of discharge, depending on treatment conditions. This could be useful to get an impression of the adjustment of the cutpoint chosen.
 
 <br>
 
-```{r fig8_image-map_chile_hosp, echo=T, fig.align='center', fig.pos='H', message=FALSE, warning=FALSE, fig.cap= "Figure 8. Treemap of Cause of Discharge Depending On Treatment/Events Conditions"}
+```{r fig8_image-map_chile_hosp, echo=T, fig.align='center', fig.pos='H', message=FALSE, warning=FALSE, fig.cap= "Figure 9. Treemap of Cause of Discharge Depending On Treatment/Events Conditions"}
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_
 ### Casos que tienen un motivo de egreso de derivación, pero en
 cause_sin_otro_trat <-
-      CONS_C1_df_dup_MAY_2020_prev_6b %>%
+      CONS_C1_df_dup_MAY_2020_prev_6c %>%
         dplyr::group_by(hash_key) %>%
         dplyr::mutate(fech_ing_num_may20=as.numeric(as.Date(fech_ing))) %>%
         dplyr::mutate(fech_egres_num_may20=as.numeric(as.Date(fech_egres_imp))) %>%
@@ -2221,11 +2362,11 @@ cause_sin_otro_trat <-
        # dplyr::select(row,hash_key,fech_ing,fech_egres_imp, dias_trat_imp,diff_bet_treat,motivodeegreso_imp,motivodeegreso_mod_imp,id_centro)
     # 1. Motivo de egreso
         dplyr::filter(is.na(diff_bet_treat)) %>% 
-  janitor::tabyl(motivodeegreso_mod)  %>%
-        dplyr::mutate(percent=percent*100 ,
+  janitor::tabyl(motivodeegreso_mod_imp)  %>%
+        dplyr::mutate(percent=percent*100,
                        valid_percent=valid_percent*100)
     # Una8817 tiene como motivo Derivación
-        #dplyr::select(row,hash_key,fech_ing,fech_egres_imp, dias_trat_imp,diff_bet_treat,motivodeegreso_imp,motivodeegreso_mod_imp,id_centro)
+        #dplyr::select(row,hash_key,fech_ing,fech_egres_imp, dias_trat_imp,diff_bet_treat,motivodeegreso_imp,motivodeegreso_mod_imp_imp,id_centro)
 
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
@@ -2233,7 +2374,7 @@ cause_sin_otro_trat <-
 #CON TRATAMIENTO POSTERIOR, MENOR O IGUAL A 60 DIAS
 
 cause_menor_60_dias<-
-      CONS_C1_df_dup_MAY_2020_prev_6b %>%
+      CONS_C1_df_dup_MAY_2020_prev_6c %>%
         dplyr::group_by(hash_key) %>%
         dplyr::mutate(fech_ing_num_may20=as.numeric(as.Date(fech_ing))) %>%
         dplyr::mutate(fech_egres_num_may20=as.numeric(as.Date(fech_egres_imp))) %>%
@@ -2241,17 +2382,17 @@ cause_menor_60_dias<-
         dplyr::mutate(fech_ing_next_treat=dplyr::lag(fech_ing_num_may20)) %>%
         dplyr::mutate(diff_bet_treat=fech_ing_next_treat-fech_egres_num_may20)%>%
         dplyr::ungroup()%>%
-        dplyr::mutate(caso=case_when(is.na(diff_bet_treat) & motivodeegreso_mod=="Derivación"~"1.sin tratamiento posterior, con motivo derivación",TRUE~""))%>%
+        dplyr::mutate(caso=case_when(is.na(diff_bet_treat) & motivodeegreso_mod_imp=="Derivación"~"1.sin tratamiento posterior, con motivo derivación",TRUE~""))%>%
         #dplyr::filter(grepl('1.sin tratamiento', caso))%>%
        # dplyr::select(row,hash_key,fech_ing,fech_egres_imp, dias_trat_imp,diff_bet_treat,motivodeegreso_imp,motivodeegreso_mod_imp,id_centro)
     # 1. Motivo de egreso
         dplyr::filter(!is.na(diff_bet_treat),diff_bet_treat<=60) %>% 
-    janitor::tabyl(motivodeegreso_mod)%>%
+    janitor::tabyl(motivodeegreso_mod_imp)%>%
         dplyr::mutate(percent=percent*100 ,
                        valid_percent=valid_percent*100)
 
 cause_mayor_60_dias<-
-      CONS_C1_df_dup_MAY_2020_prev_6b %>%
+      CONS_C1_df_dup_MAY_2020_prev_6c %>%
         dplyr::group_by(hash_key) %>%
         dplyr::mutate(fech_ing_num_may20=as.numeric(as.Date(fech_ing))) %>%
         dplyr::mutate(fech_egres_num_may20=as.numeric(as.Date(fech_egres_imp))) %>%
@@ -2259,12 +2400,12 @@ cause_mayor_60_dias<-
         dplyr::mutate(fech_ing_next_treat=dplyr::lag(fech_ing_num_may20)) %>%
         dplyr::mutate(diff_bet_treat=fech_ing_next_treat-fech_egres_num_may20)%>%
         dplyr::ungroup()%>%
-        dplyr::mutate(caso=case_when(is.na(diff_bet_treat) & motivodeegreso_mod=="Derivación"~"1.sin tratamiento posterior, con motivo derivación",TRUE~""))%>%
+        dplyr::mutate(caso=case_when(is.na(diff_bet_treat) & motivodeegreso_mod_imp=="Derivación"~"1.sin tratamiento posterior, con motivo derivación",TRUE~""))%>%
         #dplyr::filter(grepl('1.sin tratamiento', caso))%>%
        # dplyr::select(row,hash_key,fech_ing,fech_egres_imp, dias_trat_imp,diff_bet_treat,motivodeegreso_imp,motivodeegreso_mod_imp,id_centro)
     # 1. Motivo de egreso
         dplyr::filter(!is.na(diff_bet_treat),diff_bet_treat>60) %>% 
-    janitor::tabyl(motivodeegreso_mod)%>%
+    janitor::tabyl(motivodeegreso_mod_imp)%>%
         dplyr::mutate(percent=percent*100 ,
                        valid_percent=valid_percent*100)
  
@@ -2281,12 +2422,12 @@ dt_cause_discharge<-data.frame(
             cbind(Status=">1 Entry, >60d",cause_mayor_60_dias[1:3])
             )
       ) %>% dplyr::mutate(percent= paste0(round(as.numeric(percent)),"%"))%>%
-  dplyr::mutate(tooltip=paste0(`motivodeegreso_mod`,"=",`n`,"\n", percent))
+  dplyr::mutate(tooltip=paste0(`motivodeegreso_mod_imp`,"=",`n`,"\n", percent))
 
 
 # plot
 plot<-ggplot(dt_cause_discharge, aes(area = n, 
-                               fill = motivodeegreso_mod,
+                               fill = motivodeegreso_mod_imp,
                                label = percent,
                                subgroup=Status)) +
   geom_treemap() +
@@ -2319,16 +2460,15 @@ As can be seen in Figure 8, Referrals in cases with more than one entry by user 
 
 #### 5.2. Changes Between the Last Treatments
 
-
 We considered that it was important to explore the changes between one entry of a user and their previous, since this can shed light **if a certain entry can be really considered as a different treatment from the next one, leading to identify a true readmission**.
 
 <br>
 
-```{r tab6_spaces_treatments,eval=T, echo=T, paged.print=TRUE}
-CONS_C1_df_dup_MAY_2020_prev_6b %>%
+```{r tab7_spaces_treatments,eval=T, echo=T, paged.print=TRUE}
+CONS_C1_df_dup_MAY_2020_prev_6c %>%
     dplyr::group_by(hash_key) %>%
     dplyr::mutate(fech_ing_num_may20=as.numeric(as.Date(fech_ing))) %>%
-    dplyr::mutate(fech_egres_num_may20=as.numeric(as.Date(fech_egres_imp))) %>%
+    dplyr::mutate(fech_egres_num_may20=as.numeric(as.Date(fech_egres_imp)))%>%
     dplyr::mutate(fech_egres_num_may20=ifelse(is.na(fech_egres_imp),18213,fech_egres_num_may20)) %>% #equivalente a 2019-11-13
     dplyr::mutate(fech_ing_next_treat=dplyr::lag(fech_ing_num_may20)) %>%
     dplyr::mutate(diff_bet_treat=fech_ing_next_treat-fech_egres_num_may20)%>%
@@ -2354,7 +2494,7 @@ CONS_C1_df_dup_MAY_2020_prev_6b %>%
   janitor::tabyl(obs_cambios)%>%
         dplyr::mutate(percent=round(percent*100,1))%>%
   knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-            caption="Table 6. Frequency and Percentage of Types of Changes Between Treatments (<=60 days between treatments)",
+            caption="Table 7. Frequency and Percentage of Types of Changes Between Treatments (<=60 days between treatments)",
             col.names = c("Changes", "No.", "%"),
             align =rep('c', 101))  %>%
         kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
@@ -2362,7 +2502,7 @@ CONS_C1_df_dup_MAY_2020_prev_6b %>%
 ```
 <br>
 
-From the Table 6, we can see that the majority of cases changed center and type of plan	(44.2%). These are followed by a group that changed the center, type of plan and  type of program (15.7%). There was another group that did not changed in any characteristic from the earlier entry (11.6%). Also, a group of cases only changed the type of plan (10.2%), and other, only changed from one center to another (8.9%).
+From the Table 7, we can see that the majority of cases changed center and type of plan	(44.2%). These are followed by a group that changed the center, type of plan and  type of program (15.7%). There was another group that did not changed in any characteristic from the earlier entry (11.6%). Also, a group of cases only changed the type of plan (10.2%), and other, only changed from one center to another (8.9%).
 
 <br>
 
@@ -2370,11 +2510,11 @@ We fitted a model of the interactive effect of the number of changes from the ne
 
 <br>
 
-```{r tab7_spaces_treatments_glm_less60,eval=T, echo=T, paged.print=TRUE}
+```{r tab8_spaces_treatments_glm_less60,eval=T, echo=T, paged.print=TRUE}
 #       main= "Efecto conjunto de Cambios en Características de Tratamiento y Motivo de \n egreso (Derivación), en la probabilidad de que el Tratamiento Dure Menos o Igual de 60 días",
 
-CONS_C1_df_dup_MAY_2020_prev_6b_glm_mas_de_un_trat <-
-  CONS_C1_df_dup_MAY_2020_prev_6b %>%
+CONS_C1_df_dup_MAY_2020_prev_6c_glm_mas_de_un_trat <-
+  CONS_C1_df_dup_MAY_2020_prev_6c %>%
   dplyr::group_by(hash_key) %>%
   dplyr::mutate(fech_ing_num_may20=as.numeric(as.Date(fech_ing))) %>%
   dplyr::mutate(fech_egres_num_may20=as.numeric(as.Date(fech_egres_imp))) %>%
@@ -2389,7 +2529,7 @@ CONS_C1_df_dup_MAY_2020_prev_6b_glm_mas_de_un_trat <-
   #para tener sólo los casos que corresponde, que tienen comparaciones con un siguiente. Los otros no me interesan
   dplyr::filter(!is.na(diff_bet_treat))%>%
   dplyr::mutate(menor_60_dias_diff=case_when(diff_bet_treat<=60~1,TRUE~0))%>%
-  dplyr::mutate(motivoegreso_derivacion=case_when(motivodeegreso_mod=="Derivación"~1,TRUE~0))%>%
+  dplyr::mutate(motivoegreso_derivacion=case_when(motivodeegreso_mod_imp=="Derivación"~1,TRUE~0))%>%
   
   dplyr::mutate(obs_cambios=case_when(id_centro_sig_trat!=id_centro~"1.1.cambio centro",TRUE~""))%>%
   dplyr::mutate(obs_cambios=case_when(tipo_plan_sig_trat!=tipo_de_plan_2~glue::glue("{obs_cambios};1.2.cambio tipo plan"),TRUE~obs_cambios))%>%
@@ -2412,10 +2552,10 @@ CONS_C1_df_dup_MAY_2020_prev_6b_glm_mas_de_un_trat <-
 #Para ver el efecto de los cambios entre un tratamiento y otro y el motivo de egreso derivación, en que la distancia enrte un tratamiento a otro sea mayor a 60 días.
 
 glm_60d <- glm(menor_60_dias_diff ~ motivoegreso_derivacion*obs_cambios_fac, 
-                data=CONS_C1_df_dup_MAY_2020_prev_6b_glm_mas_de_un_trat, family="binomial")
+                data=CONS_C1_df_dup_MAY_2020_prev_6c_glm_mas_de_un_trat, family="binomial")
 library(finalfit)
 #explanatory = c("age.factor*sex.factor", "obstruct.factor", "perfor.factor")
-CONS_C1_df_dup_MAY_2020_prev_6b_glm_mas_de_un_trat %>%
+CONS_C1_df_dup_MAY_2020_prev_6c_glm_mas_de_un_trat %>%
   dplyr::mutate(obs_cambios_fac= ff_label(obs_cambios_fac, "No. of Changes Between Datasets"),
                 motivoegreso_derivacion= ff_label(motivoegreso_derivacion, "Cause of Discharge (Referral=1)"),
                 menor_60_dias_diff= ff_label(menor_60_dias_diff, "<= 60 days of difference between next treatment"))%>%
@@ -2423,17 +2563,16 @@ CONS_C1_df_dup_MAY_2020_prev_6b_glm_mas_de_un_trat %>%
     finalfit("menor_60_dias_diff", "motivoegreso_derivacion__obs_cambios_fac") -> t 
 
 knitr::kable(t,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-            caption="Table 7. Summary Table for Difference Between Treatments",
+            caption="Table 8. Summary Table for Difference Between Treatments",
             align =rep('c', 101))  %>%
         kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
         kableExtra::scroll_box(width = "100%", height = "350px")
-
 ```
 <br>
 
 In the following figure, we show the marginal effects on the probability of having less or equal than 60 days of difference between the next entry, depending on cause of discharge (referral) and the number of changes in the characteristics of treatments with the next entry.
 
-```{r fig9a_int_changes_referral,eval=F, echo=T, paged.print=TRUE,fig.cap= "Figure 9a. Interactive Effects in the Prob. of Having <=60 days of difference with the previous treatment"}
+```{r fig10a_int_changes_referral,eval=F, echo=T, paged.print=TRUE,fig.cap= "Figure 10a. Interactive Effects in the Prob. of Having <=60 days of difference with the previous treatment"}
 #
 library("effects")
     #Effect(focal.predictors = "diff_bet_treat",polrMod)
@@ -2447,7 +2586,7 @@ library("effects")
        style="stacked")
 ```
 
-```{r fig9b_int_changes_referral,eval=T, echo=T, paged.print=TRUE,fig.cap= "Figure 9. Interactive Effects on Odds of having <=60 days of difference with the previous entry"}
+```{r fig10b_int_changes_referral,eval=T, echo=T, paged.print=TRUE,fig.cap= "Figure 10. Interactive Effects on Odds of having <=60 days of difference with the previous entry"}
 library(lsmeans)
 refR <- lsmeans(glm_60d, specs = c("motivoegreso_derivacion","obs_cambios_fac"))
 ref_dfR <- as.data.frame(cbind(summary(refR)[1:2],exp(summary(refR)[,c(3,6,7)])))
@@ -2474,12 +2613,19 @@ ggiraph(code = print(g4R))
 
 <br>
 
-Figure 9 tend show that there was more chance to had a minor difference with the next treatment, if the cause of discharge was  a referral and a user had among 2 or 3 changes in the characteristics of the treatment in the following entry. However, must note that referrals had more chance than other causes of discharge by itself, regardless of the number of changes,
+Figure 10 tend show that there was more chance to had a minor difference with the next treatment, if the cause of discharge was  a referral and a user had among 2 or 3 changes in the characteristics of the treatment in the following entry. However, must note that referrals had more chance than other causes of discharge by itself, regardless of the number of changes.
 
+
+<br>
+
+#### 5.3. 
+
+
+### 6. Include variables of the difference between treatments with the original dataset
 
 ```{r join_with_cases_w_more_one_t,eval=T, echo=T, paged.print=TRUE}
-CONS_C1_df_dup_MAY_2020_prev_6b%>%
-  dplyr::left_join(CONS_C1_df_dup_MAY_2020_prev_6b_glm_mas_de_un_trat[c("row",                                                                        "menor_60_dias_diff","diff_bet_treat","id_centro_sig_trat","tipo_plan_sig_trat",                                                          "tipo_programa_sig_trat","senda_sig_trat","motivoegreso_derivacion","obs_cambios",
+CONS_C1_df_dup_MAY_2020_prev_6c%>%
+  dplyr::left_join(CONS_C1_df_dup_MAY_2020_prev_6c_glm_mas_de_un_trat[c("row",                                                                        "menor_60_dias_diff","diff_bet_treat","id_centro_sig_trat","tipo_plan_sig_trat",              "tipo_programa_sig_trat","senda_sig_trat","motivoegreso_derivacion","obs_cambios",
               "obs_cambios_ninguno","obs_cambios_num","obs_cambios_fac")], by="row")%>%
   assign("CONS_C1_df_dup_JUN_2020",., envir = .GlobalEnv)
 ```
@@ -2706,6 +2852,11 @@ CONS_C1_df_dup_JUN_2020<-
                                                                                    'Trastornos somatomorfos' ='Trastornos somatomorfos(F45)'))
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
+CONS_C1_df_dup_JUN_2020%>%
+dplyr::mutate_at(c('dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_cie_10_or','x3_dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_sub_cie_10_or','x3_dg_trs_psiq_sub_cie_10_or','compromiso_biopsicosocial','pais_nacimiento','nacionalidad','dg_trs_psiq_sub_dsm_iv_or','x2_dg_trs_psiq_sub_dsm_iv_or','x3_dg_trs_psiq_sub_dsm_iv_or','dg_trs_psiq_sub_cie_10_or','etnia_cor_2','motivodeegreso_mod_imp','fecha_ultimo_tratamiento','fecha_ultimo_tratamiento','tiene_menores_de_edad_a_cargo'),~as.factor(.)) %>%
+  assign("CONS_C1_df_dup_JUN_2020",., envir = .GlobalEnv)
+  
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_  
   
 codebook::var_label(CONS_C1_df_dup_JUN_2020) <- list(
 row= 'Numerador de los eventos presentes en la Base de Datos/Events in the Dataset',
@@ -2744,10 +2895,10 @@ x_se_trata_mujer_emb= 'Mujer Embarazada al Ingreso/Pregnant at Admission',
 escolaridad_ultimo_ano_cursado= '(original, Recodificado en escolaridad)/', 
 condicion_ocupacional= '(original, Recodificado en estatus_ocupacional)/', 
 categoria_ocupacional= '(original, Recodificado en cat_ocupacional)/',
-rubro_trabaja= 'Rubro de Trabajo/Area of Work',
+rubro_trabaja= '(original, Recodificado en rubro_trabaja_mod)/',
 con_quien_vive= 'Persona con la que vive el Usuario/People that Share Household with the User',
-tipo_de_vivienda= 'Tipo de Vivienda/Type of Housing',
-tenencia_de_la_vivienda= 'Tenencia de la Vivienda/Tenure status of Households',
+tipo_de_vivienda= '(original, Recodificado en tipo_de_vivienda_mod)/',
+tenencia_de_la_vivienda= '(original, Recodificado en tenencia_de_la_vivienda_mod)/',
 sustancia_principal= '(original, Recodificado en sus_principal)/',
 `otras_sustancias_nº1`= '(original, Recodificado en otras_sus1)/',
 `otras_sustancias_nº2`= '(original, Recodificado en otras_sus2)/',
@@ -2834,8 +2985,8 @@ cat_ocupacional= 'Categoría Ocupacional/Occupational Category',
 edad_grupos= 'Edad agrupada/Age in groups',
 origen_ingreso= 'Origen de Ingreso/Motive of Admission to Treatment',
 escolaridad= 'Escolaridad: Nivel Eduacional/Educational Attainment',
-freq_cons_sus_prin= 'Frecuencia de Consumo de la Sustancia Principal/Frequency of Consumption of the Primary or Main Substance',
 via_adm_sus_prin= 'Vía de Administración de la Sustancia Principal/Route of Administration of the Primary or Main Substance',
+freq_cons_sus_prin= 'Frecuencia de Consumo de la Sustancia Principal (30 días previos a la admisión)/Frequency of Consumption of the Primary or Main Substance (30 days previous to admission)',
 dias_trat_knn_imp= 'Días de Tratamiento (Imputados KNN)/Days of Treatment (Imputed KNN)',
 fech_egres_knn_imp= 'Fecha de Egreso (Imputados KNN)/Date of Discharge (Imputed KNN)',
 dias_trat_alta_temprana_knn_imp= 'Días de Tratamiento con Alta Temprana (<90) (Imputados KNN)/Days of Treatment w Early Withdrawal (Imputed KNN)',
@@ -2844,8 +2995,8 @@ motivodeegreso_imp= 'Motivo de Egreso(Imputados KNN & Lógico)/Cause of Discharg
 motivodeegreso_mod_imp= 'Motivo de Egreso (con abandono temprano y tardío)(Imputados KNN & Lógico)/Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic)',
 dias_trat_imp= 'Días de Tratamiento (Imputados KNN & Lógico)/Days of Treatment (Imputed KNN & Logic)', 
 dias_trat_alta_temprana_imp= 'Días de Tratamiento con Alta Temprana (<90) (Imputados KNN & Lógico)/Days of Treatment w Early Withdrawal (Imputed KNN & Logic)',
-etnia_cor= 'Etnia/Ethnic Group',
 via_adm_sus_prin_act= 'Vía de Administración de la Sustancia Principal (Se aplicaron criterios de limpieza)/Route of Administration of the Primary or Main Substance (Tidy)',
+etnia_cor= 'Etnia/Ethnic Group',
 nacionalidad_2= 'Segunda Nacionalidad/Second Nationality',
 etnia_cor_2= 'Etnia (2)/Second Ethnic Group',
 sus_ini_2= 'Segunda Sustancia de Inicio/Second Starting Substance',
@@ -2857,13 +3008,17 @@ comuna_residencia_cod= "Comuna de Residencia/Municipality or District of Residen
 sus_ini_mod= "Sustancia de Inicio (Sólo más frecuentes)/Starting Substance (Only more frequent)",
 sus_principal_mod= 'Sustancia Principal de Consumo (Sólo más frecuentes)/Primary or Main Substance of Consumption at Admission (Only more frequent)',
 origen_ingreso_mod= 'Origen de Ingreso/Motive of Admission to Treatment',
+tipo_de_vivienda_mod= 'Tipo de Vivienda/Type of Housing', 
+tenencia_de_la_vivienda_mod= 'Tenencia de la Vivienda/Tenure status of Households',
+rubro_trabaja_mod= 'Rubro de Trabajo/Area of Work',
+edad_al_ing_grupos= 'Edad a la Fecha de Ingreso a Tratamiento en Grupos/Age at Admission to Treatment In Groups',
 menor_60_dias_diff= 'Menor o igual a 60 días de diferencia con el registro posterior/Less or equal than 60 days of difference between the next entry',
 diff_bet_treat= 'Días de diferencia con el registro posterior/Days of difference between the next entry',
 id_centro_sig_trat= "ID del Centro del registro posterior/Center ID of the Next Treatment",
 tipo_plan_sig_trat= "Tipo de Plan del registro posterior/Type of Plan of the Next Entry",
 tipo_programa_sig_trat= "Tipo de Programa del registro posterior/Type of Program of the Next Entry", 
 senda_sig_trat= "SENDA del registro posterior/SENDA of the Next Entry",
-motivoegreso_derivacion= "Motivo de Egreso del registro posterior/Cause of Discharge of the Next Entry",
+motivoegreso_derivacion= "Motivo de Egreso= Derivación/Cause of Discharge= Derivación",
 obs_cambios= "Cambios del tratamiento en comparación al registro posterior/Changes in treatment compared to the Next Entry",
 obs_cambios_ninguno= "Sin cambios del tratamiento en comparación al registro posterior/No changes in treatment compared to the Next Entry",
 obs_cambios_num= "Recuento de cambios del tratamiento en comparación al registro posterior/Count of changes in treatment compared to the Next Entry",
@@ -2881,7 +3036,7 @@ table_labels<-
   dplyr::mutate(final= paste0(first, " ",code,' "',label,'"'))%>%
   dplyr::select(-code,-label,-first)%>%
   rbind('cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUN_2020.dta", replace')%>%
-  rbind('cap drop id id_mod nombre_centro')%>%
+  rbind('cap drop id id_mod nombre_centro consentimiento_informado')%>%
   rbind('cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUN_2020_exp.dta", replace')
 
 table_labels<-

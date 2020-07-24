@@ -2,17 +2,16 @@
 title: "Biopsychosocial Compromise"
 author: "ags"
 date: "30-06-2020"
-output: html_document
+output:
   html_document:
     code_folding: hide  
     toc: true # table of content true
-    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_depth: 4  # upto three depths of headings (specified by #, ## and ###)
     toc_float: true
-    bibliography: references.bib
-    nocite: '@*'
-    csl: sage-vancouver.csl
+bibliography: references.bib
+nocite: '@*'
+csl: sage-vancouver.csl
 ---
-
 <style type="text/css">
 .tablelines table, .tablelines td, .tablelines th {
         border: 1px solid black;
@@ -49,14 +48,16 @@ body{ /* Normal  */
 div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
 </style>
 
-```{r setup, include = FALSE, cache=T}
+```{r setup0, include = FALSE, cache=T}
 #Libraries used in the routine. Dont change the order
 rm(list=ls());gc()
+```
+
+```{r setup, include = FALSE, cache=T}
 #setwd("H:/")
 #rm(list=c("")
 unlink('SUD_CL/Duplicates2_cache', recursive = TRUE)
 unlink('Duplicates2--UMAYOR-_cache', recursive = TRUE)
-load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/5.Rdata")
 local({r <- getOption("repos")
        r["CRAN"] <- "http://cran.r-project.org" 
        options(repos=r)
@@ -147,44 +148,1052 @@ library(choroplethrMaps)
 library(choroplethrAdmin1)
 library(lsmeans)
 library(finalfit)
-library(chilemapas)
 suppressPackageStartupMessages(library(ggiraph))
-suppressPackageStartupMessages(library(sf))
-library(treemapify)
+library(psych)
 library(dplyr)
-library(choroplethr)
-library(choroplethrMaps)
-library(choroplethrAdmin1)
+library(parallel)
+library(ggcorrplot)
+library(citr)
+library(MVN)
 
 if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
 #install.packages( repos = "https://radiant-rstats.github.io/minicran/")
 #install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")
 tryCatch(source("https://raw.githubusercontent.com/radiant-rstats/minicran/gh-pages/update.R"), error = function(e) print("updated package, radiant"))
 
+copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
+  if(class(ungroup(x))[1]=="tbl_df"){
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)    
+        }
+  } else {
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)       
+  }
+ }
+} 
+
+mycor.ci <- function (x, keys = NULL, n.iter = 100, p = 0.05, overlap = FALSE, 
+    poly = FALSE, method = "pearson", plot = TRUE, minlength = 5, 
+    cvars=NULL, pvars=NULL, dvars=NULL, ...) {
+    cl <- match.call()
+    n.obs <- dim(x)[1]
+    if (is.null(keys) && overlap) 
+        overlap <- FALSE
+    if (poly) {
+        ncat <- 8
+        nvar <- dim(x)[2]
+        tx <- table(as.matrix(x))
+        if (dim(tx)[1] == 2) {
+            tet <- tetrachoric(x)
+            typ = "tet"
+        }
+        else {
+            tab <- apply(x, 2, function(x) table(x))
+            if (is.list(tab)) {
+                len <- lapply(tab, function(x) length(x))
+            }
+            else {
+                len <- dim(tab)[1]
+            }
+            if (is.null(dvars)) dvars <- subset(1:nvar, len == 2)
+            if (is.null(pvars)) pvars <- subset(1:nvar, ((len > 2) & (len <= ncat)))
+            if (is.null(cvars)) cvars <- subset(1:nvar, (len > ncat))
+            if (length(pvars) == ncol(x)) {
+                tet <- polychoric(x)
+                typ = "poly"
+            }
+            else {
+                plot(pvars)
+                tet <- mixedCor(data=x, c=cvars, d=dvars, method="pearson")
+                typ = "mixed"
+            }
+        }
+        Rho <- tet$rho
+
+    }
+    else {
+        Rho <- cor(x, use = "pairwise", method = method)
+    }
+    if (!is.null(keys)) {
+        bad <- FALSE
+        if (any(is.na(Rho))) {
+            warning(sum(is.na(Rho)), " of the item correlations are NA and thus finding scales that include those items will not work.\n We will try to do it for those  scales which do not include those items.\n         \n Proceed with caution. ")
+            bad <- TRUE
+            rho <- apply(keys, 2, function(x) colMeans(apply(keys, 
+                2, function(x) colMeans(Rho * x, na.rm = TRUE)) * 
+                x, na.rm = TRUE))
+        }
+        else {
+            rho <- t(keys) %*% Rho %*% keys
+        }
+    }
+    else {
+        rho <- Rho
+    }
+    if (overlap) {
+        key.var <- diag(t(keys) %*% keys)
+        var <- diag(rho)
+        n.keys <- ncol(keys)
+        key.av.r <- (var - key.var)/(key.var * (key.var - 1))
+        item.cov <- t(keys) %*% Rho
+        raw.cov <- item.cov %*% keys
+        adj.cov <- raw.cov
+        for (i in 1:(n.keys)) {
+            for (j in 1:i) {
+                adj.cov[i, j] <- adj.cov[j, i] <- raw.cov[i, 
+                  j] - sum(keys[, i] * keys[, j]) + sum(keys[, 
+                  i] * keys[, j] * sqrt(key.av.r[i] * key.av.r[j]))
+            }
+        }
+        diag(adj.cov) <- diag(raw.cov)
+        rho <- cov2cor(adj.cov)
+    }
+    rho <- cov2cor(rho)
+    nvar <- dim(rho)[2]
+    if (n.iter > 1) {
+        replicates <- list()
+        rep.rots <- list()
+        replicates <- parallel::mclapply(1:n.iter, function(XX) {
+            xs <- x[sample(n.obs, n.obs, replace = TRUE), ]
+            {
+                if (poly) {
+                  if (typ != "tet") {
+                    capture.output(tets <- mixedCor(data=xs, c=cvars, d=dvars, method="pearson"))
+                  }
+                  else {
+                    tets <- tetrachoric(xs)
+                  }
+                  R <- tets$rho
+                }
+                else {
+                  R <- cor(xs, use = "pairwise", method = method)
+                }
+                if (!is.null(keys)) {
+                  if (bad) {
+                    covariances <- apply(keys, 2, function(x) colMeans(apply(keys, 
+                      2, function(x) colMeans(R * x, na.rm = TRUE)) * 
+                      x, na.rm = TRUE))
+                  }
+                  else {
+                    covariances <- t(keys) %*% R %*% keys
+                  }
+                  r <- cov2cor(covariances)
+                }
+                else {
+                  r <- R
+                }
+                if (overlap) {
+                  var <- diag(covariances)
+                  item.cov <- t(keys) %*% R
+                  raw.cov <- item.cov %*% keys
+                  adj.cov <- raw.cov
+                  key.av.r <- (var - key.var)/(key.var * (key.var - 
+                    1))
+                  for (i in 1:(n.keys)) {
+                    for (j in 1:i) {
+                      adj.cov[i, j] <- adj.cov[j, i] <- raw.cov[i, 
+                        j] - sum(keys[, i] * keys[, j]) + sum(keys[, 
+                        i] * keys[, j] * sqrt(key.av.r[i] * key.av.r[j]))
+                    }
+                  }
+                  diag(adj.cov) <- diag(raw.cov)
+                  r <- cov2cor(adj.cov)
+                }
+                rep.rots <- r[lower.tri(r)]
+            }
+        })
+    }
+    replicates <- matrix(unlist(replicates), ncol = nvar * (nvar - 
+        1)/2, byrow = TRUE)
+    z.rot <- fisherz(replicates)
+    means.rot <- colMeans(z.rot, na.rm = TRUE)
+    sds.rot <- apply(z.rot, 2, sd, na.rm = TRUE)
+    sds.rot <- fisherz2r(sds.rot)
+    ci.rot.lower <- means.rot + qnorm(p/2) * sds.rot
+    ci.rot.upper <- means.rot + qnorm(1 - p/2) * sds.rot
+    means.rot <- fisherz2r(means.rot)
+    ci.rot.lower <- fisherz2r(ci.rot.lower)
+    ci.rot.upper <- fisherz2r(ci.rot.upper)
+    low.e <- apply(replicates, 2, quantile, p/2, na.rm = TRUE)
+    up.e <- apply(replicates, 2, quantile, 1 - p/2, na.rm = TRUE)
+    tci <- abs(means.rot)/sds.rot
+    ptci <- pnorm(tci)
+    ci.rot <- data.frame(lower = ci.rot.lower, low.e = low.e, 
+        upper = ci.rot.upper, up.e = up.e, p = 2 * (1 - ptci))
+    cnR <- abbreviate(colnames(rho), minlength = minlength)
+    k <- 1
+    for (i in 1:(nvar - 1)) {
+        for (j in (i + 1):nvar) {
+            rownames(ci.rot)[k] <- paste(cnR[i], cnR[j], sep = "-")
+            k <- k + 1
+        }
+    }
+    results <- list(rho = rho, means = means.rot, sds = sds.rot, 
+        tci = tci, ptci = ptci, ci = ci.rot, Call = cl, replicates = replicates)
+    if (plot) {
+        cor.plot(rho, numbers = TRUE, cuts = c(0.001, 0.01, 0.05), 
+            pval = 2 * (1 - ptci), ...)
+    }
+    class(results) <- c("psych", "cor.ci")
+    return(results)
+}
+
+load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/6.RData")
+rm(list=setdiff(ls(), c("CONS_C1_df_dup_JUN_2020", "CONS_TOP_df_dup_ENE_2020_prev9")))
+#https://crsh.github.io/papaja_man/writing.html
+#fsdfs
+#[-@smith04].
+#@smith04 [p. 33] says blah.
+#Blah blah [@smith04; @doe99].
+#Blah blah [see @doe99, pp. 33-35; also @smith04, ch. 1].
+#[@key-1; @key-2; @key-3]
+#[@james_1890; @bem_2011]
 ```
 
-<!--- SÍ O SÍ, HACER LA LIMPIEZA DE LOS SENDA NO, PRINCIPALMENTE DE LOS QUE SE SUPERPONGAN, TAMBIÉN PREGUNTAR A ACC SI LOS CON 0 DÍAS DE TRATAMIENTO SE BORRARÁN O NO; DE AHI EMPEZAR A NORMALIZAR LOS PROGRAMAS Y PLANES DE ACUERDO CON CRITERIOS MAUREEN, PARA NO GENERAR DIFERENCIAS AHI Y PODER DEDUPLICAR TRANQUILO --->
+<!--- 
+Valores Posibles:
+1. Leve
+2. Moderado
+3. Severo
+Se refiere a una apreciación de la magnitud de los efectos o consecuencias negativas del consumo de sustancias en las distintas áreas de la vida de las personas que consumen sustancias, y de su entorno.
+
+FUENTES: 
+- TOP SENDA: http://sistemas.senda.gob.cl/sistema-monitoreo/biblioteca/files/Documentos/ESTRATEGIAS%20NORMAS%20ORIENTACIONES/1%20Orientaciones%20y%20Normas/Nacional/Senda/TOP%20-%20Manual%20para%20el%20Entrevistador.pdf
+- Development of TOP (UK) https://sci-hub.tw/10.1111/j.1360-0443.2008.02284.x
+- 
+
+1 Substance use: days used alcohol, illicit opiates, crack
+cocaine, cocaine powder, amphetamines, cannabis,
+one other substance; days injecting; prevalence of
+needle/syringe sharing.
+2 Health: subjective rating of physical and psychological
+health status.
+ Crime: days committed shop theft and drug selling;
+prevalence of vehicle, property and fraud and assault/
+violent crime.
+4 Social functioning: rating of quality of life; days paid
+work and attendance for education/training; period
+prevalence of acute housing problems and risk of
+eviction.
+#[see @doe99, pp. 33-35; also @smith04, ch. 1].
+#Smith says blah [-@smith04].
+--->
+
+# Dataset Match
+
+We used the Treatment Outcomes Profile to join users of the C1 (n= `r nrow(CONS_C1_df_dup_JUN_2020) %>% formatC(, format="f", big.mark=",", digits=0)`; users=`r CONS_C1_df_dup_JUN_2020 %>% group_by(hash_key) %>% summarise(n=n()) %>% nrow() %>% formatC(, format="f", big.mark=",", digits=0)`) that were evaluated with the Treatment Outcome Profile (TOP) in the same date of Admission to entries in C1 datasets.
+
+<br>
+
+```{r tab1_pers_info_edad_ini_cons,eval=T, echo=T, paged.print=TRUE}
+###casos duplicados en fecha de aplicación
+#1     1 97779
+#2     2  2483
+#3     3   149
+#4     4    21
+#5     5     3
+#no hay casos que tengan más de una fecha de admisión Y UNA BD MÁS RECIENTE
+#CONS_TOP_df_dup_ENE_2020_prev9%>% dplyr::mutate(concat=paste0(hash_key,"_",as.character(fech_ap_top)))%>% group_by(concat) %>% dplyr::mutate(n_hash_fech_ap=n(),n_dis_ano=n_distinct(ano_bd))%>% dplyr::filter(n_hash_fech_ap>1,n_dis_ano>1)
+
+CONS_C1_df_dup_JUL_2020_prev0<-
+  CONS_C1_df_dup_JUN_2020%>%
+    dplyr::mutate_at(c('dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_cie_10_or','x3_dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_sub_cie_10_or','x3_dg_trs_psiq_sub_cie_10_or','compromiso_biopsicosocial','pais_nacimiento','nacionalidad','dg_trs_psiq_sub_dsm_iv_or','x2_dg_trs_psiq_sub_dsm_iv_or','x3_dg_trs_psiq_sub_dsm_iv_or','dg_trs_psiq_sub_cie_10_or','etnia_cor_2','motivodeegreso_mod_imp','fecha_ultimo_tratamiento','fecha_ultimo_tratamiento','tiene_menores_de_edad_a_cargo'),~as.factor(.))
+
+invisible(
+CONS_TOP_df_dup_ENE_2020_prev9%>% dplyr::mutate(concat=paste0(hash_key,"_",as.character(fech_ap_top)))%>% group_by(concat) %>% dplyr::mutate(n_hash_fech_ap=n(),n_dis_ano=n_distinct(ano_bd))%>% dplyr::filter(n_hash_fech_ap>1,n_dis_ano>1)
+)
+
+CONS_TOP_df_dup_ENE_2020_prev9_match<-
+CONS_TOP_df_dup_ENE_2020_prev9%>% dplyr::mutate(concat=paste0(hash_key,"_",as.character(fech_ap_top)))%>% group_by(concat) %>% dplyr::mutate(n_hash_fech_ap=n(),n_dis_ano=n_distinct(ano_bd))%>% dplyr::filter(n_hash_fech_ap==1)%>%
+  dplyr::select(hash_key,concat,total_oh,dosis_oh,total_thc,dosis_thc,total_pbc,dosis_pbc,total_coc,dosis_coc,total_bzd,dosis_bzd,total_otra,dosis_otra,hurto,robo,venta_drogas,rina,total_vif,otro,total_transgresion,salud_psicologica,total_trabajo,total_educacion,salud_fisica,lugar_vivir,vivienda,calidad_vida,etapa_del_tratamiento)
+
+CONS_C1_df_dup_JUN_2020_match_top<-
+  CONS_C1_df_dup_JUN_2020%>%
+  dplyr::mutate(concat=paste0(hash_key,"_",as.character(fech_ing)))%>%
+  dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev9_match,by="concat", suffix=c("","_TOP"))%>%
+  dplyr::filter(!is.na(compromiso_biopsicosocial), etapa_del_tratamiento=="Inicio Tratamiento")%>%
+  dplyr::select(-hash_key_TOP)%>%
+  dplyr::filter_at(vars(total_oh,dosis_oh,total_thc,dosis_thc,total_pbc,dosis_pbc,total_coc,dosis_coc,total_bzd,dosis_bzd,total_otra,dosis_otra,hurto,robo,venta_drogas,rina,total_vif,otro,total_transgresion,salud_psicologica,total_trabajo,total_educacion,salud_fisica,lugar_vivir,vivienda,calidad_vida,etapa_del_tratamiento), all_vars(!is.na(.)))
+
+    users_top_only_one_app_match<-CONS_TOP_df_dup_ENE_2020_prev9%>% dplyr::mutate(concat=paste0(hash_key,"_",as.character(fech_ap_top)))%>% group_by(concat) %>% dplyr::mutate(n_hash_fech_ap=n(),n_dis_ano=n_distinct(ano_bd))%>% dplyr::filter(n_hash_fech_ap==1)%>% dplyr::ungroup()%>% dplyr::distinct(hash_key)%>% nrow()
 
 
-# R Markdown
+#c("total_oh","dosis_oh","total_thc","dosis_thc","total_pbc","dosis_pbc","total_coc","dosis_coc","total_bzd","dosis_bzd","total_otra","dosis_otra","hurto","robo","venta_drogas","rina","total_vif","otro","total_transgresion","salud_psicologica","total_trabajo","total_educacion","salud_fisica","lugar_vivir","vivienda","calidad_vida")
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+# etapa_del_tratamiento      n      percent valid_percent
+#                Egreso      4 3.470114e-05  0.0005719188
+#    Inicio Tratamiento   6948 6.027587e-02  0.9934229339
+#  Seguimiento 12 meses      0 0.000000e+00  0.0000000000
+#  Seguimiento 15 meses      0 0.000000e+00  0.0000000000
+#   Seguimiento 3 meses     34 2.949597e-04  0.0048613097
+#   Seguimiento 6 meses      8 6.940227e-05  0.0011438376
+#   Seguimiento 9 meses      0 0.000000e+00  0.0000000000
+#                  <NA> 108276 9.393251e-01            NA
 ```
 
-# Including Plots
+<br>
 
-You can also embed plots, for example:
+Of the total entries in TOP dataset (n= `r nrow(CONS_C1_df_dup_JUN_2020) %>% formatC(, format="f", big.mark=",", digits=0)`), we did not considered 2,845 entries in TOP dataset had more than one application in the same date (`r scales::percent(2845/nrow(CONS_C1_df_dup_JUN_2020))`). We selected `r nrow(CONS_C1_df_dup_JUN_2020_match_top) %>% formatC(, format="f", big.mark=",", digits=0)` cases that had no differences between the date of application and the date of admission to treatment. Additionally, these applications must had been administered at admission (excluding the 0,6% of applications that were administered at other stage of treatment). Finally, we discarded cases with null values in the variables of interest (`r 6948-6718` entries). 
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+<br>
+
+# Explore variables
+
+First, values of doses over 50 were discarded and declared missing, due to the great amount of outliers.
+
+<br>
+
+We defined one outcome variable to indicate early discharge (`abandono_temp`) that should vary depending on biopsychosocial compromise. We also collapsed variables related to transgression to norms (`transg_norm`) into a continuous variable, by counting actions committed in the last 4 weeks. Additionally, we added the variable `salud_mean` to get the mean of the scores in physical health, quality of life and psychological health. To capture the substance use behaviors, we defined the average pattern of drug use in alcohol, marijuana, cocaine paste base, cocaine sedatives and tranquilizers, and other substances, in terms of scores of quantity in the last four weeks (`total_mean`). Equally, we defined a score of the average dose of the mean reported by users on each substance. At last, we created the mean of scores of days of attendance to jobs or educational institutions in the last four weeks (`trabajo_edu_mean`).
+
+<br>
+
+Furthermore, we were interested in co-occurrent physical and psychiatric conditions among substance users. Consequently, we generated a variable called  `dg_trs_psiq`, composed of users without a diagnosed psychiatric condition (0), in study (1), and those diagnosed with a psychiatric condition (2). Also, we included `dg_trs_fisico`, which categorizes between users without a diagnosed physical condition (0), in study (1), and those diagnosed with a physical condition (2).
+
+<br>
+
+To capture profiles of consumption, we generated the following variables: `oh` identifies cases that used alcohol at least one day in the last four weeks. This same criteria was applied to marijuana (`thc`), cocaine paste base (`pbc`), cocaine (`coc`), benzodiazepines (`bzd`), and other drugs (`otra`). Users that reported at least two substances according to the aforementioned rule were categorized as polydrug users (`polycons`). 
+
+<br>
+
+Lastly, the mean of the scores in many variables were dichotomized between users that had less than the 50% of users, compared to people that showed more scores than the 50% of the population. These were defined as Higher Frequency of Days using substances in the last four weeks (`mayor_total`), Higher Average Reported Daily Dose of Substances (`mayor_dosis`), Lower Health-Related Self-Reports (`menor_salud`), and Lower Days of Attendance to Work and Educational Centers in the last four weeks (`menor_trabajo_edu`). In a similar manner, `transg_norm_bin` identify users that reported at least one behavior that transgress the norm. 
+
+<br>
+
+```{r tab1, echo=FALSE}
+scale2 <- function(x, na.rm = FALSE) (x - mean(x, na.rm = na.rm)) / sd(x, na.rm)
+
+#Selección de variables.
+#table(CONS_C1_df_dup_JUN_2020_match_top_sel$total_transgresion)
+CONS_C1_df_dup_JUN_2020_match_top_sel<-
+CONS_C1_df_dup_JUN_2020_match_top%>%
+  dplyr::select(compromiso_biopsicosocial,total_oh,dosis_oh, total_thc, dosis_thc, total_pbc, dosis_pbc, total_coc, dosis_coc, total_bzd, dosis_bzd, total_otra, dosis_otra, total_vif,  total_transgresion, salud_psicologica, total_trabajo, total_educacion, salud_fisica, calidad_vida,  hurto, robo,  venta_drogas, rina,  otro, lugar_vivir, vivienda,origen_ingreso,motivodeegreso_mod,hash_key,dg_trs_psiq_cie_10_or,diagnostico_trs_fisico) %>%
+   #dplyr::mutate(compromiso_biopsicosocial=as.numeric(compromiso_biopsicosocial))%>%
+    dplyr::mutate(dosis_oh=ifelse(dosis_oh>=50, NA,dosis_oh))%>%
+    dplyr::mutate(dosis_oh=ifelse(dosis_thc>=50, NA,dosis_thc))%>%
+    dplyr::mutate(dosis_pbc=ifelse(dosis_pbc>=50, NA,dosis_pbc))%>%
+    dplyr::mutate(dosis_coc=ifelse(dosis_coc>=50, NA,dosis_coc))%>%
+    dplyr::mutate(dosis_bzd=ifelse(dosis_bzd>=50, NA,dosis_bzd))%>%
+    dplyr::mutate(dosis_otra=ifelse(dosis_otra>=50, NA,dosis_otra))%>%
+    dplyr::mutate_at(vars(hurto, robo,  venta_drogas, rina,  otro, lugar_vivir, vivienda), ~as.numeric(.)-1)%>%
+    dplyr::mutate(vif=ifelse(total_vif>0,1,0))%>%
+    dplyr::mutate(transg_norm = base::rowSums(dplyr::select(., hurto,robo,venta_drogas,rina,otro,vif)))%>%
+    dplyr::mutate(vif=as.logical(vif))%>%
+    dplyr::mutate(salud_mean = base::rowSums(dplyr::select(., salud_fisica, calidad_vida, salud_psicologica))/3)%>%
+    dplyr::mutate(dosis_mean = base::rowSums(dplyr::select(., dosis_oh, dosis_thc, dosis_pbc, dosis_coc, dosis_bzd, dosis_otra))/6)%>%
+    dplyr::mutate(total_mean = base::rowSums(dplyr::select(., total_oh, total_thc, total_pbc, total_coc, total_bzd, total_otra))/6)%>%
+    dplyr::mutate(vivienda_mean = (base::rowSums(dplyr::select(.,lugar_vivir, vivienda))/2)*5)%>%
+    dplyr::mutate(trabajo_edu_mean = base::rowSums(dplyr::select(., total_trabajo, total_educacion))/2)%>%
+    dplyr::mutate_at(vars(hurto, robo,  venta_drogas, rina,  otro, lugar_vivir, vivienda), ~as.logical(.))%>%
+    dplyr::mutate(origen_ingreso_mod= dplyr::case_when(grepl("Otro Centro Tratamiento",as.character(origen_ingreso))~"Derivación Asistida", TRUE~as.character(origen_ingreso)))%>%
+    dplyr::mutate(abandono_temp=dplyr::case_when(motivodeegreso_mod=="Abandono Temprano"~1,TRUE~0),
+                  alta_adm= dplyr::case_when(grepl("trativa",as.character(motivodeegreso_mod))~1,TRUE~0))%>%
+    dplyr::mutate(abandono_temp= as.factor(abandono_temp),alta_adm=as.factor(alta_adm),
+    origen_ingreso_mod=as.factor(origen_ingreso_mod))%>%
+    dplyr::mutate(dg_trs_fisico= replace_na(diagnostico_trs_fisico, 0))%>%
+    dplyr::mutate(dg_trs_fisico= dplyr::case_when(grepl("En estudio",as.character(diagnostico_trs_fisico))~1,
+                                                  grepl("Sin trastorno",as.character(diagnostico_trs_fisico))~0,                  
+                                                  TRUE~2))%>%
+    dplyr::mutate(dg_trs_psiq= replace_na(dg_trs_psiq_cie_10_or, 0))%>%
+    dplyr::mutate(dg_trs_psiq= dplyr::case_when(grepl("En estudio",as.character(dg_trs_psiq))~1,
+                                                  grepl("Sin trastorno",as.character(dg_trs_psiq))~0,    
+                                                  TRUE~2))%>%
+    dplyr::mutate(dg_trs_fisico=as.factor(dg_trs_fisico))%>%
+    dplyr::mutate(dg_trs_psiq=as.factor(dg_trs_psiq))%>%
+    dplyr::mutate(dg_trs_psiq_cie_10_or=as.factor(dg_trs_psiq_cie_10_or))%>%
+    dplyr::select(-origen_ingreso)%>%
+    dplyr::mutate(salud_mean_z=scale2(salud_mean))%>%
+    dplyr::mutate(dosis_mean_z=scale2(dosis_mean,na.rm=T))%>%
+    dplyr::mutate(total_mean_z=scale2(total_mean))%>%
+    dplyr::mutate(vivienda_mean_z=scale2(vivienda_mean))%>%
+    dplyr::mutate(total_vif_z=scale2(total_vif))%>%
+    #dicotomizar variables
+    dplyr::mutate(oh=dplyr::case_when(total_oh>0~1,TRUE~0),
+                  thc=dplyr::case_when(total_thc>0~1,TRUE~0),
+                  pbc=dplyr::case_when(total_pbc>0~1,TRUE~0),
+                  coc=dplyr::case_when(total_coc>0~1,TRUE~0),
+                  bzd=dplyr::case_when(total_bzd>0~1,TRUE~0),
+                  otra=dplyr::case_when(total_otra>0~1,TRUE~0))%>%
+    dplyr::mutate(transg_norm_bin=as.logical(dplyr::case_when(transg_norm>0~1,TRUE~0)))%>%
+    dplyr::mutate(median_vivienda_mean=quantile(vivienda_mean,p=.5))%>%
+    dplyr::mutate(median_total_mean=quantile(total_mean,p=.5))%>%
+    dplyr::mutate(median_dosis_mean=quantile(dosis_mean,p=.5,na.rm=T))%>%
+    dplyr::mutate(median_salud_mean=quantile(salud_mean,p=.5))%>%
+    dplyr::mutate(median_trabajo_edu_mean=quantile(trabajo_edu_mean,p=.5))%>%
+    dplyr::mutate(menor_vivienda=dplyr::case_when(vivienda_mean<median_vivienda_mean~1,TRUE~0))%>%
+    dplyr::mutate(menor_salud=dplyr::case_when(salud_mean<median_salud_mean~1,TRUE~0))%>%
+    dplyr::mutate(menor_trabajo_edu=dplyr::case_when(trabajo_edu_mean<median_trabajo_edu_mean~1,TRUE~0))%>%
+    dplyr::mutate(mayor_total=dplyr::case_when(total_mean>=median_total_mean~1,TRUE~0))%>%
+    dplyr::mutate(mayor_dosis=dplyr::case_when(median_dosis_mean>=dosis_mean~1,TRUE~0))%>%
+    dplyr::mutate_at(vars(menor_salud, menor_trabajo_edu, mayor_total, mayor_dosis), ~as.logical(.))%>%
+    dplyr::mutate(polycons = base::rowSums(dplyr::select(., oh, thc, pbc, coc, bzd, otra)),
+                  polycons =as.logical(ifelse(polycons>0,1,0)))%>%
+    dplyr::mutate(mayor_dosis=dplyr::case_when(median_dosis_mean>=dosis_mean~1,TRUE~0))%>%
+    dplyr::mutate(mayor_dosis=as.logical(mayor_dosis))%>%
+    dplyr::mutate(menor_vivienda=as.logical(menor_vivienda))%>%
+    dplyr::mutate(mayor_comp_biopsicsoc=dplyr::case_when(compromiso_biopsicosocial=="Severo"~1,TRUE~0))%>%
+    dplyr::mutate(mayor_comp_biopsicsoc=as.logical(mayor_comp_biopsicsoc))%>%
+    dplyr::mutate(menor_comp_biopsicsoc=dplyr::case_when(compromiso_biopsicosocial=="Leve"~1,TRUE~0))%>%
+    dplyr::mutate(menor_comp_biopsicsoc=as.logical(menor_comp_biopsicsoc))%>%
+  #
+  dplyr::select(-median_trabajo_edu_mean,-median_total_mean,-median_vivienda_mean, -median_salud_mean,-median_dosis_mean)%>%
+  dplyr::filter(!is.na(dosis_mean))%>%
+  dplyr::select(compromiso_biopsicosocial,total_oh,dosis_oh, total_thc, dosis_thc, total_pbc, dosis_pbc, total_coc, dosis_coc, total_bzd, dosis_bzd, total_otra, dosis_otra, total_vif,  total_transgresion, salud_psicologica, total_trabajo, total_educacion, salud_fisica, calidad_vida,  hurto, robo,  venta_drogas, rina,  otro, lugar_vivir, vivienda,dg_trs_psiq,dg_trs_fisico,everything())
+
+skimr::skim(CONS_C1_df_dup_JUN_2020_match_top_sel%>% dplyr::select(-hash_key))%>%
+  tibble::as_tibble() %>%
+  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption = paste0("Table 1. Summary of Variables"),
+               col.names = c("Type","Variable","Missing","Complete Rate","Ordered","No. Unique","Top Counts","Mean (logical)","Counts (logical)","Mean", "SD","Min","Perc. 25", "Median", "Perc. 75", "Max","Histogram"),
+align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 7) %>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r fig1, image-ref-for-in-text, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 1.Summary of Process of Data Cleaning and Standardization", error=T}
+#knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Figure_Duplicates.svg")
+foreign::write.dta(CONS_C1_df_dup_JUN_2020_match_top_sel, "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/c1_top.dta")
+
+#CONS_C1_df_dup_JUN_2020 CONS_C1_df_dup_JUN_2020_match_top CONS_TOP_df_dup_ENE_2020_prev9_match CONS_TOP_df_dup_ENE_2020_prev9
+#sólo match
+comb_datasets_a_n<-CONS_C1_df_dup_JUN_2020%>%
+    dplyr::mutate(concat=paste0(hash_key,"_",as.character(fech_ing)))%>%
+    dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev9_match,by="concat", suffix=c("","_TOP"))%>%
+    dplyr::filter(!is.na(hash_key_TOP))%>%
+    dplyr::select(-hash_key_TOP)%>% 
+    nrow()
+comb_datasets_a_users<-CONS_C1_df_dup_JUN_2020%>%
+    dplyr::mutate(concat=paste0(hash_key,"_",as.character(fech_ing)))%>%
+    dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev9_match,by="concat", suffix=c("","_TOP"))%>%
+    dplyr::filter(!is.na(hash_key_TOP))%>%
+    dplyr::select(-hash_key_TOP)%>% 
+    dplyr::distinct(hash_key)%>% nrow()
+#sólo los que tienen compromiso biopsicosocial
+comb_datasets_b_n<-CONS_C1_df_dup_JUN_2020%>%
+    dplyr::mutate(concat=paste0(hash_key,"_",as.character(fech_ing)))%>%
+    dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev9_match,by="concat", suffix=c("","_TOP"))%>%
+    dplyr::filter(!is.na(compromiso_biopsicosocial), !is.na(hash_key_TOP))%>%
+    dplyr::select(-hash_key_TOP)%>% 
+    nrow()
+comb_datasets_b_users<-CONS_C1_df_dup_JUN_2020%>%
+    dplyr::mutate(concat=paste0(hash_key,"_",as.character(fech_ing)))%>%
+    dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev9_match,by="concat", suffix=c("","_TOP"))%>%
+    dplyr::filter(!is.na(compromiso_biopsicosocial), !is.na(hash_key_TOP))%>%
+    dplyr::select(-hash_key_TOP)%>% 
+    dplyr::distinct(hash_key)%>% nrow()
+#sólo los que tienen etapa de tratamiento de inicio de tratamiento
+comb_datasets_c_n<-CONS_C1_df_dup_JUN_2020%>%
+    dplyr::mutate(concat=paste0(hash_key,"_",as.character(fech_ing)))%>%
+    dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev9_match,by="concat", suffix=c("","_TOP"))%>%
+    dplyr::filter(!is.na(compromiso_biopsicosocial), !is.na(hash_key_TOP), etapa_del_tratamiento=="Inicio Tratamiento")%>%
+    dplyr::select(-hash_key_TOP)%>% 
+    nrow()
+comb_datasets_c_users<-CONS_C1_df_dup_JUN_2020%>%
+    dplyr::mutate(concat=paste0(hash_key,"_",as.character(fech_ing)))%>%
+    dplyr::left_join(CONS_TOP_df_dup_ENE_2020_prev9_match,by="concat", suffix=c("","_TOP"))%>%
+    dplyr::filter(!is.na(compromiso_biopsicosocial), !is.na(hash_key_TOP), etapa_del_tratamiento=="Inicio Tratamiento")%>%
+    dplyr::select(-hash_key_TOP)%>% 
+    dplyr::distinct(hash_key)%>% nrow()
+
+
+#https://stackoverflow.com/questions/46750364/diagrammer-and-graphviz
+#https://mikeyharper.uk/flowcharts-in-r-using-diagrammer/
+#http://blog.nguyenvq.com/blog/2012/05/29/better-decision-tree-graphics-for-rpart-via-party-and-partykit/
+#http://blog.nguyenvq.com/blog/2014/01/17/skeleton-to-create-fast-automatic-tree-diagrams-using-r-and-graphviz/
+#https://cran.r-project.org/web/packages/DiagrammeR/vignettes/graphviz-mermaid.html
+#https://stackoverflow.com/questions/39133058/how-to-use-graphviz-graphs-in-diagrammer-for-r
+#https://subscription.packtpub.com/book/big_data_and_business_intelligence/9781789802566/1/ch01lvl1sec21/creating-diagrams-via-the-diagrammer-package
+#https://justlegal.be/2019/05/using-flowcharts-to-display-legal-procedures/
+#
+
+library(DiagrammeR) #⋉
+grViz("digraph flowchart {
+      # node definitions with substituted label text
+      node [fontname = Helvetica, shape = rectangle,fontsize = 10]        
+      tab1 [label = '@@1']
+      tab2 [label = '@@2']
+      tab3 [label = '@@3']
+      tab4 [label = '@@4']
+      tab5 [label = '@@5']
+      tab6 [label = '@@6']
+      tab7 [label = '@@7']
+      blank [label = '', width = 0.001, height = 0.001]
+
+      # edge definitions with the node IDs
+      tab1 -> tab2;
+      blank -> tab3[ dir = none,  color = 'white',fontcolor = white,shape=none, width=0, height=0];
+      tab3 -> tab4 [label='  Result of the left join of the dataset',fontsize = 9];
+      tab4 -> tab5 [label='  Only rows with available data on Biopsychosocial Compromise',fontsize = 9];
+      tab5 -> tab6 [label='  Only strict matches with applications at the stage of admission',fontsize = 9];
+      tab6 -> tab7 [label='  Only rows with available data on TOP scores and Diagnostic of CIE-10',fontsize = 9];
+      }
+Only rows with available data on TOP scores
+
+      [1]:  paste0('TOP Dataset \\n(n = ', formatC(nrow(CONS_TOP_df_dup_ENE_2020_prev9), format='f', big.mark=',', digits=0), ';\\n users: ',formatC(CONS_TOP_df_dup_ENE_2020_prev9%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+      [2]:  paste0('Only applications w/ only one\\n application in the same date \\n(n = ', formatC(nrow(CONS_TOP_df_dup_ENE_2020_prev9_match), format='f', big.mark=',', digits=0), ';\\n users:',formatC(users_top_only_one_app_match, format='f', big.mark=',', digits=0),')')
+      [3]:  paste0('Only applications w/ only one\\n application in the same date \\n(n = ', formatC(nrow(CONS_C1_df_dup_JUN_2020), format='f', big.mark=',', digits=0), ';\\n users:',formatC(CONS_C1_df_dup_JUN_2020%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+      [4]:  paste0('Dataset \\n(n = ',formatC(comb_datasets_a_n,format='f', big.mark=',', digits=0),'\\nusers =',formatC(comb_datasets_a_users,format='f', big.mark=',', digits=0),')')
+      [5]:  paste0('Dataset \\n(n = ',formatC(comb_datasets_b_n,format='f', big.mark=',', digits=0),'\\nusers =',formatC(comb_datasets_b_users,format='f', big.mark=',', digits=0),')')
+      [6]:  paste0('Dataset \\n(n = ',formatC(comb_datasets_c_n,format='f', big.mark=',', digits=0),'\\nusers =',formatC(comb_datasets_c_users,format='f', big.mark=',', digits=0),')')
+      [7]:  paste0('Final Sample \\n(n = ', formatC(nrow(CONS_C1_df_dup_JUN_2020_match_top_sel), format='f', big.mark=',', digits=0), ';\\n users: ',formatC(CONS_C1_df_dup_JUN_2020_match_top_sel%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+      ")
+```
+
+<br>
+
+```{r fig2, fig.width = 7, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 2. Biopsychosocial Compromise", error=T, eval=T}
+CONS_C1_df_dup_JUN_2020_match_top_sel %>%
+     dplyr::group_by(compromiso_biopsicosocial)%>%
+     dplyr::mutate(n=n(),percent=round(n/sum(n),2))%>% 
+      dplyr::mutate(compromiso_biopsicosocial=case_when(compromiso_biopsicosocial=="Moderado"~"Moderate",
+                                                        compromiso_biopsicosocial=="Leve"~"Mild",
+                                                        TRUE~"Severe"))%>%
+     dplyr::ungroup()%>%
+ ggplot(aes(x=1,y=compromiso_biopsicosocial,fill=compromiso_biopsicosocial))+
+     geom_col(width=1)+
+     scale_fill_manual(name ="Biopsychosocial Compromise",values = c("Severe" = "coral2", "Moderate" = "darkorange","Mild"= "darkolivegreen")) +
+     coord_polar(theta="y",start=1.2)+
+     #geom_text(aes(label=percent, group=compromiso_biopsicosocial),position= position_stack(vjust=.5))+
+     guides(color = FALSE, size=F)+
+     theme_void()
+```
+
+We generated a correlation plot which wraps different type of variables (continuous, polytomous, dichotomous)[@Revelle2019]. We selected mostly the original variables from the instrument.
+
+<br>
+
+```{r fig3, fig.width = 7, dpi = 96, warning=F,message=F,fig.align='center',fig.cap="Figure 3.Matrix Of Correlations Between Original Variables"}
+# It first identifies the types of variables, organizes them by type (continuous, polytomous, dichotomous), calls the appropriate correlation function, and then binds the resulting matrices together.D
+mix_cor<- psych::mixedCor(data=CONS_C1_df_dup_JUN_2020_match_top_sel%>%dplyr::mutate(compromiso_biopsicosocial=as.numeric(compromiso_biopsicosocial)),c=2:20, #total_oh,dosis_oh total_thc dosis_thc total_pbc dosis_pbc total_coc dosis_coc total_bzd dosis_bzd  total_otra dosis_otra total_vif  total_transgresion salud_psicologica total_trabajo total_educacion salud_fisica calidad_vida 
+         p=1,#compromiso_biopsicosocial,
+         d=21:27,#, hurto robo  venta_drogas rina  otro lugar_vivir vivienda
+         smooth=TRUE,
+         correct=.5,
+         global=TRUE,
+         ncat=8,
+         use="pairwise",
+         method="kendall",
+         weight=NULL)
+
+# Getting the correlation matrix of the dataset.
+comp_biopsicosoc_mat <- mix_cor$rho
+
+# Explore the correlation structure of the dataset.
+library(ggcorrplot)
+ggcorrplot(comp_biopsicosoc_mat,
+          ggtheme = ggplot2::theme_gray,
+          colors = c("#E46726", "white", "#6D9EC1"),
+           tl.cex=8)
+
+#subscript out of bounds
+
+#mixedCor(data=CONS_C1_df_dup_JUN_2020_match_top_sel,c=c("total_oh","dosis_oh", "total_thc", "dosis_thc", "total_pbc", "dosis_pbc", "total_coc", "dosis_coc", "total_bzd", "dosis_bzd", "total_otra", "dosis_otra", "total_vif",  "total_transgresion", "salud_psicologica", "total_trabajo", "total_educacion", "salud_fisica", "calidad_vida"), p="compromiso_biopsicosocial",d=c("hurto", "robo",  "venta_drogas", "rina",  "otro", "lugar_vivir", "vivienda"), smooth=TRUE,correct=.5,global=TRUE,ncat=8,use="pairwise",method="pearson",weight=NULL)
+
+#subscript out of bounds
+#set.seed(123)
+#par(mar=c(1,1,1,1))
+#comp_biopsicosoc_mat_ci<-mycor.ci(x=CONS_C1_df_dup_JUN_2020_match_top_sel%>%dplyr::mutate(compromiso_biopsicosocial=as.numeric(compromiso_biopsicoso#cial)), 
+#                                  method="spearman", 
+#                                  poly=TRUE, 
+#                                  cvars=2:20, 
+#                                  pvars=1,
+#                                  dvars=21:27, 
+#                                   n.iter=1000,
+#                                  plot = F)
+#
+#cor_pmat(): para ver la sig estadística de las correlaciones
+```
+
+<br>
+
+Also we included an heterogeneus matrix of correlations, consisting of polychoric, biserial and pearson correlations [@Fox2019]. We mostly selected transformed variables in the following matrix.
+
+<br>
+
+```{r fig4_corrplot, fig.width = 7, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 4.Matrix Of Correlations Between Transformed Variables", error=T}
+require(polycor)
+#Computes a heterogenous correlation matrix, consisting of Pearson product-moment correlations between numeric variables, polyserial correlations between numeric and ordinal variables, and polychoric correlations between ordinal variables.
+hetcor_mat<-hetcor(CONS_C1_df_dup_JUN_2020_match_top_sel[c("compromiso_biopsicosocial","lugar_vivir","vivienda","abandono_temp","alta_adm","transg_norm","salud_mean","dosis_mean","total_mean","trabajo_edu_mean","vivienda_mean","polycons", "menor_salud", "menor_trabajo_edu", "mayor_dosis", "mayor_total","transg_norm_bin")], ML = T, std.err = T, use="complete.obs", bins=4, pd=TRUE)
+#CONS_C1_df_dup_JUN_2020_match_top_sel%>% select(contains("dosis"))%>% hist()
+
+ggcorrplot(hetcor_mat$correlations,
+          ggtheme = ggplot2::theme_gray,
+          colors = c("#E46726", "white", "#6D9EC1"), tl.cex=8)
+
+#pcor(c("a", "b", "x", "y", "z"), var(mydata))
+# partial corr between a and b controlling for x, y, z
+```
+<br>
+
+# Variables of TOP depending on Biopsychosocial Compromise
+
+<br>
+
+```{r fig_5_bar_fill,eval=T, echo=T, paged.print=TRUE, fig.align='center', fig.cap="Figure 5. Bar Plot of Binary Answers By Biopsychosocial Compromise"}
+library(reshape2)  # for melt() function
+library(ggplot2)
+# First we need to restructure the data into long format:
+ocdMelt <- melt(CONS_C1_df_dup_JUN_2020_match_top_sel[c('compromiso_biopsicosocial','hurto',"robo","venta_drogas","rina","otro","lugar_vivir","vivienda","polycons","vif","transg_norm_bin")], id=c('compromiso_biopsicosocial'))
+names(ocdMelt) <- c('Group', 'Outcome_Measure', 'Frequency')
+ocdMelt <-ocdMelt%>% dplyr::mutate(Frequency=factor(Frequency))%>% dplyr::group_by(Outcome_Measure,Group,Frequency)%>% dplyr::arrange(Outcome_Measure, Group,Frequency)%>% dplyr::add_tally()%>% distinct(.,.keep_all=T)%>% dplyr::ungroup()%>% dplyr::group_by(Group, Outcome_Measure)%>% dplyr::mutate(perc=n/sum(n))%>% dplyr::ungroup()
+
+# plot
+ggplot(ocdMelt, aes(Outcome_Measure,perc))+
+  geom_bar(aes(fill= Frequency),stat="identity")+
+  facet_grid(Group~.)+
+  scale_y_continuous(labels = scales::percent_format(accuracy = 5L),limits=c(0,1))+
+  scale_fill_manual(values=c("grey60","steelblue"),labels=c("Absence", "Presence")) +
+  sjPlot::theme_sjplot2() + 
+  ylab("Biopsychosocial Compromise")+
+  theme(axis.text.x = element_text(size=8,vjust = .5,angle=25), axis.text.y = element_text(size=10),
+        axis.title.y = element_text(size = 14)) +
+  theme(
+    panel.grid.minor = element_blank(), 
+    panel.grid.major = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.background = element_blank(),
+    line = element_blank())
+```
+
+<br>
+
+We generated z scores for those composite scores of multiple variables, in order to make them comparable. In the following figure we may observe the distribution of continuous variables among users with different levels of biopsychosocial compromise.
+
+<br>
+
+```{r fig6_boxplot,eval=T, echo=T, paged.print=TRUE, fig.align='center', fig.cap="Figure 6. Box Plot of Continuous Answers By Biopsychosocial Compromise"}
+library(reshape2)  # for melt() function
+library(ggplot2)
+# First we need to restructure the data into long format:
+ocdMelt <- melt(CONS_C1_df_dup_JUN_2020_match_top_sel[c('compromiso_biopsicosocial',"salud_mean_z","dosis_mean_z", "total_mean_z","total_vif_z")], id=c('compromiso_biopsicosocial'))
+names(ocdMelt) <- c('Group', 'Outcome_Measure', 'Frequency')
+# plot
+ocdBoxplot <- ggplot(ocdMelt, aes(Group, Frequency, color = Outcome_Measure))
+ocdBoxplot + 
+  geom_jitter(alpha=0.05) +
+  geom_boxplot() + 
+  labs(x='Biopsychosocial Compromise', y='Scores', color='Variable') + scale_y_continuous(breaks=seq(0,50, by=5))+  
+  sjPlot::theme_sjplot2() + 
+  scale_color_manual(values=c("darkslategray4","rosybrown","dimgray","coral3","grey60"),na.value="black") + #"Set2"
+  theme(
+    panel.grid.minor = element_blank(), 
+    panel.grid.major = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.background = element_blank(),
+    line = element_blank())
+```
+
+<br>
+
+As seen above, users categorized with a severe Biopsychosocial Compromise showed slightly greater patterns of consumption and lower average health in comparison to users with a mild Biopsychosocial Compromise. However, and at least in an univariate level, they seem to not differ much between the different levels.
+
+<br>
+
+We checked the multivariate normality of these variables, in order to choose the technique to perform the analyses that may let us infer whether that users in different levels of Biopsychosocial Compromise provene from the same population.
+
+<br>
+
+```{r mvn,eval=T, error=T, echo=F, paged.print=TRUE, fig.show = 'hide'}
+mvn_test<-MVN::mvn(CONS_C1_df_dup_JUN_2020_match_top_sel[c("salud_mean_z","total_mean_z","dosis_mean_z","total_vif_z")], mvnTest = "mardia", covariance = TRUE, tol = 1e-25, alpha = 0.5,scale = T, desc = TRUE, transform = "none", R = 1000,
+univariateTest = "Lillie",
+univariatePlot = "none", multivariatePlot = "none",
+multivariateOutlierMethod = "none", bc = FALSE, bcType = "rounded",
+showOutliers = FALSE, showNewData = FALSE)
+
+#la distancia de mahalanois mide la similitud de variables aleatorias multidimensionales
+mvn_test$multivariateNormality%>%
+    data.frame()%>% mutate(Statistic=round(as.numeric(as.character(Statistic)),3))%>% 
+  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 2. Multivariate Normality Test",
+                 align =rep('c', 101),
+               col.names=c("Test", "Statistic", "P Value", "Normality"))%>%
+   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  kableExtra::add_footnote( c("Note. Using z-scores distributions of Average Health, Average  and "), notation = "none") %>%
+  kableExtra::scroll_box(width = "100%", height = "175px")
+```
+<br>
+
+As seen above, variables did not follow a normal distribution. 
+
+<br>
+
+# Non-parametric Multivariate Test
+
+Considering that our variables did not follow a normal distribution, and the test is composed by a mixture of different variable types, we performed a nonparametric test for multivariate samples. The variability of
+responses on each of the variables of top was compared between the groups using a non-parametric multivariate ANOVA (MANOVA (Burchett et al., 2017)) with biopsychosocial compromise as between-subject factor (discarding inter-observer variability). The procedure generates a randomization test of 5,000 resamples to compute F-statistic (pseudo-F). Additionally, these models have the advantage that allow for differences in between-group variation, is not sensitive to multicollinearity, allows for the inclusion of more variables, and tolerate sparse data.
+
+<br>
+
+```{r anova,dpi = 96, message=F, error=T,eval=F}
+#mvnormtest::mshapiro.test()
+
+dependent.vars <- cbind(CONS_C1_df_dup_JUN_2020_match_top_sel$salud_mean_z,CONS_C1_df_dup_JUN_2020_match_top_sel$dosis_mean_z, CONS_C1_df_dup_JUN_2020_match_top_sel$total_mean_z)
+root.manova <- manova(dependent.vars ~ CONS_C1_df_dup_JUN_2020_match_top_sel$compromiso_biopsicosocial, intercept=F)
+summary(root.manova,test="Pillai")
+#test='Pillai'). The manova() function provides four multivariate tests by setting the test argument to either Pillai, #Wilks, Hotelling-Lawley, or Roy.
+
+#La prueba de Wilk es la más comúnmente utilizada debido a que fue la primera prueba en ser derivada y a que posee una aproximación F bastante conocida.
+#Lawley-Hotelling es también conocida como el estadístico T2 generalizado de Hotelling.
+#La prueba de Pillai es la mejor prueba a utilizar en la mayoría de las situaciones. La prueba de Pillai proporciona resultados similares a los de las pruebas de Wilks y de Lawley-Hotelling.
+#La prueba de la raíz más grande de Roy es la mejor cuando los vectores medios son colineales. La prueba de Roy no tiene una aproximación F satisfactoria.
+
+summary.aov(root.manova)
+```
+
+
+```{r nonpar1, dpi = 96, message=F, error=F}
+CONS_C1_df_dup_JUN_2020_match_top_sel2<-
+  CONS_C1_df_dup_JUN_2020_match_top_sel%>%
+      dplyr::mutate_at(vars(hurto, robo,  venta_drogas, rina,  otro, lugar_vivir, vivienda,vif), ~as.numeric(as.factor(as.numeric(.))))
+#https://stackoverflow.com/questions/59166335/need-help-using-npmv-package-nonparametric-testing-in-r
+#https://cran.r-project.org/web/packages/npmv/npmv.pdf
+#R.Ellis, A., W.Burchett, W., W.Harrar, S., & Bathke, A. (2017). Nonparametric Inference for Multivariate Data: the Package npmv. JOURNAL OF STATISTICAL SOFTWARE. https://doi.org/10.18637/jss.v076.i04
+invisible(
+prueba_anormalidad1<-npmv::nonpartest(dosis_mean_z|total_mean_z|salud_mean_z|hurto|robo|venta_drogas|rina|otro|lugar_vivir|vivienda|total_vif_z~compromiso_biopsicosocial, CONS_C1_df_dup_JUN_2020_match_top_sel2,plots=F,permreps=5000,releffects=TRUE)
+)
+invisible(
+prueba_anormalidad2<-npmv::nonpartest(dosis_mean_z|total_mean_z|salud_mean_z|hurto|robo|venta_drogas|rina|otro|lugar_vivir|vivienda|total_vif_z~compromiso_biopsicosocial+origen_ingreso_mod, CONS_C1_df_dup_JUN_2020_match_top_sel2,plots=F,permreps=5000,releffects=TRUE)
+)
+invisible(
+prueba_anormalidad3<-npmv::nonpartest(dosis_mean_z|total_mean_z|salud_mean_z|hurto|robo|venta_drogas|rina|otro|lugar_vivir|vivienda|total_vif_z~compromiso_biopsicosocial+origen_ingreso_mod+dg_trs_fisico, CONS_C1_df_dup_JUN_2020_match_top_sel2,plots=F,permreps=5000,releffects=TRUE)
+)
+invisible(
+prueba_anormalidad4<-npmv::nonpartest(dosis_mean_z|total_mean_z|salud_mean_z|hurto|robo|venta_drogas|rina|otro|lugar_vivir|vivienda|total_vif_z~ compromiso_biopsicosocial+origen_ingreso_mod+dg_trs_fisico+dg_trs_psiq, CONS_C1_df_dup_JUN_2020_match_top_sel2,plots=F,permreps=5000,releffects=TRUE)
+)
+#
+prueba_anormalidad_res1<-data.table::data.table(prueba_anormalidad1$results, keep.rownames=T)
+prueba_anormalidad_res2<-data.table::data.table(prueba_anormalidad2$results, keep.rownames=T)
+prueba_anormalidad_res3<-data.table::data.table(prueba_anormalidad3$results, keep.rownames=T)
+prueba_anormalidad_res4<-data.table::data.table(prueba_anormalidad4$results, keep.rownames=T)
+#INOCRPORË LAS VAR DE CONTROL. SON TODAS DE TIPO FACTOR
+
+sum_df_npmv<-data.frame(cbind(Model=
+                                paste0("npmv",c("Raw","Raw","Raw","Raw","2","2","2","2","3","3","3","3","4","4","4","4")),
+  rbind(prueba_anormalidad_res1,
+      prueba_anormalidad_res2,
+      prueba_anormalidad_res3,
+      prueba_anormalidad_res4)))%>%
+  dplyr::rename("Parameter"="rn")
+
+sum_df_npmv%>% 
+  dplyr::mutate(Test.Statistic=round(as.numeric(as.character(Test.Statistic)),3))%>% 
+  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 3. Analysis of Variance",
+                 align =rep('c', 101),
+               col.names=c("Model", "Parameter", "Statistic", "DF1", "DF2","p-value", "Permutation Test p-value"))%>%
+   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  kableExtra::add_footnote( c("Note. Model with average dose (z score), average frequency of use (z score), theft, burglary, drug selling, fights, other, place to live, housing condition and domestic violence. Raw= No control variables; Controlling for Motive of Admission(1); Controlling for Motive of Admission & Physical Condition(2); Controlling for Motive of Admission, Physical Condition & Psychiatric Condition(3)"), notation = "none") %>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+##NO OCUPAR: MUY COMPLICADO
+#The function ssnonpartest performs an all-subset algorithm to determine which variables cause significant effects, and between which factor levels. See the examples below for some basic uses and look in the help pages for each function for a much more detailed look.
+#invisible(
+#npmv::ssnonpartest(dosis_mean|total_mean|trabajo_edu_mean~compromiso_biopsicosocial,CONS_C1_df_dup_JUN_2020_match_top_sel,test=c(1,0,0,0),alpha=.05,factors.and.variables=TRUE)
+#)
+```
+
+<br>
+
+<br>
+
+```{r nonpar_vegan1, dpi = 96, message=F, error=F}
+#https://www.rdocumentation.org/packages/vegan/versions/2.4-2/topics/adonis
+#t looks like the jaccard distance is really only useful for binary data (presence/absence) while The bray-curtis matrix has been found to be robust for many abundance type data sets, especially those with many paired zeros like stomach content data can have.
+
+vegan_1<- 
+  vegan::adonis(CONS_C1_df_dup_JUN_2020_match_top_sel2[,c("dosis_mean_z", "total_mean_z", "salud_mean_z", "hurto", "robo", "venta_drogas", "rina", "otro", "lugar_vivir", "vivienda", "total_vif_z"),drop = FALSE] ~ compromiso_biopsicosocial, data=CONS_C1_df_dup_JUN_2020_match_top_sel,permutations=1000, parallel = 4)
+
+vegan_2<- 
+  vegan::adonis(CONS_C1_df_dup_JUN_2020_match_top_sel2[,c("dosis_mean_z", "total_mean_z", "salud_mean_z", "hurto", "robo", "venta_drogas", "rina", "otro", "lugar_vivir", "vivienda", "total_vif_z"),drop = FALSE] ~ compromiso_biopsicosocial+origen_ingreso_mod, data=CONS_C1_df_dup_JUN_2020_match_top_sel,permutations=1000, parallel = 4)
+
+vegan_3<- 
+  vegan::adonis(CONS_C1_df_dup_JUN_2020_match_top_sel2[,c("dosis_mean_z", "total_mean_z", "salud_mean_z", "hurto", "robo", "venta_drogas", "rina", "otro", "lugar_vivir", "vivienda", "total_vif_z"),drop = FALSE] ~ compromiso_biopsicosocial+origen_ingreso_mod+dg_trs_fisico, data=CONS_C1_df_dup_JUN_2020_match_top_sel, permutations=1000, parallel = 4)
+
+vegan_4<- 
+  vegan::adonis(CONS_C1_df_dup_JUN_2020_match_top_sel2[,c("dosis_mean_z", "total_mean_z", "salud_mean_z", "hurto", "robo", "venta_drogas", "rina", "otro", "lugar_vivir", "vivienda", "total_vif_z"), drop = FALSE] ~ compromiso_biopsicosocial+origen_ingreso_mod+dg_trs_fisico+dg_trs_psiq,  data=CONS_C1_df_dup_JUN_2020_match_top_sel, permutations=1000, parallel = 4)
+
+sum_df_vegan<-data.frame(cbind(Model=paste0("vegan",c("Raw","Raw","Raw",
+                                                      "2","2","2","2",
+                                                      "3","3","3","3","3",
+                                                      "4","4","4","4","4","4")),
+          rbind(data.table::data.table(vegan_1$ aov.tab, keep.rownames=T),
+                data.table::data.table(vegan_2$ aov.tab, keep.rownames=T),
+                data.table::data.table(vegan_3$ aov.tab, keep.rownames=T),
+                data.table::data.table(vegan_4$ aov.tab, keep.rownames=T))))%>%
+            dplyr::rename("Parameter"="rn")
+
+sum_df_vegan%>% 
+  dplyr::mutate(R2=round(as.numeric(as.character(R2)),3))%>% 
+  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 4. Analysis of Variance using bray-curtis matrix",
+                 align =rep('c', 101),
+               col.names=c("Model","Parameter", "Df","SS", "Mean Squares","Pseudo F","R2", "p-value"))%>%
+   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  kableExtra::add_footnote( c("Note. Model with average dose (z score), average frequency of use (z score), theft, burglary, drug selling, fights, other, place to live, housing condition and domestic violence. Raw= No control variables; Controlling for Motive of Admission(1); Controlling for Motive of Admission & Physical Condition(2); Controlling for Motive of Admission, Physical Condition & Psychiatric Condition(3)"), notation = "none") %>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+
+#https://stackoverflow.com/questions/16638297/vegdist-error-message-in-vegan-package
+```
+
+# Relationship with outcomes
+
+```{r glmulti, dpi = 96, message=F,fig.align='center', error=T, eval=T, fig.show = 'hide'}
+
+library(glmulti)
+
+res <- glmulti(abandono_temp ~ compromiso_biopsicosocial + origen_ingreso_mod + dg_trs_psiq + dg_trs_fisico, 
+               data=CONS_C1_df_dup_JUN_2020_match_top_sel2,
+               level=2, #The level of interaction between explanatory variables to be considered. Currently only 1 (only main effects) or 2 (main effects plus all pairwise interactions) are supported.
+               fitfunction=glm, crit="aicc", 
+               family=binomial,
+               marginality=T#Whether to use the general marginality rule or not. Default is FALSE. With TRUE, all predictors found in interaction terms are also included as main effects.
+               )
+#t is not iterative (all models are compared), and is fully automatic (no intervention of the user is required). It is primarily intended to be used for exploratory analyses with many candidate explanatory variables (say 10 to 20)
+plot(res)
+##########################################################################################
+##################DEBIESE INCORPORAR EL TIPO DE PLAN!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+##########################################################################################
+
+#http://www.metafor-project.org/doku.php/tips:model_selection_with_glmulti_and_mumin
+
+#But let's take a look at the top 10 models:
+top <- weightable(res)
+top <- top[top$aicc <= min(top$aicc) + 2,]
+
+
+############################################################################################
+
+###########################################################################################
+plot.glmulti<-function(x, type="p", ...) 
+{
+  if ( type == "p") {
+    plot(x@crits,xlab="Best models",
+         ylab=paste("Support (",x@params$crit,")"),pch=19, main="IC profile", ...)
+    abline(h=x@crits[1]+2,col="red")
+        return(assign("ic_glmulti",data.table::data.table(data.frame(imp),keep.rownames = T),envir = .GlobalEnv))
+
+  } else if (type == "w") {
+    ww = exp(-(x@crits - x@crits[1])/2)
+    ww=ww/sum(ww)
+    plot(ww,xlab="Best models",
+         ylab=paste("Evidence weight (",x@params$crit,")"),pch=19, main="Profile of model weights", ...)
+    cucu=function(i) sum(ww[1:i])
+    wwc=lapply(1:length(ww),cucu)
+    abline(v=min(which(wwc>=0.95)),col="red")
+  } else if (type=="r") {
+    if (length(x@objects)) {
+      # shows some diagnostics of the fit
+      dev.new()
+      par(mfrow=c(2,min(length(x@crits), 5)))
+      for (k in 1:min(length(x@crits), 5)) 
+        plot(x@objects[[k]],which=c(1), main=deparse(x@formulas[[k]]),...)
+      for (k in 1:min(length(x@crits), 5)) 
+        plot(x@objects[[k]],which=c(2),...)
+    } else warning("Unavailable: use includeobjects=T when calling glmulti.")		
+  } else if (type=="s") {
+    # plots variable (i.e. terms) importances
+    ww = exp(-(x@crits - x@crits[1])/2)
+    ww=ww/sum(ww)
+    # handle synonymies for interactions
+    # this translates to unique notations (e.g. x:y and y:x are the same)
+    clartou=function(x) {
+      sort(strsplit(x, ":")[[1]])-> pieces
+      if (length(pieces)>1) paste(pieces[1],":",pieces[2],sep="")
+      else x
+    }
+    # list terms in models
+    tet = lapply(x@formulas, function(x) sapply(attr(delete.response(terms(x)),"term.labels"), clartou))
+    # all unique terms
+    unique(unlist(tet))-> allt
+    # importances
+    sapply(allt, function(x) sum(ww[sapply(tet, function(t) x%in%t)]))-> imp
+    # draw
+    #par(oma=c(0,13,0,0))
+    barplot(sort(imp),xlab="",xlim=c(0,1), ylab="",horiz=T,las=2, names.arg=allt[order(imp)],main="Model-averaged importance of terms", ...)
+    abline(v=0.8, col="red")
+    return(assign("var_imp_glmulti",data.table::data.table(data.frame(imp),keep.rownames = T),envir = .GlobalEnv))
+  } else	warning("plot: Invalid type argument for plotting glmulti objects.")
+}
+plot(res, type="s")
+############################################################################################
+```
+
+```{r fig7_glmulti_aicc, dpi = 96,fig.align='center', message=F,fig.cap="Figure 7. Ordered Models and AICC", error=T, eval=T}
+data.frame(res@crits)%>% dplyr::mutate(rn=row_number())%>%
+    ggplot(aes(x=rn,y=res.crits))+
+    geom_point(color="steelblue")+
+   sjPlot::theme_sjplot2() + 
+  ylab("Support (aicc)")+
+  theme(axis.text.x = element_text(size=8,vjust = .5,angle=25), axis.text.y = element_text(size=10),
+        axis.title.y = element_text(size = 14)) +
+  theme(
+    panel.grid.minor = element_blank(), 
+    panel.grid.major = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.background = element_blank(),
+    line = element_blank())+
+  geom_hline(yintercept=res@crits[1]+2, color="red", linetype=2,size=1)+
+  xlab("Best models")
+```
+<br>
+
+We selected the model with lower AIC. Of them, the first selected did not contain biopsychosocial compromise (AICc= `r res@objects[[1]]$aic`). The second contained biopsychosocial compromise as a valid terms in the model (AICc= `r res@objects[[2]]$aic`).
+
+<br>
+
+```{r fig8_glmulti_varimp, dpi = 96, message=F,fig.align='center', fig.cap="Figure 8. Model-averaged variable importance of terms", error=T, eval=T}
+#par(oma=c(0,0,0,24))
+ggplot(var_imp_glmulti, aes(x=reorder(rn, -imp),y=imp))+
+  geom_bar(stat="identity",alpha=.7, fill="steelblue")+
+    sjPlot::theme_sjplot2() + 
+  ylab("Model-averaged importance")+
+  theme(axis.text.x = element_text(size=6.5,vjust = .5,angle=25), 
+        axis.text.y = element_text(size=10),
+        axis.title.y = element_text(size = 14)) +
+  theme(
+    panel.grid.minor = element_blank(), 
+    panel.grid.major = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.background = element_blank(),
+    line = element_blank())+
+  #geom_hline(yintercept=.5, color="red", linetype=2)+
+  xlab("Terms")
+```
+```{r glmulti2, dpi = 96, message=F, error=T, eval=T, fig.show = 'hide'}
+df_coef_glmulti<- data.frame()
+for (i in 1:nrow(summary(res@objects[[2]])$coefficients)){
+    df<-cbind(attr(summary(res@objects[[2]])$coefficients,"dimnames")[[1]][i],
+            t(data.frame(exp(summary(res@objects[[2]])$coefficients[i,1] + 
+          +     qnorm(c(0.025,.5,0.975)) * summary(res@objects[[2]])$coefficients[i,2]))))
+    df_coef_glmulti<-rbind(df_coef_glmulti,df)
+          }
+df_coef_glmulti<-data.table::data.table(df_coef_glmulti)
+
+data.table::data.table(summary(res@objects[[2]])$coefficients,keep.rownames = T)%>%
+  dplyr::left_join(df_coef_glmulti,by=c("rn"="V1"))%>%
+  dplyr::select(-V3)%>%
+  dplyr::mutate(V2=round(as.numeric(as.character(V2)),2))%>%
+  dplyr::mutate(V4=round(as.numeric(as.character(V4)),2))%>%
+  dplyr::mutate(Estimate=round(as.numeric(as.character(Estimate)),2))%>%
+  dplyr::mutate(OR=round(exp(as.numeric(as.character(Estimate))),2))%>%
+  #exp(summary(m)$coefficients["DSH",1] + 
+#+     qnorm(c(0.025,0.5,0.975)) * summary(m)$coefficients["DSH",2])
+#[1]  1.472098  4.197368 11.967884
+  dplyr::mutate(`Std. Error`=round(as.numeric(as.character(`Std. Error`)),2))%>% 
+  dplyr::mutate(`z value`=round(as.numeric(as.character(`z value`)),2))%>% 
+  dplyr::mutate(`Pr(>|z|)`=round(as.numeric(as.character(`Pr(>|z|)`)),4))%>% 
+  dplyr::rename("Terms"="rn", "OR_lo"="V2","OR_up"="V4")%>%
+  dplyr::select(Terms,Estimate,OR,OR_lo,OR_up, everything())%>%
+  knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption="Table 6. Logistic Regression Coefficients",
+                 align =rep('c', 101))%>%
+   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
+  kableExtra::add_footnote( c(paste("Note. AICc=",round(res@objects[[2]]$aic,3)),
+                              paste("Defined model=",top$model[2])), notation = "none") %>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+
+#print(res@formulas[[2]])
+```
+
+<br>
+
+The next figures show the marginal effects of the interaction terms among the variables.
+
+<br>
+
+```{r fig9_int2,eval=T, echo=T, fig.align='center', paged.print=TRUE,fig.cap= "Figure 9. Interactive Effects in the Prob. of Early Drop-out"}
+library(lsmeans)
+refR_1 <- lsmeans(res@objects[[2]], specs = c("compromiso_biopsicosocial","dg_trs_psiq"))
+ref_dfR_1 <- as.data.frame(cbind(summary(refR_1)[1:2],exp(summary(refR_1)[,c(3,6,7)])))
+
+g4R_1 <- ggplot(ref_dfR_1, aes(x=compromiso_biopsicosocial, y=lsmean,group=dg_trs_psiq, colour=dg_trs_psiq))+
+geom_errorbar(aes(ymin=asymp.LCL, ymax=asymp.UCL), width=.1,position=position_dodge(0.1), size=1) +
+geom_line(position=position_dodge(0.1), size=.5)+
+geom_point(position=position_dodge(0.1), size=2)+
+  xlab("Biopsychosocial Compromise")+
+  ylab("Odds Ratio (OR) of Early Drop-out")+
+  sjPlot::theme_sjplot2() +
+  geom_rect_interactive(alpha = 0.1, xmin=.1, xmax=.1, ymin=.1,ymax=.1) +
+    # Remove plot elements added by geom_rect_interactive
+  theme(legend.position="bottom")+
+  guides(color=guide_legend(ncol=4,name = "Cause of Discharge"))+
+  labs(color="Cause of Discharge")+
+  scale_colour_brewer(palette = "Set1",labels=c("No Dg.", "In study", "Dg."))+
+  theme(legend.title = element_blank())
+  #theme(axis.text = element_blank(), axis.ticks = element_blank())
+
+ggiraph(code = print(g4R_1))
+```
+
+```{r fig10_int1,eval=T, echo=T, paged.print=TRUE,fig.align='center', fig.cap= "Figure 10. Interactive Effects in the Prob. of Early Drop-out"}
+library(lsmeans)
+refR_2 <- lsmeans(res@objects[[2]], specs = c("dg_trs_psiq","origen_ingreso_mod"))
+ref_dfR_2 <- as.data.frame(cbind(summary(refR_2)[1:2],exp(summary(refR_2)[,c(3,6,7)])))
+
+g4R_2 <- ggplot(ref_dfR_2, aes(x=dg_trs_psiq, y=lsmean,group=origen_ingreso_mod, colour=origen_ingreso_mod))+
+geom_errorbar(aes(ymin=asymp.LCL, ymax=asymp.UCL), width=.1,position=position_dodge(0.1), size=1) +
+geom_line(position=position_dodge(0.1), size=.5)+
+geom_point(position=position_dodge(0.1), size=2)+
+  xlab("Psychiatric Condition")+
+  ylab("Odds Ratio (OR) of Early Drop-out")+
+  sjPlot::theme_sjplot2() +
+  geom_rect_interactive(alpha = 0.1, xmin=.1, xmax=.1, ymin=.1,ymax=.1) +
+    # Remove plot elements added by geom_rect_interactive
+  theme(legend.position="bottom")+
+  guides(color=guide_legend(ncol=4,name = "Cause of Discharge"))+
+  labs(color="Motive of Admission to Treatment")+
+  scale_colour_brewer(palette = "Set1")+#,labels=c("No Dg.", "In study", "Dg."))+
+  theme(legend.title = element_blank())
+  #theme(axis.text = element_blank(), axis.ticks = element_blank())
+
+ggiraph(code = print(g4R_2))
+```
+
+```{r fig11_int1,eval=T, echo=T, fig.align='center', paged.print=TRUE,fig.cap= "Figure 11. Interactive Effects in the Prob. of Early Drop-out"}
+library(lsmeans)
+refR_3 <- lsmeans(res@objects[[2]], specs = c("dg_trs_psiq","dg_trs_fisico"))
+ref_dfR_3 <- as.data.frame(cbind(summary(refR_3)[1:2],exp(summary(refR_3)[,c(3,6,7)])))
+
+g4R_3 <- ggplot(ref_dfR_3, aes(x=dg_trs_psiq, y=lsmean,group=dg_trs_fisico, colour=dg_trs_fisico))+
+geom_errorbar(aes(ymin=asymp.LCL, ymax=asymp.UCL), width=.1,position=position_dodge(0.1), size=1) +
+geom_line(position=position_dodge(0.1), size=.5)+
+geom_point(position=position_dodge(0.1), size=2)+
+  xlab("Physical Condition")+
+  ylab("Odds Ratio (OR) of Early Drop-out")+
+  sjPlot::theme_sjplot2() +
+  geom_rect_interactive(alpha = 0.1, xmin=.1, xmax=.1, ymin=.1,ymax=.1) +
+    # Remove plot elements added by geom_rect_interactive
+  theme(legend.position="bottom")+
+  guides(color=guide_legend(ncol=4,name = "Cause of Discharge"))+
+  labs(color="Motive of Admission to Treatment")+
+  scale_colour_brewer(palette = "Set1",labels=c("No Dg.", "In study", "Dg."))+
+  theme(legend.title = element_blank())
+  #theme(axis.text = element_blank(), axis.ticks = element_blank())
+
+ggiraph(code = print(g4R_3))
+```
+
+```{r}
+save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/biopsychosoc_comp.RData")
+sessionInfo()
+```
 
 # References
 
