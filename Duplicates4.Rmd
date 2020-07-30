@@ -49,6 +49,23 @@ div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-ali
 rm(list=ls());gc()
 load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/6.Rdata")
 
+if(isTRUE(getOption('knitr.in.progress'))==T){
+    nn_size= 1:5 # size= 1:5
+    nn_seq=seq(0, 1, .5)
+    nn_K= 10
+} else {
+  input <- readline('¿Vas a correr los cálculos en serio? (Si/No): ')
+  if(input=="Si"){
+    nn_size= 1:5 # size= 1:5
+    nn_seq=seq(0, 1, .5)
+    nn_K= 10
+  } else {
+    nn_size= 1 # size= 1:5
+    nn_seq=1
+    nn_K= 1
+  }
+}
+
 ```
 
 ```{r setup, include = FALSE, cache=T}
@@ -159,32 +176,231 @@ library(choroplethrAdmin1)
 if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
 #install.packages( repos = "https://radiant-rstats.github.io/minicran/")
 #install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")
-tryCatch(source("https://raw.githubusercontent.com/radiant-rstats/minicran/gh-pages/update.R"), error = function(e) print("updated package, radiant"))
+
+#tryCatch(source("https://raw.githubusercontent.com/radiant-rstats/minicran/gh-pages/update.R"), error = function(e) print("updated package, radiant"))
 ```
 
 <!--- SÍ O SÍ, HACER LA LIMPIEZA DE LOS SENDA NO, PRINCIPALMENTE DE LOS QUE SE SUPERPONGAN, TAMBIÉN PREGUNTAR A ACC SI LOS CON 0 DÍAS DE TRATAMIENTO SE BORRARÁN O NO; DE AHI EMPEZAR A NORMALIZAR LOS PROGRAMAS Y PLANES DE ACUERDO CON CRITERIOS MAUREEN, PARA NO GENERAR DIFERENCIAS AHI Y PODER DEDUPLICAR TRANQUILO --->
 
-## Variables Invariant to Treatments
+<br>
+
+For the purpose of this page, we use the terms "rows" and "cases" as equal to refer to the entries of the dataset. In many of the processes made along the deduplication of entries in C1 dataset, we used unstandardized columns or many other data that was in fact duplicated by HASHs, that did not depend on events related to treatment.In order to find and delete duplicated data that does not add information relevant for the purposes of the study, we now may **use these standardized variables as a criteria to achieve the goal of having a unique event per HASH, by reducing its complexity based on irrelevant differences**.
+
+<br>
+
+<div class = "blue">
+As stated in the third part of the deduplication process, we identified and defined an amount of treatment days that would be suitable to link these entries, and several additional criteria to distinguish between what would be a different treatment from what would reflect a continuation of a treatment. In these stage, we defined rules to keep the most relevant information by each variable to collapse the intermediate events into a single entry that summaries the whole treatment and would let us distinguish posterior treatments.
+</div>
+
+## Structure of Treatments and Rules to Collapse Continuous Entries
 
 This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+<br>
 
-```{r tab1_pers_info_edad_ini_cons,eval=T, echo=T, paged.print=TRUE}
+```{r fig1_image-decision_tree_cont_entries, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 1. Decision Tree for the Users with more than one entry", message=FALSE, error=T}
+#https://stackoverflow.com/questions/46750364/diagrammer-and-graphviz
+#https://mikeyharper.uk/flowcharts-in-r-using-diagrammer/
+#http://blog.nguyenvq.com/blog/2012/05/29/better-decision-tree-graphics-for-rpart-via-party-and-partykit/
+#http://blog.nguyenvq.com/blog/2014/01/17/skeleton-to-create-fast-automatic-tree-diagrams-using-r-and-graphviz/
+#https://cran.r-project.org/web/packages/DiagrammeR/vignettes/graphviz-mermaid.html
+#https://stackoverflow.com/questions/39133058/how-to-use-graphviz-graphs-in-diagrammer-for-r
+#https://subscription.packtpub.com/book/big_data_and_business_intelligence/9781789802566/1/ch01lvl1sec21/creating-diagrams-via-the-diagrammer-package
+#https://justlegal.be/2019/05/using-flowcharts-to-display-legal-procedures/
+#   #   [3]:  paste0('Only applications w/ only one\\n application in the same date \\n(n = ', formatC(nrow(CONS_C1_df_dup_JUN_2020), format='f', big.mark=',', digits=0), ';\\n users:',formatC(CONS_C1_df_dup_JUN_2020%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+   #   [4]:  paste0('Dataset \\n(n = ',formatC(comb_datasets_a_n,format='f', big.mark=',', digits=0),'\\nusers =',formatC(comb_datasets_a_users,format='f', big.mark=',', digits=0),')')
+   #   [5]:  paste0('Dataset \\n(n = ',formatC(comb_datasets_b_n,format='f', big.mark=',', digits=0),'\\nusers =',formatC(comb_datasets_b_users,format='f', big.mark=',', digits=0),')')
+   #   [6]:  paste0('Dataset \\n(n = ',formatC(comb_datasets_c_n,format='f', big.mark=',', digits=0),'\\nusers =',formatC(comb_datasets_c_users,format='f', big.mark=',', digits=0),')')
+   #   [7]:  paste0('Final Sample \\n(n = ', formatC(nrow(CONS_C1_df_dup_JUN_2020_match_top_sel), format='f', big.mark=',', digits=0), ';\\n users: ',formatC(CONS_C1_df_dup_JUN_2020_match_top_sel%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+#
+#    #  tab3 [label = '@@3']
+    #  tab4 [label = '@@4']
+    #  tab5 [label = '@@5']
+    #  tab6 [label = '@@6']
+    #  tab7 [label = '@@7']
+   #  blank [label = '', width = 0.001, height = 0.001]
+#
+#    # blank -> tab3[ dir = none,  color = 'white',fontcolor = white,shape=none, width=0, height=0];
+    # tab3 -> tab4 [label='  Result of the left join of the dataset',fontsize = 9];
+    #  tab4 -> tab5 [label='  Only rows with available data on Biopsychosocial Compromise',fontsize = 9];
+    #  tab5 -> tab6 [label='  Only strict matches with applications at the stage of admission',fontsize = 9];
+    #  tab6 -> tab7 [label='  Only rows with available data on TOP scores and Diagnostic of CIE-10',fontsize = 9];
+tab1_lab<- paste0('C1 Dataset \n(n = ', formatC(nrow(CONS_C1_df_dup_JUN_2020), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1_df_dup_JUN_2020%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+
+tab2_lab<-paste0('Cases of users that had at least two entries \n(n = ', CONS_C1_df_dup_JUN_2020%>% dplyr::group_by(hash_key)%>%   dplyr::mutate(sum_validos=sum(!is.na(diff_bet_treat)))%>%
+  ungroup()%>%  dplyr::filter(sum_validos>0)%>% nrow()%>% formatC(big.mark=","),';\nusers =',  CONS_C1_df_dup_JUN_2020%>% dplyr::group_by(hash_key)%>%   dplyr::mutate(sum_validos=sum(!is.na(diff_bet_treat)))%>%  ungroup()%>%  dplyr::filter(sum_validos>0)%>% distinct(hash_key)%>% nrow()%>% formatC(big.mark=","),')')
+
+tab3_lab<-paste0('Only entries w/ an entry\n that followed another one \n(n = ', CONS_C1_df_dup_JUN_2020%>% dplyr::filter(!is.na(diff_bet_treat))%>%nrow()%>% formatC(big.mark=","),';\nusers =',CONS_C1_df_dup_JUN_2020%>% dplyr::filter(!is.na(diff_bet_treat))%>%distinct(hash_key)%>% nrow()%>% formatC(big.mark=","),')')
+
+  
+            tab4_lab_n<-CONS_C1_df_dup_JUN_2020%>% 
+              #dplyr::filter(!is.na(diff_bet_treat))%>%
+              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat>=45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat>=60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
+              dplyr::filter(filter_complex==1|filter_complex2==1)%>%
+              #dplyr::select(hash_key,motivoegreso_derivacion,diff_bet_treat)
+              nrow()
+            
+            tab4_lab_users<-CONS_C1_df_dup_JUN_2020%>% 
+              #dplyr::filter(!is.na(diff_bet_treat))%>%
+              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat>=45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat>=60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
+              dplyr::filter(filter_complex==1|filter_complex2==1)%>%
+              #dplyr::select(hash_key,motivoegreso_derivacion,diff_bet_treat)
+              distinct(hash_key)%>% nrow()
+            
+            tab5_lab_n<-CONS_C1_df_dup_JUN_2020%>% 
+              #dplyr::filter(!is.na(diff_bet_treat))%>%
+              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat>=45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat>=60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
+              dplyr::filter(filter_complex==1)%>%
+              #dplyr::select(hash_key,motivoegreso_derivacion,diff_bet_treat)
+              nrow()
+            
+            tab5_lab_users<-CONS_C1_df_dup_JUN_2020%>% 
+              #dplyr::filter(!is.na(diff_bet_treat))%>%
+              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat>=45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat>=60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
+              dplyr::filter(filter_complex==1)%>%
+              #dplyr::select(hash_key,motivoegreso_derivacion,diff_bet_treat)
+              distinct(hash_key)%>% nrow()
+            
+            tab6_lab_n<-CONS_C1_df_dup_JUN_2020%>% 
+              #dplyr::filter(!is.na(diff_bet_treat))%>%
+              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat>=45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat>=60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
+              dplyr::filter(filter_complex2==1)%>%
+              #dplyr::select(hash_key,motivoegreso_derivacion,diff_bet_treat)
+              nrow()
+            
+            tab6_lab_users<-CONS_C1_df_dup_JUN_2020%>% 
+              #dplyr::filter(!is.na(diff_bet_treat))%>%
+              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat>=45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat>=60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
+              dplyr::filter(filter_complex2==1)%>%
+              #dplyr::select(hash_key,motivoegreso_derivacion,diff_bet_treat)
+              distinct(hash_key)%>% nrow()
+
+tab4_lab<-paste0('Only entries w/ an entry\n that followed another one \n(n = ', tab4_lab_n%>% formatC(big.mark=","),';\nusers =',tab4_lab_users%>% formatC(big.mark=","),')')
+
+tab5_lab<-paste0('Only entries w/ an entry\n that followed another one \n(>= 45 days & Referral as a cause of dicharge)\n(n = ', tab5_lab_n%>% formatC(big.mark=","),';\nusers =',tab5_lab_users%>% formatC(big.mark=","),')')
+
+tab6_lab<-paste0('Only entries w/ an entry\n that followed another one \n(>= 60 days & Not a Referral as a cause of dicharge)\n(n = ', tab6_lab_n%>% formatC(big.mark=","),';\nusers =',tab6_lab_users%>% formatC(big.mark=","),')')
+            
+DiagrammeR::grViz("
+digraph graph2 {
+
+graph [layout = dot]
+
+# node definitions with substituted label text
+node [shape = rectangle, width = 4, fillcolor = Biege]
+a [label = '@@1']
+b [label = '@@2']
+c [label = '@@3']
+d [label = '@@4']
+e [label = '@@5']
+f [label = '@@6']
+
+a -> b -> c -> d -> {e f}
+
+}
+
+[1]:  tab1_lab
+[2]:  tab2_lab
+[3]:  tab3_lab
+[4]:  tab4_lab
+[5]:  tab5_lab
+[6]:  tab6_lab
+")
+```
+
+```{r tab1_referrals_less_45_diff_treat,eval=T, echo=T, paged.print=TRUE}
+invisible(c("1. Que las derivaciones hayan terminado siendo dervidados"))
+invisible(c("2. Referral falsos, cuando el primer tratamiento es un traspaso perfecto y es considerado como un senda no"))
+invisible(c("3. Ver uno a uno los casos que tienen 1 día de tratamiento y que uno es SENDA No y el otro SENDA Sí"))
+invisible(c("4. colapsarse en un registro único aquellos registros de usuarios en común que presenten una diferencia menor a 45 para derivaciones y 60 días para el resto de motivos de egreso, entre la fecha de egreso y la fecha de ingreso al siguiente tratamiento (dependiendo de lo que acordemos), y en los que el único cambio registrado entre un tratamiento y otro sea el cambio del ID del centro."))
+invisible(c("5. Generar variable con tratamientos concatenados"))
+
+invisible(c("derivaciones que cuenten con un tratamiento posterior, agrupar las entradas que tengan una diferencia menor o igual a 45 días"))
+
+ #CONS_C1_df_dup_JUN_2020%>% dplyr::mutate(motivodeegreso_mod_imp_tidy= case_when(!is.na(diff_bet_treat) & as.character(motivodeegreso_mod_imp)=="Derivación" & grepl("Clínica",tipo_centro_derivacion==<90~"Abandono Temprano" , TRUE~as.character(motivodeegreso_mod_imp))%>% nrow()
+
 #- si menor
 #se puede pensar que un abandono tardío en verdad puede abarcar al menos 1 mes de tratamiento. Following the criteria stated in the annex and the terminological glossary, 
 #las derivaciones deberían abarcar hasta 45 días.
 #
 #si hay más de 1095 días 
-#CONS_C1_df_dup_JUN_2020%>% dplyr::filter(dias_trat_imp>=1095)%>% nrow()
+
+#menor_60_dias_diff
+#motivoegreso_derivacion
+#obs_cambios_ninguno
+
+#tiene casos inválidos
+CONS_C1_df_dup_JUN_2020%>% 
+  dplyr::filter(!is.na(diff_bet_treat))%>%
+#  dplyr::group_by(hash_key)%>%
+#  dplyr::mutate(sum_validos=sum(!is.na(diff_bet_treat)))%>%
+#  ungroup()%>%
+#  dplyr::filter(sum_validos>0)%>%
+  dplyr::mutate(menor_45_dias_diff=ifelse(diff_bet_treat<45,1,0))%>%
+  janitor::tabyl(menor_45_dias_diff,motivoegreso_derivacion)%>%
+  adorn_totals("col") %>%
+  adorn_percentages("col") %>%
+  adorn_pct_formatting(digits = 1) %>%
+  adorn_ns()%>%
+  knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption="Table 1. Diff. in Treatments <45 days, by Referral (only cases that had an entry after another one)",
+               align= c("l",rep('c', 5)), col.names = c("Diff. in Treatments <45 days","Not a Referral","Referral", "Total"))%>%
+  
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 8)%>%
+        kableExtra::add_footnote(paste0("Note= Percentages by Column; Cases with an entry that follows them (n= ",CONS_C1_df_dup_JUN_2020%>% dplyr::filter(!is.na(diff_bet_treat))%>%nrow()%>% formatC(big.mark=","),"; users=",CONS_C1_df_dup_JUN_2020%>% dplyr::filter(!is.na(diff_bet_treat))%>%distinct(hash_key)%>% nrow()%>% formatC(big.mark=","),")"), notation = "none")%>%
+  kableExtra::scroll_box(width= "100%", height = "250x")
 ```
 
-## Including Plots
+<br>
 
-You can also embed plots, for example:
+As seen in the Table above, 
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+<br>
+
+```{r tab1_referrals_less_45_diff_treat,eval=T, echo=T, paged.print=TRUE}
+
+
+  dplyr::mutate(motivodeegreso_mod_imp_tidy= case_when(!is.na(diff_bet_treat) & as.character(motivodeegreso_mod_imp)=="Derivación" & grepl("Clínica",tipo_centro_derivacion==<90~"Abandono Temprano" , TRUE~as.character(motivodeegreso_mod_imp))%>% nrow()
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+                                                       
+                                                       
+```{r tab1_referrals_less_45_diff_treat,eval=T, echo=T, paged.print=TRUE}                                                       
+#http://rstudio-pubs-static.s3.amazonaws.com/316989_83cbe556125645b698c9ff6cf88c4c1a.html
+survfit_days_new_treat<-survfit(Surv(diff_bet_treat, status) ~ motivodeegreso_mod_imp, 
+                                data=CONS_C1_df_dup_JUN_2020%>% mutate(status=dplyr::case_when(!is.na(diff_bet_treat)~1,TRUE~0)), 
+                                type = "kaplan-meier",
+                                error = "tsiatis", conf.type = "log-log", conf.int = 0.95)
+
+#Utilizando esta información se compara si existe alguna diferencia de las curvas de supervivencia entre los estados 
+survdiff(Surv(diff_bet_treat, status) ~ motivodeegreso_mod_imp, data=CONS_C1_df_dup_JUN_2020%>% mutate(status=dplyr::case_when(!is.na(diff_bet_treat)~1,TRUE~0)), rho = 0)  #Prueba log-rank
+survdiff(Surv(diff_bet_treat, status) ~ motivodeegreso_mod_imp, data=CONS_C1_df_dup_JUN_2020%>% mutate(status=dplyr::case_when(!is.na(diff_bet_treat)~1,TRUE~0)), rho = 1) 
+
+event="no"
+if(event=="si"){
+plot(mfit2, col=c(1,2,1,2), lty=c(2,2,1,1),
+     mark.time=FALSE, lwd=2, xscale=12,
+     xlab="Years post diagnosis", ylab="Probability in State")
+legend(240, .6, c("death:female", "death:male", "pcm:female", "pcm:male"),
+         col=c(1,2,1,2), lty=c(1,1,2,2), lwd=2, bty='n')
+}
+summary(survfit_days_new_treat, times = 365.25)
+
+plot(survfit_days_new_treat,
+         xlab = "Days",  ci = T,
+     ylab = "Overall survival probability",
+     col=c("grey50","purple"), lty=c(1:2), lwd=3)
+legend(240, .6, c("death:female", "death:male", "pcm:female", "pcm:male"),
+         col=c(1,2,1,2), lty=c(1,1,2,2), lwd=2, bty='n')
+
+
+plot(survfit(Surv(time, status) ~ 1, data = lung), 
+     xlab = "Days", 
+     ylab = "Overall survival probability")
+```
