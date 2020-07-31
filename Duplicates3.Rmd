@@ -2237,13 +2237,15 @@ dplyr::mutate(tipo_de_vivienda_mod=
 #copiar_nombres(data[[2]])
 
 #18-24, 25- 29, 30-35, 36-45, and 45+.
-dplyr::mutate(edad_al_ing_grupos=ifelse(edad_al_ing>45,">45",
-      ifelse(edad_al_ing>=36,"36-45",
-      ifelse(edad_al_ing>=30,"30-35",
-      ifelse(edad_al_ing>=25,"25-29",
-      ifelse(edad_al_ing>=18,"18-24",
-      NA)))))) %>%
-dplyr::mutate(edad_al_ing_grupos=as.factor(edad_al_ing)) %>%  
+dplyr::mutate(edad_al_ing_grupos=dplyr::case_when(
+  edad_al_ing>45~">45",
+      edad_al_ing>=36~"36-45",
+      edad_al_ing>=30~"30-35",
+      edad_al_ing>=25~"25-29",
+      edad_al_ing>=18~"18-24",
+      edad_al_ing>=14~"14-17",
+      TRUE~NA_character_)) %>%
+dplyr::mutate(edad_al_ing_grupos=as.factor(edad_al_ing_grupos)) %>%  
     #edad_al_ing_grupos
     #Edad a la fecha de ingreso a tratamiento en grupos (numérico continuo) //Age at admission in groups
   assign("CONS_C1_df_dup_MAY_2020_prev_6c",., envir = .GlobalEnv)
@@ -2308,6 +2310,7 @@ df_tab5%>%
   dplyr::group_by(hash_key)%>%
   mutate(n=n())%>%
   ungroup()
+
   knitr::kable(df_tab5,format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
             caption="Table 6. Trajectories of users with more than 1,095 days (w/ dates of admission of the original dataset)",
             align= rep('c', 101))%>%
@@ -2315,7 +2318,7 @@ df_tab5%>%
         kableExtra::row_spec(which(df_tab5$dias_trat_imp>1095), bold= F, color= "white", background= "cornflowerblue")%>%
         kableExtra::row_spec(which(df_tab5$n>1), bold= F, color= "darkblue")%>%
    kableExtra::add_footnote("Note= Blue background, more than 1095 days; Blue letters, more than one case for the same user; 1 to 18= Dates of admission of the different entries of the different databases", notation = "none")%>%
-          kableExtra::scroll_box(width= "100%", height = "375x")
+    kableExtra::scroll_box(width = "100%", height = "375px")
 ```
 
 <br>
@@ -2326,7 +2329,7 @@ As seen in the Table above, most of the users appeared in more than one yearly d
 
 ```{r 6d_tab7_days_treat_mas_2000,eval=T, echo=T, paged.print=TRUE}
 df_tab5%>% dplyr::filter(dias_trat_imp>1095)%>% janitor::tabyl(fech_egres_imp)%>% arrange(desc(percent))%>% 
-  #slice(1:5)%>%
+  slice(1:5)%>%
   dplyr::mutate(percent=scales::percent(percent))%>%
   knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
             caption=paste0("Table 7. Five dates of discharge that repeated most among cases with days of treatment >1095 (n=",CONS_C1_df_dup_MAY_2020_prev_6c%>%dplyr::filter(dias_trat_imp>1095)%>%nrow(),")"),
@@ -2447,7 +2450,6 @@ CONS_C1_df_dup_MAY_2020_prev_6e%>% dplyr::group_by(hash_key)%>% dplyr::arrange(h
 #Se reemplazan valores 0 con los valores de numero de hijos de ingreso a trat residencial, en caso que señalen vivir con hijos
 #si numero_de_hijos	e num_hijos_ing_trat_res igual 0, no puede tener categorías vive con hijos.
 #Si tiene más o iyou
-
 ```
 
 <br>
@@ -2488,6 +2490,7 @@ CONS_C1_df_dup_MAY_2020_prev_6e%>% janitor::tabyl(opcion_discapacidad,discapacid
         kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 8)%>%
     kableExtra::add_footnote("Note= Percentages by Column", notation = "none")%>%
             kableExtra::scroll_box(width= "100%", height = "225x")
+invisible(c("1.diagnostico_trs_fisico"));invisible(c("2.otros_probl_at_sm_or"))
 ```
 
 <br>
@@ -2662,7 +2665,6 @@ plot<-ggplot(dt_cause_discharge, aes(area = n,
 # Draw with ggiraph
 ggiraph(code = print(plot))
 #ggiraph(code = {print(plot)}, tooltip_extra_css = tooltip_css, tooltip_opacity = .75 )
-
 ```
 <br>
 
@@ -2837,8 +2839,7 @@ Figure 10 tend show that there was more chance to had a minor difference with th
 
 ```{r join_with_cases_w_more_one_t,eval=T, echo=T, paged.print=TRUE}
 CONS_C1_df_dup_MAY_2020_prev_6e%>%
-  dplyr::left_join(CONS_C1_df_dup_MAY_2020_prev_6e_glm_mas_de_un_trat[c("row",                                                                        "menor_60_dias_diff","diff_bet_treat","id_centro_sig_trat","tipo_plan_sig_trat",              "tipo_programa_sig_trat","senda_sig_trat","motivoegreso_derivacion","obs_cambios",
-              "obs_cambios_ninguno","obs_cambios_num","obs_cambios_fac")], by="row")%>%
+  dplyr::left_join(CONS_C1_df_dup_MAY_2020_prev_6e_glm_mas_de_un_trat[c("row","menor_60_dias_diff","diff_bet_treat","id_centro_sig_trat","tipo_plan_sig_trat","tipo_programa_sig_trat","senda_sig_trat","motivoegreso_derivacion","obs_cambios","obs_cambios_ninguno","obs_cambios_num","obs_cambios_fac")], by="row")%>%
   assign("CONS_C1_df_dup_JUN_2020",., envir = .GlobalEnv)
 ```
 
@@ -2914,7 +2915,7 @@ From the table above, we could observe that no other causes of discharge had a t
     labs(caption=paste0("Note. ",CONS_C1_df_dup_JUN_2020%>% dplyr::filter(is.na(diff_bet_treat))%>% nrow() %>% formatC(big.mark = ",")," obs. had missing data that corresponded to unique treatments by users;\nDays of treatment were divided en 30 equal parts"))
 ```
 
-```{r fig11_type_center_referral_changes, eval=T, echo=T, fig.cap="Figure 11. Changes with the Next Treatment by No. of Days of Treatment, depending on Type of Referrals", out.height='200%'}
+```{r fig11_type_center_referral_changes, eval=T, echo=T, fig.cap="Figure 11. Changes with the Next Treatment by No. of Days of Treatment, depending on Type of Referrals",fig.height=15,fig.width=8}
  CONS_C1_df_dup_JUN_2020%>% 
     dplyr::filter(!is.na(diff_bet_treat))%>%
     #dplyr::mutate(motivoegreso_derivacion=factor(motivoegreso_derivacion, levels = c("Motivo: Otro", "Motivo: Derivación","NA")))%>%
@@ -3219,7 +3220,7 @@ dplyr::mutate_at(c('dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_cie_10_or','x3_dg_trs
   dplyr::mutate(menor_60_dias_diff= recode(as.character(menor_60_dias_diff),"0"=">= 60 Days of Difference Between Entries","1"="<60 Days of Difference Between Entries"))%>%
   dplyr::mutate(obs_cambios_ninguno= recode(as.character(obs_cambios_ninguno),"0"="At least 1 Change w/ the Next Entry","1"="No Changes w/ the Next Entry"))%>%
   dplyr::mutate(motivoegreso_derivacion= recode(as.character(motivoegreso_derivacion),"0"="Other causes of discharge","1"="Referral"))%>%
-  dplyr::mutate_at(vars(at_least_one_cont_entry,menor_45_dias_diff, menor_45_dias_diff,menor_60_dias_diff,obs_cambios_ninguno,motivoegreso_derivacion),~as.factor(.))%>%
+  dplyr::mutate_at(vars(at_least_one_cont_entry,menor_45_dias_diff,menor_60_dias_diff,obs_cambios_ninguno,motivoegreso_derivacion,obs_cambios),~as.factor(.))%>%
   assign("CONS_C1_df_dup_JUN_2020",., envir = .GlobalEnv)
   
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_  
@@ -3390,7 +3391,7 @@ obs_cambios= "Cambios del tratamiento en comparación al registro posterior/Chan
 obs_cambios_ninguno= "Sin cambios del tratamiento en comparación al registro posterior/No changes in treatment compared to the Next Entry",
 obs_cambios_num= "Recuento de cambios del tratamiento en comparación al registro posterior/Count of changes in treatment compared to the Next Entry",
 obs_cambios_fac= "Recuento de cambios del tratamiento en comparación al registro posterior(factor)/Count of changes in treatment compared to the Next Entry(factor)",
-at_least_one_cont_entry= "Usuarios con más de una entrada después de otra/Users with more than one entry after another one"
+at_least_one_cont_entry= "Casos de Usuarios con más de una entrada después de otra/Cases of users with more than one entry after another one"
 )
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_

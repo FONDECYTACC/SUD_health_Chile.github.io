@@ -45,7 +45,7 @@ body{ /* Normal  */
 div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
 </style>
 
-```{r setup0, include = FALSE, cache=T}
+```{r prev_setup, include = FALSE, cache=T}
 rm(list=ls());gc()
 load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/6.Rdata")
 
@@ -189,12 +189,12 @@ For the purpose of this page, we use the terms "rows" and "cases" as equal to re
 <br>
 
 <div class = "blue">
-As stated in the third part of the deduplication process, we identified and defined an amount of treatment days that would be suitable to link these entries, and several additional criteria to distinguish between what would be a different treatment from what would reflect a continuation of a treatment. In these stage, we defined rules to keep the most relevant information by each variable to collapse the intermediate events into a single entry that summaries the whole treatment and would let us distinguish posterior treatments.
+As stated in the third part of the deduplication process, we identified and defined an amount of treatment days that would be suitable to link these entries, and several additional criteria to distinguish between what would be a different treatment from what would reflect a continuation of a treatment. In these stage, we defined **rules** to keep the most relevant information by each variable to collapse the intermediate events into a single entry that summaries the whole treatment and would let us distinguish posterior treatments.
 </div>
 
 ## Structure of Treatments and Rules to Collapse Continuous Entries
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+We got a general impression of the database to understand what would be the steps to follow to collapse entries into differentiated treatments. This is why we look at the relationship that the entries had with those that followed them.
 
 <br>
 
@@ -214,16 +214,11 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
    #   [7]:  paste0('Final Sample \\n(n = ', formatC(nrow(CONS_C1_df_dup_JUN_2020_match_top_sel), format='f', big.mark=',', digits=0), ';\\n users: ',formatC(CONS_C1_df_dup_JUN_2020_match_top_sel%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
 #
 #    #  tab3 [label = '@@3']
-    #  tab4 [label = '@@4']
-    #  tab5 [label = '@@5']
-    #  tab6 [label = '@@6']
     #  tab7 [label = '@@7']
    #  blank [label = '', width = 0.001, height = 0.001]
 #
 #    # blank -> tab3[ dir = none,  color = 'white',fontcolor = white,shape=none, width=0, height=0];
-    # tab3 -> tab4 [label='  Result of the left join of the dataset',fontsize = 9];
-    #  tab4 -> tab5 [label='  Only rows with available data on Biopsychosocial Compromise',fontsize = 9];
-    #  tab5 -> tab6 [label='  Only strict matches with applications at the stage of admission',fontsize = 9];
+    # tab3 -> tab4 [label=paste0('Some users had events fullfilling both conditions (n=',tab6_lab_users+tab5_lab_users-tab4_lab_users')',fontsize = 9];
     #  tab6 -> tab7 [label='  Only rows with available data on TOP scores and Diagnostic of CIE-10',fontsize = 9];
 tab1_lab<- paste0('C1 Dataset \n(n = ', formatC(nrow(CONS_C1_df_dup_JUN_2020), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1_df_dup_JUN_2020%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
 
@@ -232,61 +227,61 @@ tab2_lab<-paste0('Cases of users that had at least two entries \n(n = ', CONS_C1
 
 tab3_lab<-paste0('Only entries w/ an entry\n that followed another one \n(n = ', CONS_C1_df_dup_JUN_2020%>% dplyr::filter(!is.na(diff_bet_treat))%>%nrow()%>% formatC(big.mark=","),';\nusers =',CONS_C1_df_dup_JUN_2020%>% dplyr::filter(!is.na(diff_bet_treat))%>%distinct(hash_key)%>% nrow()%>% formatC(big.mark=","),')')
 
-  
             tab4_lab_n<-CONS_C1_df_dup_JUN_2020%>% 
               #dplyr::filter(!is.na(diff_bet_treat))%>%
-              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat>=45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
-              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat>=60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat<45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat<60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
               dplyr::filter(filter_complex==1|filter_complex2==1)%>%
               #dplyr::select(hash_key,motivoegreso_derivacion,diff_bet_treat)
               nrow()
             
             tab4_lab_users<-CONS_C1_df_dup_JUN_2020%>% 
               #dplyr::filter(!is.na(diff_bet_treat))%>%
-              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat>=45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
-              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat>=60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat<45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat<60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
               dplyr::filter(filter_complex==1|filter_complex2==1)%>%
               #dplyr::select(hash_key,motivoegreso_derivacion,diff_bet_treat)
               distinct(hash_key)%>% nrow()
             
             tab5_lab_n<-CONS_C1_df_dup_JUN_2020%>% 
               #dplyr::filter(!is.na(diff_bet_treat))%>%
-              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat>=45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
-              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat>=60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat>45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat<60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
               dplyr::filter(filter_complex==1)%>%
               #dplyr::select(hash_key,motivoegreso_derivacion,diff_bet_treat)
               nrow()
             
             tab5_lab_users<-CONS_C1_df_dup_JUN_2020%>% 
               #dplyr::filter(!is.na(diff_bet_treat))%>%
-              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat>=45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
-              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat>=60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat<45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat<60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
               dplyr::filter(filter_complex==1)%>%
               #dplyr::select(hash_key,motivoegreso_derivacion,diff_bet_treat)
               distinct(hash_key)%>% nrow()
             
             tab6_lab_n<-CONS_C1_df_dup_JUN_2020%>% 
               #dplyr::filter(!is.na(diff_bet_treat))%>%
-              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat>=45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
-              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat>=60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat<45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat<60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
               dplyr::filter(filter_complex2==1)%>%
               #dplyr::select(hash_key,motivoegreso_derivacion,diff_bet_treat)
               nrow()
             
             tab6_lab_users<-CONS_C1_df_dup_JUN_2020%>% 
               #dplyr::filter(!is.na(diff_bet_treat))%>%
-              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat>=45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
-              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat>=60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex= dplyr::case_when(diff_bet_treat<45& as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
+              dplyr::mutate(filter_complex2= dplyr::case_when(diff_bet_treat<60& as.numeric(motivoegreso_derivacion)==1~1,TRUE~0))%>%
               dplyr::filter(filter_complex2==1)%>%
               #dplyr::select(hash_key,motivoegreso_derivacion,diff_bet_treat)
               distinct(hash_key)%>% nrow()
+            tab7_lab<- paste0('* Some users had events fullfilling both conditions (n=',tab6_lab_users+tab5_lab_users-tab4_lab_users,')')
 
-tab4_lab<-paste0('Only entries w/ an entry\n that followed another one \n(n = ', tab4_lab_n%>% formatC(big.mark=","),';\nusers =',tab4_lab_users%>% formatC(big.mark=","),')')
+tab4_lab<-paste0('Only entries w/ an entry\n that followed another one\n(both conditions)\n(n = ', tab4_lab_n%>% formatC(big.mark=","),';\nusers =',tab4_lab_users%>% formatC(big.mark=","),')*')
 
-tab5_lab<-paste0('Only entries w/ an entry\n that followed another one \n(>= 45 days & Referral as a cause of dicharge)\n(n = ', tab5_lab_n%>% formatC(big.mark=","),';\nusers =',tab5_lab_users%>% formatC(big.mark=","),')')
+tab5_lab<-paste0('Only entries w/ an entry\n that followed another one \n(< 45 days of difference w/ a posterior treatment &\nReferral as a cause of dicharge)\n(n = ', tab5_lab_n%>% formatC(big.mark=","),';\nusers =',tab5_lab_users%>% formatC(big.mark=","),')')
 
-tab6_lab<-paste0('Only entries w/ an entry\n that followed another one \n(>= 60 days & Not a Referral as a cause of dicharge)\n(n = ', tab6_lab_n%>% formatC(big.mark=","),';\nusers =',tab6_lab_users%>% formatC(big.mark=","),')')
-            
+tab6_lab<-paste0('Only entries w/ an entry\n that followed another one \n(< 60 days of difference w/ a posterior treatment &\nNot a Referral as a cause of dicharge)\n(n = ', tab6_lab_n%>% formatC(big.mark=","),';\nusers =',tab6_lab_users%>% formatC(big.mark=","),')')
+          
 DiagrammeR::grViz("
 digraph graph2 {
 
@@ -300,8 +295,13 @@ c [label = '@@3']
 d [label = '@@4']
 e [label = '@@5']
 f [label = '@@6']
+g [label = '@@7', width = 0.001, height = 0.001, color=White]
 
-a -> b -> c -> d -> {e f}
+a -> b 
+b -> c 
+c -> d #[label= paste0('** Some users had events fullfilling both conditions (n=',tab6_lab_users+tab5_lab_users-tab4_lab_users,')'),fontsize = 9];
+d -> {e f} 
+{e f} -> g [ dir = none,  color = 'white',fontcolor = white,shape=none, width=0, height=0];
 
 }
 
@@ -311,8 +311,15 @@ a -> b -> c -> d -> {e f}
 [4]:  tab4_lab
 [5]:  tab5_lab
 [6]:  tab6_lab
+[7]:  tab7_lab
 ")
+#[label=paste0('Some users had events fullfilling both conditions (n=',tab6_lab_users+tab5_lab_users-tab4_lab_users,')',fontsize = 9];
 ```
+<br>
+
+As seen in Figure 1, we could define that this pairs of events with the same users that could correspond to a continuous treatment, rather than different ones. We focused in these patterns to collapse them into treatments.
+
+<br>
 
 ```{r tab1_referrals_less_45_diff_treat,eval=T, echo=T, paged.print=TRUE}
 invisible(c("1. Que las derivaciones hayan terminado siendo dervidados"))
@@ -320,6 +327,7 @@ invisible(c("2. Referral falsos, cuando el primer tratamiento es un traspaso per
 invisible(c("3. Ver uno a uno los casos que tienen 1 día de tratamiento y que uno es SENDA No y el otro SENDA Sí"))
 invisible(c("4. colapsarse en un registro único aquellos registros de usuarios en común que presenten una diferencia menor a 45 para derivaciones y 60 días para el resto de motivos de egreso, entre la fecha de egreso y la fecha de ingreso al siguiente tratamiento (dependiendo de lo que acordemos), y en los que el único cambio registrado entre un tratamiento y otro sea el cambio del ID del centro."))
 invisible(c("5. Generar variable con tratamientos concatenados"))
+invisible(c("6. Qué hago con los tratamientos con NAs en fecha de egreso. Debiese borrarlos"))
 
 invisible(c("derivaciones que cuenten con un tratamiento posterior, agrupar las entradas que tengan una diferencia menor o igual a 45 días"))
 
@@ -359,48 +367,455 @@ CONS_C1_df_dup_JUN_2020%>%
 
 <br>
 
-As seen in the Table above, 
+As seen in the Table above, most of the referrals that had a posterior treatment had a difference of 45 days or less, compared to other causes of admission.
 
 <br>
 
-```{r tab1_referrals_less_45_diff_treat,eval=T, echo=T, paged.print=TRUE}
+Considering what was mentioned above, we decided to get an impression over the amount of time that took to report another entry within users that had different causes of discharge in a previous treatment.
 
-
-  dplyr::mutate(motivodeegreso_mod_imp_tidy= case_when(!is.na(diff_bet_treat) & as.character(motivodeegreso_mod_imp)=="Derivación" & grepl("Clínica",tipo_centro_derivacion==<90~"Abandono Temprano" , TRUE~as.character(motivodeegreso_mod_imp))%>% nrow()
-```
-
+<br>                                                       
                                                        
-                                                       
-```{r tab1_referrals_less_45_diff_treat,eval=T, echo=T, paged.print=TRUE}                                                       
+```{r tab3_surv_diff_bet_treat_motivodeegreso,eval=T, echo=T, paged.print=TRUE}                                                       
 #http://rstudio-pubs-static.s3.amazonaws.com/316989_83cbe556125645b698c9ff6cf88c4c1a.html
+#https://thriv.github.io/biodatasci2018/r-survival.html
+#http://si.biostat.washington.edu/sites/default/files/modules/SISCR_2018_11_all-2pp_0.pdf
+#https://www.researchgate.net/profile/Claudia_Castro-Kuriss/publication/325390160_Analisis_de_Supervivencia_mediante_el_empleo_de_R/links/5b0aba27a6fdcc8c25333860/Analisis-de-Supervivencia-mediante-el-empleo-de-R.pdf?origin=publication_detail
+#http://www.sthda.com/english/wiki/survival-analysis-basics
+
+#SURVIVAL= Explores factors that are thought to influence the chance that the event occurs
+#Datos censurados= pueden ser por distintas causas:
+    #- El paciente no refirió un evento (la readmissión) durante el estudio, y no sabemos si el evento ocurrió después. ESTOS SON LOS QUE TENGO QUE DARLES UN DIFF TREAT HASTA EL DIA DE HOY. SIEMPRE Y CUANDO TENGAN MENOS DE 1095 DIAS PARA PERDIDOS EN FECHA DE EGRESO, Y NO ESTÉN TRUNCADOS A LA DERECHA PORQUE NO SE LES TERMINÓ EL PRIMER TRAT.
+    #Esta censura puede ocurrir cuando un usuario abandona un estudio, se pierde el seguimiento o no experimenta el evento una vez finaliza el estudio
+    #- Truncado a la derecha: quien se perdió por una razón. Truncado a la derecha
+    #Las muestras con censura aleatoria se consideran generalmente censuradas por derecha debido a que se van incorporando progresivamente los tiempos de fallas de distintas unidades
+    #Los eventos que no experimentaron el evento en el tiempo de estudio se les censurará hasta el último tiempo de registro
+    # Una suposición menos restrictiva que la suposición de independencia entre Ci y Ti, pero que alcanza para que los métodos sean válidos, es “la censura independiente” o “censura no informativa”:la probabilidad de que un individuo sea censurado en el instante t0 no depende de que ese individuo tenga inusualmente alto (o bajo) riesgo de evento.
+    #Censoring may arise in the following ways:
+    ###a patient has not (yet) experienced the event of interest, such as relapse or death, within the study time period;
+    ###a patient is lost to follow-up during the study period;
+    ###a patient experiences a different event that makes further follow-up impossible.
+    #This type of censoring, named right censoring, is handled in survival analysis.
+
+#– Recurrence rate
 survfit_days_new_treat<-survfit(Surv(diff_bet_treat, status) ~ motivodeegreso_mod_imp, 
-                                data=CONS_C1_df_dup_JUN_2020%>% mutate(status=dplyr::case_when(!is.na(diff_bet_treat)~1,TRUE~0)), 
-                                type = "kaplan-meier",
+                                data=CONS_C1_df_dup_JUN_2020%>% 
+                                  dplyr::mutate(diff_nas_fech_egres= as.numeric(difftime(lubridate::ymd("2020-11-13"),fech_ing, units = "days")))%>%
+                                  #dplyr::filter(is.na(fech_egres_imp))%>% dplyr::select(fech_ing,fech_egres_imp,diff_nas_fech_egres)
+                                  dplyr::mutate(perdi_seguimiento=dplyr::case_when(is.na(fech_egres_imp)&diff_nas_fech_egres>=1095~1,TRUE~0))%>% 
+                                  dplyr::filter(perdi_seguimiento==0)%>% #NI SIQUIERA TERMINARON EL PIMER EVNTO, Y LO MAS PROBABLE ES QUE NUNCA REGISTRARON FECHA DE TÉRMINO. ESTPS SI QUE SI DEBO SACARLOS.
+                                  dplyr::mutate(no_tienen_ni_el_primer_evento=dplyr::case_when(is.na(fech_egres_imp)&diff_nas_fech_egres<1095~1,
+                                                                                     TRUE~0))%>% 
+                                 # dplyr::filter(no_tienen_ni_el_primer_evento==0)%>%#NO HAN TERMINADO EL TRATAMIENTO. CENSURA SIMPLE TIPO 1, PERO SE DIFERENCIA DE LOS QUE NUNCA LLEGARON SIQUIERA A TENER EL PRIMER EVENTO. POR ESO A ESOS CASOS DEBO SACARLOS. AUNQUE NO ESTOY SEGURO, PORQUE PUEDE QUE ESTOS CASOSO TAMBIÉN FORMEN PARTE ED LA CENSURA AUTOMATICA QUE HACE R.
+                                  #LOS QUE TIENEN 
+                                  dplyr::mutate(status=dplyr::case_when(!is.na(diff_bet_treat)~1,TRUE~0)), #censurar si no tienen fechas entre trat porque no tienen un siguiente
+                                    #mutate(status=dplyr::case_when(!is.na(fech_egres_imp)~1,TRUE~0)), #censurar fechas de egreso ##se supone q este es más puro, no sé
+                                type = "kaplan-meier", #The Kaplan-Meier curve is a nonparametric estimator of the survival distribution (i.e. the “estimation” component of the “test/estimation” approach to analysis of time-to-event data)
                                 error = "tsiatis", conf.type = "log-log", conf.int = 0.95)
+#So we only know that the patient survived AT LEAST 13 months, but we have no other information available about the patient's status.  This type of censoring (also known as "right censoring") makes linear regression an inappropriate way to analyze the data due to censoring bias.
+
+#simple
+#survfit_days_new_treat_simple<-survfit(Surv(diff_bet_treat, status) ~ motivodeegreso_mod_imp, 
+#                                data=CONS_C1_df_dup_JUN_2020%>% mutate(status=dplyr::case_when(!is.na(diff_bet_treat)~1,TRUE~0))%>% data.frame())
 
 #Utilizando esta información se compara si existe alguna diferencia de las curvas de supervivencia entre los estados 
-survdiff(Surv(diff_bet_treat, status) ~ motivodeegreso_mod_imp, data=CONS_C1_df_dup_JUN_2020%>% mutate(status=dplyr::case_when(!is.na(diff_bet_treat)~1,TRUE~0)), rho = 0)  #Prueba log-rank
-survdiff(Surv(diff_bet_treat, status) ~ motivodeegreso_mod_imp, data=CONS_C1_df_dup_JUN_2020%>% mutate(status=dplyr::case_when(!is.na(diff_bet_treat)~1,TRUE~0)), rho = 1) 
+#In order to determine if there is a statistically significant difference between the survival curves, we perform what is known as a log-rank test, which tests the following hypothesis:
+##H0: There is no difference in the survival function between those who were on maintenance chemotherapy and those who weren't on maintenance chemotherapy.
+##Ha: There is a difference in the survival function between those who were on maintenance chemotherapy and those who weren't on maintenance chemotherapy.
+#También con la orden “survdiff”, podemos realizar un test de hipótesis no paramétrico que nos diga si la diferencia de la probabilidad de supervivencia entre subgrupos es significativa o no. En este caso lo sería, al obtener un p-value < 0,05, experimentando esas diferencias en las zonas Centro y Sur, que sería en donde deberíamos de realizar un estudio más en profundidad.
+  invisible(  
+  survdiff(Surv(diff_bet_treat, status) ~ motivodeegreso_mod_imp, data=CONS_C1_df_dup_JUN_2020%>% mutate(status=dplyr::case_when(!is.na(diff_bet_treat)~1,TRUE~0)), rho = 0)  
+  )
+  #Prueba log-rank
+  invisible(  
+  survdiff(Surv(diff_bet_treat, status) ~ motivodeegreso_mod_imp, data=CONS_C1_df_dup_JUN_2020%>% mutate(status=dplyr::case_when(!is.na(diff_bet_treat)~1,TRUE~0)), rho = 1) 
+  )
 
+#survfit_days_new_treat_simple
+survfit_days_new_treat_dataframe<-summary(survfit_days_new_treat, times=seq(0, 3500, 100), print.rmean=T,digits=2)
+#
+data.table(survfit_days_new_treat_dataframe$table,keep.rownames = T)%>%
+  knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption="Table 2. Estimates related to the probability that an entry kept free of a posterior one",
+               align= c("l",rep('c', 5)), col.names = c("Cause of Discharge","Records","n.max", "n.start","events","rmean","se(rmean)","median", "95%CI Lower","95%CI Upper"))%>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 8)%>%
+        kableExtra::add_footnote(paste0("Note= Treatments that did not finished their first treatment were discarded (n=",CONS_C1_df_dup_JUN_2020%>% 
+    dplyr::mutate(diff_nas_fech_egres= as.numeric(difftime(lubridate::ymd("2020-11-13"),fech_ing, units = "days")))%>%dplyr::mutate(perdi_seguimiento=dplyr::case_when(is.na(fech_egres_imp)&diff_nas_fech_egres>=1095~1,TRUE~0))%>%dplyr::filter(perdi_seguimiento==1)%>% nrow()%>% formatC(big.mark=","),"); Excluded cases with no cause of discharge (n=",CONS_C1_df_dup_JUN_2020%>% dplyr::mutate(diff_nas_fech_egres= as.numeric(difftime(lubridate::ymd("2020-11-13"),fech_ing, units = "days")))%>% dplyr::mutate(perdi_seguimiento=dplyr::case_when(is.na(fech_egres_imp)&diff_nas_fech_egres>=1095~1,TRUE~0))%>%  dplyr::filter(perdi_seguimiento==0)%>% dplyr::mutate(status=dplyr::case_when(!is.na(diff_bet_treat)~1,TRUE~0))%>% dplyr::filter(!is.na(diff_bet_treat),is.na(motivodeegreso_mod_imp))%>% nrow() %>% formatC(big.mark=","),")"), notation = "none")%>%
+  kableExtra::scroll_box(width= "100%", height = "250x")
+
+#median time to event (the time when half the records have an event).
+#Even if median survival has been reached in a group, it might not be possible to calculate complete confidence intervals for those median values,
+# just knowing the difference in median survival values doesn't necessarily tell you which is better for prognosis--then you have to specify which prognosis time you care about.
+#The restricted mean (rmean) and its standard error se(rmean) are based on a truncated estimator. When the last censoring time is not random this quantity is occasionally of interest.
+```
+
+```{r fig2_survplot_motivoegreso,fig.width = 13, fig.width = 7, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 2. Recurrence-free interval of a treatment according to cause of discharge of the first treatment", error=T}
+
+#El estimador de S es lo que se llama curva de supervivencia (“survival curve”). 
 event="no"
 if(event=="si"){
 plot(mfit2, col=c(1,2,1,2), lty=c(2,2,1,1),
      mark.time=FALSE, lwd=2, xscale=12,
      xlab="Years post diagnosis", ylab="Probability in State")
-legend(240, .6, c("death:female", "death:male", "pcm:female", "pcm:male"),
+legend(3000, .6, c("death:female", "death:male", "pcm:female", "pcm:male"),
          col=c(1,2,1,2), lty=c(1,1,2,2), lwd=2, bty='n')
 }
-summary(survfit_days_new_treat, times = 365.25)
-
 plot(survfit_days_new_treat,
-         xlab = "Days",  ci = T,
-     ylab = "Overall survival probability",
-     col=c("grey50","purple"), lty=c(1:2), lwd=3)
-legend(240, .6, c("death:female", "death:male", "pcm:female", "pcm:male"),
-         col=c(1,2,1,2), lty=c(1,1,2,2), lwd=2, bty='n')
-
-
-plot(survfit(Surv(time, status) ~ 1, data = lung), 
-     xlab = "Days", 
-     ylab = "Overall survival probability")
+         xlab = "Days of difference with a posterior treatment",  conf.int = T,mark.time = F,
+     ylab = "Ssurvival probability",
+     col=c("springgreen4","purple","cornflowerblue","tan3","gray20"), lwd=2) # 
+legend("topright", c("Late Withdrawal", "Early Withdrawal", "Administrative Discharge", "Therapeutic Discharge","Referral"),
+         col=c("springgreen4","purple","cornflowerblue","tan3","gray20"), lty=c(1,1,1,1), lwd=2, bty='n')
+mtext("Note. Users who did not finished their first treatment or did not showed recurrence have been censored", side=1,size=.5,cex=.7,outer=F,at=1500,4)
 ```
+
+<br>
+
+From the Figure above, we can interpret that referrals had most entries with 0's or a minimum time with a posterior one.
+
+<br>
+
+```{r  Fig 3_trajectories, fig.height=14, fig.width=8, warning=FALSE, fig.align = "center", message=F, cache=T, eval=F, fig.cap="Figure 3 Trajectories of every HASH from dates of admission to discharge"}
+c26 <- c(
+  "dodgerblue2", "#E31A1C", # red
+  "green4",
+  "#6A3D9A", # purple
+  "#FF7F00", # orange
+  "gray16", "gold1",
+  "skyblue2", "#FB9A99", # lt pink
+  "palegreen2",
+  "#CAB2D6", # lt purple
+  "#FDBF6F", # lt orange
+  "gray70", "khaki2",
+  "maroon", "orchid1", "deeppink1", "blue1", "steelblue4",
+  "darkturquoise", "green1", "yellow4", "yellow3",
+  "darkorange4", "brown", "gray40")
+c28 <- c(
+  "dodgerblue2", "#E31A1C",  "green4",  "#6A3D9A",  "#FF7F00", "gray16", "gold1", "skyblue2", "#FB9A99",  "palegreen2","orchid1", "#CAB2D6", # lt purple
+  "#FDBF6F",  "gray70","deeppink1", "khaki2","steelblue4",  "maroon",  "blue1", "brown",  "darkturquoise", "green1", "yellow4", "yellow3","pink",
+  "darkorange4",  "gray40", "blue","black","red","green", "orange", "white", "blue4", "violet")
+
+get_distinct_hues <- function(ncolor,s=0.5,v=0.95,seed=350) {
+  golden_ratio_conjugate <- 0.618033988749895
+  set.seed(seed)
+  h <- runif(1)
+  H <- vector("numeric",ncolor)
+  for(i in seq_len(ncolor)) {
+    h <- (h + golden_ratio_conjugate) %% 1
+    H[i] <- h
+  }
+  hsv(H,s=s,v=v)
+}
+p3_1<-CONS_C1_df_dup_JUN_2020%>%
+  dplyr::filter(!is.na(diff_bet_treat))%>%
+ggplot(aes()) + 
+  geom_segment(aes(x = as.POSIXct(as.Date(fech_ing)), xend = as.POSIXct(as.Date(fech_egres_imp)),
+                   y = hash_key, yend = hash_key,colour=as.factor(row),size=1/100)) + 
+    scale_x_datetime(breaks=scales::date_breaks("1 year"), 
+                  limits = as.POSIXct(c('2010-01-01 09:00:00','2020-01-01 09:00:00')),
+                  labels = scales::date_format("%m/%y")) +
+ # scale_color_manual(values=get_distinct_hues(31609)) +
+  theme(axis.line=element_blank(),
+          axis.ticks=element_blank(),axis.title.y=element_text("HASHs"),axis.text.y=element_blank(),
+          axis.title.x=element_text(""),legend.position="none",
+          panel.background=element_blank(),panel.border=element_blank(),panel.grid.major=element_blank(),
+          panel.grid.minor=element_blank(),plot.background=element_blank(), plot.title = element_text(hjust = 0))+
+  scale_size_identity()+ ##para cambiar el ancho de cada segmento
+  #scale_x_date(breaks = scales::date_breaks("1 year"), date_labels = "%b %d") +
+    theme(plot.caption = element_text(face= "italic",hjust = 0)) +
+    labs(x = "Dates of admission and discharge", y="HASHs", 
+         caption="Example of 4 clean trajectories. Colored lines represent different rows in the dataset, but same HASH")
+ggplotly(p3_1)
+```
+
+```{r  Fig 3_nada, warning=FALSE, fig.align = "center", message=F, cache=T, eval=T, fig.cap="Figure 3.  Histogram of No. of Pair of treatments"}
+p3<-CONS_C1_df_dup_JUN_2020%>%
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(sum_validador=sum(diff_bet_treat,na.rm=T), n=n(),sin_diff_dias=ifelse(sum_validador>0,1,0))%>%
+  distinct(hash_key,.keep_all=T)%>%
+  dplyr::select(n,sin_diff_dias)
+  
+  groupA <- p3 %>% filter(sin_diff_dias == 1)
+  groupB <- p3 %>% filter(sin_diff_dias == 0)
+  
+#p3<-ggplot(p3,aes(x=n))+
+#  geom_histogram_interactive()+
+#  facet_wrap(~sin_diff_dias, labeller = as_labeller(c(`0` = "No differences between Treatments in Days", `1` = "Differences Between Treatments in Days")))+
+#  sjPlot::theme_sjplot2()+
+#    labs(x="",y="Frequencies ", x="No. of cases by user")+
+# # xlim(c(2,10))+
+#  ylim(c(0,15000))+
+#scale_x_continuous(breaks = seq(from = 0, to = 13, by = 1))+
+# theme(panel.grid.minor=element_blank(),
+#       plot.background=element_blank(),
+#        panel.background=element_blank(),
+#       panel.border=element_blank(),
+#       panel.grid.major=element_blank())+
+#  labs(caption="Note. Only selected users with more than 1 case")
+
+tooltip_css <- "background-color:gray;color:white;font-style:italic;padding:10px;border-radius:10px 20px 10px 20px;"
+
+#ggiraph(code = {print(p3)}, tooltip_extra_css = tooltip_css, tooltip_opacity = .75 )
+
+p5 <- plot_ly(alpha = 0.5) %>% 
+  add_histogram(x = ~groupA$n,
+                name = "No differences between Treatments in Days") %>% 
+  add_histogram(x = ~groupB$n,
+                name = "Differences Between Treatments in Days") %>% 
+  layout(barmode = "overlay",
+         xaxis = list(title = "No. of cases by user",
+                      zeroline = FALSE),
+         yaxis = list(title = "Frequencies",
+                      zeroline = FALSE))%>%
+layout(legend = list(orientation = "h",   # show entries horizontally
+                     xanchor = "center",  # use center of legend as anchor
+                     x = 0.5, y= -.04))  
+p5
+
+```
+
+<br>
+
+As seen in the Figure above, most of the users had one treatment represent the greater amount of continuous variables so we excluded them because we were interested in cases that had more than one treatment. Most of the users that had 0 days of difference in entries within them, had 2 cases and exceptionally 3. In contrast, among users with differences between entries greater than 0 had mostly 2 up to 4 entries, but it was possible that even a user could have 13 entries.
+
+<br>
+
+## Collapse Continuous or Almost Continuous Entries into Treatments
+
+We decided to collapse the different entries into a single treatment. This required to adopt different strategies to collapse values of variables of different types and characteristics.
+
+<br>
+
+- row = Included them in a wide format
+
+- nombre_centro = Included them in a wide format
+
+- tipo_centro = Included them in a wide format
+
+- servicio_de_salud = Included them in a wide format
+
+- senda = Included them in a wide format
+
+- id_centro = Included them in a wide format
+
+- numero_de_hijos = Kept the maximum value
+
+- num_hijos_ing_trat_res = Kept the maximum value
+
+- tipo_centro_derivacion = Kept the maximum value
+
+- fech_egres_imp = Kept the maximum value
+
+- motivodeegreso_mod_imp = Kept the maximum value
+
+- macrozona = Kept the maximum value
+
+- nombre_region = Kept the maximum value
+
+- comuna_residencia_cod = Kept the maximum value
+
+- ano_bd = Kept the minimum & maximum value
+
+- fech_ing = Kept the minimum value
+
+- fecha_ingreso_a_convenio_senda = Kept the minimum value
+
+- edad_al_ing = Kept the minimum value
+
+- origen_ingreso_mod = Kept the minimum value
+
+- edad_al_ing_grupos = Kept the minimum value
+
+- con_quien_vive = Kept the more vulnerable category
+
+- sus_principal = Kept the more vulnerable category
+
+- otras_sus1 = Kept the more vulnerable category
+
+- otras_sus2 = Kept the more vulnerable category
+
+- otras_sus3 = Kept the more vulnerable category
+
+- escolaridad = Kept the more vulnerable category
+
+- hash_rut_completo = Kept the same value
+
+- nacionalidad = Kept the same value
+
+- sexo_2 = Kept the same value
+
+- embarazo = Kept the same value
+
+- id_mod = Kept the same value
+
+- obs = Kept the same value
+
+- fech_nac = Kept the same value
+
+- edad_ini_cons = Kept the same value
+
+- edad_ini_sus_prin = Kept the same value
+
+- sus_ini = Kept the same value
+
+- estado_conyugal_2 = Kept the same value
+
+- edad_grupos = Kept the same value
+
+- freq_cons_sus_prin = Kept the same value
+
+- via_adm_sus_prin_act = Kept the same value
+
+- etnia_cor = Kept the same value
+
+- nacionalidad_2 = Kept the same value
+
+- etnia_cor_2 = Kept the same value
+
+- sus_ini_2 = Kept the same value
+
+- sus_ini_3 = Kept the same value
+
+- sus_ini_mod = Kept the same value
+
+- obs_cambios = Kept the same value
+
+- obs_cambios_ninguno = Kept the same value
+
+- obs_cambios_num = Kept the same value
+
+- obs_cambios_fac = Kept the same value
+
+- at_least_one_cont_entry = Kept the same value
+
+- tipo_de_plan_2 = Kept the value of the largest treatment
+
+- tipo_de_programa_2 = Kept the value of the largest treatment
+
+- estatus_ocupacional = Kept the value of the largest treatment
+
+- cat_ocupacional = Kept the value of the largest treatment
+
+- origen_ingreso = Kept the value of the largest treatment
+
+- tipo_de_vivienda_mod = Kept the value of the largest treatment
+
+- tenencia_de_la_vivienda_mod = Kept the value of the largest treatment
+
+- rubro_trabaja_mod = Kept the value of the largest treatment
+
+- x_se_trata_mujer_emb = Replaced if present
+
+- usuario_tribunal_trat_droga = Replaced if present
+
+- discapacidad = Replaced if present
+
+- dg_trs_cons_sus_or = Replaced if present;  Favored diagnostics; Included them in a wide format
+
+- dg_trs_psiq_dsm_iv_or = Replaced if present;  Favored diagnostics; Included them in a wide format
+
+- dg_trs_psiq_sub_dsm_iv_or = Replaced if present;  Favored diagnostics; Included them in a wide format
+
+- x2_dg_trs_psiq_dsm_iv_or = Replaced if present;  Favored diagnostics; Included them in a wide format
+
+- x2_dg_trs_psiq_sub_dsm_iv_or = Replaced if present;  Favored diagnostics; Included them in a wide format
+
+- x3_dg_trs_psiq_dsm_iv_or = Replaced if present;  Favored diagnostics; Included them in a wide format
+
+- x3_dg_trs_psiq_sub_dsm_iv_or = Replaced if present;  Favored diagnostics; Included them in a wide format
+
+- dg_trs_psiq_cie_10_or = Replaced if present;  Favored diagnostics; Included them in a wide format
+
+- dg_trs_psiq_sub_cie_10_or = Replaced if present;  Favored diagnostics; Included them in a wide format
+
+- x2_dg_trs_psiq_cie_10_or = Replaced if present;  Favored diagnostics; Included them in a wide format
+
+- x2_dg_trs_psiq_sub_cie_10_or = Replaced if present;  Favored diagnostics; Included them in a wide format
+
+- x3_dg_trs_psiq_cie_10_or = Replaced if present;  Favored diagnostics; Included them in a wide format
+
+- x3_dg_trs_psiq_sub_cie_10_or = Replaced if present;  Favored diagnostics; Included them in a wide format
+
+- diagnostico_trs_fisico = Replaced if present;  Favored diagnostics; Included them in a wide format
+
+- otros_probl_at_sm_or = Replaced if present;  Favored diagnostics; Included them in a wide format
+
+- compromiso_biopsicosocial = Replaced if present;  Kept more vulnerable category
+
+- dg_global_nec_int_soc_or = Replaced if present;  Kept more vulnerable category
+
+- dg_nec_int_soc_cap_hum_or = Replaced if present;  Kept more vulnerable category
+
+- dg_nec_int_soc_cap_fis_or = Replaced if present;  Kept more vulnerable category
+
+- dg_nec_int_soc_cap_soc_or = Replaced if present;  Kept more vulnerable category
+
+- evaluacindelprocesoteraputico = Replaced if present;  Kept more vulnerable category
+
+- eva_consumo = Replaced if present;  Kept more vulnerable category
+
+- eva_fam = Replaced if present;  Kept more vulnerable category
+
+- eva_relinterp = Replaced if present;  Kept more vulnerable category
+
+- eva_ocupacion = Replaced if present;  Kept more vulnerable category
+
+- eva_sm = Replaced if present;  Kept more vulnerable category
+
+- eva_fisica = Replaced if present;  Kept more vulnerable category
+
+- eva_transgnorma = Replaced if present;  Kept more vulnerable category
+
+- dg_trs_psiq_cie_10_egres_or = Replaced if present;  Kept more vulnerable category
+
+- dg_global_nec_int_soc_or_1 = Replaced if present;  Kept more vulnerable category
+
+- dg_nec_int_soc_cap_hum_or_1 = Replaced if present;  Kept more vulnerable category
+
+- dg_nec_int_soc_cap_fis_or_1 = Replaced if present;  Kept more vulnerable category
+
+- dg_nec_int_soc_cap_soc_or_1 = Replaced if present;  Kept more vulnerable category
+
+- tiene_menores_de_edad_a_cargo = Replaced if present;  Kept more vulnerable category
+
+- identidad_de_genero = Replaced if present;  Kept more vulnerable category; Included them in a wide format
+
+- opcion_discapacidad = Replaced if present; Included them in a wide format
+
+- sus_principal_mod = Replaced if present; Included them in a wide format
+
+- ha_estado_embarazada_egreso = Replaced if present; Included them in a wide format
+
+- dias_trat_inv = Sum values
+
+- dias_trat_imp = Sum values
+
+<br>
+
+```{r tab2_referrals_less_45_diff_treat,eval=T, echo=T, paged.print=TRUE}
+CONS_C1_df_dup_JUN_2020%>%
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(sum_validos=sum(!is.na(diff_bet_treat)))%>%
+  ungroup()%>%
+  #dplyr::filter(sum_validos>0)%>%
+  #dplyr::filter(!is.na(diff_bet_treat))%>%
+  dplyr::mutate(filter_complex= dplyr::case_when(!is.na(diff_bet_treat) & diff_bet_treat<45 & as.numeric(motivoegreso_derivacion)==2~1,TRUE~0))%>%
+  dplyr::mutate(filter_complex= dplyr::case_when(!is.na(diff_bet_treat) & diff_bet_treat<60 & as.numeric(motivoegreso_derivacion)==1~2,TRUE~0))%>%
+  #dplyr::filter(filter_complex2>01)%>%
+  
+                tidyr::pivot_wider(names_from = ndays, 
+                                   names_sep="_",
+                                   values_from = c(row, nombre_centro, tipo_centro, servicio_de_salud, senda,id_centro))%>%
+#
+    
+#etapa 3. borrar las variables irrelevantes
+  dplyr::select(-table,-hash_key,-id,-region_del_centro,-tipo_de_programa,-tipo_de_plan,-dias_trat,-nmesesentratamiento,-dias_en_senda,-n_meses_en_senda,-sexo,-edad,-nombre_usuario,-comuna_residencia,-origen_de_ingreso,-pais_nacimiento,-etnia,-estado_conyugal,-parentesco_con_el_jefe_de_hogar,-num_trat_ant,-fecha_ultimo_tratamiento,-sustancia_de_inicio,-edad_inicio_consumo,-escolaridad_ultimo_ano_cursado,-condicion_ocupacional,-categoria_ocupacional,-rubro_trabaja,-tipo_de_vivienda,-tenencia_de_la_vivienda,-sustancia_principal,-`otras_sustancias_nº1`,-`otras_sustancias_nº2`,-`otras_sustancias_nº3`,-freq_cons_sus_prin_original,-edad_inicio_sustancia_principal,-via_adm_sus_prin_original,-consentimiento_informado,-fech_egres,-motivodeegreso,-mot_egres_alt_adm_or,-consorcio,-fech_egres_sin_fmt,-ano_nac,-fech_ing_ano,-fech_ing_mes,-fech_ing_dia,-concat,-dias_trat_alta_temprana,-motivodeegreso_mod,-via_adm_sus_prin,-dias_trat_knn_imp,-fech_egres_knn_imp,-dias_trat_alta_temprana_knn_imp,-motivodeegreso_imp,-dias_trat_alta_temprana_imp,-concat_hash_sus_prin,-menor_60_dias_diff,-diff_bet_treat,-id_centro_sig_trat,-tipo_plan_sig_trat,-tipo_programa_sig_trat,-senda_sig_trat,-motivoegreso_derivacion)
+#  dplyr::mutate(motivodeegreso_mod_imp_tidy= case_when(!is.na(diff_bet_treat) & as.character(motivodeegreso_mod_imp)=="Derivación" & grepl("Clínica",tipo_centro_derivacion==<90~"Abandono Temprano" , TRUE~as.character(motivodeegreso_mod_imp))%>% nrow()
+
+invisible(c('Generar var. categórica con combinación de variables (Ej., "PG-PAI", "PAI-MPB-PG")'))
+
+```
+
+## Collapse Continuous or Almost Continuous Entries into Treatments
+
+
+
