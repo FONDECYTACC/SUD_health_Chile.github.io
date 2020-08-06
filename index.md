@@ -16,7 +16,9 @@ This page is composed by the following main topics:
     
     1.4. [Deduplication of C1, Part 3](Duplicates3)
     
-    1.5. [Codebook of C1](codebook)
+    1.5. [Deduplication of C1, Part 4](Duplicates4)
+    
+    1.6. [Codebook of C1](codebook)
   
 2. [Data preparation and Standardization of TOP or Profile of Treatment Results](Data_prep_TOP)
 

@@ -956,7 +956,7 @@ CONS_C1_df_dup_MAY_2020_prev_2 %>% dplyr::mutate(concat_hash_sus_prin=paste0(has
 ```
 
 
-### 3.Replace of datasets
+### 3.Correction of Ties in Values of Variables as a Result of Rule-Based Imputations
 
 #### 3.1.Ties in sex
 
@@ -1056,7 +1056,6 @@ CONS_C1_df_dup_FEB_2020_prev24_test_nn<- CONS_C1_df_dup_FEB_2020_prev24 %>%
               #(e.g., c('pclass = levels(pclass)', 'age = seq(0,100,20)')
               #dec=  Number of decimals to show
               #envir= Environment to extract data from
-            
         result_sex_all_cv_pred<- predict(neuralnet_sex, pred_data = CONS_C1_df_dup_FEB_2020_prev24_test_nn)
 ```
 
@@ -1066,7 +1065,7 @@ The model was trained using the rest of the dataset with valid attributes on the
 
 <br>
 
-```{r fig4a_neuralnet_sex,fig.height=8, fig.width=14, echo=T, fig.align='center', fig.pos='H', fig.cap="Figure 4a. Neural Network of Sex", message=FALSE}
+```{r fig4a_neuralnet_sex,fig.height=8, fig.width=14, echo=T, fig.align='center', fig.pos='H', fig.align='center', fig.cap="Figure 4a. Neural Network of Sex", message=FALSE}
 #sexo_casos_pendientes_3
 
 mar <- par(mar =c(5.1, 4.1, 4.1, 2.1),mgp=c(3, 1, 0))
@@ -1086,7 +1085,6 @@ on.exit(par(mar = mar$mar))
 
 plot(neuralnet_sex, plots = "olden", custom=T,size = 9, pad_x = 0.8, nrobs = -1,cex_val = 3)+
   ggtitle("")
-
 ```
 
 <br>
@@ -2107,7 +2105,7 @@ As seen in Figure 7a, most of the treatments have been concentrated in the metro
 mapa_comunas = chilemapas::mapa_comunas
 
 codigo_comunas<-
-CONS_C1_df_dup_MAY_2020_prev_6a %>%
+CONS_C1_df_dup_MAY_2020_prev_6a%>%
     dplyr::filter(grepl("Metropolitana",nombre_region))%>%
     dplyr::group_by(comuna_residencia_cod)%>%
     summarise(n=n())%>%
@@ -2361,8 +2359,8 @@ CONS_C1_df_dup_MAY_2020_prev_6c%>%
   dplyr::mutate(sum_excess_days_bef_2010=sum(excess_days_bef_2010),
                 sum_near_year_more_1095=sum(near_year_more_1095))%>%
   ungroup()%>%
-  dplyr::mutate(obs=case_when(sum_excess_days_bef_2010>0~glue::glue("{obs};4.04.1.HASH w/ cases w/ >1095 d treat started <2010"),TRUE~obs))%>%  
-  dplyr::mutate(obs=case_when(sum_near_year_more_1095>0~glue::glue("{obs};4.04.2.HASH w/ cases w/ >1095 d treat, discharge start of new yr"),TRUE~obs))%>%  
+  dplyr::mutate(obs=case_when(sum_excess_days_bef_2010>0~glue::glue("{obs};3.04.1.HASH w/ cases w/ >1095 d treat started <2010"),TRUE~obs))%>%  
+  dplyr::mutate(obs=case_when(sum_near_year_more_1095>0~glue::glue("{obs};3.04.2.HASH w/ cases w/ >1095 d treat, discharge start of new yr"),TRUE~obs))%>%  
                 dplyr::filter(near_year_more_1095==0,excess_days_bef_2010==0)%>%
   dplyr::select(-fech_egres_imp2, -month,-day, -filtro, -more_1095,-near_year,-excess_days_bef_2010,-near_year_more_1095,-sum_excess_days_bef_2010,-sum_near_year_more_1095)%>%
 
@@ -2375,7 +2373,7 @@ The dataset ended in `r nrow(CONS_C1_df_dup_MAY_2020_prev_6d)%>% formatC(big.mar
 
 <br>
 
-#### 4.5. Related to the number of dependent and others
+#### 4.5. Related to the number of dependents and others
 
 <br>
 
@@ -2383,6 +2381,7 @@ There are two questions concerning the number of children: the number of depende
 
 <br>
 
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
 ```{r 6e_tab8_next_treatment_no_children,eval=T, echo=T, paged.print=TRUE}
 CONS_C1_df_dup_MAY_2020_prev_6d%>% dplyr::group_by(hash_key)%>% dplyr::arrange(hash_key, desc(fech_ing))%>% dplyr::mutate(lag_numero_de_hijos=lag(numero_de_hijos),n=n(),validador_n_hijos=ifelse(lag_numero_de_hijos-numero_de_hijos<0,1,0),sum_validador=sum(validador_n_hijos,na.rm=T))%>% ungroup()%>% dplyr::filter(sum_validador>0)%>% dplyr::select(hash_key,fech_ing,numero_de_hijos,num_hijos_ing_trat_res,lag_numero_de_hijos)%>%
   knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
@@ -2391,6 +2390,7 @@ CONS_C1_df_dup_MAY_2020_prev_6d%>% dplyr::group_by(hash_key)%>% dplyr::arrange(h
         kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 8)%>%
             kableExtra::scroll_box(width= "100%", height = "375x")
 ```
+</div>
 
 <br>
 
@@ -2541,7 +2541,7 @@ Considering the distribution of differences in days between each entry and what 
 
 <br>
 
-```{r fig8_hist_spaces_treatments2,eval=T, echo=T, paged.print=TRUE, fig.cap="Figure 8. Histogram of Diff Between Treatments"}
+```{r fig8_hist_spaces_treatments2,eval=T, echo=T, paged.print=TRUE, fig.cap="Figure 8. Histogram of Diff Between Treatments", fig.align='center'}
 p<-ggplot(CONS_C1_df_dup_MAY_2020_prev_6e_exp_spaces,aes(x=diff_bet_treat), alpha=.7)+
   geom_histogram_interactive(bins=120)+
   geom_vline(aes(xintercept=30), color="darkred", linetype="dashed")+
@@ -2790,7 +2790,7 @@ In the following figure, we show the marginal effects on the probability of havi
 
 <br>
 
-```{r fig10a_int_changes_referral,eval=F, echo=T, paged.print=TRUE,fig.cap= "Figure 10a. Interactive Effects in the Prob. of Having <60 days of difference with the previous treatment"}
+```{r fig10a_int_changes_referral,eval=F, echo=T, fig.align='center', paged.print=TRUE,fig.cap= "Figure 10a. Interactive Effects in the Prob. of Having <60 days of difference with the previous treatment"}
 #
 library("effects")
     #Effect(focal.predictors = "diff_bet_treat",polrMod)
@@ -2804,7 +2804,7 @@ library("effects")
        style="stacked")
 ```
 
-```{r fig10b_int_changes_referral,eval=T, echo=T, paged.print=TRUE,fig.cap= "Figure 10. Interactive Effects on Odds of having <60 days of difference with the previous entry"}
+```{r fig10b_int_changes_referral,eval=T, echo=T, paged.print=TRUE, fig.align='center',fig.cap= "Figure 10. Interactive Effects on Odds of having <60 days of difference with the previous entry"}
 library(lsmeans)
 refR <- lsmeans(glm_60d, specs = c("motivoegreso_derivacion","obs_cambios_fac"))
 ref_dfR <- as.data.frame(cbind(summary(refR)[1:2],exp(summary(refR)[,c(3,6,7)])))
@@ -2872,7 +2872,7 @@ From the table above, we could observe that no other causes of discharge had a t
 
 <br>
   
-```{r fig11_,eval=T, echo=T, paged.print=TRUE,fig.cap= "Figure 11. Interactive Effects on Odds of having <=60 days of difference with the previous entry", eval=F}
+```{r fig11_,eval=T, echo=T, paged.print=TRUE, fig.align='center', fig.cap= "Figure 11. Interactive Effects on Odds of having <=60 days of difference with the previous entry", eval=F}
  CONS_C1_df_dup_JUN_2020%>% 
     dplyr::filter(!is.na(diff_bet_treat))%>%
     #dplyr::mutate(motivoegreso_derivacion=factor(motivoegreso_derivacion, levels = c("Motivo: Otro", "Motivo: Derivación","NA")))%>%
@@ -2915,7 +2915,7 @@ From the table above, we could observe that no other causes of discharge had a t
     labs(caption=paste0("Note. ",CONS_C1_df_dup_JUN_2020%>% dplyr::filter(is.na(diff_bet_treat))%>% nrow() %>% formatC(big.mark = ",")," obs. had missing data that corresponded to unique treatments by users;\nDays of treatment were divided en 30 equal parts"))
 ```
 
-```{r fig11_type_center_referral_changes, eval=T, echo=T, fig.cap="Figure 11. Changes with the Next Treatment by No. of Days of Treatment, depending on Type of Referrals",fig.height=15,fig.width=8}
+```{r fig11_type_center_referral_changes, eval=T, fig.align='center', echo=T, fig.cap="Figure 11. Changes with the Next Treatment by No. of Days of Treatment, depending on Type of Referrals",fig.height=15,fig.width=8}
  CONS_C1_df_dup_JUN_2020%>% 
     dplyr::filter(!is.na(diff_bet_treat))%>%
     #dplyr::mutate(motivoegreso_derivacion=factor(motivoegreso_derivacion, levels = c("Motivo: Otro", "Motivo: Derivación","NA")))%>%

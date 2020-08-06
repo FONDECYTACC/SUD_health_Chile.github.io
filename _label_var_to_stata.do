@@ -166,7 +166,7 @@ cap label variable obs_cambios "Cambios del tratamiento en comparación al regis
 cap label variable obs_cambios_ninguno "Sin cambios del tratamiento en comparación al registro posterior/No changes in treatment compared to the Next Entry"
 cap label variable obs_cambios_num "Recuento de cambios del tratamiento en comparación al registro posterior/Count of changes in treatment compared to the Next Entry"
 cap label variable obs_cambios_fac "Recuento de cambios del tratamiento en comparación al registro posterior(factor)/Count of changes in treatment compared to the Next Entry(factor)"
-cap label variable at_least_one_cont_entry "Usuarios con más de una entrada después de otra/Users with more than one entry after another one"
+cap label variable at_least_one_cont_entry "Casos de Usuarios con más de una entrada después de otra/Cases of users with more than one entry after another one"
 cap label variable menor_45_dias_diff "Menor a 45 días de diferencia con el registro posterior/Less than 45 days of difference between the next entry"
 cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUN_2020.dta", replace
 cap drop id id_mod nombre_centro consentimiento_informado
