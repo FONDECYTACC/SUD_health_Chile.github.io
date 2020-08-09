@@ -172,6 +172,7 @@ library(dplyr)
 library(choroplethr)
 library(choroplethrMaps)
 library(choroplethrAdmin1)
+library(tidyverse)
 
 if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
 #install.packages( repos = "https://radiant-rstats.github.io/minicran/")
@@ -458,9 +459,9 @@ legend(3000, .6, c("death:female", "death:male", "pcm:female", "pcm:male"),
 plot(survfit_days_new_treat,
          xlab = "Days of difference with a posterior treatment",  conf.int = T,mark.time = F,
      ylab = "Ssurvival probability",
-     col=c("springgreen4","purple","cornflowerblue","tan3","gray20"), lwd=2) # 
+     col=c("yellow4","thistle","cornflowerblue","violetred3","gray20"), lwd=2) # 
 legend("topright", c("Late Withdrawal", "Early Withdrawal", "Administrative Discharge", "Therapeutic Discharge","Referral"),
-         col=c("springgreen4","purple","cornflowerblue","tan3","gray20"), lty=c(1,1,1,1), lwd=2, bty='n')
+         col=c("yellow4","thistle","cornflowerblue","violetred3","gray20"), lty=c(1,1,1,1), lwd=2, bty='n')
 mtext("Note. Users who did not finish their first treatment or did not show recurrence have been censored", side=1,size=.5,cex=.7,outer=F,at=1500,4)
 ```
 
@@ -559,7 +560,8 @@ p3 <- plot_ly(alpha = 0.5) %>%
   add_histogram(x = ~groupA$n,
                 name = "Differences Between Treatments in Days") %>% 
     add_histogram(x = ~groupB$n,
-                name = "No differences between Treatments in Days") %>% 
+                name = "No differences between Treatments in Days",
+                marker = list(color = "rgba(150, 150, 150, 0.7)")) %>% 
   layout(barmode = "overlay",
          xaxis = list(title = "No. of cases by user",
                       
@@ -592,7 +594,7 @@ Also, we considered necessary to get an overview of the distribution of changes 
 
 <br>
 
-```{r  Fig 4_nada, warning=FALSE, fig.align = "center", message=F, fig.height=16, cache=T, eval=T, fig.cap="Figure 4.  Distribution of No. of Changes by Sum of Diff Between Entries Depending on Cause of Discharge of the first entry"}
+```{r  Fig 4_dist_no_treat_cause_disch, warning=FALSE, fig.align = "center", message=F, fig.height=16, cache=T, eval=T, fig.cap="Figure 4.  Distribution of No. of Changes by Sum of Diff Between Entries Depending on Cause of Discharge of the first entry"}
 invisible(c("¿cuántos casos sin diferencias de tratamiento tienen por motivo de egreso"))
 
 p11<-
@@ -669,19 +671,22 @@ We decided to collapse the different entries into a single treatment. This requi
 <br>
 
 <div class="superbigimage">
-```{r  Fig5_diagram, warning=FALSE, fig.align = "center", message=F, cache=T, eval=T, fig.width=20,fig.cap="Figure 5. Criteria to Transform Variables"}
+```{r  Fig5_diagram, warning=FALSE, fig.align = "left", message=F, cache=T, eval=T, fig.width=20,fig.cap="Figure 5. Criteria to Transform Variables"}
 ##f     #Tratamiento más largo //#g- Replacedfavored dgs.-a // #h     #Sum values x_se_trata_mujer_emb_n  usuario_tribunal_trat_droga_n discapacidad_n ha_estado_embarazada_egreso_n tiene_menores_de_edad_a_cargo_n
+disc_lab<- paste0('* Some variables were transformed in different formats)')
+#via_adm_sus_prin sus_ini origen_ingreso
 DiagrammeR::grViz(
   "digraph structs {
     node [shape=record];
     struct [label='<f1> Wide format(a)|<f2> Maximum/Last value(b)|<f3> Minimum/First value(c)|<f4> Kept more vulnerable category(d)|<f5> Same value(e)|<f6>Largest treatment(f)|<f8> Favored dgs.-a(g)|<f12> Sum values(h)'];
-    struct_f1 [label='{row|nombre_centro|tipo_centro|servicio_de_salud|senda|id_centro}'];
-    struct_f2 [label='{numero_de_hijos|num_hijos_ing_trat_res|tipo_centro_derivacion|fech_egres_imp|motivodeegreso_mod_imp|macrozona|nombre_region|comuna_residencia_cod|identidad_de_genero|tipo_de_plan_2*|id_centro*|ano_bd*}'];
-    struct_f3 [label='{fech_ing|fecha_ingreso_a_convenio_senda|edad_al_ing|origen_ingreso_mod|edad_al_ing_grupos|ano_bd*}'];
+    struct_f1 [label='{row|nombre_centro|tipo_centro|servicio_de_salud|senda|id_centro|obs*}'];
+    struct_f2 [label='{numero_de_hijos_mod**|num_hijos_trat_res_mod**|tipo_centro_derivacion|fech_egres_imp|motivodeegreso_mod_imp|macrozona|nombre_region|comuna_residencia_cod|identidad_de_genero**|tipo_de_plan_2*|id_centro*|ano_bd*}'];
+    struct_f3 [label='{fech_ing|fecha_ingreso_a_convenio_senda|edad_al_ing|origen_ingreso_mod|embarazo|edad_al_ing_grupos|ano_bd*}'];
     struct_f4 [label='{escolaridad|compromiso_biopsicosocial|dg_global_nec_int_soc_or|dg_nec_int_soc_cap_hum_or|dg_nec_int_soc_cap_fis_or|dg_nec_int_soc_cap_soc_or|evaluacindelprocesoteraputico|eva_consumo|eva_fam|eva_relinterp|eva_ocupacion|eva_sm|eva_fisica|eva_transgnorma|dg_trs_psiq_cie_10_egres_or|dg_global_nec_int_soc_or_1|dg_nec_int_soc_cap_hum_or_1|dg_nec_int_soc_cap_fis_or_1|dg_nec_int_soc_cap_soc_or_1|tiene_menores_de_edad_a_cargo|x_se_trata_mujer_emb|usuario_tribunal_trat_droga|ha_estado_embarazada_egreso|dg_trs_cons_sus_or|opcion_discapacidad}']; 
-    struct_f5 [label='{hash_key|id|hash_rut_completo|nacionalidad|sexo_2|embarazo|id_mod|obs|fech_nac|edad_ini_cons|edad_ini_sus_prin|sus_ini|estado_conyugal_2|edad_grupos|freq_cons_sus_prin|via_adm_sus_prin_act|etnia_cor|nacionalidad_2|etnia_cor_2|sus_ini_2|sus_ini_3|sus_ini_mod|at_least_one_cont_entry}'];
-    struct_f6 [label='{con_quien_vive|tipo_de_plan_2*|estatus_ocupacional|cat_ocupacional|origen_ingreso|tipo_de_vivienda_mod|tenencia_de_la_vivienda_mod|rubro_trabaja_mod|sus_principal_mod|otras_sus1_mod|otras_sus2_mod|otras_sus3_mod|tipo_de_programa_2}'];
+    struct_f5 [label='{hash_key|id|hash_rut_completo|nacionalidad|sexo_2|id_mod|obs*|fech_nac|edad_ini_cons|edad_ini_sus_prin|estado_conyugal_2|edad_grupos|etnia_cor|nacionalidad_2|etnia_cor_2|sus_ini_mod_2|sus_ini_mod_3|sus_ini_mod|at_least_one_cont_entry}'];
+    struct_f6 [label='{con_quien_vive|tipo_de_plan_2*|estatus_ocupacional|cat_ocupacional|tipo_de_vivienda_mod|tenencia_de_la_vivienda_mod|rubro_trabaja_mod|sus_principal_mod|freq_cons_sus_prin|via_adm_sus_prin_act|otras_sus1_mod|otras_sus2_mod|otras_sus3_mod|tipo_de_programa_2}'];
     struct_f8 [label='{dg_trs_psiq_dsm_iv_or|dg_trs_psiq_sub_dsm_iv_or|x2_dg_trs_psiq_dsm_iv_or|x2_dg_trs_psiq_sub_dsm_iv_or|x3_dg_trs_psiq_dsm_iv_or|x3_dg_trs_psiq_sub_dsm_iv_or|dg_trs_psiq_cie_10_or|dg_trs_psiq_sub_cie_10_or|x2_dg_trs_psiq_cie_10_or|x2_dg_trs_psiq_sub_cie_10_or|x3_dg_trs_psiq_cie_10_or|x3_dg_trs_psiq_sub_cie_10_or|diagnostico_trs_fisico|otros_probl_at_sm_or}'];
+    g [label = '* Some variables were transformed in different formats);** If not available, replaced with the last available', width = 0.001, height = 0.001, color=White];
     struct_f12 [label='{dias_trat_imp|dias_trat_inv}']; 
     struct:f1-> struct_f1;
     struct:f2-> struct_f2;
@@ -691,212 +696,9 @@ DiagrammeR::grViz(
     struct:f6-> struct_f6;
     struct:f8-> struct_f8;
     struct:f12-> struct_f12;
+    struct_f12 -> g [ dir = none,  color = 'white',fontcolor = white,shape=none, width=0, height=0];
   }")
   #width=14, height=7)
-invisible(c("- row = Included them in a wide format
-
-- nombre_centro = Included them in a wide format
-
-- tipo_centro = Included them in a wide format
-
-- servicio_de_salud = Included them in a wide format
-
-- senda = Included them in a wide format
-
-- id_centro = Included them in a wide format
-
-- numero_de_hijos = Kept the maximum value
-
-- num_hijos_ing_trat_res = Kept the maximum value
-
-- tipo_centro_derivacion = Kept the maximum value
-
-- fech_egres_imp = Kept the maximum value
-
-- motivodeegreso_mod_imp = Kept the maximum value
-
-- macrozona = Kept the maximum value
-
-- nombre_region = Kept the maximum value
-
-- comuna_residencia_cod = Kept the maximum value
-
-- ano_bd = Kept the minimum & maximum value
-
-- fech_ing = Kept the minimum value
-
-- fecha_ingreso_a_convenio_senda = Kept the minimum value
-
-- edad_al_ing = Kept the minimum value
-
-- origen_ingreso_mod = Kept the minimum value
-
-- edad_al_ing_grupos = Kept the minimum value
-
-- con_quien_vive = Kept the value of the largest treatment --> Lo cambié, no es fácil poder jerarquizar qué es lo más vulnerable: Va a depender del contexto. Ej., vivir con un esposo alcoholico puede ser peor q vivir sola.
-
-- sus_principal = Kept the more vulnerable category --> lo elimino, no me sirve ahora.  Tengo la sus_principal_mod
-
-- otras_sus1 = Kept the more vulnerable category
-
-- otras_sus2 = Kept the more vulnerable category
-
-- otras_sus3 = Kept the more vulnerable category
-
-- escolaridad = Kept the more vulnerable category
-
-- hash_rut_completo = Kept the same value
-
-- nacionalidad = Kept the same value
-
-- sexo_2 = Kept the same value
-
-- embarazo = Kept the same value
-
-- id_mod = Kept the same value
-
-- obs = Kept the same value
-
-- fech_nac = Kept the same value
-
-- edad_ini_cons = Kept the same value
-
-- edad_ini_sus_prin = Kept the same value
-
-- sus_ini = Kept the same value
-
-- estado_conyugal_2 = Kept the same value
-
-- edad_grupos = Kept the same value
-
-- freq_cons_sus_prin = Kept the same value
-
-- via_adm_sus_prin_act = Kept the same value
-
-- etnia_cor = Kept the same value
-
-- nacionalidad_2 = Kept the same value
-
-- etnia_cor_2 = Kept the same value
-
-- sus_ini_2 = Kept the same value
-
-- sus_ini_3 = Kept the same value
-
-- sus_ini_mod = Kept the same value
-
-- obs_cambios = Kept the same value --> no es relevante, sacar (puede superponerse con otros cambios intermedios)
-
-- obs_cambios_ninguno = Kept the same value --> no es relevante, sacar (puede superponerse con otros cambios intermedios)
-
-- obs_cambios_num = Kept the same value --> no es relevante, sacar (puede superponerse con otros cambios intermedios)
-
-- obs_cambios_fac = Kept the same value --> no es relevante, sacar (puede superponerse con otros cambios intermedios)
-
-- at_least_one_cont_entry = Kept the same value
-
-- tipo_de_plan_2 = Kept the value of the largest treatment
-
-- tipo_de_programa_2 = Kept the value of the largest treatment
-
-- estatus_ocupacional = Kept the value of the largest treatment
-
-- cat_ocupacional = Kept the value of the largest treatment
-
-- origen_ingreso = Kept the value of the largest treatment
-
-- tipo_de_vivienda_mod = Kept the value of the largest treatment
-
-- tenencia_de_la_vivienda_mod = Kept the value of the largest treatment
-
-- rubro_trabaja_mod = Kept the value of the largest treatment
-
-- x_se_trata_mujer_emb = Replaced if present
-
-- usuario_tribunal_trat_droga = Replaced if present
-
-- discapacidad = Replaced if present
-
-- dg_trs_cons_sus_or = Replaced if present;  Favored diagnostics; Included them in a wide format
-
-- dg_trs_psiq_dsm_iv_or = Replaced if present;  Favored diagnostics; Included them in a wide format
-
-- dg_trs_psiq_sub_dsm_iv_or = Replaced if present;  Favored diagnostics; Included them in a wide format
-
-- x2_dg_trs_psiq_dsm_iv_or = Replaced if present;  Favored diagnostics; Included them in a wide format
-
-- x2_dg_trs_psiq_sub_dsm_iv_or = Replaced if present;  Favored diagnostics; Included them in a wide format
-
-- x3_dg_trs_psiq_dsm_iv_or = Replaced if present;  Favored diagnostics; Included them in a wide format
-
-- x3_dg_trs_psiq_sub_dsm_iv_or = Replaced if present;  Favored diagnostics; Included them in a wide format
-
-- dg_trs_psiq_cie_10_or = Replaced if present;  Favored diagnostics; Included them in a wide format
-
-- dg_trs_psiq_sub_cie_10_or = Replaced if present;  Favored diagnostics; Included them in a wide format
-
-- x2_dg_trs_psiq_cie_10_or = Replaced if present;  Favored diagnostics; Included them in a wide format
-
-- x2_dg_trs_psiq_sub_cie_10_or = Replaced if present;  Favored diagnostics; Included them in a wide format
-
-- x3_dg_trs_psiq_cie_10_or = Replaced if present;  Favored diagnostics; Included them in a wide format
-
-- x3_dg_trs_psiq_sub_cie_10_or = Replaced if present;  Favored diagnostics; Included them in a wide format
-
-- diagnostico_trs_fisico = Replaced if present;  Favored diagnostics; Included them in a wide format
-
-- otros_probl_at_sm_or = Replaced if present;  Favored diagnostics; Included them in a wide format
-
-- compromiso_biopsicosocial = Replaced if present;  Kept more vulnerable category
-
-- dg_global_nec_int_soc_or = Replaced if present;  Kept more vulnerable category
-
-- dg_nec_int_soc_cap_hum_or = Replaced if present;  Kept more vulnerable category
-
-- dg_nec_int_soc_cap_fis_or = Replaced if present;  Kept more vulnerable category
-
-- dg_nec_int_soc_cap_soc_or = Replaced if present;  Kept more vulnerable category
-
-- evaluacindelprocesoteraputico = Replaced if present;  Kept more vulnerable category
-
-- eva_consumo = Replaced if present;  Kept more vulnerable category
-
-- eva_fam = Replaced if present;  Kept more vulnerable category
-
-- eva_relinterp = Replaced if present;  Kept more vulnerable category
-
-- eva_ocupacion = Replaced if present;  Kept more vulnerable category
-
-- eva_sm = Replaced if present;  Kept more vulnerable category
-
-- eva_fisica = Replaced if present;  Kept more vulnerable category
-
-- eva_transgnorma = Replaced if present;  Kept more vulnerable category
-
-- dg_trs_psiq_cie_10_egres_or = Replaced if present;  Kept more vulnerable category
-
-- dg_global_nec_int_soc_or_1 = Replaced if present;  Kept more vulnerable category
-
-- dg_nec_int_soc_cap_hum_or_1 = Replaced if present;  Kept more vulnerable category
-
-- dg_nec_int_soc_cap_fis_or_1 = Replaced if present;  Kept more vulnerable category
-
-- dg_nec_int_soc_cap_soc_or_1 = Replaced if present;  Kept more vulnerable category
-
-- tiene_menores_de_edad_a_cargo = Replaced if present;  Kept more vulnerable category
-
-- sus_principal_mod = Replaced if present;  Kept more vulnerable category
-
-- identidad_de_genero = Replaced if present;  Kept more vulnerable category; Included them in a wide format --> no tiene sentido dejarlo en wide format, lo cambié a opc d-g
-
-- opcion_discapacidad = Replaced if present; Included them in a wide format
-
-- ha_estado_embarazada_egreso = Replaced if present; Included them in a wide format
-
-- dias_trat_inv = Sum values
-
-- dias_trat_imp = Sum values")
-)
 ```
 </div>
 
@@ -911,7 +713,7 @@ Once we subsetted the entries, we found that many users had more than one entry 
 <br>
 
 <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
-```{r tab3_1_collapse_referrals_less_45_diff_treat,eval=T, echo=T, paged.print=TRUE, eval=T}
+```{r tab3_1_collapse_referrals_less_45_diff_treat,eval=T, echo=T, paged.print=TRUE}
 invisible(c("2.el problema que tengo es que los filtros solo seleccionan como candidatos a la transformación a los casos intermedios, pero tengo casos al final que no van a cumplir con las condiciones. Eso es problemático con casos que tienen más de una entrada intermedia"))
 invisible(c("3.creo que los puedo identificar ocupando un siguiente lag"))
 
@@ -969,22 +771,37 @@ In case of the variable related to the type of plan, we left two variables, spec
 
 <br>
 
-In case of other substances at admission, we generated three variables (`otras_sus1_mod`,`otras_sus2_mod`, and `otras_sus3_mod`) that selected only the variables related to the main substances.
+In case of other substances at admission, we generated five variables (`otras_sus1_mod`,`otras_sus2_mod`, `otras_sus3_mod`, `sus_ini_2_mod` and `sus_ini_3_mod`) that selected only the variables related to the main substances.
 
 <br>
 
-```{r 2a_collapse_referrals_less_45_diff_treat,eval=T, echo=T, message=F,warning=F, paged.print=TRUE, eval=T}
+```{r 2a_collapse_referrals_less_45_diff_treat,eval=T, echo=T, message=F,warning=F, paged.print=TRUE}
 invisible(c("OJO PUSE EVAL=F"))
 invisible(c("4.ejemplos de casos con trat continuos distintos"))
    # dplyr::filter(sum_validadores>1) #ffd3f4ed5841cfac947ce546757b8e3f, es un caso que tiene un par de días que se podrían colapsar: fech egres 2014-11-27 y después ingresa en 2015-03-27 // lo mismo con 015ea90c1b1655155f30a3e276436ed5 en 2009-09-25 a 2012-02-29 y después 2018-07-03 al 2019-08-30
 #12,945, posiblemente hay otros pares que se superponen 
 invisible(c("5. Hay casos que tienen hasta 7 tratamientos continuos ¿?, raro- lo vi y corresponde"))
 #dd0d42261d00273d4e19ff2a46bda4b9_5276 dd0d42261d00273d4e19ff2a46bda4b9, pueden existir hasta 7 trat continuos ¿?
+toString2<-
+function (x, width = NULL, ...) 
+        {
+            string <- paste(x, collapse = "; ")
+            if (missing(width) || is.null(width) || width == 0) 
+                return(string)
+            if (width < 0) 
+                stop("'width' must be positive")
+            if (nchar(string, type = "w") > width) {
+                width <- max(6, width)
+                string <- paste0(strtrim(string, width - 4), "....")
+            }
+            string
+}
 
 CONS_C1_df_dup_JUN_2020%>%
 #FILTRAR VARIABLES
 #_#_#_#_#_#_#_
     dplyr::filter(row %in% unlist(c(CONS_C1_JUN_2020_row_sig_row$row,CONS_C1_JUN_2020_row_sig_row$sig_row)))%>%
+    dplyr::mutate(ano_bd2=ano_bd)%>%
     dplyr::arrange(hash_key,desc(fech_ing))%>%
     dplyr::mutate(filter_complex_anterior= dplyr::case_when(!is.na(lag(diff_bet_treat)) & lag(diff_bet_treat)<45 & as.character(lag(motivoegreso_derivacion))=="Referral"~1,TRUE~0))%>%
     dplyr::mutate(filter_complex= dplyr::case_when(!is.na(diff_bet_treat) & diff_bet_treat<45 & as.character(motivoegreso_derivacion)=="Referral"~1,TRUE~0))%>%
@@ -1000,6 +817,7 @@ CONS_C1_df_dup_JUN_2020%>%
     ungroup()%>%
     dplyr::mutate(tipo_de_plan_2_for_f=tipo_de_plan_2)%>%
     dplyr::mutate(mod_0_row=row)%>%
+    dplyr::mutate(obs_for_e=obs)%>%
 #_#_#_#_#_#_#_#_#_#_
 #a
 #_#_#_#_#_#_#_#_#_#_
@@ -1010,40 +828,60 @@ CONS_C1_df_dup_JUN_2020%>%
     #dplyr::select(hash_key,fech_ing,fech_egres_imp,motivodeegreso_mod_imp,diff_bet_treat,filter_complex,filter_complex_anterior,n_dist,cumsum_n_complex)%>%
                 tidyr::pivot_wider(names_from =  rn_common_treats, 
                                    names_sep="_",
-                                   values_from = c(row, tipo_centro, servicio_de_salud, senda,id_centro, tipo_de_plan_2))%>%
-   dplyr::group_by(concat_hash_id_treatments)%>%
-   dplyr::mutate_at(vars(row_1:tipo_de_plan_2_7),~max(as.character(.),na.rm=T))%>%
-   dplyr::ungroup()%>%
-   unite(., col = "mod_a_row",  row_1:row_7, na.rm=TRUE, sep = "; ")%>%
-   unite(., col = "mod_a_tipo_centro",  tipo_centro_1:tipo_centro_7, na.rm=TRUE, sep = "; ")%>%
-   unite(., col = "mod_a_servicio_de_salud",  servicio_de_salud_1:servicio_de_salud_7, na.rm=TRUE, sep = "; ")%>%
-   unite(., col = "mod_a_senda",  senda_1:senda_7, na.rm=TRUE, sep = "; ")%>%
-   unite(., col = "mod_a_id_centro",  id_centro_1:id_centro_7, na.rm=TRUE, sep = "; ")%>%
-   unite(., col = "mod_a_tipo_de_plan_2",  tipo_de_plan_2_1:tipo_de_plan_2_7, na.rm=TRUE, sep = "; ")%>%
-   dplyr::mutate(mod_b_tipo_de_plan_2=sub(".*\\;","",mod_a_tipo_de_plan_2))%>% #ultimos tratamiento
+                                   values_from = c(row, tipo_centro, servicio_de_salud, senda,id_centro, tipo_de_plan_2,obs))%>%
+  dplyr::group_by(concat_hash_id_treatments)%>%
+  dplyr::mutate_at(vars(row_1:obs_7),~max(as.character(.),na.rm=T))%>%
+  dplyr::ungroup()%>%
+  unite(., col = "mod_a_row",  row_1:row_7, na.rm=TRUE, sep = "; ")%>%
+  unite(., col = "mod_a_tipo_centro",  tipo_centro_1:tipo_centro_7, na.rm=TRUE, sep = "; ")%>%
+  unite(., col = "mod_a_servicio_de_salud",  servicio_de_salud_1:servicio_de_salud_7, na.rm=TRUE, sep = "; ")%>%
+  unite(., col = "mod_a_senda",  senda_1:senda_7, na.rm=TRUE, sep = "; ")%>%
+  unite(., col = "mod_a_id_centro",  id_centro_1:id_centro_7, na.rm=TRUE, sep = "; ")%>%
+  unite(., col = "mod_a_tipo_de_plan_2",  tipo_de_plan_2_1:tipo_de_plan_2_7, na.rm=TRUE, sep = "; ")%>%
+  unite(., col = "mod_a_obs",  obs_1:obs_7, na.rm=TRUE, sep = "; ")%>%
+  dplyr::mutate(mod_a_obs=sub("^;", "", mod_a_obs))%>%
+  tidyr::separate(mod_a_obs,into=paste0("obs",1:30), sep=";")%>%
+  dplyr::mutate(across(c(obs1:obs30),~stringr::str_trim(.)))%>%
+  dplyr::mutate(mod_a_obs = pmap_chr(select(.,obs1:obs30), ~toString2(unique(na.omit(c(...))))))%>%
+    
+  dplyr::mutate(mod_a_obs,sub("^; ; ", "", mod_a_obs))%>%
+  dplyr::mutate(mod_a_obs,sub("^; ", "", mod_a_obs))%>%
+  dplyr::mutate(mod_a_obs=sub("^;", "", mod_a_obs))%>% 
+  dplyr::mutate(mod_a_obs,sub("; ; $", "", mod_a_obs))%>%
+  dplyr::mutate(mod_a_obs,sub("; $", "", mod_a_obs))%>%
+  dplyr::mutate(mod_a_obs,sub(";$", "", mod_a_obs))%>%
+  dplyr::mutate(mod_a_obs,sub("; ; ", "; ", mod_a_obs))%>%
+  dplyr::mutate(mod_a_obs,sub("; ;", "; ", mod_a_obs))%>%
+  
+  dplyr::mutate(mod_b_tipo_de_plan_2=sub(".*\\;","",mod_a_tipo_de_plan_2))%>% #ultimos tratamiento
   dplyr::mutate(mod_b_id_centro=sub(".*\\;","",mod_a_id_centro))%>% #ultimos tratamiento
 #_#_#_#_#_#_#_#_#_#_
-#b
+#b Last value
 #_#_#_#_#_#_#_#_#_#_
-   dplyr::group_by(concat_hash_id_treatments)%>%
-   dplyr::mutate(n_concat_hash_id_treatments=n())%>%
+  dplyr::group_by(concat_hash_id_treatments)%>%
+  dplyr::mutate(n_concat_hash_id_treatments=n())%>%
   dplyr::mutate(fech_egres_imp=as.character(fech_egres_imp))%>%
   dplyr::mutate(fech_egres_imp=ifelse(n_concat_hash_id_treatments==1 & is.na(fech_egres_imp),"2019-11-13",fech_egres_imp))%>%
   dplyr::mutate(motivodeegreso_mod_imp=ifelse(n_concat_hash_id_treatments==1 & is.na(motivodeegreso_mod_imp),"En curso",as.character(motivodeegreso_mod_imp)))%>%
-  dplyr::mutate(across(c(numero_de_hijos, num_hijos_ing_trat_res, fech_egres_imp, motivodeegreso_mod_imp, macrozona, nombre_region, nombre_centro, comuna_residencia_cod,identidad_de_genero,tipo_centro_derivacion),~dplyr::first(na.omit(.)),.names = "mod_b_{col}"))%>%
+  dplyr::mutate(across(c(numero_de_hijos_mod, num_hijos_trat_res_mod,identidad_de_genero),~dplyr::first(na.omit(.)),.names = "mod_b_{col}"))%>%
+  dplyr::mutate(across(c(tipo_centro_derivacion, motivodeegreso_mod_imp, fech_egres_imp, macrozona, nombre_region, nombre_centro, comuna_residencia_cod,ano_bd),~dplyr::first(.),.names = "mod_b_{col}"))%>%
+  
   #dplyr::select(hash_key,concat_hash_id_treatments,  n_concat_hash_id_treatments,numero_de_hijos, num_hijos_ing_trat_res, fech_egres_imp, motivodeegreso_mod_imp, macrozona, nombre_region, comuna_residencia_cod,identidad_de_genero,starts_with("mod_"))%>%dplyr::filter(concat_hash_id_treatments=="dd0d42261d00273d4e19ff2a46bda4b9_5276"|hash_key=="015ea90c1b1655155f30a3e276436ed5"|hash_key=="ffd3f4ed5841cfac947ce546757b8e3f")%>%
    #dplyr::filter(hash_key=="ffd3f4ed5841cfac947ce546757b8e3f")%>%View() #CASOS CON 2 TRATAMIENTOS, EFECTIVAMENTE SON RELLENADOS.
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#c
+#c First value
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
   dplyr::ungroup()%>%
   dplyr::mutate(fech_ing=as.character(fech_ing))%>%
   dplyr::group_by(concat_hash_id_treatments)%>%
-  dplyr::mutate(across(c(fech_ing, fecha_ingreso_a_convenio_senda, edad_al_ing, origen_ingreso_mod, edad_al_ing_grupos),~dplyr::last(na.omit(.)),.names = "mod_c_{col}"))%>%
+  dplyr::mutate(across(c(fech_ing, fecha_ingreso_a_convenio_senda, embarazo, edad_al_ing, origen_ingreso_mod, edad_al_ing_grupos,ano_bd2),~dplyr::last(na.omit(.)),.names = "mod_c_{col}"))%>%
   dplyr::ungroup()%>%
   assign("CONS_C1_df_dup_JUN_2020_a_c",., envir = .GlobalEnv)
     #dplyr::select(hash_key,concat_hash_id_treatments,  n_concat_hash_id_treatments,fech_ing, fecha_ingreso_a_convenio_senda, edad_al_ing, origen_ingreso_mod, edad_al_ing_grupos, starts_with("mod_"))%>%dplyr::filter(concat_hash_id_treatments=="dd0d42261d00273d4e19ff2a46bda4b9_5276"|hash_key=="015ea90c1b1655155f30a3e276436ed5"|hash_key=="ffd3f4ed5841cfac947ce546757b8e3f")%>%View()
 
+#CONS_C1_df_dup_JUN_2020_a_c%>% janitor::tabyl(mod_a_obs)%>% dplyr::select(mod_a_obs)%>% data.frame()%>% View()
+```
+```{r 2d_collapse_referrals_less_45_diff_treat,eval=T, echo=T, message=F,warning=F, paged.print=TRUE}
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #d     #Primero ordenar por vulnerabilidad, luego hacer la selección
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
@@ -1059,7 +897,7 @@ CONS_C1_df_dup_JUN_2020_a_c%>%
   
       dplyr::mutate(across(c(compromiso_biopsicosocial,escolaridad,dg_global_nec_int_soc_or, dg_nec_int_soc_cap_hum_or, dg_nec_int_soc_cap_fis_or, dg_nec_int_soc_cap_soc_or,dg_global_nec_int_soc_or_1, dg_nec_int_soc_cap_hum_or_1, dg_nec_int_soc_cap_fis_or_1, dg_nec_int_soc_cap_soc_or_1,evaluacindelprocesoteraputico, eva_consumo, eva_fam, eva_relinterp, eva_ocupacion, eva_sm, eva_fisica, eva_transgnorma),~max(.,na.rm=T),.names = "mod_d_{col}"))%>%
     
-      dplyr::mutate(tiene_menores_de_edad_a_cargo_n=ifelse(as.character(tiene_menores_de_edad_a_cargo)=="si",1,0),tiene_menores_de_edad_a_cargo_n=sum(tiene_menores_de_edad_a_cargo_n,na.rm=T),mod_d_tiene_menores_de_edad_a_cargo=ifelse(mod_b_numero_de_hijos>0 & tiene_menores_de_edad_a_cargo_n>0,"si","no"))%>%
+      dplyr::mutate(tiene_menores_de_edad_a_cargo_n=ifelse(as.character(tiene_menores_de_edad_a_cargo)=="si",1,0),tiene_menores_de_edad_a_cargo_n=sum(tiene_menores_de_edad_a_cargo_n,na.rm=T),mod_d_tiene_menores_de_edad_a_cargo=ifelse(mod_b_numero_de_hijos_mod>0 & tiene_menores_de_edad_a_cargo_n>0,"si","no"))%>%
       
       dplyr::mutate(x_se_trata_mujer_emb_n=ifelse(as.character(x_se_trata_mujer_emb)=="Si",1,0),x_se_trata_mujer_emb_n=sum(x_se_trata_mujer_emb_n,na.rm=T),mod_d_x_se_trata_mujer_emb=ifelse(x_se_trata_mujer_emb_n>0,"Si","No"))%>%
       
@@ -1084,10 +922,12 @@ assign("CONS_C1_df_dup_JUN_2020_a_d",., envir = .GlobalEnv)
 #e     #mantener- agregar hash_key
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_      
 
-invisible(c("hash_key","id","hash_rut_completo","nacionalidad","sexo_2","embarazo","id_mod","obs","fech_nac","edad_ini_cons","edad_ini_sus_prin","sus_ini","estado_conyugal_2","edad_grupos","freq_cons_sus_prin","via_adm_sus_prin_act","etnia_cor","nacionalidad_2","etnia_cor_2","sus_ini_2","sus_ini_3","sus_ini_mod","obs_cambios","obs_cambios_ninguno","obs_cambios_num","obs_cambios_fac","at_least_one_cont_entry"))
+invisible(c("hash_key","id","hash_rut_completo","nacionalidad","sexo_2","id_mod","obs","fech_nac","edad_ini_cons","edad_ini_sus_prin","sus_ini","estado_conyugal_2","edad_grupos","etnia_cor","nacionalidad_2","etnia_cor_2","sus_ini_2","sus_ini_3","sus_ini_mod","obs_cambios","obs_cambios_ninguno","obs_cambios_num","obs_cambios_fac","at_least_one_cont_entry"))
 
 CONS_C1_df_dup_JUN_2020_a_d%>%
-  dplyr::mutate(across(c(hash_key,id,hash_rut_completo,nacionalidad,sexo_2,embarazo,id_mod,obs,fech_nac,edad_ini_cons,edad_ini_sus_prin,sus_ini,estado_conyugal_2,edad_grupos,freq_cons_sus_prin,via_adm_sus_prin_act,etnia_cor,nacionalidad_2,etnia_cor_2,sus_ini_2,sus_ini_3,sus_ini_mod,obs_cambios,obs_cambios_ninguno,obs_cambios_num,obs_cambios_fac,at_least_one_cont_entry), ~ .,.names = "mod_e_{col}"))%>%
+      dplyr::mutate(across(c(sus_ini_2, sus_ini_3),~dplyr::case_when(as.character(.)!="Alcohol"&as.character(.)!="Cocaína"&as.character(.)!="Marihuana"&as.character(.)!="Pasta Base"~"Otros",TRUE~as.character(.)),.names = "{col}_mod"))%>%
+  dplyr::mutate(across(c(hash_key,id,hash_rut_completo,nacionalidad,sexo_2,id_mod,obs_for_e,fech_nac,edad_ini_cons,edad_ini_sus_prin,sus_ini,estado_conyugal_2,edad_grupos,etnia_cor,nacionalidad_2,etnia_cor_2,sus_ini_2_mod,sus_ini_3_mod,sus_ini_mod,obs_cambios,obs_cambios_ninguno,obs_cambios_num,obs_cambios_fac,at_least_one_cont_entry), ~ .,.names = "mod_e_{col}"))%>%
+  dplyr::rename("mod_e_obs"="mod_e_obs_for_e")%>%
 assign("CONS_C1_df_dup_JUN_2020_a_e",., envir = .GlobalEnv)
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
@@ -1106,13 +946,15 @@ CONS_C1_df_dup_JUN_2020_a_e%>%
 #dplyr::mutate(n_days_op_max= max(dias_trat_imp_op,na.rm=T))%>%
   mutate(rank_dias_trat_op  = rank(-dias_trat_imp_op, ties.method = "random"))%>% #negative, descendant
   dplyr::arrange(concat_hash_id_treatments,rank_dias_trat_op)%>%
-  dplyr::mutate(across(c(con_quien_vive,tipo_de_plan_2_for_f,tipo_de_programa_2,estatus_ocupacional,cat_ocupacional,origen_ingreso,tipo_de_vivienda_mod,tenencia_de_la_vivienda_mod,rubro_trabaja_mod,sus_principal_mod,otras_sus1_mod,otras_sus2_mod,otras_sus3_mod,via_adm_sus_prin), ~dplyr::first(na.omit(.)),.names = "mod_f_{col}"))%>%
+  dplyr::mutate(across(c(con_quien_vive,tipo_de_plan_2_for_f,tipo_de_programa_2,estatus_ocupacional,cat_ocupacional,origen_ingreso,tipo_de_vivienda_mod,tenencia_de_la_vivienda_mod,rubro_trabaja_mod,sus_principal_mod,freq_cons_sus_prin,via_adm_sus_prin_act,otras_sus1_mod,otras_sus2_mod,otras_sus3_mod,via_adm_sus_prin), ~dplyr::first(na.omit(.)),.names = "mod_f_{col}"))%>%
   dplyr::ungroup()%>%
   #dplyr::rename("mod_f_tipo_de_plan_2_for_f"="mod_f_tipo_de_plan_2")%>%
   #dplyr::select(hash_key,concat_hash_id_treatments, n_concat_hash_id_treatments,con_quien_vive,tipo_de_plan_2_for_f,estatus_ocupacional,cat_ocupacional,origen_ingreso,tipo_de_vivienda_mod,tenencia_de_la_vivienda_mod,rubro_trabaja_mod,otras_sus1_mod,otras_sus2_mod,otras_sus3_mod,rank_dias_trat_op,dias_trat_imp_op,starts_with("mod_f_"))%>%dplyr::filter(concat_hash_id_treatments=="dd0d42261d00273d4e19ff2a46bda4b9_5276"|hash_key=="015ea90c1b1655155f30a3e276436ed5"|hash_key=="ffd3f4ed5841cfac947ce546757b8e3f")%>% 
   dplyr::arrange(rn_total)%>%
 assign("CONS_C1_df_dup_JUN_2020_a_f",., envir = .GlobalEnv)
+```
 
+```{r 2g_collapse_referrals_less_45_diff_treat,eval=T, echo=T, message=F,warning=F, paged.print=TRUE}
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #g- Replacedfavored dgs.-a     #Reemplazar si está presente
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
@@ -1156,18 +998,18 @@ CONS_C1_df_dup_JUN_2020_a_f%>%
     dplyr::mutate_at(vars(dg_trs_psiq_dsm_iv_or_1:otros_probl_at_sm_or_7),~max(as.character(.),na.rm=T))%>%
     #dplyr::mutate_at(vars(dg_trs_psiq_dsm_iv_or_mod_1:diagnostico_trs_fisico_mod_7),~max(as.numeric(.),na.rm=T))%>%
   dplyr::ungroup()%>%
-    dplyr::mutate(mod_g_dg_trs_psiq_dsm_iv_or = pmap_chr(select(.,dg_trs_psiq_dsm_iv_or_1:dg_trs_psiq_dsm_iv_or_7), ~toString2(unique(na.omit(c(...))))))%>%
-    dplyr::mutate(mod_g_dg_trs_psiq_sub_dsm_iv_or = pmap_chr(select(.,dg_trs_psiq_sub_dsm_iv_or_1:dg_trs_psiq_sub_dsm_iv_or_7), ~toString2(unique(na.omit(c(...))))))%>%
-    dplyr::mutate(mod_g_x2_dg_trs_psiq_dsm_iv_or = pmap_chr(select(.,x2_dg_trs_psiq_dsm_iv_or_1:x2_dg_trs_psiq_dsm_iv_or_7), ~toString2(unique(na.omit(c(...))))))%>%
-    dplyr::mutate(mod_g_x2_dg_trs_psiq_sub_dsm_iv_or = pmap_chr(select(.,x2_dg_trs_psiq_sub_dsm_iv_or_1:x2_dg_trs_psiq_sub_dsm_iv_or_7), ~toString2(unique(na.omit(c(...))))))%>%
-    dplyr::mutate(mod_g_x3_dg_trs_psiq_dsm_iv_or = pmap_chr(select(.,x3_dg_trs_psiq_dsm_iv_or_1:x3_dg_trs_psiq_dsm_iv_or_7), ~toString2(unique(na.omit(c(...))))))%>%
-    dplyr::mutate(mod_g_x3_dg_trs_psiq_sub_dsm_iv_or = pmap_chr(select(.,x3_dg_trs_psiq_sub_dsm_iv_or_1:x3_dg_trs_psiq_sub_dsm_iv_or_7), ~toString2(unique(na.omit(c(...))))))%>%
-    dplyr::mutate(mod_g_dg_trs_psiq_cie_10_or = pmap_chr(select(.,dg_trs_psiq_cie_10_or_1:dg_trs_psiq_cie_10_or_7), ~toString2(unique(na.omit(c(...))))))%>%
-    dplyr::mutate(mod_g_dg_trs_psiq_sub_cie_10_or = pmap_chr(select(.,dg_trs_psiq_sub_cie_10_or_1:dg_trs_psiq_sub_cie_10_or_7), ~toString2(unique(na.omit(c(...))))))%>%
-    dplyr::mutate(mod_g_x2_dg_trs_psiq_cie_10_or = pmap_chr(select(.,x2_dg_trs_psiq_cie_10_or_1:x2_dg_trs_psiq_cie_10_or_7), ~toString2(unique(na.omit(c(...))))))%>%
-    dplyr::mutate(mod_g_x2_dg_trs_psiq_sub_cie_10_or = pmap_chr(select(.,x2_dg_trs_psiq_sub_cie_10_or_1:x2_dg_trs_psiq_sub_cie_10_or_7), ~toString2(unique(na.omit(c(...))))))%>%
-    dplyr::mutate(mod_g_x3_dg_trs_psiq_cie_10_or = pmap_chr(select(.,x3_dg_trs_psiq_cie_10_or_1:x3_dg_trs_psiq_cie_10_or_7), ~toString2(unique(na.omit(c(...))))))%>%
-    dplyr::mutate(mod_g_x3_dg_trs_psiq_sub_cie_10_or = pmap_chr(select(.,x3_dg_trs_psiq_sub_cie_10_or_1:x3_dg_trs_psiq_sub_cie_10_or_7), ~toString2(unique(na.omit(c(...))))))%>%
+    dplyr::mutate(mod_g_dg_trs_psiq_dsm_iv_or = pmap_chr(select(.,dg_trs_psiq_dsm_iv_or_1:dg_trs_psiq_dsm_iv_or_7,x2_dg_trs_psiq_dsm_iv_or_1:x2_dg_trs_psiq_dsm_iv_or_7,x3_dg_trs_psiq_dsm_iv_or_1:x3_dg_trs_psiq_dsm_iv_or_7), ~toString2(unique(na.omit(c(...))))))%>%
+    dplyr::mutate(mod_g_dg_trs_psiq_sub_dsm_iv_or = pmap_chr(select(.,dg_trs_psiq_sub_dsm_iv_or_1:dg_trs_psiq_sub_dsm_iv_or_7,x2_dg_trs_psiq_sub_dsm_iv_or_1:x2_dg_trs_psiq_sub_dsm_iv_or_7,x3_dg_trs_psiq_sub_dsm_iv_or_1:x3_dg_trs_psiq_sub_dsm_iv_or_7), ~toString2(unique(na.omit(c(...))))))%>%
+    #dplyr::mutate(mod_g_x2_dg_trs_psiq_dsm_iv_or = pmap_chr(select(.,x2_dg_trs_psiq_dsm_iv_or_1:x2_dg_trs_psiq_dsm_iv_or_7), ~toString2(unique(na.omit(c(...))))))%>%
+   # dplyr::mutate(mod_g_x2_dg_trs_psiq_sub_dsm_iv_or = pmap_chr(select(.,x2_dg_trs_psiq_sub_dsm_iv_or_1:x2_dg_trs_psiq_sub_dsm_iv_or_7), ~toString2(unique(na.omit(c(...))))))%>%
+    #dplyr::mutate(mod_g_x3_dg_trs_psiq_dsm_iv_or = pmap_chr(select(.,x3_dg_trs_psiq_dsm_iv_or_1:x3_dg_trs_psiq_dsm_iv_or_7), ~toString2(unique(na.omit(c(...))))))%>%
+    #dplyr::mutate(mod_g_x3_dg_trs_psiq_sub_dsm_iv_or = pmap_chr(select(.,x3_dg_trs_psiq_sub_dsm_iv_or_1:x3_dg_trs_psiq_sub_dsm_iv_or_7), ~toString2(unique(na.omit(c(...))))))%>%
+    dplyr::mutate(mod_g_dg_trs_psiq_cie_10_or = pmap_chr(select(.,dg_trs_psiq_cie_10_or_1:dg_trs_psiq_cie_10_or_7,x2_dg_trs_psiq_cie_10_or_1:x2_dg_trs_psiq_cie_10_or_7,x3_dg_trs_psiq_cie_10_or_1:x3_dg_trs_psiq_cie_10_or_7), ~toString2(unique(na.omit(c(...))))))%>%
+    dplyr::mutate(mod_g_dg_trs_psiq_sub_cie_10_or = pmap_chr(select(.,dg_trs_psiq_sub_cie_10_or_1:dg_trs_psiq_sub_cie_10_or_7,x2_dg_trs_psiq_sub_cie_10_or_1:x2_dg_trs_psiq_sub_cie_10_or_7,x3_dg_trs_psiq_sub_cie_10_or_1:x3_dg_trs_psiq_sub_cie_10_or_7), ~toString2(unique(na.omit(c(...))))))%>%
+    #dplyr::mutate(mod_g_x2_dg_trs_psiq_cie_10_or = pmap_chr(select(.,x2_dg_trs_psiq_cie_10_or_1:x2_dg_trs_psiq_cie_10_or_7), ~toString2(unique(na.omit(c(...))))))%>%
+  #  dplyr::mutate(mod_g_x2_dg_trs_psiq_sub_cie_10_or = pmap_chr(select(.,x2_dg_trs_psiq_sub_cie_10_or_1:x2_dg_trs_psiq_sub_cie_10_or_7), ~toString2(unique(na.omit(c(...))))))%>%
+   # dplyr::mutate(mod_g_x3_dg_trs_psiq_cie_10_or = pmap_chr(select(.,x3_dg_trs_psiq_cie_10_or_1:x3_dg_trs_psiq_cie_10_or_7), ~toString2(unique(na.omit(c(...))))))%>%
+   # dplyr::mutate(mod_g_x3_dg_trs_psiq_sub_cie_10_or = pmap_chr(select(.,x3_dg_trs_psiq_sub_cie_10_or_1:x3_dg_trs_psiq_sub_cie_10_or_7), ~toString2(unique(na.omit(c(...))))))%>%
     dplyr::mutate(mod_g_diagnostico_trs_fisico = pmap_chr(select(.,diagnostico_trs_fisico_1:diagnostico_trs_fisico_7), ~toString2(unique(na.omit(c(...))))))%>%
     dplyr::mutate(mod_g_otros_probl_at_sm_or = pmap_chr(select(.,otros_probl_at_sm_or_1:otros_probl_at_sm_or_7), ~toString2(unique(na.omit(c(...))))))%>%
     #plyr::ungroup()%>%
@@ -1181,26 +1023,52 @@ CONS_C1_df_dup_JUN_2020_a_f%>%
     #unite(., col = "mod_g_diagnostico_trs_fisico_mod", diagnostico_trs_fisico_mod_1:diagnostico_trs_fisico_mod_7, na.rm=TRUE, sep = "; ")%>%
 
   # dplyr::select(hash_key,concat_hash_id_treatments,n_concat_hash_id_treatments,dg_trs_psiq_dsm_iv_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or,dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or,diagnostico_trs_fisico,starts_with("mod_g_"))%>%dplyr::filter(concat_hash_id_treatments=="dd0d42261d00273d4e19ff2a46bda4b9_5276"|hash_key=="015ea90c1b1655155f30a3e276436ed5"|hash_key=="ffd3f4ed5841cfac947ce546757b8e3f")%>% 
-dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or,mod_g_x2_dg_trs_psiq_dsm_iv_or,mod_g_x3_dg_trs_psiq_dsm_iv_or),~dplyr::case_when(grepl(paste(dg_trs_psiq_dsm_iv_or_cat, collapse = "|"),.)~str_replace_all(., "En estudio|Sin trastorno", ""),grepl("En estudio",.)~str_replace_all(., "Sin trastorno", ""),TRUE~.)))%>%
+dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or),~dplyr::case_when(grepl(paste(dg_trs_psiq_dsm_iv_or_cat, collapse = "|"),.)~str_replace_all(., "En estudio|Sin trastorno", ""),grepl("En estudio",.)~str_replace_all(., "Sin trastorno", ""),TRUE~.)))%>%
   #nchar>18 nchar("Trastorno Adaptativo")==20  nchar("En estudio")
-dplyr::mutate(across(c(mod_g_dg_trs_psiq_cie_10_or,mod_g_x2_dg_trs_psiq_cie_10_or,mod_g_x3_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl(paste(dg_trs_psiq_cie_10_or_cat, collapse = "|"),.)~str_replace_all(., "En estudio(NA)|Sin trastorno(NA)", ""),grepl("En estudio(NA)",.)~str_replace_all(., "Sin trastorno(NA)", ""),TRUE~.)))%>%
+dplyr::mutate(across(c(mod_g_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl(paste(dg_trs_psiq_cie_10_or_cat, collapse = "|"),.)~str_replace_all(., "En estudio(NA)|Sin trastorno(NA)", ""),grepl("En estudio(NA)",.)~str_replace_all(., "Sin trastorno(NA)", ""),TRUE~.)))%>%
 dplyr::mutate(across(c(mod_g_diagnostico_trs_fisico),~dplyr::case_when(grepl(paste(diagnostico_trs_fisico_cat, collapse = "|"),.)~str_replace_all(., "En estudio|Sin trastorno", ""),grepl("En estudio",.)~str_replace_all(., "Sin trastorno", ""),TRUE~.)))%>%  
   dplyr::mutate(across(c(mod_g_otros_probl_at_sm_or),~dplyr::case_when(grepl(paste(otros_probl_at_sm_or_cat, collapse = "|"),.)~str_replace_all(., "Sin otros problemas de salud mental", ""),TRUE~.)))%>%  
 
-  dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or,mod_g_x2_dg_trs_psiq_dsm_iv_or,mod_g_x3_dg_trs_psiq_dsm_iv_or,mod_g_dg_trs_psiq_cie_10_or,mod_g_x2_dg_trs_psiq_cie_10_or,mod_g_x3_dg_trs_psiq_cie_10_or,mod_g_diagnostico_trs_fisico,mod_g_otros_probl_at_sm_or),~sub("^; ; ", "", .)))%>%
-  dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or,mod_g_x2_dg_trs_psiq_dsm_iv_or,mod_g_x3_dg_trs_psiq_dsm_iv_or,mod_g_dg_trs_psiq_cie_10_or,mod_g_x2_dg_trs_psiq_cie_10_or,mod_g_x3_dg_trs_psiq_cie_10_or,mod_g_diagnostico_trs_fisico,mod_g_otros_probl_at_sm_or),~sub("^; ", "", .)))%>%
-  dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or,mod_g_x2_dg_trs_psiq_dsm_iv_or,mod_g_x3_dg_trs_psiq_dsm_iv_or,mod_g_dg_trs_psiq_cie_10_or,mod_g_x2_dg_trs_psiq_cie_10_or,mod_g_x3_dg_trs_psiq_cie_10_or,mod_g_diagnostico_trs_fisico,mod_g_otros_probl_at_sm_or),~sub("; ; $", "", .)))%>% 
-  dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or,mod_g_x2_dg_trs_psiq_dsm_iv_or,mod_g_x3_dg_trs_psiq_dsm_iv_or,mod_g_dg_trs_psiq_cie_10_or,mod_g_x2_dg_trs_psiq_cie_10_or,mod_g_x3_dg_trs_psiq_cie_10_or,mod_g_diagnostico_trs_fisico,mod_g_otros_probl_at_sm_or),~sub("; $", "", .)))%>% 
-  dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or,mod_g_x2_dg_trs_psiq_dsm_iv_or,mod_g_x3_dg_trs_psiq_dsm_iv_or,mod_g_dg_trs_psiq_cie_10_or,mod_g_x2_dg_trs_psiq_cie_10_or,mod_g_x3_dg_trs_psiq_cie_10_or,mod_g_diagnostico_trs_fisico,mod_g_otros_probl_at_sm_or),~sub("; ; ", "; ", .)))%>% 
+    dplyr::mutate(across(c(mod_g_dg_trs_psiq_cie_10_or),~sub("En estudio(NA); Sin trastorno(NA)", "En estudio(NA)", .)))%>%
+  dplyr::mutate(across(c(mod_g_dg_trs_psiq_cie_10_or),~sub("Sin trastorno(NA); En estudio(NA)", "En estudio(NA)", .)))%>%
+  dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or),~sub("En estudio; Sin trastorno", "En estudio", .)))%>%
+  dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or),~sub("Sin trastorno; En estudio", "En estudio", .)))%>%
+  dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or,mod_g_dg_trs_psiq_sub_dsm_iv_or,mod_g_dg_trs_psiq_cie_10_or,mod_g_dg_trs_psiq_sub_cie_10_or,mod_g_diagnostico_trs_fisico,mod_g_otros_probl_at_sm_or),~sub("^; ; ", "", .)))%>%
+  dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or,mod_g_dg_trs_psiq_sub_dsm_iv_or,mod_g_dg_trs_psiq_cie_10_or,mod_g_dg_trs_psiq_sub_cie_10_or,mod_g_diagnostico_trs_fisico,mod_g_otros_probl_at_sm_or),~sub("^; ", "", .)))%>%
+  dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or,mod_g_dg_trs_psiq_sub_dsm_iv_or,mod_g_dg_trs_psiq_cie_10_or,mod_g_dg_trs_psiq_sub_cie_10_or,mod_g_diagnostico_trs_fisico,mod_g_otros_probl_at_sm_or),~sub("; ; $", "", .)))%>% 
+  dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or,mod_g_dg_trs_psiq_sub_dsm_iv_or,mod_g_dg_trs_psiq_cie_10_or,mod_g_dg_trs_psiq_sub_cie_10_or,mod_g_diagnostico_trs_fisico,mod_g_otros_probl_at_sm_or),~sub("; $", "", .)))%>% 
+  dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or,mod_g_dg_trs_psiq_sub_dsm_iv_or,mod_g_dg_trs_psiq_cie_10_or,mod_g_dg_trs_psiq_sub_cie_10_or,mod_g_diagnostico_trs_fisico,mod_g_otros_probl_at_sm_or),~sub("; ; ", "; ", .)))%>% 
    
    #dplyr::select(hash_key,concat_hash_id_treatments,n_concat_hash_id_treatments,starts_with("mod_g_"))%>%dplyr::filter(concat_hash_id_treatments=="dd0d42261d00273d4e19ff2a46bda4b9_5276"|hash_key=="015ea90c1b1655155f30a3e276436ed5"|hash_key=="ffd3f4ed5841cfac947ce546757b8e3f")%>%
+  dplyr::ungroup()%>%
+  #dplyr::mutate(across(c(rn_common_treats2,mod_g_dg_trs_psiq_dsm_iv_or,mod_g_dg_trs_psiq_sub_dsm_iv_or,mod_g_dg_trs_psiq_cie_10_or,mod_g_dg_trs_psiq_sub_cie_10_or,mod_g_diagnostico_trs_fisico,mod_g_otros_probl_at_sm_or),~str_count(., pattern = ";"),.names="{col}_cnt"))%>%     dplyr::select(rn_common_treats2,mod_g_dg_trs_psiq_dsm_iv_or_cnt,mod_g_dg_trs_psiq_sub_dsm_iv_or_cnt,mod_g_dg_trs_psiq_cie_10_or_cnt,mod_g_dg_trs_psiq_sub_cie_10_or_cnt,mod_g_diagnostico_trs_fisico_cnt,mod_g_otros_probl_at_sm_or_cnt)%>%summary()
+  #dplyr::select(rn_common_treats2,mod_g_dg_trs_psiq_dsm_iv_or,mod_g_dg_trs_psiq_sub_dsm_iv_or,mod_g_dg_trs_psiq_cie_10_or,mod_g_dg_trs_psiq_sub_cie_10_or,mod_g_diagnostico_trs_fisico,mod_g_otros_probl_at_sm_or)%>%
+assign("CONS_C1_df_dup_JUN_2020_a_g",., envir = .GlobalEnv)
+
+invisible(c("aquí se ven los resumenes de cuantos diagnosticos distintos puede tener un usuario",
+            "rn           dsm4         dsm4_sub            cie10                cie10_sub           tr_fis                  otros_sm",
+" Min.   :1.000     Min.   :0.0000     Min.   :0.00000     Min.   :0.0000      Min.   :0.0000      Min.   :0.00000       Min.   :0.0000
+  1st Qu.:1.000     1st Qu.:0.0000     1st Qu.:0.00000     1st Qu.:0.0000      1st Qu.:0.0000      1st Qu.:0.00000       1st Qu.:0.0000                 
+  Median :2.000     Median :0.0000     Median :0.00000     Median :1.0000      Median :0.0000      Median :0.00000       Median :0.0000                 
+  Mean   :1.585     Mean   :0.0917     Mean   :0.04751     Mean   :0.8168      Mean   :0.0703      Mean   :0.02704       Mean   :0.1393                 
+  3rd Qu.:2.000     3rd Qu.:0.0000     3rd Qu.:0.00000     3rd Qu.:1.0000      3rd Qu.:0.0000      3rd Qu.:0.00000       3rd Qu.:0.0000                 
+  Max.   :7.000     Max.   :3.0000     Max.   :3.00000     Max.   :5.0000      Max.   :3.0000      Max.   :2.00000       Max.   :2.0000"))
+
+CONS_C1_df_dup_JUN_2020_a_g%>%
+  tidyr::separate(mod_g_dg_trs_psiq_dsm_iv_or,c("mod_g_dg_trs_psiq_dsm_iv_or","mod_g_x2_dg_trs_psiq_dsm_iv_or","mod_g_x3_dg_trs_psiq_dsm_iv_or","mod_g_x4_dg_trs_psiq_dsm_iv_or"), sep="; ")%>%
+  tidyr::separate(mod_g_dg_trs_psiq_sub_dsm_iv_or,c("mod_g_dg_trs_psiq_sub_dsm_iv_or","mod_g_x2_dg_trs_psiq_sub_dsm_iv_or","mod_g_x3_dg_trs_psiq_sub_dsm_iv_or","mod_g_x4_dg_trs_psiq_sub_dsm_iv_or"), sep="; ")%>%
+  tidyr::separate(mod_g_dg_trs_psiq_cie_10_or,c("mod_g_dg_trs_psiq_cie_10_or","mod_g_x2_dg_trs_psiq_cie_10_or","mod_g_x3_dg_trs_psiq_cie_10_or","mod_g_x4_dg_trs_psiq_cie_10_or","mod_g_x5_dg_trs_psiq_cie_10_or","mod_g_x6_dg_trs_psiq_cie_10_or"), sep="; ")%>%
+  tidyr::separate(mod_g_dg_trs_psiq_sub_cie_10_or,c("mod_g_dg_trs_psiq_sub_cie_10_or","mod_g_x2_dg_trs_psiq_sub_cie_10_or","mod_g_x3_dg_trs_psiq_sub_cie_10_or","mod_g_x4_dg_trs_psiq_sub_cie_10_or"), sep="; ")%>%
+#dplyr::select(c("mod_g_dg_trs_psiq_cie_10_or","mod_g_x2_dg_trs_psiq_cie_10_or","mod_g_x3_trs_psiq_cie_10_or","mod_g_x4_trs_psiq_cie_10_or","mod_g_x5_trs_psiq_cie_10_or","mod_g_x6_trs_psiq_cie_10_or"))%>% dplyr::filter(!is.na(mod_g_x6_trs_psiq_cie_10_or))%>% 
   assign("CONS_C1_df_dup_JUN_2020_a_g",., envir = .GlobalEnv)
 
 #CONS_C1_df_dup_JUN_2020_a_g%>% janitor::tabyl(mod_g_diagnostico_trs_fisico)
 #CONS_C1_df_dup_JUN_2020_a_g%>% janitor::tabyl(otros_probl_at_sm_or)  
 
   #dg_trs_psiq_sub_dsm_iv_or_cat dg_trs_psiq_sub_cie_10_or_cat
+```
 
+```{r 2_g_h_consolidate dataset_of_referrals_less_45_diff_treat,eval=T, echo=T, message=F,warning=F, paged.print=TRUE}
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #h     #Sum values
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
@@ -1210,17 +1078,20 @@ CONS_C1_df_dup_JUN_2020_a_g%>%
   dplyr::mutate(mod_h_dias_trat_imp_op=sum(dias_trat_imp_op,na.rm=T))%>%
   dplyr::mutate(mod_h_dias_trat_imp=sum(dias_trat_imp,na.rm=T))%>%
   dplyr::mutate(mod_h_dias_trat_inv=sum(dias_trat_inv,na.rm=T))%>%
+  #dplyr::select(dias_trat_imp_op,dias_trat_imp,dias_trat_inv,mod_h_dias_trat_imp_op,mod_h_dias_trat_imp,mod_h_dias_trat_inv)%>% summary()
   slice(1)%>%
   dplyr::ungroup()%>%
   #dplyr::select(hash_key,concat_hash_id_treatments,n_concat_hash_id_treatments,dias_trat_imp_op,dias_trat_imp,dias_trat_inv,starts_with("mod_h_"))%>%dplyr::filter(concat_hash_id_treatments=="dd0d42261d00273d4e19ff2a46bda4b9_5276"|hash_key=="015ea90c1b1655155f30a3e276436ed5"|hash_key=="ffd3f4ed5841cfac947ce546757b8e3f")%>%
   dplyr::select(concat_hash_id_treatments,rn_common_treats2,matches("^mod_[0abcdefgh]_"))%>%
-  dplyr::rename("mod_tipo_de_plan_2_concat_a"="mod_a_tipo_de_plan_2")%>%
-  dplyr::rename("mod_id_centro_concat_a"="mod_a_id_centro")%>%
+  dplyr::rename("tipo_de_plan_2_concat_a"="mod_a_tipo_de_plan_2")%>%
+  dplyr::rename("id_centro_concat_a"="mod_a_id_centro")%>%
+  dplyr::rename("obs_concat_a"="mod_a_obs")%>%
+
   assign("CONS_C1_df_dup_JUN_2020_a_h",., envir = .GlobalEnv)
 ```
 
 
-```{r 2b_consolidate dataset_of_referrals_less_45_diff_treat,eval=T, echo=T, message=F,warning=F, paged.print=TRUE, eval=T}
+```{r 2_final_consolidate dataset_of_referrals_less_45_diff_treat,eval=T, echo=T, message=F,warning=F, paged.print=TRUE}
 invisible(c("ANTES QUE TODO. Ver qué variables son susceptiblesde ser combinadas (ej., las a o b que dejan sólo un valor)"))
 
 CONS_C1_df_dup_JUN_2020_a_h%>%
@@ -1228,11 +1099,11 @@ CONS_C1_df_dup_JUN_2020_a_h%>%
             .funs = funs(sub("^mod_[abcdefgh]_", "", .)))%>%
   dplyr::mutate(tipo_de_plan_2=stringr::str_trim(tipo_de_plan_2))%>%
   dplyr::mutate(id_centro=stringr::str_trim(id_centro))%>%
-  dplyr::select(mod_0_row,concat_hash_id_treatments,everything())%>%
+  dplyr::select(mod_0_row,concat_hash_id_treatments,id_centro_concat_a, obs_concat_a,tipo_de_plan_2_concat_a,everything())%>%
   assign("CONS_C1_df_dup_JUN_2020_cont_treats",., envir = .GlobalEnv)
  #id_centro tipo_de_plan_2
 #  dplyr::mutate(motivodeegreso_mod_imp_tidy= case_when(!is.na(diff_bet_treat) & as.character(motivodeegreso_mod_imp)=="Derivación" & grepl("Clínica",tipo_centro_derivacion==<90~"Abandono Temprano" , TRUE~as.character(motivodeegreso_mod_imp))%>% nrow()
-
+invisible(c("ojo con tipo_de_plan_2_for_f y mod_e_obs_for_e"))
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #DESCARTAR CASOS REDUNDANTES
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
@@ -1242,7 +1113,7 @@ row_id_redundantes_trat_completos<-
           dplyr::select(mod_0_row)%>%unlist()%>%as.numeric()
 #CONS_C1_df_dup_JUN_2020_a_h%>%select(matches("^mod_[b]_"))%>% names()%>% data.frame()%>% copiar_nombres()
 #CONS_C1_df_dup_JUN_2020_a_h%>%select(matches("^mod_[0abcdefgh]_"))%>% names()%>% data.frame()%>% copiar_nombres()
-#sus_principal_mod
+#sus_principal_mod  
 ```
 
 <br>
@@ -1259,485 +1130,666 @@ We had to join the new entries of treatments into the original database (n= `r C
 
 <br>
 
-
-```{r 3_join_w_rest_of_treatments,eval=T, echo=T, message=F,warning=F, paged.print=TRUE, eval=F}
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+```{r 3_join_w_rest_of_treatments,eval=T, echo=T, message=F,warning=F, paged.print=TRUE}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#
 #CONS_C1_df_dup_JUN_2020_a_h
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#
+invisible(c("https://stackoverflow.com/questions/28298688/how-do-i-sweep-specific-columns-with-dplyr"))
+invisible(c("https://stackoverflow.com/questions/54818931/difference-between-and-eval-tidy-in-mutate-at"))
+invisible(c("https://stackoverflow.com/questions/63290366/mutate-across-multiple-variables-usinga-list-of-third-variables-in-r/63292975#63292975"))
+invisible(c("https://stackoverflow.com/questions/51051810/how-do-i-use-mutate-at-with-multiple-functions-where-each-function-has-parameter"))
 
 #CONS_C1_df_dup_MAY_2020_prev_6c%>% dplyr::filter(grepl('3.03.', obs)|grepl('3.03.', obs)) %>% nrow()
 
 #llego a 110,403 entradas
 
 CONS_C1_df_dup_JUN_2020%>%
-#FILTRAR ENTRADAS REDUNDANTES
-#_#_#_#_#_#_#_
-    dplyr::filter(!row %in%row_id_redundantes_trat_completos)%>%
-#_#_#_#_#_#_
-  dplyr::mutate(across(c(otras_sus1, otras_sus2,otras_sus3),~dplyr::case_when(as.character(.)!="Alcohol"&as.character(.)!="Cocaína"&as.character(.)!="Marihuana"&as.character(.)!="Pasta Base"~"Otros",TRUE~as.character(.)),.names = "{col}_mod"))%>%
-  dplyr::mutate(fech_ing=as.character(fech_ing))%>%
+    dplyr::mutate(across(c(otras_sus1, otras_sus2,otras_sus3),~dplyr::case_when(as.character(.)!="Alcohol"&as.character(.)!="Cocaína"&as.character(.)!="Marihuana"&as.character(.)!="Pasta Base"~"Otros",TRUE~as.character(.)),.names = "{col}_mod"))%>%
+   dplyr::mutate(across(c(dg_trs_psiq_dsm_iv_or,dg_trs_psiq_sub_dsm_iv_or,x2_dg_trs_psiq_dsm_iv_or,x2_dg_trs_psiq_sub_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_sub_dsm_iv_or,dg_trs_psiq_cie_10_or,dg_trs_psiq_sub_cie_10_or,x2_dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_sub_cie_10_or,x3_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_sub_cie_10_or,diagnostico_trs_fisico,otros_probl_at_sm_or),~stringr::str_trim(.)))%>%
+    dplyr::mutate(fech_ing=as.character(fech_ing))%>%
   dplyr::mutate(fech_egres_imp=as.character(fech_egres_imp))%>%
-    dplyr::mutate(fech_egres_imp=ifelse(n_concat_hash_id_treatments==1 & is.na(fech_egres_imp),"2019-11-13",fech_egres_imp))%>%
-    dplyr::mutate(motivodeegreso_mod_imp=ifelse(n_concat_hash_id_treatments==1 & is.na(motivodeegreso_mod_imp),"En curso",as.character(motivodeegreso_mod_imp)))%>%
-    dplyr::mutate(dias_trat_imp_op= ifelse(is.na(fech_egres_imp),as.integer(lubridate::time_length(difftime(as.Date("2019-11-13"),as.Date(as.character(fech_ing))),"days")),dias_trat_imp))%>%
-      dplyr::mutate(compromiso_biopsicosocial=dplyr::case_when(compromiso_biopsicosocial=="Leve"~1,compromiso_biopsicosocial=="Moderado"~2,compromiso_biopsicosocial=="Severo"~3,TRUE~NA_real_))%>%
+  dplyr::mutate(ano_bd2=ano_bd)%>%
+  dplyr::mutate(across(c(sus_ini_2, sus_ini_3),~dplyr::case_when(as.character(.)!="Alcohol"&as.character(.)!="Cocaína"&as.character(.)!="Marihuana"&as.character(.)!="Pasta Base"~"Otros",TRUE~as.character(.)),.names = "{col}_mod"))%>%
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_          
+  #ELIMINAR COLUMNAS INNECESARIAS
+#_#_#_#_#_#_#_#_#_#_#_#_#_  
+  dplyr::select(-table, -region_del_centro, -tipo_de_programa, -tipo_de_plan, -dias_trat, -nmesesentratamiento, -dias_en_senda, -n_meses_en_senda, -sexo, -edad, -nombre_usuario, -comuna_residencia, -origen_de_ingreso, -pais_nacimiento, -etnia, -estado_conyugal, -parentesco_con_el_jefe_de_hogar, -num_trat_ant, -fecha_ultimo_tratamiento, -sustancia_de_inicio, -edad_inicio_consumo, -escolaridad_ultimo_ano_cursado, -condicion_ocupacional, -categoria_ocupacional, -rubro_trabaja, -tipo_de_vivienda, -tenencia_de_la_vivienda, -sustancia_principal, -`otras_sustancias_nº1`, -`otras_sustancias_nº2`, -`otras_sustancias_nº3`, -freq_cons_sus_prin_original, -edad_inicio_sustancia_principal, -via_adm_sus_prin_original, -sus_principal, -consentimiento_informado, -fech_egres, -motivodeegreso, -mot_egres_alt_adm_or, -consorcio, -fech_egres_sin_fmt, -ano_nac, -fech_ing_ano, -fech_ing_mes, -fech_ing_dia, -concat, -dias_trat_alta_temprana, -motivodeegreso_mod, -dias_trat_knn_imp, -fech_egres_knn_imp, -dias_trat_alta_temprana_knn_imp, -motivodeegreso_imp, -dias_trat_alta_temprana_imp, -concat_hash_sus_prin, -dg_trs_psiq_cie_10_egres_or, -menor_45_dias_diff, -menor_60_dias_diff)%>%
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_      
+#HACER EL JOIN
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_      
+    dplyr::filter(!row %in%row_id_redundantes_trat_completos)%>%
+    dplyr::left_join(CONS_C1_df_dup_JUN_2020_cont_treats, by=c("row"="mod_0_row"), suffix=c("","_cont_entries"))%>%
+    assign("CONS_C1_df_dup_JUL_2020_prev0",., envir = .GlobalEnv)
+
+  #names() %>% data.frame()%>% copiar_nombres()
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_      
+#VER VARIABLES CODIFICADAS EN MÁS DE UNA FORMA
+#_#_#_#_#_#_#_ 
+#####id_centro_concat_a	joined	1. concatenado
+#####obs_concat_a	joined	1. concatenado
+#####tipo_de_plan_2_concat_a	joined	1. concatenado
+#####tipo_de_plan_2_cont_entries	joined	2. ultimo tratamiento (b)
+#####id_centro_cont_entries	joined	2. ultimo tratamiento (b)
+#####obs_cont_entries	joined	2. mismo valor (e )
+#####tipo_de_plan_2_for_f	joined	3. aparentemente el correspondiente al tratmaiento más largo (f)
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_      
+out_cols <- c("id_centro","tipo_de_plan_2","obs")
+out_cols_final <-paste0(gsub("_cont_entries", "", out_cols),"_final")
+
+for(col in out_cols){
+  old = gsub("_cont_entries", "", col)
+  new = paste0(gsub("_cont_entries", "", col),"_final")
+  
+  CONS_C1_df_dup_JUL_2020_prev0%>% dplyr::mutate(!!sym(new):= ifelse(is.na(concat_hash_id_treatments), as.character(!!sym(old)), as.character(!!sym(col))))%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev0",., envir = .GlobalEnv)
+}
+no_mostrar="si"
+if(no_mostrar=="no"){
+    CONS_C1_df_dup_JUL_2020_prev0%>%
+      dplyr::filter(!is.na(concat_hash_id_treatments))%>%
+      dplyr::select(concat_hash_id_treatments,!!(old),!!(out_cols),!!(out_cols_final))%>%
+      View()
+}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_      
+#_#_#_#_#_#_#_
+#a. Wide format
+#_#_#_#_#_#_#_
+#dplyr::mutate(mod_b_id_centro=sub(".*\\;","",mod_a_id_centro))%>% #ultimos tratamiento
+
+out_cols <- c("tipo_centro", "servicio_de_salud", "senda")
+#  c(paste0(gsub("_cont_entries", "", out_cols),"_final"),gsub("_cont_entries", "", out_cols))
+out_cols_final <-paste0(gsub("_cont_entries", "", out_cols),"_final")
+
+CONS_C1_df_dup_JUL_2020_prev0%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_a",., envir = .GlobalEnv)
+
+for(col in out_cols){
+  old = gsub("_cont_entries", "", col)
+  new = paste0(gsub("_cont_entries", "", col),"_final")
+  
+  CONS_C1_df_dup_JUL_2020_prev_a%>% dplyr::mutate(!!sym(new):= ifelse(is.na(concat_hash_id_treatments), as.character(!!sym(old)), as.character(!!sym(col))))%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_a",., envir = .GlobalEnv)
+}
+no_mostrar="si"
+if(no_mostrar=="no"){
+    CONS_C1_df_dup_JUL_2020_prev_a%>%
+      dplyr::filter(!is.na(concat_hash_id_treatments))%>%
+      dplyr::select(concat_hash_id_treatments,!!(old),!!(out_cols),!!(out_cols_final))%>% 
+      View()
+}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_      
+#_#_#_#_#_#_#_
+#b. Maximum/ Last Value
+#_#_#_#_#_#_#_
+out_cols <- c("nombre_centro", "numero_de_hijos_mod","ano_bd", "num_hijos_trat_res_mod","tipo_centro_derivacion","fech_egres_imp","motivodeegreso_mod_imp","macrozona","nombre_region","comuna_residencia_cod")
+#  c(paste0(gsub("_cont_entries", "", out_cols),"_final"),gsub("_cont_entries", "", out_cols))
+out_cols_final <-paste0(gsub("_cont_entries", "", out_cols),"_final")
+  
+CONS_C1_df_dup_JUL_2020_prev_a%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_b",., envir = .GlobalEnv)
+
+for(col in out_cols){
+  old = gsub("_cont_entries", "", col)
+  new = paste0(gsub("_cont_entries", "", col),"_final")
+  
+  CONS_C1_df_dup_JUL_2020_prev_b%>% dplyr::mutate(!!sym(new):= ifelse(is.na(concat_hash_id_treatments), as.character(!!sym(old)), as.character(!!sym(col))))%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_b",., envir = .GlobalEnv)
+}
+no_mostrar="si"
+if(no_mostrar=="no"){
+    CONS_C1_df_dup_JUL_2020_prev_b%>%
+      dplyr::filter(!is.na(concat_hash_id_treatments))%>%
+      dplyr::select(concat_hash_id_treatments,!!(old),!!(out_cols),!!(out_cols_final))%>% 
+      View()
+}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_      
+#_#_#_#_#_#_#_
+#c. Minimum/ Firt value
+#_#_#_#_#_#_#_
+out_cols <- c("fech_ing","fecha_ingreso_a_convenio_senda","identidad_de_genero","edad_al_ing","origen_ingreso_mod","embarazo", "ano_bd2")
+#  c(paste0(gsub("_cont_entries", "", out_cols),"_final"),gsub("_cont_entries", "", out_cols))
+out_cols_final <-paste0(gsub("_cont_entries", "", out_cols),"_final")
+  
+CONS_C1_df_dup_JUL_2020_prev_b%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_c",., envir = .GlobalEnv)
+
+for(col in out_cols){
+  old = gsub("_cont_entries", "", col)
+  new = paste0(gsub("_cont_entries", "", col),"_final")
+  
+  CONS_C1_df_dup_JUL_2020_prev_c%>% dplyr::mutate(!!sym(new):= ifelse(is.na(concat_hash_id_treatments), as.character(!!sym(old)), as.character(!!sym(col))))%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_c",., envir = .GlobalEnv)
+}
+
+no_mostrar="si"
+if(no_mostrar=="no"){
+    CONS_C1_df_dup_JUL_2020_prev_c%>%
+      dplyr::filter(!is.na(concat_hash_id_treatments))%>%
+     dplyr::select(concat_hash_id_treatments,!!(old),!!(out_cols),!!(out_cols_final))%>% 
+      View()
+}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_      
+#_#_#_#_#_#_#_
+#d. Kept more vulnerable category
+#_#_#_#_#_#_#_
+out_cols <- c("x_se_trata_mujer_emb","compromiso_biopsicosocial","dg_global_nec_int_soc_or","dg_nec_int_soc_cap_hum_or","dg_nec_int_soc_cap_fis_or","dg_nec_int_soc_cap_soc_or","usuario_tribunal_trat_droga","evaluacindelprocesoteraputico","eva_consumo","eva_fam","eva_relinterp","eva_ocupacion","eva_sm","eva_fisica","eva_transgnorma","dg_global_nec_int_soc_or_1","dg_nec_int_soc_cap_hum_or_1","dg_nec_int_soc_cap_fis_or_1","dg_nec_int_soc_cap_soc_or_1","tiene_menores_de_edad_a_cargo","ha_estado_embarazada_egreso","discapacidad","opcion_discapacidad","escolaridad","edad_al_ing_grupos")
+#  c(paste0(gsub("_cont_entries", "", out_cols),"_final"),gsub("_cont_entries", "", out_cols))
+out_cols_final <-paste0(gsub("_cont_entries", "", out_cols),"_final")
+  
+CONS_C1_df_dup_JUL_2020_prev_c%>%
+        dplyr::mutate(compromiso_biopsicosocial=dplyr::case_when(compromiso_biopsicosocial=="Leve"~1,compromiso_biopsicosocial=="Moderado"~2,compromiso_biopsicosocial=="Severo"~3,TRUE~NA_real_))%>%
     dplyr::mutate(escolaridad=dplyr::case_when(escolaridad=="Mayor a Ed Secundaria"~1,escolaridad=="Ed Secundaria Completa o Menor"~2,escolaridad=="Ed Primaria Completa o Menor"~3,TRUE~NA_real_))%>%
     dplyr::mutate(across(c(dg_global_nec_int_soc_or, dg_nec_int_soc_cap_hum_or, dg_nec_int_soc_cap_fis_or, dg_nec_int_soc_cap_soc_or,dg_global_nec_int_soc_or_1, dg_nec_int_soc_cap_hum_or_1, dg_nec_int_soc_cap_fis_or_1,dg_nec_int_soc_cap_soc_or_1),~dplyr::case_when(as.character(.)=="Bajas"~3,as.character(.)=="Medias"~2,as.character(.)=="Altas"~1,TRUE~NA_real_)))%>%
     dplyr::mutate(across(c(evaluacindelprocesoteraputico, eva_consumo, eva_fam, eva_relinterp, eva_ocupacion, eva_sm, eva_fisica, eva_transgnorma),~dplyr::case_when(as.character(.)=="Logro Mínimo"~3,as.character(.)=="Logro M?mo"~3,as.character(.)=="Logro Intermedio"~2,as.character(.)=="Logro Alto"~1,TRUE~NA_real_)))%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_d",., envir = .GlobalEnv)
 
+for(col in out_cols){
+  old = gsub("_cont_entries", "", col)
+  new = paste0(gsub("_cont_entries", "", col),"_final")
   
+  CONS_C1_df_dup_JUL_2020_prev_d%>% dplyr::mutate(!!sym(new):= ifelse(is.na(concat_hash_id_treatments), as.character(!!sym(old)), as.character(!!sym(col))))%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_d",., envir = .GlobalEnv)
+}
+no_mostrar="si"
+if(no_mostrar=="no"){
+    CONS_C1_df_dup_JUL_2020_prev_d%>%
+      dplyr::filter(!is.na(concat_hash_id_treatments))%>%
+     dplyr::select(concat_hash_id_treatments,!!(old),!!(out_cols),!!(out_cols_final))%>%
+      View()
+}
+# Variables -Inf, 
+CONS_C1_df_dup_JUL_2020_prev_d%>%
+    dplyr::mutate(across(c(out_cols_final),~na_if(., "-Inf")))%>%
+    dplyr::rename("ano_bd_last_final"="ano_bd_final")%>%
+    dplyr::rename("ano_bd_first_final"="ano_bd2_final")%>%
+   #                 dplyr::select(concat_hash_id_treatments,!!(old),!!(out_cols), ends_with("_final"))%>% 
+  assign("CONS_C1_df_dup_JUL_2020_prev_d",., envir = .GlobalEnv)
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_      
+#_#_#_#_#_#_#_
+#e. Same value
+#_#_#_#_#_#_#_
+out_cols <- c("hash_key","id","nacionalidad","hash_rut_completo","sexo_2","embarazo","id_mod","fech_nac","edad_ini_cons","edad_ini_sus_prin","sus_ini","estado_conyugal_2","edad_grupos","etnia_cor","nacionalidad_2","etnia_cor_2","sus_ini_2_mod","sus_ini_3_mod","sus_ini_mod", "at_least_one_cont_entry")
+#  c(paste0(gsub("_cont_entries", "", out_cols),"_final"),gsub("_cont_entries", "", out_cols))
+out_cols_final <-paste0(gsub("_cont_entries", "", out_cols),"_final")
   
- dplyr::mutate(across(c(dg_trs_psiq_dsm_iv_or,dg_trs_psiq_sub_dsm_iv_or,x2_dg_trs_psiq_dsm_iv_or,x2_dg_trs_psiq_sub_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_sub_dsm_iv_or,dg_trs_psiq_cie_10_or,dg_trs_psiq_sub_cie_10_or,x2_dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_sub_cie_10_or,x3_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_sub_cie_10_or,diagnostico_trs_fisico,otros_probl_at_sm_or),~stringr::str_trim(.)))%>%
+CONS_C1_df_dup_JUL_2020_prev_d%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_e",., envir = .GlobalEnv)
 
-#_#_#_#_#_#_
-#Tipo de Programa
-#_#_#_#_#_#_
+for(col in out_cols){
+  old = gsub("_cont_entries", "", col)
+  new = paste0(gsub("_cont_entries", "", col),"_final")
+  
+  CONS_C1_df_dup_JUL_2020_prev_e%>% 
+    dplyr::mutate(!!sym(new):= ifelse(is.na(concat_hash_id_treatments), as.character(!!sym(old)), as.character(!!sym(col))))%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_e",., envir = .GlobalEnv)
+}
+no_mostrar="si"
+if(no_mostrar=="no"){
+    CONS_C1_df_dup_JUL_2020_prev_e%>%
+      dplyr::filter(!is.na(concat_hash_id_treatments))%>%
+      dplyr::select(concat_hash_id_treatments,!!(old),!!(out_cols),!!(out_cols_final))%>% 
+      View()
+}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_      
+#_#_#_#_#_#_#_
+#f.Largest treatment
+#_#_#_#_#_#_#_
+out_cols <-c('con_quien_vive','estatus_ocupacional','cat_ocupacional','origen_ingreso','via_adm_sus_prin','sus_principal_mod',"freq_cons_sus_prin","via_adm_sus_prin_act",'tipo_de_vivienda_mod','tenencia_de_la_vivienda_mod','rubro_trabaja_mod','otras_sus1_mod','otras_sus2_mod','otras_sus3_mod','con_quien_vive','estatus_ocupacional','cat_ocupacional','origen_ingreso','tipo_de_vivienda_mod','tenencia_de_la_vivienda_mod','rubro_trabaja_mod','sus_principal_mod','otras_sus1_mod','otras_sus2_mod','otras_sus3_mod','via_adm_sus_prin','dg_trs_cons_sus_or','tipo_de_programa_2','tipo_de_plan_2_for_f')
 
-  dplyr::mutate(sexo_2.2=as.character(sexo_2.2))%>%
-  dplyr::mutate(sexo_2.1 = case_when(as.character(tipo_de_programa_2.1)=="Programa Específico Mujeres" ~ "Mujer",
-                                     as.character(x_se_trata_mujer_emb.1)=="Si"  ~ "Mujer",
-                                     as.character(ha_estado_embarazada_egreso.1)=="Si" ~ "Mujer",
-                                     as.character(tipo_de_programa_2.2)=="Programa Específico Mujeres" ~ "Mujer",
-                                     as.character(x_se_trata_mujer_emb.2)=="Si"  ~ "Mujer",
-                                     as.character(ha_estado_embarazada_egreso.2)=="Si" ~ "Mujer",
-                                     TRUE ~ as.character(sexo_2.1))) %>%
-  dplyr::mutate(sexo_2.2 = case_when(as.character(tipo_de_programa_2.1)=="Programa Específico Mujeres" ~ "Mujer",
-                                     as.character(x_se_trata_mujer_emb.1)=="Si"  ~ "Mujer",
-                                     as.character(ha_estado_embarazada_egreso.1)=="Si" ~ "Mujer",
-                                     as.character(tipo_de_programa_2.2)=="Programa Específico Mujeres" ~ "Mujer",
-                                     as.character(x_se_trata_mujer_emb.2)=="Si"  ~ "Mujer",
-                                     as.character(ha_estado_embarazada_egreso.2)=="Si" ~ "Mujer",
+invisible(c("dg_trs_cons_sus_or","tipo_de_programa_2","dg_trs_cons_sus_or_cont_entries","tipo_de_programa_2_cont_entries"))
 
-  factor(mydata$v1,
-levels = c(1,2,3),
-labels = c("red", "blue", "green")                                     
+out_cols_final <-paste0(gsub("_cont_entries", "", out_cols),"_final")
+  
+CONS_C1_df_dup_JUL_2020_prev_e%>%
+  dplyr::mutate(tipo_de_plan_2_for_f_cont_entries=tipo_de_plan_2_for_f)%>%
+  dplyr::mutate(tipo_de_plan_2_for_f=tipo_de_plan_2)%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_f",., envir = .GlobalEnv)
 
-##EJEMPLOS PARA VER DISTRIBUCION DE VARIABLES
-                #CONS_C1_df_dup_JUN_2020%>% dplyr::filter(row%in%unlist(c(CONS_C1_JUN_2020_row_sig_row$row,CONS_C1_JUN_2020_row_sig_row$sig_row)))%>%janitor::tabyl(tiene_menores_de_edad_a_cargo)
-                #CONS_C1_df_dup_JUN_2020%>% janitor::tabyl(evaluacindelprocesoteraputico)  
+for(col in out_cols){
+  old = gsub("_cont_entries", "", col)
+  new = paste0(gsub("_cont_entries", "", col),"_final")
+  
+  CONS_C1_df_dup_JUL_2020_prev_f%>% dplyr::mutate(!!sym(new):= ifelse(is.na(concat_hash_id_treatments), as.character(!!sym(old)), as.character(!!sym(col))))%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_f",., envir = .GlobalEnv)
+}
+no_mostrar="si"
+if(no_mostrar=="no"){
+    CONS_C1_df_dup_JUL_2020_prev_f%>%
+      dplyr::filter(!is.na(concat_hash_id_treatments))%>%
+      dplyr::select(concat_hash_id_treatments,!!(old),!!(out_cols),!!(out_cols_final))%>% 
+      View()
+}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_      
+#_#_#_#_#_#_#_
+#g. Favor dgs. - wide format
+#_#_#_#_#_#_#_
+out_cols <-c('dg_trs_psiq_dsm_iv_or','dg_trs_psiq_sub_dsm_iv_or','x2_dg_trs_psiq_dsm_iv_or','x2_dg_trs_psiq_sub_dsm_iv_or','x3_dg_trs_psiq_dsm_iv_or','x3_dg_trs_psiq_sub_dsm_iv_or','dg_trs_psiq_cie_10_or','dg_trs_psiq_sub_cie_10_or','x2_dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_sub_cie_10_or','x3_dg_trs_psiq_cie_10_or','x3_dg_trs_psiq_sub_cie_10_or','diagnostico_trs_fisico','otros_probl_at_sm_or')
 
+out_cols_final <-paste0(gsub("_cont_entries", "", out_cols),"_final")
+  
+CONS_C1_df_dup_JUL_2020_prev_f%>%
+  dplyr::mutate(tipo_de_plan_2_for_f_cont_entries=tipo_de_plan_2_for_f)%>%
+  dplyr::mutate(tipo_de_plan_2_for_f=tipo_de_plan_2)%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_g",., envir = .GlobalEnv)
 
-  dplyr::mutate(obs=case_when(sum_excess_days_bef_2010>0~glue::glue("{obs};3.05.1.HASH w/ cases w/ >1095 d treat started <2010"),TRUE~obs))%>%  
+for(col in out_cols){
+  old = gsub("_cont_entries", "", col)
+  new = paste0(gsub("_cont_entries", "", col),"_final")
+  
+  CONS_C1_df_dup_JUL_2020_prev_g%>% dplyr::mutate(!!sym(new):= ifelse(is.na(concat_hash_id_treatments), as.character(!!sym(old)), as.character(!!sym(col))))%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_g",., envir = .GlobalEnv)
+}
+no_mostrar="si"
+if(no_mostrar=="no"){
+    CONS_C1_df_dup_JUL_2020_prev_g%>%
+      dplyr::filter(!is.na(concat_hash_id_treatments))%>%
+      dplyr::select(concat_hash_id_treatments,!!(old),!!(out_cols),!!(out_cols_final))%>% 
+      View()
+}
+CONS_C1_df_dup_JUL_2020_prev_g%>%
+  dplyr::mutate(across(c(x4_dg_trs_psiq_dsm_iv_or, x4_dg_trs_psiq_sub_dsm_iv_or, x4_dg_trs_psiq_cie_10_or, x5_dg_trs_psiq_cie_10_or, x6_dg_trs_psiq_cie_10_or, x4_dg_trs_psiq_sub_cie_10_or),~.,.names = "{col}_final"))%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_g",., envir = .GlobalEnv)
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_      
+#_#_#_#_#_#_#_
+#h. Sum values
+#_#_#_#_#_#_#_
+out_cols <-c("dias_trat_imp","dias_trat_inv")
 
+out_cols_final <-paste0(gsub("_cont_entries", "", out_cols),"_final")
+  
+CONS_C1_df_dup_JUL_2020_prev_g%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_h",., envir = .GlobalEnv)
+
+for(col in out_cols){
+  old = gsub("_cont_entries", "", col)
+  new = paste0(gsub("_cont_entries", "", col),"_final")
+  
+  CONS_C1_df_dup_JUL_2020_prev_h%>% dplyr::mutate(!!sym(new):= ifelse(is.na(concat_hash_id_treatments), as.character(!!sym(old)), as.character(!!sym(col))))%>%
+  assign("CONS_C1_df_dup_JUL_2020_prev_h",., envir = .GlobalEnv)
+}
+no_mostrar="si"
+if(no_mostrar=="no"){
+    CONS_C1_df_dup_JUL_2020_prev_h%>%
+      dplyr::filter(!is.na(concat_hash_id_treatments))%>%
+      dplyr::select(concat_hash_id_treatments,!!(old),!!(out_cols),!!(out_cols_final))%>% 
+      View()
+}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_      
+#_#_#_#_#_#_#_
+#Consolidación
+
+CONS_C1_df_dup_JUL_2020_prev_h%>%
+dplyr::select(c('row', 'row_cont_entries','concat_hash_id_treatments','id_centro_concat_a','obs_concat_a','tipo_de_plan_2_concat_a','rn_common_treats2','id_centro_final','tipo_de_plan_2_final','obs_final','tipo_centro_final','servicio_de_salud_final','senda_final','nombre_centro_final','numero_de_hijos_mod_final','ano_bd_last_final','num_hijos_trat_res_mod_final','tipo_centro_derivacion_final','fech_egres_imp_final','motivodeegreso_mod_imp_final','macrozona_final','nombre_region_final','comuna_residencia_cod_final','fech_ing_final','fecha_ingreso_a_convenio_senda_final','identidad_de_genero_final','edad_al_ing_final','origen_ingreso_mod_final','ano_bd_first_final','x_se_trata_mujer_emb_final','compromiso_biopsicosocial_final','dg_global_nec_int_soc_or_final','dg_nec_int_soc_cap_hum_or_final','dg_nec_int_soc_cap_fis_or_final','dg_nec_int_soc_cap_soc_or_final','usuario_tribunal_trat_droga_final','evaluacindelprocesoteraputico_final','eva_consumo_final','eva_fam_final','eva_relinterp_final','eva_ocupacion_final','eva_sm_final','eva_fisica_final','eva_transgnorma_final','dg_global_nec_int_soc_or_1_final','dg_nec_int_soc_cap_hum_or_1_final','dg_nec_int_soc_cap_fis_or_1_final','dg_nec_int_soc_cap_soc_or_1_final','tiene_menores_de_edad_a_cargo_final','ha_estado_embarazada_egreso_final','discapacidad_final','opcion_discapacidad_final','escolaridad_final','edad_al_ing_grupos_final','hash_key_final','id_final','nacionalidad_final','hash_rut_completo_final','sexo_2_final','embarazo_final','id_mod_final','fech_nac_final','edad_ini_cons_final','edad_ini_sus_prin_final','estado_conyugal_2_final','edad_grupos_final','freq_cons_sus_prin_final','via_adm_sus_prin_act_final','etnia_cor_final','nacionalidad_2_final','etnia_cor_2_final','sus_ini_2_mod_final','sus_ini_3_mod_final','sus_ini_mod_final','at_least_one_cont_entry_final','con_quien_vive_final','estatus_ocupacional_final','cat_ocupacional_final','sus_principal_mod_final','tipo_de_vivienda_mod_final','tenencia_de_la_vivienda_mod_final','rubro_trabaja_mod_final','otras_sus1_mod_final','otras_sus2_mod_final','otras_sus3_mod_final','dg_trs_cons_sus_or_final','tipo_de_programa_2_final','tipo_de_plan_2_for_f_final','dg_trs_psiq_dsm_iv_or_final','dg_trs_psiq_sub_dsm_iv_or_final','x2_dg_trs_psiq_dsm_iv_or_final','x2_dg_trs_psiq_sub_dsm_iv_or_final','x3_dg_trs_psiq_dsm_iv_or_final','x3_dg_trs_psiq_sub_dsm_iv_or_final','dg_trs_psiq_cie_10_or_final','dg_trs_psiq_sub_cie_10_or_final','x2_dg_trs_psiq_cie_10_or_final','x2_dg_trs_psiq_sub_cie_10_or_final','x3_dg_trs_psiq_cie_10_or_final','x3_dg_trs_psiq_sub_cie_10_or_final','diagnostico_trs_fisico_final','otros_probl_at_sm_or_final','x4_dg_trs_psiq_dsm_iv_or_final','x4_dg_trs_psiq_sub_dsm_iv_or_final','x4_dg_trs_psiq_cie_10_or_final','x5_dg_trs_psiq_cie_10_or_final','x6_dg_trs_psiq_cie_10_or_final','x4_dg_trs_psiq_sub_cie_10_or_final','dias_trat_imp_final','dias_trat_inv_final'))%>%
+  assign("CONS_C1_df_dup_JUL_2020_cons",., envir = .GlobalEnv)
+  
+#row_cont_entries - Está concatenada
+#tipo_de_plan_2_cont_entries -  table(CONS_C1_df_dup_JUL_2020_prev_h$tipo_de_plan_2_cont_entries) - 2. ultimo tratamiento (b)
+#obs_cont_entries - obs del mismo valor - 2. mismo valor (e)
 
 invisible(c("6. Estandarizar las fechas de ingreso y egreso al final"))
 invisible(c("7. Dejar estos y sacar el prefijo mod"))
-invisible(c("8. bind con la base de datos original sin las filas de CONS_C1_JUN_2020_row_sig_row"))
 invisible(c("9. Este bind deberá tener en cuenta que hay variables q están numerizadas, otras se resumieron como otras_sus_1, o etc"))
-invisible(c("10. Extender validación de tiene_menores_de_edad_a_cargo si tiene hijos"))
 invisible(c("11. Extender validación y ordenación de variables como dg_nec_ y eva_ evaluacindelprocesoteraputico"))
 invisible(c("12. Hacer variable tipo de programa 2, en base a los planes"))
 invisible(c("13. Validar otras sustancias para que no repitan la misma información del otras sus anterior"))
-invisible(c("14. Validar opcion_discapacidad en función de discapacidad"))
 invisible(c("15. Ver factores"))
+```
 
+## Standardization of variables
+
+We generated variables that compare each treatment with their following treatment (in case the user had more than one treatment) (`obs_cambios`). Also we calculated the days of treatment of each treatment (`dias_treat_imp_sin_na`), and in case the treatment did not have a date of discharge, we decided to get the difference of days between the date of admission and the date of retrieval of the dataset (2020-11-13). For analytic terms, we added two situations to the cause of discharge: the treatment is in course and does not have another observation, or is in course but the treatment exceeds 1095 days of treatment. We also included two variables to indicate whether a treatment had a difference of less than 45 (`menor_45_dias_diff`) or 60 (`menor_60_dias_diff`) days with the following treatment (if any).
+
+<br>
+
+```{r std1_generate_variable_for_cont_treat, echo=T, paged.print=TRUE,eval=T}
+#       main= "Efecto conjunto de Cambios en Características de Tratamiento y Motivo de \n egreso (Derivación), en la probabilidad de que el Tratamiento Dure Menos o Igual de 60 días",
+
+CONS_C1_df_dup_JUL_2020_cons%>%
+    dplyr::rename_at(.vars = vars(matches("_final$")),
+            .funs = funs(sub("_final$", "", .)))%>%
+    dplyr::select(row, row_cont_entries,hash_key,hash_rut_completo,id,id_mod,fech_ing,fech_egres_imp,tipo_de_plan_2,tipo_de_plan_2_for_f,tipo_de_plan_2_concat_a,tipo_de_programa_2,id_centro,nombre_centro,id_centro_concat_a,everything())%>%
+  dplyr::relocate(ano_bd_first,ano_bd_last,obs,obs_concat_a,rn_common_treats2,concat_hash_id_treatments,at_least_one_cont_entry, .after = last_col())%>%
+  dplyr::select(-contains("dias_trat"))%>%
+  dplyr::mutate(senda_concat_a=senda)%>%
+  dplyr::mutate(senda=sub(".*\\; ","",senda))%>%
+  dplyr::mutate(tipo_centro_concat_a=tipo_centro)%>%
+  dplyr::mutate(tipo_centro=sub(".*\\; ","",tipo_centro))%>%
+  dplyr::rename("tipo_de_plan_2_largest_treat"="tipo_de_plan_2_for_f")%>%
+  #CONS_C1_df_dup_JUL_2020_cons2%>%dplyr::mutate(esto=ifelse(tipo_de_plan_2_for_f!=tipo_de_plan_2,1,0))%>% filter(esto==1)%>% View()
+  
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing)))%>%
+  dplyr::mutate(fech_egres_num=as.numeric(as.Date(fech_egres_imp)))%>%
+  dplyr::mutate(fech_egres_num=ifelse(is.na(fech_egres_imp),18213,fech_egres_num))%>% #equivalente a 2019-11-13
+  dplyr::mutate(fech_ing_next_treat=dplyr::lag(fech_egres_num))%>%
+  dplyr::mutate(diff_bet_treat=fech_ing_next_treat-fech_egres_num)%>%
+  dplyr::mutate(id_centro_sig_trat=dplyr::lag(id_centro)) %>%
+  dplyr::mutate(tipo_plan_sig_trat=dplyr::lag(tipo_de_plan_2)) %>%
+  dplyr::mutate(tipo_programa_sig_trat=dplyr::lag(tipo_de_programa_2)) %>%
+  dplyr::mutate(senda_sig_trat=dplyr::lag(senda)) %>%
+  dplyr::ungroup()%>%
+  #para tener sólo los casos que corresponde, que tienen comparaciones con un siguiente. Los otros no me interesan
+  dplyr::mutate(menor_60_dias_diff=case_when(diff_bet_treat<60~1,TRUE~0))%>%
+  dplyr::mutate(menor_45_dias_diff= ifelse(diff_bet_treat<45,1,0))%>%
+  dplyr::mutate(motivoegreso_derivacion=case_when(motivodeegreso_mod_imp=="Derivación"~1,TRUE~0))%>%
+  dplyr::mutate(dias_treat_imp_sin_na=fech_egres_num-fech_ing_num)%>%
+  dplyr::mutate(motivodeegreso_mod_imp=ifelse(dias_treat_imp_sin_na<1095 & is.na(fech_egres_imp),"En curso",as.character(motivodeegreso_mod_imp)))%>%
+  dplyr::mutate(motivodeegreso_mod_imp=ifelse(dias_treat_imp_sin_na>=1095 & is.na(fech_egres_imp),"En curso (>=1095 d)",as.character(motivodeegreso_mod_imp)))%>%
+  
+  dplyr::mutate(obs_cambios=case_when(id_centro_sig_trat!=id_centro~"1.1.cambio centro",TRUE~""))%>%
+  dplyr::mutate(obs_cambios=case_when(tipo_plan_sig_trat!=tipo_de_plan_2~glue::glue("{obs_cambios};1.2.cambio tipo plan"),TRUE~obs_cambios))%>%
+  dplyr::mutate(obs_cambios=case_when(tipo_programa_sig_trat!=tipo_de_programa_2~glue::glue("{obs_cambios};1.3.cambio tipo programa"),TRUE~obs_cambios))%>%
+  dplyr::mutate(obs_cambios=case_when(senda_sig_trat!=senda~glue::glue("{obs_cambios};1.4.cambio senda"),TRUE~obs_cambios))%>%
+  dplyr::mutate(obs_cambios_ninguno=case_when(obs_cambios==""~1,TRUE~0))%>%
+  dplyr::mutate(obs_cambios_num=case_when(id_centro_sig_trat!=id_centro~1,TRUE~0))%>%
+  dplyr::mutate(obs_cambios_num=case_when(tipo_plan_sig_trat!=tipo_de_plan_2~obs_cambios_num+1,TRUE~obs_cambios_num))%>%
+  dplyr::mutate(obs_cambios_num=case_when(tipo_programa_sig_trat!=tipo_de_programa_2~obs_cambios_num+1,TRUE~obs_cambios_num))%>%
+  dplyr::mutate(obs_cambios_num=case_when(senda_sig_trat!=senda~obs_cambios_num+1,TRUE~obs_cambios_num))%>%
+  dplyr::mutate(obs_cambios_num=as.numeric(obs_cambios_num))%>%
+  dplyr::mutate(obs_cambios_fac=obs_cambios_num)%>%
+  dplyr::mutate(menor_45_dias_diff= recode(as.character(menor_45_dias_diff),"0"=">= 45 Days of Difference Between Entries","1"="<45 Days of Difference Between Entries"))%>%
+  dplyr::mutate(menor_60_dias_diff= recode(as.character(menor_60_dias_diff),"0"=">= 60 Days of Difference Between Entries","1"="<60 Days of Difference Between Entries"))%>%
+  dplyr::mutate(obs_cambios_ninguno= recode(as.character(obs_cambios_ninguno),"0"="At least 1 Change w/ the Next Entry","1"="No Changes w/ the Next Entry"))%>%
+  dplyr::mutate(motivoegreso_derivacion= recode(as.character(motivoegreso_derivacion),"0"="Other causes of discharge","1"="Referral"))%>%
+  dplyr::mutate_at(c('menor_45_dias_diff','menor_60_dias_diff','motivoegreso_derivacion','obs_cambios_ninguno','obs_cambios_fac'),~as.factor(.))%>%
+  assign("CONS_C1_df_dup_JUL_2020_cons2",., envir = .GlobalEnv)
+```
+```{r std3_numeric,echo=T, paged.print=TRUE, eval=T}
+invisible(c("1.Validar el número de hijos con lo de número de hijos ing trat res"))
+invisible(c("2.tipo_centro_derivacion ASEGURARSE QUE TENGA MOTIVO DE EGRESO DERIVACIÓN"))
+invisible(c("num_hijos_trat_res numero_de_hijos_mod, num_hijos_trat_res_mod rubro_trabaja_mod tenencia_de_la_vivienda_mod tipo_de_vivienda_mod"))
+#numero_de_hijos
+#num_hijos_ing_trat_res
+#edad_al_ing
+#edad_ini_cons
+#edad_ini_sus_prin
+
+CONS_C1_df_dup_JUL_2020_cons2%>%
+  dplyr::mutate(across(c(numero_de_hijos_mod, num_hijos_trat_res_mod, edad_ini_cons,edad_ini_sus_prin),~as.integer(.)))%>%
+dplyr::mutate(across(c(edad_al_ing),~as.numeric(.)))%>%
+    dplyr::mutate(numero_de_hijos_mod= dplyr::case_when(numero_de_hijos_mod>10 & (num_hijos_trat_res_mod!=numero_de_hijos_mod|is.na(num_hijos_trat_res_mod))~NA_integer_,TRUE~numero_de_hijos_mod))%>%
+  #dplyr::filter(numero_de_hijos>10,num_hijos_ing_trat_res!=numero_de_hijos)%>% dplyr::select(numero_de_hijos_mod,num_hijos_ing_trat_res,numero_de_hijos)
+  dplyr::mutate(numero_de_hijos_mod= dplyr::case_when(grepl("hij",con_quien_vive) & numero_de_hijos_mod==0 & num_hijos_trat_res_mod>0~num_hijos_trat_res_mod, TRUE~numero_de_hijos_mod))%>%
+  #dplyr::filter(numero_de_hijos_mod==num_hijos_ing_trat_res,num_hijos_ing_trat_res>0,grepl("hij",con_quien_vive))%>%dplyr::select(numero_de_hijos_mod,num_hijos_ing_trat_res,numero_de_hijos,con_quien_vive) 
+  dplyr::mutate(num_hijos_trat_res_mod= dplyr::case_when(numero_de_hijos_mod==0 & grepl("hij",con_quien_vive)~NA_integer_,TRUE~num_hijos_trat_res_mod))%>%
+  dplyr::mutate(num_hijos_trat_res_mod= dplyr::case_when(num_hijos_trat_res_mod>numero_de_hijos_mod~NA_integer_,TRUE~num_hijos_trat_res_mod))%>%
+assign("CONS_C1_df_dup_JUL_2020_cons3",., envir = .GlobalEnv)
+```
+```{r std4_cause_of_referral_cause_of_discharge,echo=T, paged.print=TRUE, eval=F}
+invisible(c("2.tipo_centro_derivacion ASEGURARSE QUE TENGA MOTIVO DE EGRESO DERIVACIÓN"))
+invisible(
+  tabyl(CONS_C1_df_dup_JUN_2020,tipo_centro_derivacion,motivodeegreso_mod_imp)
+)
+invisible(
+tabyl(CONS_C1_df_dup_JUL_2020_cons3,tipo_centro_derivacion,motivodeegreso_mod_imp)
+)
+invisible(c("Lo tenía malo porque estaba reemplazando si no estaba"))
+invisible(23+3+11+91+379+76+39+7+28+23945)
+```
+
+<br>
+
+We replaced cases that reported having dependent children if in the question related to dependent children they responded more than 1.
+
+<br>
+
+```{r std4_tiene_menores_edad_a_cargo,echo=T, paged.print=TRUE, eval=T}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+# Tiene menores de edad a cargo
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+invisible(c("10. Extender validación de tiene_menores_de_edad_a_cargo si tiene hijos"))
+#CONS_C1_df_dup_JUL_2020_cons3%>% janitor::tabyl(tiene_menores_de_edad_a_cargo,numero_de_hijos_mod)
+
+CONS_C1_df_dup_JUL_2020_cons3%>%
+    dplyr::mutate(tiene_menores_de_edad_a_cargo=ifelse(numero_de_hijos_mod>0 & tiene_menores_de_edad_a_cargo=="si","si","no"))%>%
+  assign("CONS_C1_df_dup_JUL_2020_cons4",., envir = .GlobalEnv)
+```
+
+<br>
+
+We focused on cases that had treatments with different gender identity, type of plan & type of program.  As noted by SENDAs professionals, the type of program is subordinated to the type of plan that each user might have. Possibly and despite we keeped those cases that had a gender identity in intermediate treatments, it is possible that when the entries collapsed into treatments, some information might overlapped generating some inconsistencies. This is why we checked for them, particularly related to gender-related programs.
+
+<br>
+
+We assumed that women and users that reported a gender identity of a women could be in a women or a general-population program. However, men with a masculine or not reported identity could only be in a general-population program. **We are investigating to determine whether the assignment of the sex was wrong, or it corresponded to a problem of classification**.
+
+<br>
+
+```{r std5_tipo_plan_tipo_programa,echo=T, paged.print=TRUE, eval=F}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+# Tipo de plan y Tipo de Programa
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+invisible(
+CONS_C1_df_dup_JUL_2020_cons4%>%
+    dplyr::select(hash_key, fech_ing, fech_egres_imp)
+)
+#CONS_C1_df_dup_JUL_2020_cons4%>%janitor::tabyl(tipo_de_programa_2,tipo_de_plan_2,sexo_2)
+
+invisible(c("a- no son mujeres, con identidad de género distinta a femenino y tienen un tipo de programa mujeres."))
+  #CONS_C1_df_dup_JUL_2020_cons4%>% dplyr::filter(sexo_2!="Mujer",grepl("Muje",tipo_de_programa_2))%>% dplyr::filter(identidad_de_genero!="Femenino"|is.na(identidad_de_genero))
+#tipo_de_plan_2_largest_treat
+#CONS_C1_df_dup_JUL_2020_cons4%>% dplyr::filter(sexo_2!="Mujer",grepl("Muje",tipo_de_programa_2))%>% dplyr::filter(identidad_de_genero!="Femenino"|is.na(identidad_de_genero))%>% dplyr::select(obs)%>% dplyr::filter(grepl("2.6.01",obs)) #40 de 96 tienen otrA IDENTIDAD DE GÉNERO. INVESTIGAR.
+invisible(c("ver los centros que tienen como 'mujeres' en el nombre, ahi puedo estar escondiendo una incosistencia. Ver si el problema está en la asignación del sexo o del programa"))
+
+invisible(c("a- no son mujeres, con identidad de género distinta a femenino y tienen un tipo de programa mujeres."))
+#CONS_C1_df_dup_JUL_2020_cons4%>% dplyr::filter(sexo_2!="Mujer", identidad_de_genero!="Femenino",grepl("M-",tipo_de_plan_2))
+#CONS_C1_df_dup_JUL_2020_cons4%>% dplyr::filter(sexo_2!="Mujer", is.na(identidad_de_genero),grepl("Muje",tipo_de_programa_2), grepl("M-",tipo_de_plan_2))
+
+CONS_C1_df_dup_JUL_2020_cons4%>%
+  #dplyr::mutate(tipo_de_programa_2= tipo_de_programa_2, tipo_de_plan_2_for_f)%>%
+  #*6 tipo_de_programa tipo_de_plan: MANDA EL PLAN- M-PAI debe estar en mujeres. Cambiar a mujeres si está en población general// no hay casos
+   dplyr::mutate(podria_ser_mujer=
+   dplyr::case_when(
+     sexo!="Mujer" & (is.na(identidad_de_genero)|identidad_de_genero!="Femenino") & grepl("M-",tipo_de_plan_2)~sub("M-", "PG-",tipo_de_plan_2),
+
+     sexo_2=="Mujer" & is.na(identidad_de_genero) & grepl("M-",tipo_de_plan_2_for_f)~"Programa Específico Mujeres",
+                                    sexo_2=="Hombre" & is.na(identidad_de_genero) & !grepl("M-",tipo_de_plan_2_for_f) & grepl("Muje",tipo_de_programa_2)~, TRUE~as.character(tipo_de_plan_2_for_f)))%>%
+  janitor::tabyl(tipo_de_plan_2_for_f,tipo_de_programa_2,identidad_de_genero)
+                                                             
+   dplyr::mutate(tipo_de_plan=dplyr::case_when(
+     sexo_2!="Mujer" & is.na(identidad_de_genero)~sub("^M-", "^PG-", mod_a_obs), as.character(tipo_de_plan))) %>%
+
+     # dplyr::mutate(obs=case_when(sum_excess_days_bef_2010>0~glue::glue("{obs};3.05.1.HASH w/ cases w/ >1095 d treat started <2010"),TRUE~obs))%>% 
+     
+     
+  #  dplyr::mutate(id=ifelse(sexo_2.2=="Mujer",`substr<-`(id_mod.2,5,5,"2"),`substr<-`(id_mod.1,5,5,"1"))) %>%
+  #dplyr::mutate(id.1=ifelse(sexo_2.1=="Mujer",`substr<-`(id.1,5,5,"2"),`substr<-`(id.1,5,5,"1"))) %>%
+  #dplyr::mutate(sexo_2.1=as.factor(sexo_2.1))%>%
+     
+invisible(c("dg_trs_cons_sus_or","tipo_de_programa_2","dg_trs_cons_sus_or_cont_entries","tipo_de_programa_2_cont_entries"))
+```
+
+```{r std6,echo=T, paged.print=TRUE, eval=F}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+# Opcion_discapacidad
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+invisible(c("14. Validar opcion_discapacidad en función de discapacidad _---> está bien"))
 invisible(c("16. Podría traerme por ej, opcion_discapacidad, en el caso que lo haya mencionado la persona, de una base anterior"))
+CONS_C1_df_dup_JUL_2020_cons4%>% janitor::tabyl(discapacidad,opcion_discapacidad)
+```
+
+<br>
+
+We decided to order specific variables based on its severity or level of vulnerability, by adding an arbitrary greater number to those categories with a greater vulnerability or severity.
+
+<br>
+
+```{r std7_order_severity_vulnerability,echo=T, paged.print=TRUE, eval=T}
+CONS_C1_df_dup_JUL_2020_cons4%>% 
+    dplyr::mutate(compromiso_biopsicosocial=dplyr::case_when(compromiso_biopsicosocial=="1"~"1-Leve",
+                                                         compromiso_biopsicosocial=="2"~"Moderado",
+                                                         compromiso_biopsicosocial=="3"~"Severo",TRUE~NA_character_))%>%
+    dplyr::mutate(escolaridad=dplyr::case_when(escolaridad=="1"~"1-Mayor a Ed Secundaria",
+                                               escolaridad=="2"~"2-Ed Secundaria Completa o Menor",
+                                               escolaridad=="3"~"Ed Primaria Completa o Menor",TRUE~NA_character_))%>%
+    dplyr::mutate(across(c(dg_global_nec_int_soc_or, dg_nec_int_soc_cap_hum_or, dg_nec_int_soc_cap_fis_or, dg_nec_int_soc_cap_soc_or,dg_global_nec_int_soc_or_1, dg_nec_int_soc_cap_hum_or_1, dg_nec_int_soc_cap_fis_or_1,dg_nec_int_soc_cap_soc_or_1),~dplyr::case_when(as.character(.)=="3"~"3-Bajas",as.character(.)=="2"~"2-Medias",as.character(.)=="1"~"1-Altas",TRUE~NA_character_)))%>%
+    dplyr::mutate(across(c(evaluacindelprocesoteraputico, eva_consumo, eva_fam, eva_relinterp, eva_ocupacion, eva_sm, eva_fisica, eva_transgnorma),~dplyr::case_when(as.character(.)=="3"~"3-Logro Minimo",as.character(.)=="2"~"2-Logro Intermedio",as.character(.)=="1"~"1-Logro Alto",TRUE~NA_character_)))%>%
+  dplyr::mutate(across(c(compromiso_biopsicosocial, escolaridad,dg_global_nec_int_soc_or, dg_nec_int_soc_cap_hum_or, dg_nec_int_soc_cap_fis_or, dg_nec_int_soc_cap_soc_or,dg_global_nec_int_soc_or_1, dg_nec_int_soc_cap_hum_or_1, dg_nec_int_soc_cap_fis_or_1,dg_nec_int_soc_cap_soc_or_1,evaluacindelprocesoteraputico, eva_consumo, eva_fam, eva_relinterp, eva_ocupacion, eva_sm, eva_fisica, eva_transgnorma),~as.factor(.)))%>%
+  assign("CONS_C1_df_dup_JUL_2020_cons5",., envir = .GlobalEnv)
+```
+
+
+```{r std8_ocupacion_inconsis,eval=T, echo=T, paged.print=TRUE,eval=F}
+invisible(c("17. Ver categoría y estatus ocupacional ahora para ver inconsistencias"))
+CONS_C1_df_dup_JUL_2020_cons4%>% janitor::tabyl(estatus_ocupacional,cat_ocupacional,rubro_trabaja_mod )
 
 ```
 
+```{r std9_as_factor_vars,eval=T, echo=T, paged.print=TRUE}
+CONS_C1_df_dup_JUL_2020_cons5%>%
+  dplyr::mutate_at(vars(contains("cie_10_or"),contains("dsm_iv_or"),contains("tipo_de_plan"),c('tipo_de_programa_2','nombre_centro','tipo_centro','servicio_de_salud','senda','tipo_centro_derivacion','usuario_tribunal_trat_droga','motivodeegreso_mod_imp','macrozona','nombre_region','comuna_residencia_cod','identidad_de_genero','origen_ingreso_mod','x_se_trata_mujer_emb','usuario_tribunal_trat_droga','tiene_menores_de_edad_a_cargo','ha_estado_embarazada_egreso','discapacidad','opcion_discapacidad','escolaridad','edad_al_ing_grupos','nacionalidad','sexo_2','embarazo','estado_conyugal_2','edad_grupos','freq_cons_sus_prin','via_adm_sus_prin_act','etnia_cor','nacionalidad_2','etnia_cor_2','sus_ini_2_mod','sus_ini_3_mod','sus_ini_mod','con_quien_vive','estatus_ocupacional','cat_ocupacional','sus_principal_mod', 'tipo_de_vivienda_mod','tenencia_de_la_vivienda_mod','rubro_trabaja_mod','otras_sus1_mod','otras_sus2_mod','otras_sus3_mod','dg_trs_cons_sus_or','diagnostico_trs_fisico','otros_probl_at_sm_or','ano_bd_first','ano_bd_last')),~as.factor(.))%>%
+    assign("CONS_C1_df_dup_JUL_2020",., envir = .GlobalEnv)
+```  
+
 ## Consolidation of the dataset and its variables 
 
-
-```{r change labels,echo=T, paged.print=TRUE, eval=F}
+```{r change labels,echo=T, paged.print=TRUE, eval=T}
   metadata(CONS_C1_df_dup_JUL_2020)$name <- "Agreement 1 SENDA"
-  metadata(CONS_C1_df_dup_JUL_2020)$description <- "Information About Agreement 1 of SENDA and MINSAL"
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-CONS_C1_df_dup_JUL_2020<-
- CONS_C1_df_dup_JUL_2020 %>% dplyr::mutate(dg_trs_psiq_cie_10_or= recode(as.character(dg_trs_psiq_cie_10_or),
-                                           'En estudio' ='En estudio(NA)',
-                                           'Esquizofrenia, trastorno esquizotípico y trastornos de ideas delirantes' ='Esquizofrenia, trastorno esquizotípico y trastornos de ideas delirantes(F20-29)',
-                                           'Retraso Mental' ='Retraso Mental(F70-79)',
-                                           'Sin trastorno' ='Sin trastorno(NA)',
-                                           'Trastornos de la conducta alimentaria ' ='Trastornos de la conducta alimentaria(F50)',
-                                           'Trastornos de la personalidad y del comportamiento del adulto' ='Trastornos de la personalidad y del comportamiento del adulto(F60-69)',
-                                           'Trastornos de los hábitos y del control de los impulsos' ='Trastornos de los hábitos y del control de los impulsos(F63)',
-                                           'Trastornos del comportamiento asociados a disfunciones fisiológicas y a factores somáticos' ='Trastornos del comportamiento asociados a disfunciones fisiológicas y a factores somáticos(F50-59)',
-                                           'Trastornos del Desarrollo Psicológico' ='Trastornos del Desarrollo Psicológico(F80-89)',
-                                           'Trastornos del humor (afectivos).' ='Trastornos del humor (afectivos) (F30-39)',
-                                           'Trastornos mentales orgánicos, incluidos los sintomáticos' ='Trastornos mentales orgánicos, incluidos los sintomáticos(F00-09)',
-                                           'Trastornos neuróticos, secundarios a situaciones estresantes y somatomorfos' ='Trastornos neuróticos, secundarios a situaciones estresantes y somatomorfos(F40-49)',
-                                           'Trs. del comportamiento y de las emociones de comienzo habitual en la infancia y adolescencia' ='Trs. del comportamiento y de las emociones de comienzo habitual en la infancia y adolescencia(F90-98)'))
-
-CONS_C1_df_dup_JUL_2020<-
-  CONS_C1_df_dup_JUL_2020 %>% dplyr::mutate(x2_dg_trs_psiq_cie_10_or= recode(as.character(x2_dg_trs_psiq_cie_10_or),
-                                                                          'En estudio' ='En estudio(NA)',
-                                                                          'Esquizofrenia, trastorno esquizotípico y trastornos de ideas delirantes' ='Esquizofrenia, trastorno esquizotípico y trastornos de ideas delirantes(F20-29)',
-                                                                          'Retraso Mental' ='Retraso Mental(F70-79)',
-                                                                          'Sin trastorno' ='Sin trastorno(NA)',
-                                                                          'Trastornos de la conducta alimentaria ' ='Trastornos de la conducta alimentaria(F50)',
-                                                                          'Trastornos de la personalidad y del comportamiento del adulto' ='Trastornos de la personalidad y del comportamiento del adulto(F60-69)',
-                                                                          'Trastornos de los hábitos y del control de los impulsos' ='Trastornos de los hábitos y del control de los impulsos(F63)',
-                                                                          'Trastornos del comportamiento asociados a disfunciones fisiológicas y a factores somáticos' ='Trastornos del comportamiento asociados a disfunciones fisiológicas y a factores somáticos(F50-59)',
-                                                                          'Trastornos del Desarrollo Psicológico' ='Trastornos del Desarrollo Psicológico(F80-89)',
-                                                                          'Trastornos del humor (afectivos).' ='Trastornos del humor (afectivos) (F30-39)',
-                                                                          'Trastornos mentales orgánicos, incluidos los sintomáticos' ='Trastornos mentales orgánicos, incluidos los sintomáticos(F00-09)',
-                                                                          'Trastornos neuróticos, secundarios a situaciones estresantes y somatomorfos' ='Trastornos neuróticos, secundarios a situaciones estresantes y somatomorfos(F40-49)',
-                                                                          'Trs. del comportamiento y de las emociones de comienzo habitual en la infancia y adolescencia' ='Trs. del comportamiento y de las emociones de comienzo habitual en la infancia y adolescencia(F90-98)'))
-
-
-CONS_C1_df_dup_JUL_2020<-
-  CONS_C1_df_dup_JUL_2020 %>% dplyr::mutate(x3_dg_trs_psiq_cie_10_or= recode(as.character(x3_dg_trs_psiq_cie_10_or),
-                                                                             'En estudio' ='En estudio(NA)',
-                                                                             'Esquizofrenia, trastorno esquizotípico y trastornos de ideas delirantes' ='Esquizofrenia, trastorno esquizotípico y trastornos de ideas delirantes(F20-29)',
-                                                                             'Retraso Mental' ='Retraso Mental(F70-79)',
-                                                                             'Sin trastorno' ='Sin trastorno(NA)',
-                                                                             'Trastornos de la conducta alimentaria ' ='Trastornos de la conducta alimentaria(F50)',
-                                                                             'Trastornos de la personalidad y del comportamiento del adulto' ='Trastornos de la personalidad y del comportamiento del adulto(F60-69)',
-                                                                             'Trastornos de los hábitos y del control de los impulsos' ='Trastornos de los hábitos y del control de los impulsos(F63)',
-                                                                             'Trastornos del comportamiento asociados a disfunciones fisiológicas y a factores somáticos' ='Trastornos del comportamiento asociados a disfunciones fisiológicas y a factores somáticos(F50-59)',
-                                                                             'Trastornos del Desarrollo Psicológico' ='Trastornos del Desarrollo Psicológico(F80-89)',
-                                                                             'Trastornos del humor (afectivos).' ='Trastornos del humor (afectivos) (F30-39)',
-                                                                             'Trastornos mentales orgánicos, incluidos los sintomáticos' ='Trastornos mentales orgánicos, incluidos los sintomáticos(F00-09)',
-                                                                             'Trastornos neuróticos, secundarios a situaciones estresantes y somatomorfos' ='Trastornos neuróticos, secundarios a situaciones estresantes y somatomorfos(F40-49)',
-                                                                             'Trs. del comportamiento y de las emociones de comienzo habitual en la infancia y adolescencia' ='Trs. del comportamiento y de las emociones de comienzo habitual en la infancia y adolescencia(F90-98)'))
-
-CONS_C1_df_dup_JUL_2020<-
-  CONS_C1_df_dup_JUL_2020 %>% dplyr::mutate(dg_trs_psiq_sub_cie_10_or= recode(as.character(dg_trs_psiq_sub_cie_10_or),
-    'Abuso de sustancias que no producen dependencia' ='Abuso de sustancias que no producen dependencia(F55X)',
-    'Delirium no inducido por alcohol u otras sustancias psicotropas' ='Delirium no inducido por alcohol u otras sustancias psicotropas(F059)',
-    'Demencia en enfermedades clasificadas en otro lugar' ='Demencia en enfermedades clasificadas en otro lugar(F02)',
-    'Demencia sin especificación' ='Demencia sin especificación(F03)',
-    'Demencia vascular' ='Demencia vascular(F01)',
-    'Episodios depresivos' ='Episodios depresivos(F32)',
-    'Factores psicológicos y del comportamiento en trastornos o enfermedades clasificados en otro lugar' ='Factores psicológicos y del comportamiento en trastornos o enfermedades clasificados en otro lugar(F54)',
-    'Otros trastornos de ansiedad' ='Otros trastornos de ansiedad(F41)',
-    'Otros trastornos de la personalidad y del comportamiento del adulto' ='Otros trastornos de la personalidad y del comportamiento del adulto(F68)',
-    'Otros trastornos de las emociones y del comportamiento de comienzo habitual en la infancia y adolescencia' ='Otros trastornos de las emociones y del comportamiento de comienzo habitual en la infancia y adolescencia(F98)',
-    'Otros trastornos del desarrollo psicológico' ='Otros trastornos del desarrollo psicológico(F88)',
-    'Otros trastornos del humor (afectivos)' ='Otros trastornos del humor (afectivos)(F38)',
-    'Otros trastornos mentales debidos a lesión o disfunción cerebral o a enfermedad somática' ='Otros trastornos mentales debidos a lesión o disfunción cerebral o a enfermedad somática(F06)',
-    'Otros trastornos neuróticos' ='Otros trastornos neuróticos(F48)',
-    'Otros trastornos psicóticos no orgánicos' ='Otros trastornos psicóticos no orgánicos(F28)',
-    'Psicosis no orgánica sin especificación' ='Psicosis no orgánica sin especificación(F29)',
-    'Reacciones a estrés grave y trastornos de adaptación' ='Reacciones a estrés grave y trastornos de adaptación(F43)',
-    'Síndrome amnésico orgánico no inducido por alcohol u otras sustancias psicotropas' ='Síndrome amnésico orgánico no inducido por alcohol u otras sustancias psicotropas(F04)',
-    'Transformación persistente de la personalidad no atribuible a lesión o enfermedad cerebral' ='Transformación persistente de la personalidad no atribuible a lesión o enfermedad cerebral(F62)',
-    'Trastorno bipolar' ='Trastorno bipolar(F31)',
-    'Trastorno de ideas delirantes inducidas' ='Trastorno de ideas delirantes inducidas(F24)',
-    'Trastorno de la personalidad y del comportamiento del adulto sin especificación' ='Trastorno de la personalidad y del comportamiento del adulto sin especificación(F69)',
-    'Trastorno del desarrollo psicológico sin especificación' ='Trastorno del desarrollo psicológico sin especificación(F89)',
-    'Trastorno depresivo recurrente' ='Trastorno depresivo recurrente(F33)',
-    'Trastorno específico del desarrollo mixto' ='Trastorno específico del desarrollo mixto(F83)',
-    'Trastorno esquizotípico.' ='Trastorno esquizotípico.(F21)',
-    'Trastorno generalizado del desarrollo sin especificación' ='Trastorno generalizado del desarrollo sin especificación(F849)',
-    'Trastorno mental orgánico o sintomático sin especificación' ='Trastorno mental orgánico o sintomático sin especificación(F09)',
-    'Trastorno mental sin especificación' ='Trastorno mental sin especificación(F99)',
-    'Trastorno obsesivo-compulsivo' ='Trastorno obsesivo-compulsivo(F42)',
-    'Trastornos de ideas delirantes persistentes.' ='Trastornos de ideas delirantes persistentes.(F22)',
-    'Trastornos de la identidad sexual' ='Trastornos de la identidad sexual(F64)',
-    'Trastornos de la inclinación sexual' ='Trastornos de la inclinación sexual(F65)',
-    'Trastornos de la personalidad y del comportamiento debidos a enfermedad, lesión o disfunción cerebral' ='Trastornos de la personalidad y del comportamiento debidos a enfermedad, lesión o disfunción cerebral(F07)',
-    'Trastornos de las emociones de comienzo habitual en la infancia' ='Trastornos de las emociones de comienzo habitual en la infancia(F93)',
-    'Trastornos de los hábitos y del control de los impulsos' ='Trastornos de los hábitos y del control de los impulsos(F63)',
-    'Trastornos del comportamiento asociados a disfunciones fisiológicas y a factores somáticos sin especificación' ='Trastornos del comportamiento asociados a disfunciones fisiológicas y a factores somáticos sin especificación(F59)',
-    'Trastornos del comportamiento social de comienzo habitual en la infancia y adolescencia' ='Trastornos del comportamiento social de comienzo habitual en la infancia y adolescencia(F94)',
-    'Trastornos del humor (afectivos) persistentes' ='Trastornos del humor (afectivos) persistentes(F34)',
-    'Trastornos disociales' ='Trastornos disociales(F91)',
-    'Trastornos disociales y de las emociones mixtos' ='Trastornos disociales y de las emociones mixtos(F92)',
-    'Trastornos disociativos (de conversión)' ='Trastornos disociativos (de conversión)(F44)',
-    'Trastornos específicos de la personalidad' ='Trastornos específicos de la personalidad(F60)',
-    'Trastornos específicos del desarrollo del aprendizaje escolar' ='Trastornos específicos del desarrollo del aprendizaje escolar(F81)',
-    'Trastornos esquizoafectivos' ='Trastornos esquizoafectivos(F25)',
-    'Trastornos generalizados del desarrollo' ='Trastornos generalizados del desarrollo(F84)',
-    'Trastornos Hipercineticos' ='Trastornos Hipercineticos(F90)',
-    'Trastornos mentales y del comportamiento en el puerperio no clasificados en otro lugar' ='Trastornos mentales y del comportamiento en el puerperio no clasificados en otro lugar(F53)',
-    'Trastornos mixtos y otros trastornos de la personalidad' ='Trastornos mixtos y otros trastornos de la personalidad(F61)',
-    'Trastornos no orgánicos del sueño' ='Trastornos no orgánicos del sueño(F51)',
-    'Trastornos psicológicos y del comportamiento del desarrollo y orientación sexuales' ='Trastornos psicológicos y del comportamiento del desarrollo y orientación sexuales(F66)',
-    'Trastornos psicóticos agudos y transitorios' ='Trastornos psicóticos agudos y transitorios(F23)',
-    'Trastornos somatomorfos' ='Trastornos somatomorfos(F45)'))
-CONS_C1_df_dup_JUL_2020<-
-    CONS_C1_df_dup_JUL_2020 %>% dplyr::mutate(x2_dg_trs_psiq_sub_cie_10_or= recode(as.character(x2_dg_trs_psiq_sub_cie_10_or),
-                                                                                'Abuso de sustancias que no producen dependencia' ='Abuso de sustancias que no producen dependencia(F55X)',
-                                                                                'Delirium no inducido por alcohol u otras sustancias psicotropas' ='Delirium no inducido por alcohol u otras sustancias psicotropas(F059)',
-                                                                                'Demencia en enfermedades clasificadas en otro lugar' ='Demencia en enfermedades clasificadas en otro lugar(F02)',
-                                                                                'Demencia sin especificación' ='Demencia sin especificación(F03)',
-                                                                                'Demencia vascular' ='Demencia vascular(F01)',
-                                                                                'Episodios depresivos' ='Episodios depresivos(F32)',
-                                                                                'Factores psicológicos y del comportamiento en trastornos o enfermedades clasificados en otro lugar' ='Factores psicológicos y del comportamiento en trastornos o enfermedades clasificados en otro lugar(F54)',
-                                                                                'Otros trastornos de ansiedad' ='Otros trastornos de ansiedad(F41)',
-                                                                                'Otros trastornos de la personalidad y del comportamiento del adulto' ='Otros trastornos de la personalidad y del comportamiento del adulto(F68)',
-                                                                                'Otros trastornos de las emociones y del comportamiento de comienzo habitual en la infancia y adolescencia' ='Otros trastornos de las emociones y del comportamiento de comienzo habitual en la infancia y adolescencia(F98)',
-                                                                                'Otros trastornos del desarrollo psicológico' ='Otros trastornos del desarrollo psicológico(F88)',
-                                                                                'Otros trastornos del humor (afectivos)' ='Otros trastornos del humor (afectivos)(F38)',
-                                                                                'Otros trastornos mentales debidos a lesión o disfunción cerebral o a enfermedad somática' ='Otros trastornos mentales debidos a lesión o disfunción cerebral o a enfermedad somática(F06)',
-                                                                                'Otros trastornos neuróticos' ='Otros trastornos neuróticos(F48)',
-                                                                                'Otros trastornos psicóticos no orgánicos' ='Otros trastornos psicóticos no orgánicos(F28)',
-                                                                                'Psicosis no orgánica sin especificación' ='Psicosis no orgánica sin especificación(F29)',
-                                                                                'Reacciones a estrés grave y trastornos de adaptación' ='Reacciones a estrés grave y trastornos de adaptación(F43)',
-                                                                                'Síndrome amnésico orgánico no inducido por alcohol u otras sustancias psicotropas' ='Síndrome amnésico orgánico no inducido por alcohol u otras sustancias psicotropas(F04)',
-                                                                                'Transformación persistente de la personalidad no atribuible a lesión o enfermedad cerebral' ='Transformación persistente de la personalidad no atribuible a lesión o enfermedad cerebral(F62)',
-                                                                                'Trastorno bipolar' ='Trastorno bipolar(F31)',
-                                                                                'Trastorno de ideas delirantes inducidas' ='Trastorno de ideas delirantes inducidas(F24)',
-                                                                                'Trastorno de la personalidad y del comportamiento del adulto sin especificación' ='Trastorno de la personalidad y del comportamiento del adulto sin especificación(F69)',
-                                                                                'Trastorno del desarrollo psicológico sin especificación' ='Trastorno del desarrollo psicológico sin especificación(F89)',
-                                                                                'Trastorno depresivo recurrente' ='Trastorno depresivo recurrente(F33)',
-                                                                                'Trastorno específico del desarrollo mixto' ='Trastorno específico del desarrollo mixto(F83)',
-                                                                                'Trastorno esquizotípico.' ='Trastorno esquizotípico.(F21)',
-                                                                                'Trastorno generalizado del desarrollo sin especificación' ='Trastorno generalizado del desarrollo sin especificación(F849)',
-                                                                                'Trastorno mental orgánico o sintomático sin especificación' ='Trastorno mental orgánico o sintomático sin especificación(F09)',
-                                                                                'Trastorno mental sin especificación' ='Trastorno mental sin especificación(F99)',
-                                                                                'Trastorno obsesivo-compulsivo' ='Trastorno obsesivo-compulsivo(F42)',
-                                                                                'Trastornos de ideas delirantes persistentes.' ='Trastornos de ideas delirantes persistentes.(F22)',
-                                                                                'Trastornos de la identidad sexual' ='Trastornos de la identidad sexual(F64)',
-                                                                                'Trastornos de la inclinación sexual' ='Trastornos de la inclinación sexual(F65)',
-                                                                                'Trastornos de la personalidad y del comportamiento debidos a enfermedad, lesión o disfunción cerebral' ='Trastornos de la personalidad y del comportamiento debidos a enfermedad, lesión o disfunción cerebral(F07)',
-                                                                                'Trastornos de las emociones de comienzo habitual en la infancia' ='Trastornos de las emociones de comienzo habitual en la infancia(F93)',
-                                                                                'Trastornos de los hábitos y del control de los impulsos' ='Trastornos de los hábitos y del control de los impulsos(F63)',
-                                                                                'Trastornos del comportamiento asociados a disfunciones fisiológicas y a factores somáticos sin especificación' ='Trastornos del comportamiento asociados a disfunciones fisiológicas y a factores somáticos sin especificación(F59)',
-                                                                                'Trastornos del comportamiento social de comienzo habitual en la infancia y adolescencia' ='Trastornos del comportamiento social de comienzo habitual en la infancia y adolescencia(F94)',
-                                                                                'Trastornos del humor (afectivos) persistentes' ='Trastornos del humor (afectivos) persistentes(F34)',
-                                                                                'Trastornos disociales' ='Trastornos disociales(F91)',
-                                                                                'Trastornos disociales y de las emociones mixtos' ='Trastornos disociales y de las emociones mixtos(F92)',
-                                                                                'Trastornos disociativos (de conversión)' ='Trastornos disociativos (de conversión)(F44)',
-                                                                                'Trastornos específicos de la personalidad' ='Trastornos específicos de la personalidad(F60)',
-                                                                                'Trastornos específicos del desarrollo del aprendizaje escolar' ='Trastornos específicos del desarrollo del aprendizaje escolar(F81)',
-                                                                                'Trastornos esquizoafectivos' ='Trastornos esquizoafectivos(F25)',
-                                                                                'Trastornos generalizados del desarrollo' ='Trastornos generalizados del desarrollo(F84)',
-                                                                                'Trastornos Hipercineticos' ='Trastornos Hipercineticos(F90)',
-                                                                                'Trastornos mentales y del comportamiento en el puerperio no clasificados en otro lugar' ='Trastornos mentales y del comportamiento en el puerperio no clasificados en otro lugar(F53)',
-                                                                                'Trastornos mixtos y otros trastornos de la personalidad' ='Trastornos mixtos y otros trastornos de la personalidad(F61)',
-                                                                                'Trastornos no orgánicos del sueño' ='Trastornos no orgánicos del sueño(F51)',
-                                                                                'Trastornos psicológicos y del comportamiento del desarrollo y orientación sexuales' ='Trastornos psicológicos y del comportamiento del desarrollo y orientación sexuales(F66)',
-                                                                                'Trastornos psicóticos agudos y transitorios' ='Trastornos psicóticos agudos y transitorios(F23)',
-                                                                                'Trastornos somatomorfos' ='Trastornos somatomorfos(F45)'))
-    
-CONS_C1_df_dup_JUL_2020<-
-  CONS_C1_df_dup_JUL_2020 %>% dplyr::mutate(x3_dg_trs_psiq_sub_cie_10_or= recode(as.character(x3_dg_trs_psiq_sub_cie_10_or),
-                                                                                   'Abuso de sustancias que no producen dependencia' ='Abuso de sustancias que no producen dependencia(F55X)',
-                                                                                   'Delirium no inducido por alcohol u otras sustancias psicotropas' ='Delirium no inducido por alcohol u otras sustancias psicotropas(F059)',
-                                                                                   'Demencia en enfermedades clasificadas en otro lugar' ='Demencia en enfermedades clasificadas en otro lugar(F02)',
-                                                                                   'Demencia sin especificación' ='Demencia sin especificación(F03)',
-                                                                                   'Demencia vascular' ='Demencia vascular(F01)',
-                                                                                   'Episodios depresivos' ='Episodios depresivos(F32)',
-                                                                                   'Factores psicológicos y del comportamiento en trastornos o enfermedades clasificados en otro lugar' ='Factores psicológicos y del comportamiento en trastornos o enfermedades clasificados en otro lugar(F54)',
-                                                                                   'Otros trastornos de ansiedad' ='Otros trastornos de ansiedad(F41)',
-                                                                                   'Otros trastornos de la personalidad y del comportamiento del adulto' ='Otros trastornos de la personalidad y del comportamiento del adulto(F68)',
-                                                                                   'Otros trastornos de las emociones y del comportamiento de comienzo habitual en la infancia y adolescencia' ='Otros trastornos de las emociones y del comportamiento de comienzo habitual en la infancia y adolescencia(F98)',
-                                                                                   'Otros trastornos del desarrollo psicológico' ='Otros trastornos del desarrollo psicológico(F88)',
-                                                                                   'Otros trastornos del humor (afectivos)' ='Otros trastornos del humor (afectivos)(F38)',
-                                                                                   'Otros trastornos mentales debidos a lesión o disfunción cerebral o a enfermedad somática' ='Otros trastornos mentales debidos a lesión o disfunción cerebral o a enfermedad somática(F06)',
-                                                                                   'Otros trastornos neuróticos' ='Otros trastornos neuróticos(F48)',
-                                                                                   'Otros trastornos psicóticos no orgánicos' ='Otros trastornos psicóticos no orgánicos(F28)',
-                                                                                   'Psicosis no orgánica sin especificación' ='Psicosis no orgánica sin especificación(F29)',
-                                                                                   'Reacciones a estrés grave y trastornos de adaptación' ='Reacciones a estrés grave y trastornos de adaptación(F43)',
-                                                                                   'Síndrome amnésico orgánico no inducido por alcohol u otras sustancias psicotropas' ='Síndrome amnésico orgánico no inducido por alcohol u otras sustancias psicotropas(F04)',
-                                                                                   'Transformación persistente de la personalidad no atribuible a lesión o enfermedad cerebral' ='Transformación persistente de la personalidad no atribuible a lesión o enfermedad cerebral(F62)',
-                                                                                   'Trastorno bipolar' ='Trastorno bipolar(F31)',
-                                                                                   'Trastorno de ideas delirantes inducidas' ='Trastorno de ideas delirantes inducidas(F24)',
-                                                                                   'Trastorno de la personalidad y del comportamiento del adulto sin especificación' ='Trastorno de la personalidad y del comportamiento del adulto sin especificación(F69)',
-                                                                                   'Trastorno del desarrollo psicológico sin especificación' ='Trastorno del desarrollo psicológico sin especificación(F89)',
-                                                                                   'Trastorno depresivo recurrente' ='Trastorno depresivo recurrente(F33)',
-                                                                                   'Trastorno específico del desarrollo mixto' ='Trastorno específico del desarrollo mixto(F83)',
-                                                                                   'Trastorno esquizotípico.' ='Trastorno esquizotípico.(F21)',
-                                                                                   'Trastorno generalizado del desarrollo sin especificación' ='Trastorno generalizado del desarrollo sin especificación(F849)',
-                                                                                   'Trastorno mental orgánico o sintomático sin especificación' ='Trastorno mental orgánico o sintomático sin especificación(F09)',
-                                                                                   'Trastorno mental sin especificación' ='Trastorno mental sin especificación(F99)',
-                                                                                   'Trastorno obsesivo-compulsivo' ='Trastorno obsesivo-compulsivo(F42)',
-                                                                                   'Trastornos de ideas delirantes persistentes.' ='Trastornos de ideas delirantes persistentes.(F22)',
-                                                                                   'Trastornos de la identidad sexual' ='Trastornos de la identidad sexual(F64)',
-                                                                                   'Trastornos de la inclinación sexual' ='Trastornos de la inclinación sexual(F65)',
-                                                                                   'Trastornos de la personalidad y del comportamiento debidos a enfermedad, lesión o disfunción cerebral' ='Trastornos de la personalidad y del comportamiento debidos a enfermedad, lesión o disfunción cerebral(F07)',
-                                                                                   'Trastornos de las emociones de comienzo habitual en la infancia' ='Trastornos de las emociones de comienzo habitual en la infancia(F93)',
-                                                                                   'Trastornos de los hábitos y del control de los impulsos' ='Trastornos de los hábitos y del control de los impulsos(F63)',
-                                                                                   'Trastornos del comportamiento asociados a disfunciones fisiológicas y a factores somáticos sin especificación' ='Trastornos del comportamiento asociados a disfunciones fisiológicas y a factores somáticos sin especificación(F59)',
-                                                                                   'Trastornos del comportamiento social de comienzo habitual en la infancia y adolescencia' ='Trastornos del comportamiento social de comienzo habitual en la infancia y adolescencia(F94)',
-                                                                                   'Trastornos del humor (afectivos) persistentes' ='Trastornos del humor (afectivos) persistentes(F34)',
-                                                                                   'Trastornos disociales' ='Trastornos disociales(F91)',
-                                                                                   'Trastornos disociales y de las emociones mixtos' ='Trastornos disociales y de las emociones mixtos(F92)',
-                                                                                   'Trastornos disociativos (de conversión)' ='Trastornos disociativos (de conversión)(F44)',
-                                                                                   'Trastornos específicos de la personalidad' ='Trastornos específicos de la personalidad(F60)',
-                                                                                   'Trastornos específicos del desarrollo del aprendizaje escolar' ='Trastornos específicos del desarrollo del aprendizaje escolar(F81)',
-                                                                                   'Trastornos esquizoafectivos' ='Trastornos esquizoafectivos(F25)',
-                                                                                   'Trastornos generalizados del desarrollo' ='Trastornos generalizados del desarrollo(F84)',
-                                                                                   'Trastornos Hipercineticos' ='Trastornos Hipercineticos(F90)',
-                                                                                   'Trastornos mentales y del comportamiento en el puerperio no clasificados en otro lugar' ='Trastornos mentales y del comportamiento en el puerperio no clasificados en otro lugar(F53)',
-                                                                                   'Trastornos mixtos y otros trastornos de la personalidad' ='Trastornos mixtos y otros trastornos de la personalidad(F61)',
-                                                                                   'Trastornos no orgánicos del sueño' ='Trastornos no orgánicos del sueño(F51)',
-                                                                                   'Trastornos psicológicos y del comportamiento del desarrollo y orientación sexuales' ='Trastornos psicológicos y del comportamiento del desarrollo y orientación sexuales(F66)',
-                                                                                   'Trastornos psicóticos agudos y transitorios' ='Trastornos psicóticos agudos y transitorios(F23)',
-                                                                                   'Trastornos somatomorfos' ='Trastornos somatomorfos(F45)'))
+  metadata(CONS_C1_df_dup_JUL_2020)$description <- "Information About Agreement 1 of SENDA and MINSAL. Contians information about treatments.(*) Intermediate events are collapsed and concatenated in some variables."
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_  
   
 codebook::var_label(CONS_C1_df_dup_JUL_2020) <- list(
-row= 'Numerador de los eventos presentes en la Base de Datos/Events in the Dataset',
-table= 'Origen de los Datos (de los archivos por año)/Source of Data (of files per year)',
+row= 'Numerador de los eventos presentes en la Base de Datos (Último registro)/Events in the Dataset (Last Entry)',
+row_cont_entries= 'Numerador de los eventos presentes en la Base de Datos(*)/Events in the Dataset(*)',
 hash_key= 'Codificación del RUT/Masked Identifier (RUT)',
-ano_bd= 'Año de la Base de Datos/Year of the Dataset (Source)',
-id= 'Codigo Identificación de SENDA/SENDAs ID',
-nombre_centro= 'Nombre del Centro de Tratamiento/Treatment Center',
-tipo_centro= 'Tipo de Centro/Type of Center',
-region_del_centro= '(original, Recodificado en nombre_region)/',
-servicio_de_salud= 'Servicio de Salud/Health Service',
-tipo_de_programa= '(original, Recodificado en tipo_de_programa_2)/',
-tipo_de_plan= '(original, Recodificado en tipo_de_plan_2)/',
-senda= 'SENDA/SENDA',
-dias_trat= 'Días de Tratamiento/Days of Treatment',
-nmesesentratamiento= 'Número de Meses en Tratamiento/Number of Months in Treatment',
-dias_en_senda= 'Días en SENDA/Days in SENDA',
-n_meses_en_senda= 'Número de Meses en SENDA/Number of Months in SENDA',
-sexo= '(original, Recodificado en sexo_2)/',
-edad= 'Edad (número entero)/Age (In years, Discrete Number)',
-nombre_usuario= 'Nombre del Usuario (OCULTO y no accesible)/Name of the User (Not Accessible)',
-comuna_residencia= '(original, Recodificado en comuna_residencia_cod)/',
-origen_de_ingreso= '(original, Recodificado en origen_ingreso)/',
-pais_nacimiento= 'País de Nacimiento/Country of Birth',
-nacionalidad= 'Nacionalidad/Nationality',
-etnia= '(original, recodificado en etnia_cor)/',
-estado_conyugal= '(original, Recodificado en estado_conyugal_2)/',
-numero_de_hijos= 'Número de Hijos/Number of Children',
-num_hijos_ing_trat_res= 'Número de Hijos para Ingreso a Tratamiento Residencial/Number of Children to Residential Treatment',
-parentesco_con_el_jefe_de_hogar= '(Sólo presenta valores perdidos)/',
-num_trat_ant= 'Número de Tratamientos Anteriores/Number of Previous Treatments',
-fecha_ultimo_tratamiento= 'Fecha del Último Tratamiento/Date of the Last Treatment',
-sustancia_de_inicio= '(original, Recodificado en sus_ini)/',
-edad_inicio_consumo= '(original, Recodificado en edad_ini_cons)/', 
-x_se_trata_mujer_emb= 'Mujer Embarazada al Ingreso/Pregnant at Admission',
-escolaridad_ultimo_ano_cursado= '(original, Recodificado en escolaridad)/', 
-condicion_ocupacional= '(original, Recodificado en estatus_ocupacional)/', 
-categoria_ocupacional= '(original, Recodificado en cat_ocupacional)/',
-rubro_trabaja= '(original, Recodificado en rubro_trabaja_mod)/',
-con_quien_vive= 'Persona con la que vive el Usuario/People that Share Household with the User',
-tipo_de_vivienda= '(original, Recodificado en tipo_de_vivienda_mod)/',
-tenencia_de_la_vivienda= '(original, Recodificado en tenencia_de_la_vivienda_mod)/',
-sustancia_principal= '(original, Recodificado en sus_principal)/',
-`otras_sustancias_nº1`= '(original, Recodificado en otras_sus1)/',
-`otras_sustancias_nº2`= '(original, Recodificado en otras_sus2)/',
-`otras_sustancias_nº3`= '(original, Recodificado en otras_sus3)/',
-freq_cons_sus_prin_original= '(original, Recodificado en freq_cons_sus_prin)/',
-edad_inicio_sustancia_principal= '(original, Recodificado en edad_ini_sus_prin)/',
-via_adm_sus_prin_original= '(original, Recodificado en via_adm_sus_prin)/',
-dg_trs_cons_sus_or= 'Diagnósico de Trastorno por Consumo de Sustancias/Diagnosed of Substance Use Disorder',
-dg_trs_psiq_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV/Diagnosis of Psychiatric Disorders, DSM-IV criteria',
-dg_trs_psiq_sub_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification)',
-x2_dg_trs_psiq_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (2)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (2)',
-x2_dg_trs_psiq_sub_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion) (2)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification) (2)',
-x3_dg_trs_psiq_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (3)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (3)',
-x3_dg_trs_psiq_sub_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion) (3)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification) (3)',
-dg_trs_psiq_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10/Diagnosis of Psychiatric Disorders, CIE-10 criteria',
-dg_trs_psiq_sub_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification)',
-x2_dg_trs_psiq_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (2)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (2)',
-x2_dg_trs_psiq_sub_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion) (2)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification) (2)',
-x3_dg_trs_psiq_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (3)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (3)',
-x3_dg_trs_psiq_sub_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion) (3)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification) (3)',
-diagnostico_trs_fisico= 'Diagnóstico de Trastorno Físico/Diagnosis of Physical Disorder',
-otros_probl_at_sm_or= 'Otros Problemas de Atención Vinculados a Salud Mental/Other problems linked to Mental Health',
-compromiso_biopsicosocial= 'Compromiso Biopsicosocial/Biopsychosocial Involvement',
-dg_global_nec_int_soc_or= 'Diagnóstico Global de Necesidades de Integración Social (Al Ingreso)/Global Diagnosis of Social Integration (At Admission)',
-dg_nec_int_soc_cap_hum_or= 'Diagnóstico de Necesidades de Integración Social en Capital Humano (Al Ingreso)/Global Diagnosis of Social Integration in Human Capital (At Admission)',
-dg_nec_int_soc_cap_fis_or= 'Diagnóstico de Necesidades de Integración Social en Capital Físico (Al Ingreso)/Global Diagnosis of Social Integration in Physical Capital (At Admission)',
-dg_nec_int_soc_cap_soc_or= 'Diagnóstico de Necesidades de Integración Social en Capital Social (Al Ingreso)/Global Diagnosis of Social Integration in Social Capital (At Admission)',
-fech_ing= 'Fecha de Ingreso a Tratamiento/Date of Admission to Treatment',
-fecha_ingreso_a_convenio_senda= 'Fecha de Ingreso a Convenio SENDA (aún no formateada como fecha)/Date of Admission to SENDA Agreement',
-usuario_tribunal_trat_droga= 'Usuario de modalidad Tribunales de Tratamiento de Drogas/User of Drug Treatment Courts Modality',
-consentimiento_informado= 'Consentimiento Informado/Informed Consent',
-fech_egres= 'Fecha de Egreso de Tratamiento/Date of Discharge from Treatment',
-motivodeegreso= 'Motivo de Egreso/Cause of Discharge',
-tipo_centro_derivacion= 'Tipo de Centro al que el Usuario es Derivado/Type of Center of Derivation',
-evaluacindelprocesoteraputico= 'Evaluación del Proceso Terapéutico/Evaluation of the Therapeutic Process',
-eva_consumo= 'Evaluación al Egreso Respecto al Patrón de consumo/Evaluation at Discharge regarding to Consumption Pattern',
-eva_fam= 'Evaluación al Egreso Respecto a Situación Familiar/Evaluation at Discharge regarding to Family Situation',
-eva_relinterp= 'Evaluación al Egreso Respecto a Relaciones Interpersonales/Evaluation at Discharge regarding to Interpersonal Relations',
-eva_ocupacion= 'Evaluación al Egreso Respecto a Situación Ocupacional/Evaluation at Discharge regarding to Occupational Status',
-eva_sm= 'Evaluación al Egreso Respecto a Salud Mental/Evaluation at Discharge regarding to Mental Health',
-eva_fisica= 'Evaluación al Egreso Respecto a Salud Física/Evaluation at Discharge regarding to Physical Health',
-eva_transgnorma= 'Evaluación al Egreso Respecto a Trasgresión a la Norma Social/Evaluation at Discharge regarding to Transgression to the Norm',
-dg_trs_psiq_cie_10_egres_or= '(Sólo presenta valores perdidos)/',
-dg_global_nec_int_soc_or_1= 'Diagnóstico Global de Necesidades de Integración Social (Al Egreso)/Global Diagnosis of Social Integration (At Discharge)',
-dg_nec_int_soc_cap_hum_or_1= 'Diagnóstico de Necesidades de Integración Social en Capital Humano (Al Egreso)/Global Diagnosis of Social Integration in Human Capital (At Discharge)',
-dg_nec_int_soc_cap_fis_or_1= 'Diagnóstico de Necesidades de Integración Social en Capital Físico (Al Egreso)/Global Diagnosis of Social Integration in Physical Capital (At Discharge)',
-dg_nec_int_soc_cap_soc_or_1= 'Diagnóstico de Necesidades de Integración Social en Capital Social (Al Egreso)/Global Diagnosis of Social Integration in Social Capital (At Discharge)',
-tiene_menores_de_edad_a_cargo= 'Menores de Edad A Cargo/Minor Dependants',
-mot_egres_alt_adm_or= 'Motivo de Egreso Alta Administrativa/Cause of Administrative Discharge',
-consorcio=  'Sociedades de Tratamiento Servicios de Salud- Fundaciones- entre otras entidades encargadas de los centros/Consortium',
-id_centro= 'ID de Centro/Center ID',
-ha_estado_embarazada_egreso= '¿Ha estado embarazada? (al Egreso)/Have you been Pregnant (at Discharge)',
-identidad_de_genero= 'Identidad de Género/Gender Identity',
-discapacidad= 'Presenta Discapacidad/Disability',
 hash_rut_completo= 'HASH alternativo, en el escenario en que se asuma que el individuo al que se le codificó el RUT presente mayor edad/Alternative HASH-Key',
-opcion_discapacidad= 'Origen de Discapacidad/Cause of Disability',
-sexo_2= 'Sexo Usuario/Sex of User',
-embarazo= 'Embarazo al Ingreso /Pregnant at Admission',
-tipo_de_plan_2= 'Tipo de Plan/Type of Plan',
-tipo_de_programa_2= 'Tipo de Programa de Tratamiento/Type of Program',
-fech_egres_sin_fmt= 'Fecha de Egreso de Tratamiento (Sin Formato de Fecha)/Date of Discharge',
+id= 'Codigo Identificación de SENDA/SENDAs ID',
 id_mod= 'ID de SENDA para Presentación en Página Web (enmascara caracteres 5 y 6)/SENDAs ID (mask characters 5 & 6)',
-ano_nac= 'Año de Nacimiento (numérico)/Year of Birth (numeric)',
-fech_ing_ano= 'Año de Ingreso (numérico)/Year of Admission (numeric)',
-fech_ing_mes= 'Mes de Ingreso (numérico)/Month of Admission (numeric)',
-fech_ing_dia= 'Día de Ingreso (numérico)/Day of Admission (numeric)',
-concat= 'ID de SENDA y HASH Concatenado (permite discriminar más de un HASH en un mismo ID)/Combination of SENDAs ID & HASH',
-obs= 'Observaciones al Proceso de Limpieza y Estandarización de Casos/Observations to the Process of Data Tidying & Standardization',
-dias_trat_inv= 'Días de Tratamiento Invertidos (fecha más reciente, menor valor numérico)/Treatment Days (Reversed)',
+fech_ing= 'Fecha de Ingreso a Tratamiento (Primera Entrada)/Date of Admission to Treatment (First Entry)',
+fech_egres_imp= 'Fecha de Egreso (Imputados KNN & Lógico) del Último Registro/Date of Discharge (Imputed KNN & Logic) of the Last Entry',
+tipo_de_plan_2= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry',
+tipo_de_plan_2_largest_treat= 'Tipo de Plan del Registro Más Largo entre entradas intermedias(f)/Type of Plan of the Largest Entry Among Intermediate Entries(f)',
+tipo_de_plan_2_concat_a= 'Tipo de Plan(*)/Type of Plan(*)', 
+tipo_de_programa_2= 'Tipo de Programa del Registro Más Largo entre Entradas Intermedias/Type of Program of the Largest Entry Among Intermediate Entries',
+id_centro= 'ID de Centro/Center ID',
+nombre_centro= 'Nombre del Centro de Tratamiento(*)//Treatment Center(*)',
+id_centro_concat_a= 'ID de Centro(*)/Center ID(*)',
+tipo_centro= 'Tipo de Centro del Último Registro/Type of Center of the Last Entry',
+servicio_de_salud= 'Servicio de Salud(*)/Health Service(*)',
+senda= 'SENDA del Último Registro/SENDA of the Last Entry',
+numero_de_hijos_mod= 'Número de Hijos (Valor Max.)/Number of Children (Max. Value)',
+num_hijos_trat_res_mod= 'Número de Hijos para Ingreso a Tratamiento Residencial del Último Registro/Number of Children to Residential Treatment of the Last Entry',
+tipo_centro_derivacion= 'Tipo de Centro al que el Usuario es Derivado del Último Registro/Type of Center of Derivation of the Last Entry',
+motivodeegreso_mod_imp= 'Motivo de Egreso (con abandono temprano y tardío)(Imputados KNN & Lógico) del Último Registro/Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry',
+macrozona= "Macrozona del Centro del Último Registro/Macrozones of the Center of the Last Entry",
+nombre_region= " Región del Centro del Último Registro/Chilean Region of the Center of the Last Entry",
+comuna_residencia_cod= "Comuna de Residencia del Último Registro/Municipality or District of Residence of the Last Entry",
+fecha_ingreso_a_convenio_senda= 'Fecha de Ingreso a Convenio SENDA (aún no formateada como fecha) (Primera Entrada)/Date of Admission to SENDA Agreement (First Entry)',
+identidad_de_genero= 'Identidad de Género (Último Registro)/Gender Identity (Last Entry)',
+edad_al_ing= 'Edad a la Fecha de Ingreso a Tratamiento (numérico continuo) (Primera Entrada)/Age at Admission to Treatment (First Entry)',
+origen_ingreso_mod= 'Origen de Ingreso (Primera Entrada)/Motive of Admission to Treatment (First Entry)',
+x_se_trata_mujer_emb= 'Mujer Embarazada al Ingreso (d)/Pregnant at Admission (d)',
+compromiso_biopsicosocial= 'Compromiso Biopsicosocial(d)/Biopsychosocial Involvement(d)',
+dg_global_nec_int_soc_or= 'Diagnóstico Global de Necesidades de Integración Social (Al Ingreso)(d)/Global Diagnosis of Social Integration (At Admission)(d)',
+dg_nec_int_soc_cap_hum_or= 'Diagnóstico de Necesidades de Integración Social en Capital Humano (Al Ingreso)(d)/Global Diagnosis of Social Integration in Human Capital (At Admission)(d)',
+dg_nec_int_soc_cap_fis_or= 'Diagnóstico de Necesidades de Integración Social en Capital Físico (Al Ingreso)(d)/Global Diagnosis of Social Integration in Physical Capital (At Admission)(d)',
+dg_nec_int_soc_cap_soc_or= 'Diagnóstico de Necesidades de Integración Social en Capital Social (Al Ingreso)(d)/Global Diagnosis of Social Integration in Social Capital (At Admission)(d)',
+usuario_tribunal_trat_droga= 'Usuario de modalidad Tribunales de Tratamiento de Drogas(d)/User of Drug Treatment Courts Modality(d)',
+evaluacindelprocesoteraputico= 'Evaluación del Proceso Terapéutico(d)/Evaluation of the Therapeutic Process(d)',
+eva_consumo= 'Evaluación al Egreso Respecto al Patrón de consumo(d)/Evaluation at Discharge regarding to Consumption Pattern(d)',
+eva_fam= 'Evaluación al Egreso Respecto a Situación Familiar(d)/Evaluation at Discharge regarding to Family Situation(d)',
+eva_relinterp= 'Evaluación al Egreso Respecto a Relaciones Interpersonales(d)/Evaluation at Discharge regarding to Interpersonal Relations(d)',
+eva_ocupacion= 'Evaluación al Egreso Respecto a Situación Ocupacional(d)/Evaluation at Discharge regarding to Occupational Status(d)',
+eva_sm= 'Evaluación al Egreso Respecto a Salud Mental(d)/Evaluation at Discharge regarding to Mental Health(d)',
+eva_fisica= 'Evaluación al Egreso Respecto a Salud Física(d)/Evaluation at Discharge regarding to Physical Health(d)',
+eva_transgnorma= 'Evaluación al Egreso Respecto a Trasgresión a la Norma Social(d)/Evaluation at Discharge regarding to Transgression to the Norm(d)',
+dg_global_nec_int_soc_or_1= 'Diagnóstico Global de Necesidades de Integración Social (Al Egreso)(d)/Global Diagnosis of Social Integration (At Discharge)(d)',
+dg_nec_int_soc_cap_hum_or_1= 'Diagnóstico de Necesidades de Integración Social en Capital Humano (Al Egreso)(d)/Global Diagnosis of Social Integration in Human Capital (At Discharge)(d)',
+dg_nec_int_soc_cap_fis_or_1= 'Diagnóstico de Necesidades de Integración Social en Capital Físico (Al Egreso)(d)/Global Diagnosis of Social Integration in Physical Capital (At Discharge)(d)',
+dg_nec_int_soc_cap_soc_or_1= 'Diagnóstico de Necesidades de Integración Social en Capital Social (Al Egreso)(d)/Global Diagnosis of Social Integration in Social Capital (At Discharge)(d)',
+tiene_menores_de_edad_a_cargo= 'Menores de Edad A Cargo(d)/Minor Dependants(d)',
+ha_estado_embarazada_egreso= '¿Ha estado embarazada? (al Egreso)(d)/Have you been Pregnant (at Discharge)(d)',
+discapacidad= 'Presenta Discapacidad(d)/Disability(d)',
+opcion_discapacidad= 'Origen de Discapacidad(d)/Cause of Disability(d)',
+escolaridad= 'Escolaridad: Nivel Eduacional(d)/Educational Attainment(d)',
+edad_al_ing_grupos= 'Edad a la Fecha de Ingreso a Tratamiento en Grupos(c)/Age at Admission to Treatment In Groups(c)',
+nacionalidad= 'Nacionalidad/Nationality',
+sexo_2= 'Sexo Usuario/Sex of User',
+embarazo= 'Embarazo al Ingreso(c)/Pregnant at Admission(c)',
 fech_nac= 'Fecha de Nacimiento/Date of Birth',
-edad_al_ing= 'Edad a la Fecha de Ingreso a Tratamiento (numérico continuo)/Age at Admission to Treatment',
 edad_ini_cons= 'Edad de Inicio de Consumo/Age of Onset of Drug Use',
 edad_ini_sus_prin=  'Edad de Inicio de Consumo Sustancia Principal/Age of Onset of Drug Use of Primary Substance',
-dias_trat_alta_temprana= 'Días de tratamiento (<90)/Less than 90 days in treatment',
-motivodeegreso_mod= 'Motivo de Egreso (con abandono temprano y tardío)/Cause of Discharge (with late and early withdrawal)',
-sus_principal= 'Sustancia Principal de Consumo/Primary or Main Substance of Consumption at Admission',
-otras_sus1= 'Otras Sustancias (1)/Other Substances (1)',
-otras_sus2= 'Otras Sustancias (2)/Other Substances (2)',
-otras_sus3= 'Otras Sustancias (3)/Other Substances (3)',
-sus_ini= 'Sustancia de Inicio/Starting Substance',
 estado_conyugal_2= 'Estado Conyugal/Marital Status',
-estatus_ocupacional= 'Condición Ocupacional/Occupational Status',
-cat_ocupacional= 'Categoría Ocupacional/Occupational Category',
 edad_grupos= 'Edad agrupada/Age in groups',
-origen_ingreso= "(modificado en origen_ingreso_mod)/",
-escolaridad= 'Escolaridad: Nivel Eduacional/Educational Attainment',
-via_adm_sus_prin= 'Vía de Administración de la Sustancia Principal/Route of Administration of the Primary or Main Substance',
-freq_cons_sus_prin= 'Frecuencia de Consumo de la Sustancia Principal (30 días previos a la admisión)/Frequency of Consumption of the Primary or Main Substance (30 days previous to admission)',
-dias_trat_knn_imp= 'Días de Tratamiento (Imputados KNN)/Days of Treatment (Imputed KNN)',
-fech_egres_knn_imp= 'Fecha de Egreso (Imputados KNN)/Date of Discharge (Imputed KNN)',
-dias_trat_alta_temprana_knn_imp= 'Días de Tratamiento con Alta Temprana (<90) (Imputados KNN)/Days of Treatment w Early Withdrawal (Imputed KNN)',
-fech_egres_imp= 'Fecha de Egreso (Imputados KNN & Lógico)/Date of Discharge (Imputed KNN & Logic)',
-motivodeegreso_imp= 'Motivo de Egreso(Imputados KNN & Lógico)/Cause of Discharge (Imputed KNN & Logic)',
-motivodeegreso_mod_imp= 'Motivo de Egreso (con abandono temprano y tardío)(Imputados KNN & Lógico)/Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic)',
-dias_trat_imp= 'Días de Tratamiento (Imputados KNN & Lógico)/Days of Treatment (Imputed KNN & Logic)', 
-dias_trat_alta_temprana_imp= 'Días de Tratamiento con Alta Temprana (<90) (Imputados KNN & Lógico)/Days of Treatment w Early Withdrawal (Imputed KNN & Logic)',
-via_adm_sus_prin_act= 'Vía de Administración de la Sustancia Principal (Se aplicaron criterios de limpieza)/Route of Administration of the Primary or Main Substance (Tidy)',
+freq_cons_sus_prin= 'Frecuencia de Consumo de la Sustancia Principal (30 días previos a la admisión)(f)/Frequency of Consumption of the Primary or Main Substance (30 days previous to admission)(f)',
+via_adm_sus_prin_act= 'Vía de Administración de la Sustancia Principal (Se aplicaron criterios de limpieza)(f)/Route of Administration of the Primary or Main Substance (Tidy)(f)',
 etnia_cor= 'Etnia/Ethnic Group',
 nacionalidad_2= 'Segunda Nacionalidad/Second Nationality',
 etnia_cor_2= 'Etnia (2)/Second Ethnic Group',
-sus_ini_2= 'Segunda Sustancia de Inicio/Second Starting Substance',
-sus_ini_3= 'Tercera Sustancia de Inicio/Third Starting Substance',
-concat_hash_sus_prin= 'Combination of User & Primary Substance',
-macrozona= "Macrozona/Macrozones",
-nombre_region= " Región del Centro/Chilean Region of the Center",
-comuna_residencia_cod= "Comuna de Residencia/Municipality or District of Residence",
+sus_ini_2_mod= 'Segunda Sustancia de Inicio(Sólo más frecuentes)/Second Starting Substance',
+sus_ini_3_mod= 'Tercera Sustancia de Inicio(Sólo más frecuentes)/Third Starting Substance',
 sus_ini_mod= "Sustancia de Inicio (Sólo más frecuentes)/Starting Substance (Only more frequent)",
-sus_principal_mod= 'Sustancia Principal de Consumo (Sólo más frecuentes)/Primary or Main Substance of Consumption at Admission (Only more frequent)',
-origen_ingreso_mod= 'Origen de Ingreso/Motive of Admission to Treatment',
-tipo_de_vivienda_mod= 'Tipo de Vivienda/Type of Housing', 
-tenencia_de_la_vivienda_mod= 'Tenencia de la Vivienda/Tenure status of Households',
-rubro_trabaja_mod= 'Rubro de Trabajo/Area of Work',
-edad_al_ing_grupos= 'Edad a la Fecha de Ingreso a Tratamiento en Grupos/Age at Admission to Treatment In Groups',
-menor_60_dias_diff= 'Menor a 60 días de diferencia con el registro posterior/Menor a 60 days of difference between the next entry',
-menor_45_dias_diff= 'Menor a 45 días de diferencia con el registro posterior/Less than 45 days of difference between the next entry',
-diff_bet_treat= 'Días de diferencia con el registro posterior/Days of difference between the next entry',
-id_centro_sig_trat= "ID del Centro del registro posterior/Center ID of the Next Treatment",
-tipo_plan_sig_trat= "Tipo de Plan del registro posterior/Type of Plan of the Next Entry",
-tipo_programa_sig_trat= "Tipo de Programa del registro posterior/Type of Program of the Next Entry", 
-senda_sig_trat= "SENDA del registro posterior/SENDA of the Next Entry",
-motivoegreso_derivacion= "Motivo de Egreso= Derivación/Cause of Discharge= Derivación",
-obs_cambios= "Cambios del tratamiento en comparación al registro posterior/Changes in treatment compared to the Next Entry",
-obs_cambios_ninguno= "Sin cambios del tratamiento en comparación al registro posterior/No changes in treatment compared to the Next Entry",
-obs_cambios_num= "Recuento de cambios del tratamiento en comparación al registro posterior/Count of changes in treatment compared to the Next Entry",
-obs_cambios_fac= "Recuento de cambios del tratamiento en comparación al registro posterior(factor)/Count of changes in treatment compared to the Next Entry(factor)",
-at_least_one_cont_entry= "Casos de Usuarios con más de una entrada después de otra/Cases of users with more than one entry after another one"
+con_quien_vive= 'Persona con la que vive el Usuario(f)/People that Share Household with the User(f)',
+estatus_ocupacional= 'Condición Ocupacional(f)/Occupational Status(f)',
+cat_ocupacional= 'Categoría Ocupacional(f)/Occupational Category(f)',
+sus_principal_mod= 'Sustancia Principal de Consumo (Sólo más frecuentes)(f)/Primary or Main Substance of Consumption at Admission (Only more frequent)(f)',
+tipo_de_vivienda_mod= 'Tipo de Vivienda(f)/Type of Housing(f)', 
+tenencia_de_la_vivienda_mod= 'Tenencia de la Vivienda(f)/Tenure status of Households(f)',
+rubro_trabaja_mod= 'Rubro de Trabajo(f)/Area of Work(f)',
+otras_sus1_mod= 'Otras Sustancias (1)(Sólo más frecuentes)(f)/Other Substances (1)(Only more frequent)(f)',
+otras_sus2_mod= 'Otras Sustancias (2)(Sólo más frecuentes)(f)/Other Substances (2)(Only more frequent)(f)',
+otras_sus3_mod= 'Otras Sustancias (3)(Sólo más frecuentes)(f)/Other Substances (3)(Only more frequent)(f)',
+dg_trs_cons_sus_or= 'Diagnósico de Trastorno por Consumo de Sustancias(d)/Diagnosed of Substance Use Disorder(d)',
+dg_trs_psiq_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV(g)/Diagnosis of Psychiatric Disorders, DSM-IV criteria(g)',
+dg_trs_psiq_sub_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion)(g)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification)(g)',
+x2_dg_trs_psiq_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (2)(g)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (2)(g)',
+x2_dg_trs_psiq_sub_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion) (2)(g)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification) (2)(g)',
+x3_dg_trs_psiq_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (3)(g)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (3)(g)',
+x3_dg_trs_psiq_sub_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion) (3)(g)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification) (3)(g)',
+dg_trs_psiq_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10(g)/Diagnosis of Psychiatric Disorders, CIE-10 criteria(g)',
+dg_trs_psiq_sub_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion)(g)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification)(g)',
+x2_dg_trs_psiq_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (2)(g)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (2)(g)',
+x2_dg_trs_psiq_sub_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion) (2)(g)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification) (2)(g)',
+x3_dg_trs_psiq_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (3)(g)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (3)(g)',
+x3_dg_trs_psiq_sub_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion) (3)(g)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification) (3)(g)',
+diagnostico_trs_fisico= 'Diagnóstico de Trastorno Físico(g)/Diagnosis of Physical Disorder(g)',
+otros_probl_at_sm_or= 'Otros Problemas de Atención Vinculados a Salud Mental(g)/Other problems linked to Mental Health(g)',
+x4_dg_trs_psiq_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (4)(g)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (4)(g)',
+x4_dg_trs_psiq_sub_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion)(4)(g)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification)(4)(g)',
+x4_dg_trs_psiq_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (4)(g)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (4)(g)',
+x5_dg_trs_psiq_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (5)(g)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (5)(g)',
+x6_dg_trs_psiq_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (6)(g)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (6)(g)',
+x4_dg_trs_psiq_sub_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion)(4)(g)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification)(4)(g)',
+ano_bd_first= 'Año de la Base de Datos(c)/Year of the Dataset (Source)(c)',
+ano_bd_last= 'Año de la Base de Datos(b)/Year of the Dataset (Source)(b)',
+obs= 'Observaciones al Proceso de Limpieza y Estandarización de Casos(e)/Observations to the Process of Data Tidying & Standardization(e)',
+obs_concat_a= 'Observaciones al Proceso de Limpieza y Estandarización de Casos(*)/Observations to the Process of Data Tidying & Standardization(*)',
+rn_common_treats2= 'Cuenta de Entradas Comunes(b)/Count of Common Entries(b)',
+concat_hash_id_treatments='Combination of User & Distint Entries',
+at_least_one_cont_entry= "Casos de Usuarios con más de una entrada después de otra/Cases of users with more than one entry after another one",
+senda_concat_a= 'SENDA(*)/SENDA(*)',
+tipo_centro_concat_a= 'Tipo de Centro(*)/Type of Center(*)',
+fech_ing_num= 'Fecha de Ingreso a Tratamiento (Numérico)(c)/Date of Admission to Treatment (Numeric)(c)',
+fech_egres_num= 'Fecha de Egreso (Imputados KNN & Lógico)(Numérico)(b)/Date of Discharge (Imputed KNN & Logic)(Numeric)(b) of the Next Treatment',
+fech_ing_next_treat= 'Fecha de Ingreso a Tratamiento (Numérico)(c) del Tratamiento Posterior/Date of Admission to Treatment (Numeric)(c)',
+diff_bet_treat= 'Días de diferencia con el Tratamiento Posterior/Days of difference between the Next Treatment',
+id_centro_sig_trat= "ID del Centro del Tratamiento Posterior/Center ID of the Next Treatment",
+tipo_plan_sig_trat= "Tipo de Plan del Tratamiento Posterior/Type of Plan of the Next Treatment",
+tipo_programa_sig_trat= "Tipo de Programa del Tratamiento Posterior/Type of Program of the Next Treatment", 
+senda_sig_trat= "SENDA del Tratamiento Posterior/SENDA of the Next Treatment",
+menor_60_dias_diff= 'Menor a 60 días de diferencia con el Tratamiento Posterior/Menor a 60 days of difference between the Next Treatment',
+menor_45_dias_diff= 'Menor a 45 días de diferencia con el Tratamiento Posterior/Less than 45 days of difference between the Next Treatment',
+motivoegreso_derivacion= "Motivo de Egreso= Derivación(b)/Cause of Discharge= Derivación(b)",
+dias_treat_imp_sin_na= '',
+obs_cambios= "Cambios del tratamiento en comparación al Tratamiento Posterior/Changes in treatment compared to the Next Treatment",
+obs_cambios_ninguno= "Sin cambios del tratamiento en comparación al Tratamiento Posterior/No changes in treatment compared to the Next Treatment",
+obs_cambios_num= "Recuento de cambios del tratamiento en comparación al Tratamiento Posterior/Count of changes in treatment compared to the Next Treatment",
+obs_cambios_fac= "Recuento de cambios del tratamiento en comparación al Tratamiento Posterior(factor)/Count of changes in treatment compared to the Next Treatment(factor)"
 )
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
 #####to_export_labels
 table_labels<-
-  tibble::rownames_to_column(data.frame(Hmisc::label(CONS_C1_df_dup_JUL_2020))) %>% data.frame() %>%
-  dplyr::rename("code" = !!names(.[1]), "label" = !!names(.[2])) %>% data.frame() %>%
+  tibble::rownames_to_column(data.frame(Hmisc::label(CONS_C1_df_dup_JUL_2020)))%>% data.frame() %>%
+  dplyr::rename("code" = !!names(.[1]), "label" = !!names(.[2]))%>% data.frame()%>%
   dplyr::mutate(first= "cap label variable")%>%
   dplyr::mutate(final= paste0(first, " ",code,' "',label,'"'))%>%
   dplyr::select(-code,-label,-first)%>%
@@ -1762,11 +1814,16 @@ table_labels<-
 #                                                                     "Days of Treatment for Early Withdrawal (Imputed)",
 #                                                                     "Cause of Discharge w/ Early or Late Withdrawal (Imputed)"))) %>% 
 
-CONS_C1_df_dup_JUL_2020 %>%
-  dplyr::arrange(hash_key, desc(fech_ing)) %>% 
+CONS_C1_df_dup_JUL_2020%>%
+  dplyr::arrange(hash_key, desc(fech_ing))%>% 
   rio::export(file = "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020.dta")
 
 save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/7.RData")
+
+rm(list=setdiff(ls(), c("CONS_C1_df_dup_JUL_2020","CONS_C1_df_dup_JUN_2020","CONS_C1_df","CONS_C1","CONS_C1_df_dup_FEB_2020","CONS_TOP_df_dup_ENE_2020_prev9","CONS_TOP_df")))
+
+save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/8.RData")
+
 
 #Agregar nuevas variables al codebook
 #hacer codebook
@@ -1776,7 +1833,7 @@ save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/7.RData")
 
 <br>
 
-```{stata 2, collectcode=TRUE,results="hide", eval=F}
+```{stata 2, collectcode=TRUE,results="hide", eval=T}
 cap do _label_var_to_stata.do
 ```
 
