@@ -13,7 +13,7 @@ cap label variable tipo_de_plan_2_largest_treat "Tipo de Plan del Registro Más 
 cap label variable tipo_de_plan_2_concat_a "Tipo de Plan(*)/Type of Plan(*)"
 cap label variable tipo_de_programa_2 "Tipo de Programa del Registro Más Largo entre Entradas Intermedias/Type of Program of the Largest Entry Among Intermediate Entries"
 cap label variable id_centro "ID de Centro/Center ID"
-cap label variable nombre_centro "Nombre del Centro de Tratamiento(*)//Treatment Center(*)"
+cap label variable nombre_centro "Nombre del Centro de Tratamiento(*)/Treatment Center(*)"
 cap label variable id_centro_concat_a "ID de Centro(*)/Center ID(*)"
 cap label variable tipo_centro "Tipo de Centro del Último Registro/Type of Center of the Last Entry"
 cap label variable servicio_de_salud "Servicio de Salud(*)/Health Service(*)"
