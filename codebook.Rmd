@@ -34,7 +34,11 @@ if(!require(dplyr)){install.packages("dplyr")}
 ```{r prepare_codebook, include=F}
 load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/7.RData")
 
-codebook_data <- CONS_C1_df_dup_JUL_2020
+codebook_data <- CONS_C1_df_dup_JUL_2020%>%
+  dplyr::mutate_at(c('id_centro_sig_trat','tipo_plan_sig_trat','tipo_programa_sig_trat','senda_sig_trat','at_least_one_cont_entry'),~as.factor(.)) %>%
+dplyr::mutate_at(c('tipo_de_plan_2_concat_a'),~as.character(.)) %>%
+dplyr::mutate_at(c('tipo_de_plan_2_concat_a'),~as.character(.)) %>%
+dplyr::mutate_at(c('fech_ing','fech_egres_imp'),~as.Date(.))
 # to import an SPSS file from the same folder uncomment and edit the line below
 # codebook_data <- rio::import("mydata.sav")
 # for Stata
@@ -68,8 +72,12 @@ In the following Tables and graphics, there is a summary of the variables and do
 ```{r codebook}
 codebook_data%>%
   #dplyr::select(-consentimiento_informado)%>%
-#dplyr::mutate_at(c('fech_ing','fech_egres','fech_nac','fech_egres_knn_imp','fech_egres_imp'),~as.Date(as.character(.))) %>%
+dplyr::mutate_at(c('id_centro_sig_trat','tipo_plan_sig_trat','tipo_programa_sig_trat','senda_sig_trat','at_least_one_cont_entry'),~as.factor(.)) %>%
+dplyr::mutate_at(c('tipo_de_plan_2_concat_a'),~as.character(.)) %>%
+dplyr::mutate_at(c('tipo_de_plan_2_concat_a'),~as.character(.)) %>%
+dplyr::mutate_at(c('fech_ing','fech_egres_imp'),~as.Date(.)) %>%
 codebook()
+
 
 #fecha_ultimo_tratamiento
 #
@@ -93,4 +101,26 @@ df<-
     select(variable,rn,everything())
 
   guardar_tablas(df, "labels_codebook")
+  options(OutDec=',')
+  guardar_tablas(df, "labels_codebook_comma")
+  
+  #1. Copiar datos del libro de códigos
+  #2. Pegar en google spreadsheet codebook
+  #3. Correr comando eliminar filas
+  #4. Correr comando Añadir filas, 
+  #5. Añadir columna a la derecha de label
+  #6. Separar por "/"
+  #7. Fijarse que no se superponga a otra variable
+  #8. Añadir Propiedad a la izquierda de Tipos de Datos (Data Type)
+  #9. Añadir columna a la derecha de A, y en B1 incorporar la siguiente fórmula: =ArrayFormula(SI(FILA(A1:A)<=COINCIDIR(2,1/(A:A<>""),1),BUSCAR(FILA(A1:A),FILA(A1:A)/SI(A1:A<>"",VERDADERO,FALSO),A1:A),))
+  #9. Fijarse que la última variable tenga todas las categorías llenas con Nombre Variable Estandarizado
+  #10. Pegar como valor (para no depender de la fórmula, dejar el comentario)
+  #11. Eliminar la columna A
+  #12. Ver cómo lo hago con labels_codebook, ya sea para pegarlo directamente en la hoja 'para_pegar_cat_factores'
+  #13. Tengo que evaluar si la coma y el punto de los decimales era problemático
+  #14. En una de esas abrir el archio con google drive para saltarse ese problema
+  #15. Pegar después como valores en la columna H
+  #16. Después pararse en la columna etiquetas (debiese ser la G), y generar una columna a la derecha
+  #17. Agregar la siguiente fórmula =SI(I4="",G4,SI.ERROR(BUSCARV(CONCATENAR(A4,"_",CONTAR.SI($A$4:$A4,A4)-1),para_pegar_cat_factores!F:H,2,0),""))
+  #18. 
 ```
