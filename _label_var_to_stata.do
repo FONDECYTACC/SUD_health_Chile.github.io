@@ -126,6 +126,8 @@ cap label variable obs_cambios "Cambios del tratamiento en comparación al Trata
 cap label variable obs_cambios_ninguno "Sin cambios del tratamiento en comparación al Tratamiento Posterior/No changes in treatment compared to the Next Treatment"
 cap label variable obs_cambios_num "Recuento de cambios del tratamiento en comparación al Tratamiento Posterior/Count of changes in treatment compared to the Next Treatment"
 cap label variable obs_cambios_fac "Recuento de cambios del tratamiento en comparación al Tratamiento Posterior(factor)/Count of changes in treatment compared to the Next Treatment(factor)"
+cap label variable hash_key_sex_program ""
+cap label variable centro_muj "Center ID aludes to a women-specific center"
 cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020.dta", replace
 cap drop id id_mod nombre_centro consentimiento_informado
 cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020_exp.dta", replace
