@@ -122,6 +122,7 @@ cap label variable menor_60_dias_diff "Menor a 60 días de diferencia con el Tra
 cap label variable menor_45_dias_diff "Menor a 45 días de diferencia con el Tratamiento Posterior/Less than 45 days of difference between the Next Treatment"
 cap label variable motivoegreso_derivacion "Motivo de Egreso= Derivación(b)/Cause of Discharge= Derivación(b)"
 cap label variable dias_treat_imp_sin_na "Días de Tratamiento (valores perdidos en la fecha de egreso se reemplazaron por la diferencia con 2019-11-13)/Days of Treatment (missing dates of discharge were replaced with difference from 2019-11-13)"
+cap label variable abandono_temprano "Abandono temprano(<3 meses)/ Early Drop-out(<3 months)"
 cap label variable obs_cambios "Cambios del tratamiento en comparación al Tratamiento Posterior/Changes in treatment compared to the Next Treatment"
 cap label variable obs_cambios_ninguno "Sin cambios del tratamiento en comparación al Tratamiento Posterior/No changes in treatment compared to the Next Treatment"
 cap label variable obs_cambios_num "Recuento de cambios del tratamiento en comparación al Tratamiento Posterior/Count of changes in treatment compared to the Next Treatment"

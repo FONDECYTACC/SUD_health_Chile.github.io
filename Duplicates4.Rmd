@@ -1443,7 +1443,7 @@ invisible(c("15. Ver factores"))
 
 ## Standardization of variables
 
-We generated variables that compare each treatment with their following treatment (in case the user had more than one treatment) (`obs_cambios`). Also we calculated the days of treatment of each treatment (`dias_treat_imp_sin_na`), and in case the treatment did not have a date of discharge, we decided to get the difference of days between the date of admission and the date of retrieval of the dataset (2020-11-13). For analytic terms, we added two situations to the cause of discharge: the treatment is in course and does not have another observation, or is in course but the treatment exceeds 1095 days of treatment. We also included two variables to indicate whether a treatment had a difference of less than 45 (`menor_45_dias_diff`) or 60 (`menor_60_dias_diff`) days with the following treatment (if any).
+We generated variables that compare each treatment with their following treatment (in case the user had more than one treatment) (`obs_cambios`). Also we calculated the days of treatment of each treatment (`dias_treat_imp_sin_na`), and in case the treatment did not have a date of discharge, we decided to get the difference of days between the date of admission and the date of retrieval of the dataset (2020-11-13). For analytic terms, we added two situations to the cause of discharge: the treatment is in course and does not have another observation, or is in course but the treatment exceeds 1095 days of treatment. We also included two variables to indicate whether a treatment had a difference of less than 45 (`menor_45_dias_diff`) or 60 (`menor_60_dias_diff`) days with the following treatment (if any). Finally, we generated the variable `abandono_temprano` to differentiate between treatment that lasted at least three months and those that did not.
 
 <br>
 
@@ -1481,6 +1481,10 @@ CONS_C1_df_dup_JUL_2020_cons%>%
   dplyr::mutate(dias_treat_imp_sin_na=fech_egres_num-fech_ing_num)%>%
   dplyr::mutate(motivodeegreso_mod_imp=ifelse(dias_treat_imp_sin_na<1095 & is.na(fech_egres_imp),"En curso",as.character(motivodeegreso_mod_imp)))%>%
   dplyr::mutate(motivodeegreso_mod_imp=ifelse(dias_treat_imp_sin_na>=1095 & is.na(fech_egres_imp),"En curso (>=1095 d)",as.character(motivodeegreso_mod_imp)))%>%
+  dplyr::mutate(motivodeegreso_mod_imp=ifelse(grepl("Abandono Temprano",motivodeegreso_mod_imp) & dias_treat_imp_sin_na>=90,"Abandono Tardio",as.character(motivodeegreso_mod_imp)))%>%
+  dplyr::mutate(abandono_temprano=ifelse(dias_treat_imp_sin_na>=90,0,1)) %>%
+  dplyr::mutate(abandono_temprano=as.factor(abandono_temprano)) %>%
+  dplyr::mutate(abandono_temprano= dplyr::recode(abandono_temprano, "1"="Menos de 90 días", "0"="Mayor o igual a 90 días"))%>%
   
   dplyr::mutate(obs_cambios=case_when(id_centro_sig_trat!=id_centro~"1.1.cambio centro",TRUE~""))%>%
   dplyr::mutate(obs_cambios=case_when(tipo_plan_sig_trat!=tipo_de_plan_2~glue::glue("{obs_cambios};1.2.cambio tipo plan"),TRUE~obs_cambios))%>%
@@ -1500,6 +1504,13 @@ CONS_C1_df_dup_JUL_2020_cons%>%
   dplyr::mutate_at(c('menor_45_dias_diff','menor_60_dias_diff','motivoegreso_derivacion','obs_cambios_ninguno','obs_cambios_fac'),~as.factor(.))%>%
   assign("CONS_C1_df_dup_JUL_2020_cons2",., envir = .GlobalEnv)
 ```
+
+<br>
+
+We replaced the number of children/dependents (`numero_de_hijos_mod`) if the number of children/dependents is 0 and the number of children that are admitted to a residential treatment (`num_hijos_trat_res_mod`) is greated than 0. Also, we declared as invalid values if the user had no children but declares living with them. Finally, we excluded the number of kids in a residential treatment if the user declared having no children/dependents but reported being admitted with at least one dependent. 
+
+<br>
+
 ```{r std3_numeric,echo=T, paged.print=TRUE, eval=T}
 invisible(c("1.Validar el número de hijos con lo de número de hijos ing trat res"))
 invisible(c("2.tipo_centro_derivacion ASEGURARSE QUE TENGA MOTIVO DE EGRESO DERIVACIÓN"))
@@ -1510,6 +1521,9 @@ invisible(c("num_hijos_trat_res numero_de_hijos_mod, num_hijos_trat_res_mod rubr
 #edad_ini_cons
 #edad_ini_sus_prin
 
+#Convivencia en los 30 días previos a la admisión a tratamiento
+
+
 CONS_C1_df_dup_JUL_2020_cons2%>%
   dplyr::mutate(across(c(numero_de_hijos_mod, num_hijos_trat_res_mod, edad_ini_cons,edad_ini_sus_prin),~as.integer(.)))%>%
 dplyr::mutate(across(c(edad_al_ing),~as.numeric(.)))%>%
@@ -1518,7 +1532,7 @@ dplyr::mutate(across(c(edad_al_ing),~as.numeric(.)))%>%
   #dplyr::filter(numero_de_hijos>10,num_hijos_ing_trat_res!=numero_de_hijos)%>% dplyr::select(numero_de_hijos_mod,num_hijos_ing_trat_res,numero_de_hijos)
   dplyr::mutate(numero_de_hijos_mod= dplyr::case_when(grepl("hij",con_quien_vive,ignore.case=T) & numero_de_hijos_mod==0 & num_hijos_trat_res_mod>0~num_hijos_trat_res_mod, TRUE~numero_de_hijos_mod))%>%
   #dplyr::filter(numero_de_hijos_mod==num_hijos_ing_trat_res,num_hijos_ing_trat_res>0,grepl("hij",con_quien_vive))%>%dplyr::select(numero_de_hijos_mod,num_hijos_ing_trat_res,numero_de_hijos,con_quien_vive) 
-  dplyr::mutate(num_hijos_trat_res_mod= dplyr::case_when(numero_de_hijos_mod==0 & grepl("hij",con_quien_vive,ignore.case=T)~NA_integer_,TRUE~num_hijos_trat_res_mod))%>%
+  dplyr::mutate(num_hijos_trat_res_mod= dplyr::case_when(numero_de_hijos_mod==0 & num_hijos_trat_res_mod>0 ~NA_integer_,TRUE~num_hijos_trat_res_mod))%>%
   dplyr::mutate(numero_de_hijos_mod= dplyr::case_when(numero_de_hijos_mod==0 & grepl("hij",con_quien_vive,ignore.case=T)~NA_integer_,TRUE~numero_de_hijos_mod))%>%
 assign("CONS_C1_df_dup_JUL_2020_cons3",., envir = .GlobalEnv)
 ```
@@ -1536,7 +1550,7 @@ invisible(23+3+11+91+379+76+39+7+28+23945)
 
 <br>
 
-We replaced cases that reported having dependent children if in the question related to dependent children they responded more than 1.
+We replaced cases that reported having dependent children if in the question related to dependent children they responded at least one.
 
 <br>
 
@@ -1741,6 +1755,12 @@ CONS_C1_df_dup_JUL_2020_cons7%>%
 #hay un grupo de hombres que están en centros mujeres
 ```
 
+<br>
+
+Additionally, we corrected the categories of other problems related to mental health (`otros_probl_at_sm_or`), and excluded if a user did not declare other elements related to mental health.
+
+<br>
+
 ```{r std11_otros problemas salud mental, echo=T, paged.print=TRUE,eval=T}
 invisible(janitor::tabyl(CONS_C1_df_dup_JUL_2020_cons7,otros_probl_at_sm_or))
 
@@ -1754,6 +1774,12 @@ CONS_C1_df_dup_JUL_2020_cons7%>%
   
   assign("CONS_C1_df_dup_JUL_2020_cons11",., envir = .GlobalEnv)
 ```
+
+<br>
+
+Additionally, we generated a category to detect whether a user had at least one CIE-10 diagnose (`cie_10`). The same was done to DSM-IV diagnoses (`dsm_iv`).
+
+<br>
 
 ```{r std12_cie10, echo=T, paged.print=TRUE,eval=T}
 CONS_C1_df_dup_JUL_2020_cons11%>%
@@ -1782,12 +1808,29 @@ dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_
 assign("CONS_C1_df_dup_JUL_2020_cons12",., envir = .GlobalEnv)
 ```
 
-```{r std13_as_factor_vars,eval=T, echo=T, paged.print=TRUE}
+<br>
+
+We also restricted the number of dependants at the admission of a residential treatment to residential treatments only. 
+
+<br>
+
+```{r std13_type_treatment_num_kids, echo=T, paged.print=TRUE,eval=T}
+#table(CONS_C1_df_dup_JUL_2020_cons12$tipo_de_plan_2,CONS_C1_df_dup_JUL_2020_cons12$num_hijos_trat_res_mod)%>% View()
+#
 CONS_C1_df_dup_JUL_2020_cons12%>%
+  dplyr::mutate(num_hijos_trat_res_mod=dplyr::case_when(
+    !grepl("pr",tipo_de_plan_2,ignore.case=T) & num_hijos_trat_res_mod>0~NA_integer_,
+    TRUE~num_hijos_trat_res_mod))%>%
+assign("CONS_C1_df_dup_JUL_2020_cons13",., envir = .GlobalEnv)
+```
+
+```{r std14_as_factor_vars,eval=T, echo=T, paged.print=TRUE}
+CONS_C1_df_dup_JUL_2020_cons13%>%
   dplyr::mutate_at(vars(contains("cie_10_or"),contains("dsm_iv_or"),contains("tipo_de_plan"),c('tipo_de_programa_2','nombre_centro','tipo_centro','servicio_de_salud','senda','tipo_centro_derivacion','usuario_tribunal_trat_droga','motivodeegreso_mod_imp','macrozona','nombre_region','comuna_residencia_cod','identidad_de_genero','origen_ingreso_mod','x_se_trata_mujer_emb','usuario_tribunal_trat_droga','tiene_menores_de_edad_a_cargo','ha_estado_embarazada_egreso','discapacidad','opcion_discapacidad','escolaridad','edad_al_ing_grupos','nacionalidad','sexo_2','embarazo','estado_conyugal_2','edad_grupos','freq_cons_sus_prin','via_adm_sus_prin_act','etnia_cor','nacionalidad_2','etnia_cor_2','sus_ini_2_mod','sus_ini_3_mod','sus_ini_mod','con_quien_vive','estatus_ocupacional','cat_ocupacional','sus_principal_mod', 'tipo_de_vivienda_mod','tenencia_de_la_vivienda_mod','rubro_trabaja_mod','otras_sus1_mod','otras_sus2_mod','otras_sus3_mod','dg_trs_cons_sus_or','diagnostico_trs_fisico','otros_probl_at_sm_or','ano_bd_first','ano_bd_last','centro_muj','cie_10','dsm_iv')),~as.factor(.))%>%
   dplyr::mutate_at(c('id_centro_sig_trat','tipo_plan_sig_trat','tipo_programa_sig_trat','senda_sig_trat','at_least_one_cont_entry','id_centro'),~as.factor(.)) %>%
   dplyr::mutate_at(c('tipo_de_plan_2_concat_a'),~as.character(.)) %>%
   dplyr::mutate_at(c('fech_ing','fech_egres_imp'),~as.Date(.))%>%
+  
     assign("CONS_C1_df_dup_JUL_2020",., envir = .GlobalEnv)
 ```  
 
@@ -1929,7 +1972,8 @@ obs_cambios_fac= "Recuento de cambios del tratamiento en comparación al Tratami
 hash_key_sex_program= 'Usuarios a los que se le ha cambiado el sexo de acuerdo al tipo de plan/Users that changed of sex considering the types of plan',
 centro_muj= 'ID de centro que alude a un centro específico para mujeres/Center ID aludes to a women-specific center',
 dsm_iv= 'Diagnóstico DSM-IV (1 o más)/Psychiatric Diagnoses (DSM-IV)(one or more)',
-cie_10= 'Diagnóstico CIE-10 (1 o más)/Psychiatric Diagnoses (ICD-10)(one or more)'
+cie_10= 'Diagnóstico CIE-10 (1 o más)/Psychiatric Diagnoses (ICD-10)(one or more)',
+abandono_temprano= 'Abandono temprano(<3 meses)/ Early Drop-out(<3 months)'
 )
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
