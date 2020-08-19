@@ -1025,10 +1025,10 @@ CONS_C1_df_dup_JUN_2020_a_f%>%
     #unite(., col = "mod_g_diagnostico_trs_fisico_mod", diagnostico_trs_fisico_mod_1:diagnostico_trs_fisico_mod_7, na.rm=TRUE, sep = "; ")%>%
 
   # dplyr::select(hash_key,concat_hash_id_treatments,n_concat_hash_id_treatments,dg_trs_psiq_dsm_iv_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or,dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or,diagnostico_trs_fisico,starts_with("mod_g_"))%>%dplyr::filter(concat_hash_id_treatments=="dd0d42261d00273d4e19ff2a46bda4b9_5276"|hash_key=="015ea90c1b1655155f30a3e276436ed5"|hash_key=="ffd3f4ed5841cfac947ce546757b8e3f")%>% 
-dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or),~dplyr::case_when(grepl(paste(dg_trs_psiq_dsm_iv_or_cat, collapse = "|"),.)~str_replace_all(., "En estudio|Sin trastorno", ""),grepl("En estudio",.)~str_replace_all(., "Sin trastorno", ""),TRUE~.)))%>%
+dplyr::mutate(across(c(mod_g_dg_trs_psiq_dsm_iv_or),~dplyr::case_when(grepl(paste(dg_trs_psiq_dsm_iv_or_cat, collapse = "|"),.)~str_replace_all(., "En estudio|Sin trastorno", ""),grepl("En estudio",.,ignore.case = T)~str_replace_all(., "Sin trastorno", ""),TRUE~.)))%>%
   #nchar>18 nchar("Trastorno Adaptativo")==20  nchar("En estudio")
-dplyr::mutate(across(c(mod_g_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl(paste(dg_trs_psiq_cie_10_or_cat, collapse = "|"),.)~str_replace_all(., "En estudio(NA)|Sin trastorno(NA)", ""),grepl("En estudio(NA)",.)~str_replace_all(., "Sin trastorno(NA)", ""),TRUE~.)))%>%
-dplyr::mutate(across(c(mod_g_diagnostico_trs_fisico),~dplyr::case_when(grepl(paste(diagnostico_trs_fisico_cat, collapse = "|"),.)~str_replace_all(., "En estudio|Sin trastorno", ""),grepl("En estudio",.)~str_replace_all(., "Sin trastorno", ""),TRUE~.)))%>%  
+dplyr::mutate(across(c(mod_g_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl(paste(dg_trs_psiq_cie_10_or_cat, collapse = "|"),.)~str_replace_all(., "En estudio(NA)|Sin trastorno(NA)", ""),grepl("En estudio(NA)",.,ignore.case = T)~str_replace_all(., "Sin trastorno(NA)", ""),TRUE~.)))%>%
+dplyr::mutate(across(c(mod_g_diagnostico_trs_fisico),~dplyr::case_when(grepl(paste(diagnostico_trs_fisico_cat, collapse = "|"),.)~str_replace_all(., "En estudio|Sin trastorno", ""),grepl("En estudio",.,ignore.case = T)~str_replace_all(., "Sin trastorno", ""),TRUE~.)))%>%  
   dplyr::mutate(across(c(mod_g_otros_probl_at_sm_or),~dplyr::case_when(grepl(paste(otros_probl_at_sm_or_cat, collapse = "|"),.)~str_replace_all(., "Sin otros problemas de salud mental", ""),TRUE~.)))%>%  
 
     dplyr::mutate(across(c(mod_g_dg_trs_psiq_cie_10_or),~sub("En estudio(NA); Sin trastorno(NA)", "En estudio(NA)", .)))%>%
@@ -1513,12 +1513,13 @@ invisible(c("num_hijos_trat_res numero_de_hijos_mod, num_hijos_trat_res_mod rubr
 CONS_C1_df_dup_JUL_2020_cons2%>%
   dplyr::mutate(across(c(numero_de_hijos_mod, num_hijos_trat_res_mod, edad_ini_cons,edad_ini_sus_prin),~as.integer(.)))%>%
 dplyr::mutate(across(c(edad_al_ing),~as.numeric(.)))%>%
+  #más de 10 hijos, distinto numero de hijos y (el nro. de hijos para el tratamiento residencial es distinto al número de hijos | el nro. de hijos en tratamiento residencial es vacío)
     dplyr::mutate(numero_de_hijos_mod= dplyr::case_when(numero_de_hijos_mod>10 & (num_hijos_trat_res_mod!=numero_de_hijos_mod|is.na(num_hijos_trat_res_mod))~NA_integer_,TRUE~numero_de_hijos_mod))%>%
   #dplyr::filter(numero_de_hijos>10,num_hijos_ing_trat_res!=numero_de_hijos)%>% dplyr::select(numero_de_hijos_mod,num_hijos_ing_trat_res,numero_de_hijos)
-  dplyr::mutate(numero_de_hijos_mod= dplyr::case_when(grepl("hij",con_quien_vive) & numero_de_hijos_mod==0 & num_hijos_trat_res_mod>0~num_hijos_trat_res_mod, TRUE~numero_de_hijos_mod))%>%
+  dplyr::mutate(numero_de_hijos_mod= dplyr::case_when(grepl("hij",con_quien_vive,ignore.case=T) & numero_de_hijos_mod==0 & num_hijos_trat_res_mod>0~num_hijos_trat_res_mod, TRUE~numero_de_hijos_mod))%>%
   #dplyr::filter(numero_de_hijos_mod==num_hijos_ing_trat_res,num_hijos_ing_trat_res>0,grepl("hij",con_quien_vive))%>%dplyr::select(numero_de_hijos_mod,num_hijos_ing_trat_res,numero_de_hijos,con_quien_vive) 
-  dplyr::mutate(num_hijos_trat_res_mod= dplyr::case_when(numero_de_hijos_mod==0 & grepl("hij",con_quien_vive)~NA_integer_,TRUE~num_hijos_trat_res_mod))%>%
-  dplyr::mutate(num_hijos_trat_res_mod= dplyr::case_when(num_hijos_trat_res_mod>numero_de_hijos_mod~NA_integer_,TRUE~num_hijos_trat_res_mod))%>%
+  dplyr::mutate(num_hijos_trat_res_mod= dplyr::case_when(numero_de_hijos_mod==0 & grepl("hij",con_quien_vive,ignore.case=T)~NA_integer_,TRUE~num_hijos_trat_res_mod))%>%
+  dplyr::mutate(numero_de_hijos_mod= dplyr::case_when(numero_de_hijos_mod==0 & grepl("hij",con_quien_vive,ignore.case=T)~NA_integer_,TRUE~numero_de_hijos_mod))%>%
 assign("CONS_C1_df_dup_JUL_2020_cons3",., envir = .GlobalEnv)
 ```
 ```{r std4_cause_of_referral_cause_of_discharge,echo=T, paged.print=TRUE, eval=F}
@@ -1658,7 +1659,7 @@ CONS_C1_df_dup_JUL_2020_cons5a%>%
   dplyr::mutate(id_mod=ifelse(sexo_2=="Mujer",`substr<-`(id_mod,5,5,"2"),`substr<-`(id_mod,5,5,"1")))%>%
   dplyr::mutate(id=ifelse(sexo_2=="Mujer",`substr<-`(id,5,5,"2"),`substr<-`(id,5,5,"1")))%>%
   dplyr::ungroup()%>%
-  dplyr::mutate(centro_muj=ifelse(grepl("(Mujeres)",nombre_centro),1,0))%>%
+  dplyr::mutate(centro_muj=ifelse(grepl("(Mujeres)",nombre_centro,ignore.case=T),1,0))%>%
   dplyr::select(-sexo_rec,-dis_sex)%>%
   assign("CONS_C1_df_dup_JUL_2020_cons6",., envir = .GlobalEnv)
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
@@ -1747,14 +1748,43 @@ CONS_C1_df_dup_JUL_2020_cons7%>%
   dplyr::mutate(otros_probl_at_sm_or=sub("; Sin otros problemas de salud mental","",otros_probl_at_sm_or))%>%
   dplyr::mutate(otros_probl_at_sm_or=sub("Explotaci\\?omercial Sexual","Explotación Comercial Sexual",otros_probl_at_sm_or))%>%
   dplyr::mutate(otros_probl_at_sm_or=sub("Prisionizaci\\?","Prisionalización",otros_probl_at_sm_or))%>%
-  
+  dplyr::mutate(tenencia_de_la_vivienda_mod=sub("Ocupaci\\?","Ocupación Irregular",tenencia_de_la_vivienda_mod))%>%
+
   dplyr::mutate_at(vars(c("otros_probl_at_sm_or", "dg_trs_psiq_dsm_iv_or", "dg_trs_psiq_sub_dsm_iv_or", "dg_trs_psiq_sub_cie_10_or")),~dplyr::case_when(.==""~NA_character_,TRUE~.))%>%
+  
   assign("CONS_C1_df_dup_JUL_2020_cons11",., envir = .GlobalEnv)
 ```
 
-```{r std12_as_factor_vars,eval=T, echo=T, paged.print=TRUE}
+```{r std12_cie10, echo=T, paged.print=TRUE,eval=T}
 CONS_C1_df_dup_JUL_2020_cons11%>%
-  dplyr::mutate_at(vars(contains("cie_10_or"),contains("dsm_iv_or"),contains("tipo_de_plan"),c('tipo_de_programa_2','nombre_centro','tipo_centro','servicio_de_salud','senda','tipo_centro_derivacion','usuario_tribunal_trat_droga','motivodeegreso_mod_imp','macrozona','nombre_region','comuna_residencia_cod','identidad_de_genero','origen_ingreso_mod','x_se_trata_mujer_emb','usuario_tribunal_trat_droga','tiene_menores_de_edad_a_cargo','ha_estado_embarazada_egreso','discapacidad','opcion_discapacidad','escolaridad','edad_al_ing_grupos','nacionalidad','sexo_2','embarazo','estado_conyugal_2','edad_grupos','freq_cons_sus_prin','via_adm_sus_prin_act','etnia_cor','nacionalidad_2','etnia_cor_2','sus_ini_2_mod','sus_ini_3_mod','sus_ini_mod','con_quien_vive','estatus_ocupacional','cat_ocupacional','sus_principal_mod', 'tipo_de_vivienda_mod','tenencia_de_la_vivienda_mod','rubro_trabaja_mod','otras_sus1_mod','otras_sus2_mod','otras_sus3_mod','dg_trs_cons_sus_or','diagnostico_trs_fisico','otros_probl_at_sm_or','ano_bd_first','ano_bd_last','centro_muj')),~as.factor(.))%>%
+dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or,x4_dg_trs_psiq_cie_10_or,x5_dg_trs_psiq_cie_10_or,x6_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl("En estudio",as.character(.),ignore.case = T)~1,grepl("Sin trastorno",as.character(.),ignore.case = T)~0,is.na(.)~0,TRUE~0),.names = "{col}_mod1a"))%>%
+  dplyr::mutate(total_cie_10_en_est = base::rowSums(dplyr::select(.,ends_with("_mod1a"))))%>%  
+  dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or,x4_dg_trs_psiq_cie_10_or,x5_dg_trs_psiq_cie_10_or,x6_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl("En estudio",as.character(.),ignore.case = T)~0,grepl("Sin trastorno",as.character(.),ignore.case = T)~0,is.na(.)~0,TRUE~1),.names = "{col}_mod2a"))%>%
+  dplyr::mutate(total_cie_10_dg = base::rowSums(dplyr::select(.,ends_with("_mod2a"))))%>%  
+    
+  dplyr::mutate(cie_10=dplyr::case_when(total_cie_10_dg>0 & total_cie_10_en_est>0~"Diagnosticado/a",
+                       total_cie_10_dg>0 & total_cie_10_en_est==0~"Diagnosticado/a (1 o más)",
+                       total_cie_10_dg==0 & total_cie_10_en_est>0~"En estudio",
+                       TRUE~"Sin información diagnóstica"))%>%
+  
+dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or,x4_dg_trs_psiq_dsm_iv_or),~dplyr::case_when(grepl("En estudio",as.character(.))~1,grepl("Sin trastorno",as.character(.))~0,is.na(.)~0,TRUE~0),.names = "{col}_mod1b"))%>%
+  dplyr::mutate(total_dsm_iv_en_est = base::rowSums(dplyr::select(.,ends_with("_mod1b"))))%>%  
+dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or,x4_dg_trs_psiq_dsm_iv_or),~dplyr::case_when(grepl("En estudio",as.character(.),ignore.case = T)~0,grepl("Sin trastorno",as.character(.),ignore.case = T)~0,is.na(.)~0,TRUE~1),.names = "{col}_mod2b"))%>%
+  dplyr::mutate(total_dsm_iv_dg = base::rowSums(dplyr::select(.,ends_with("_mod2b"))))%>%  
+  
+  dplyr::mutate(dsm_iv=dplyr::case_when(total_dsm_iv_dg>0 & total_dsm_iv_en_est>0~"Diagnosticado/a (1 o más)",
+                       total_dsm_iv_dg>0 & total_dsm_iv_en_est==0~"Diagnosticado/a (1 o más)",
+                       total_dsm_iv_dg==0 & total_dsm_iv_en_est>0~"En estudio",
+                       TRUE~"Sin información diagnóstica"))%>%
+  dplyr::select(-ends_with("_mod2b"),-ends_with("_mod2a"),-ends_with("_mod1a"),-ends_with("_mod1b"),
+                -total_cie_10_dg,-total_cie_10_en_est,-total_dsm_iv_dg,-total_dsm_iv_en_est)%>%
+  
+assign("CONS_C1_df_dup_JUL_2020_cons12",., envir = .GlobalEnv)
+```
+
+```{r std13_as_factor_vars,eval=T, echo=T, paged.print=TRUE}
+CONS_C1_df_dup_JUL_2020_cons12%>%
+  dplyr::mutate_at(vars(contains("cie_10_or"),contains("dsm_iv_or"),contains("tipo_de_plan"),c('tipo_de_programa_2','nombre_centro','tipo_centro','servicio_de_salud','senda','tipo_centro_derivacion','usuario_tribunal_trat_droga','motivodeegreso_mod_imp','macrozona','nombre_region','comuna_residencia_cod','identidad_de_genero','origen_ingreso_mod','x_se_trata_mujer_emb','usuario_tribunal_trat_droga','tiene_menores_de_edad_a_cargo','ha_estado_embarazada_egreso','discapacidad','opcion_discapacidad','escolaridad','edad_al_ing_grupos','nacionalidad','sexo_2','embarazo','estado_conyugal_2','edad_grupos','freq_cons_sus_prin','via_adm_sus_prin_act','etnia_cor','nacionalidad_2','etnia_cor_2','sus_ini_2_mod','sus_ini_3_mod','sus_ini_mod','con_quien_vive','estatus_ocupacional','cat_ocupacional','sus_principal_mod', 'tipo_de_vivienda_mod','tenencia_de_la_vivienda_mod','rubro_trabaja_mod','otras_sus1_mod','otras_sus2_mod','otras_sus3_mod','dg_trs_cons_sus_or','diagnostico_trs_fisico','otros_probl_at_sm_or','ano_bd_first','ano_bd_last','centro_muj','cie_10','dsm_iv')),~as.factor(.))%>%
   dplyr::mutate_at(c('id_centro_sig_trat','tipo_plan_sig_trat','tipo_programa_sig_trat','senda_sig_trat','at_least_one_cont_entry','id_centro'),~as.factor(.)) %>%
   dplyr::mutate_at(c('tipo_de_plan_2_concat_a'),~as.character(.)) %>%
   dplyr::mutate_at(c('fech_ing','fech_egres_imp'),~as.Date(.))%>%
@@ -1897,7 +1927,9 @@ obs_cambios_ninguno= "Sin cambios del tratamiento en comparación al Tratamiento
 obs_cambios_num= "Recuento de cambios del tratamiento en comparación al Tratamiento Posterior/Count of changes in treatment compared to the Next Treatment",
 obs_cambios_fac= "Recuento de cambios del tratamiento en comparación al Tratamiento Posterior(factor)/Count of changes in treatment compared to the Next Treatment(factor)",
 hash_key_sex_program= 'Usuarios a los que se le ha cambiado el sexo de acuerdo al tipo de plan/Users that changed of sex considering the types of plan',
-centro_muj= 'ID de centro que alude a un centro específico para mujeres/Center ID aludes to a women-specific center'
+centro_muj= 'ID de centro que alude a un centro específico para mujeres/Center ID aludes to a women-specific center',
+dsm_iv= 'Diagnostic /',
+cie_10= '/'
 )
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
@@ -1951,7 +1983,7 @@ save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/8.RData")
 ```{stata 2, collectcode=TRUE,results="hide", eval=T}
 cap do _label_var_to_stata.do
 ```
-
+La
 <br>
 
 ---

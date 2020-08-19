@@ -12,7 +12,7 @@ cap label variable tipo_de_plan_2 "Tipo de Plan del Último Registro/Type of Pla
 cap label variable tipo_de_plan_2_largest_treat "Tipo de Plan del Registro Más Largo entre entradas intermedias(f)/Type of Plan of the Largest Entry Among Intermediate Entries(f)"
 cap label variable tipo_de_plan_2_concat_a "Tipo de Plan(*)/Type of Plan(*)"
 cap label variable tipo_de_programa_2 "Tipo de Programa del Registro Más Largo entre Entradas Intermedias/Type of Program of the Largest Entry Among Intermediate Entries"
-cap label variable id_centro "ID de Centro/Center ID"
+cap label variable id_centro "ID de Centro(b)/Center ID(b)"
 cap label variable nombre_centro "Nombre del Centro de Tratamiento(*)/Treatment Center(*)"
 cap label variable id_centro_concat_a "ID de Centro(*)/Center ID(*)"
 cap label variable tipo_centro "Tipo de Centro del Último Registro/Type of Center of the Last Entry"
@@ -126,8 +126,10 @@ cap label variable obs_cambios "Cambios del tratamiento en comparación al Trata
 cap label variable obs_cambios_ninguno "Sin cambios del tratamiento en comparación al Tratamiento Posterior/No changes in treatment compared to the Next Treatment"
 cap label variable obs_cambios_num "Recuento de cambios del tratamiento en comparación al Tratamiento Posterior/Count of changes in treatment compared to the Next Treatment"
 cap label variable obs_cambios_fac "Recuento de cambios del tratamiento en comparación al Tratamiento Posterior(factor)/Count of changes in treatment compared to the Next Treatment(factor)"
-cap label variable hash_key_sex_program ""
+cap label variable hash_key_sex_program "Usuarios a los que se le ha cambiado el sexo de acuerdo al tipo de plan/Users that changed of sex considering the types of plan"
 cap label variable centro_muj "ID de centro que alude a un centro específico para mujeres/Center ID aludes to a women-specific center"
+cap label variable cie_10 "/"
+cap label variable dsm_iv "Diagnostic /"
 cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020.dta", replace
 cap drop id id_mod nombre_centro consentimiento_informado
 cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020_exp.dta", replace
