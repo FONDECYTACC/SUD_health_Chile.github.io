@@ -18,7 +18,11 @@ This page is composed by the following main topics:
     
     1.5. [Deduplication of C1, Part 4](Duplicates4)
     
-    1.6. [Codebook of C1](codebook)
+    1.6. [Presentación Preliminar de Resultados](Presentación2)
+    
+    1.7. [Descripción de Variables]()
+    
+    1.8. [Codebook of C1](codebook)
   
 2. [Data preparation and Standardization of TOP or Profile of Treatment Results](Data_prep_TOP)
 
