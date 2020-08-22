@@ -18,9 +18,9 @@ This page is composed by the following main topics:
     
     1.5. [Deduplication of C1, Part 4](Duplicates4)
     
-    1.6. [Presentación Preliminar de Resultados](Presentación2)
+    1.6. [Presentation of Preliminary Processes and Descriptive Data to Institutions](Presentación2)
     
-    1.7. [Descripción de Variables]()
+    1.7. [Descriptive Statistics](Desc)
     
     1.8. [Codebook of C1](codebook)
   
