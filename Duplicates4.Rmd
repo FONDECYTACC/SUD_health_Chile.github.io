@@ -1824,13 +1824,230 @@ CONS_C1_df_dup_JUL_2020_cons12%>%
 assign("CONS_C1_df_dup_JUL_2020_cons13",., envir = .GlobalEnv)
 ```
 
-```{r std14_as_factor_vars,eval=T, echo=T, paged.print=TRUE}
+<br>
+
+In the first steps of the normalization of the database, collapsed the different plan types into the following: PG-PAB, PG-PAI, PG-PR, M-PAB, M-PAI, and M-PR. Other plans and programs were grouped into the General Population Programs due to their low prevalence (`r paste0(round(CONS_C1%>% filter(Tipo.de.Plan %in% c("CALLE","Otro", "PAI LV"))%>% nrow()/nrow(CONS_C1),3)*100,"%")`). Also, there are notations of the procedures of data normalization made by SENDAs professionals that indicates that the type of plan is followed by the type of program in terms of importance. This is why we changed the type of program, depending on the type of plan.
+
+<br>
+
+```{r std14_type_treatment_type_program, echo=T, paged.print=TRUE,eval=T}
+#table(CONS_C1_df_dup_JUL_2020_cons14$tipo_de_plan_2,CONS_C1_df_dup_JUL_2020_cons14$tipo_de_programa_2)
+#table(CONS_C1$Tipo.de.Plan,CONS_C1$Tipo.de.Programa)
 CONS_C1_df_dup_JUL_2020_cons13%>%
+  dplyr::mutate(tipo_de_programa_2=dplyr::case_when(
+    grepl("M-",tipo_de_plan_2,ignore.case=T)~"Programa Específico Mujeres",
+    grepl("PG-",tipo_de_plan_2,ignore.case=T) & grepl("Muj",tipo_de_programa_2,ignore.case=T)~"Programa Población General",
+    grepl("M-",tipo_de_plan_2,ignore.case=T) & !grepl("Muj",tipo_de_programa_2,ignore.case=T)~"Programa Específico Mujeres",
+    grepl("PG-",tipo_de_plan_2,ignore.case=T) & grepl("Otro|Alcohol|Calles|Vigilada",tipo_de_programa_2,ignore.case=T)~"Programa Población General",
+    TRUE~tipo_de_programa_2))%>%
+  assign("CONS_C1_df_dup_JUL_2020_cons14",., envir = .GlobalEnv)
+```
+
+<br> 
+
+### Cases with more than 1095  days of treatment
+
+Finally, we focused on treatment days in some of the cases, due to the collapse of treatments may sum additional days to a treatment, resulting in extensive treatments (>1095 days) that would not be considered as valid treatments to SENDAs professionals. We distinguished between cases that corresponded to users that had more than one treatment, and cases that did not have an availbable date of dischargefa
+
+<br>
+
+```{r  Fig6_exp_dias_trat_mas_1095, warning=FALSE, fig.align = "center", message=F, cache=T, eval=T, fig.cap="Figure 6. Criteria to Transform Variables", fig.height=10}
+#table(CONS_C1_df_dup_JUL_2020_cons14$tipo_de_plan_2,CONS_C1_df_dup_JUL_2020_cons14$tipo_de_programa_2)
+#table(CONS_C1$Tipo.de.Plan,CONS_C1$Tipo.de.Programa)
+
+mas_1095_usuarios<-
+      CONS_C1_df_dup_JUL_2020_cons14%>%
+        dplyr::filter(dias_treat_imp_sin_na>1095)%>%
+        dplyr::distinct(hash_key)%>%
+        unlist()%>%
+        as.character()
+
+df_tab5<-
+CONS_C1_df_dup_JUL_2020_cons14%>%
+    dplyr::filter(hash_key %in% mas_1095_usuarios)%>%
+    dplyr::select(hash_key, ano_bd_first, ano_bd_last, fech_ing, dias_treat_imp_sin_na, fech_egres_imp,tipo_de_plan_2,senda)%>%
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(count=n(),rn=row_number())%>%
+  dplyr::filter(ano_bd_first<=2015, rn==row_number(),dias_treat_imp_sin_na>1095)
+
+#Individuos con un caso, sin fecha de egreso y ordenada por dias de tratamiento.
+in_un_caso_dias_trat_mas_1095<-
+CONS_C1_df_dup_JUL_2020_cons14%>%
+    dplyr::filter(hash_key %in% mas_1095_usuarios)%>%
+    dplyr::select(hash_key, ano_bd_first, ano_bd_last, fech_ing, dias_treat_imp_sin_na, fech_egres_imp,tipo_de_plan_2,senda)%>%
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(count=n(),rn=row_number())%>%
+  dplyr::filter(count==1)%>%
+  dplyr::arrange(desc(dias_treat_imp_sin_na))
+
+  #tidyr::pivot_wider(names_from=rn,values_from=fech_ing)%>%
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#TABLA DE MOTIVOS DE EGRESO POR TRIMESTRE
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+invisible=5
+if(invisible==4){
+CONS_C1_df_dup_JUL_2020_cons14%>%
+  dplyr::mutate(date_by_quarter = lubridate::round_date(as.Date(fech_ing), unit="quarter"))%>%
+  janitor::tabyl(date_by_quarter,motivodeegreso_mod_imp)
+}
+to_string <- as_labeller(c(`0` = "More than one entry by user (n=163)", `1` = "Only one entry by user (n=555)"))
+
+desc_dias_mas_1095<-
+CONS_C1_df_dup_JUL_2020_cons14%>%
+    dplyr::mutate(in_un_caso_dias_trat_mas_1095=ifelse(hash_key %in% unlist(in_un_caso_dias_trat_mas_1095["hash_key"]),1,0))%>%
+    dplyr::mutate(in_un_caso_dias_trat_mas_1095=factor(in_un_caso_dias_trat_mas_1095))%>%
+    dplyr::filter(dias_treat_imp_sin_na>1095)%>%
+    ungroup()%>%
+    dplyr::mutate(vacio_fech_egres=ifelse(!is.na(fech_egres_imp),1,0))%>%
+    dplyr::select(dias_treat_imp_sin_na,vacio_fech_egres,in_un_caso_dias_trat_mas_1095)%>%
+    dplyr::mutate(group=dplyr::case_when(vacio_fech_egres==1 & in_un_caso_dias_trat_mas_1095==1~"With missing date of discharge & only one case",vacio_fech_egres==0 & in_un_caso_dias_trat_mas_1095==1~"With date of discharge & only one case",vacio_fech_egres==1 & in_un_caso_dias_trat_mas_1095==0~"With missing date of discharge & more than one case",vacio_fech_egres==0 & in_un_caso_dias_trat_mas_1095==0~"With date of discharge & more than one case",TRUE~NA_character_))%>%
+    dplyr::group_by(group)%>%
+    summarise(
+        `n` = n(),
+        `Mdn` = median(dias_treat_imp_sin_na, na.rm = TRUE),
+        `IQR` = IQR(dias_treat_imp_sin_na, na.rm = TRUE),
+        `Perc. 25`= quantile(dias_treat_imp_sin_na,.25,na.rm=T),
+        `Perc. 75`= quantile(dias_treat_imp_sin_na,.75,na.rm=T))
+
+  library(gridExtra)
+fig<-
+CONS_C1_df_dup_JUL_2020_cons14%>%
+    dplyr::mutate(in_un_caso_dias_trat_mas_1095=ifelse(hash_key %in% unlist(in_un_caso_dias_trat_mas_1095["hash_key"]),1,0))%>%
+  dplyr::mutate(in_un_caso_dias_trat_mas_1095=factor(in_un_caso_dias_trat_mas_1095))%>%
+  dplyr::filter(dias_treat_imp_sin_na>1095)%>%
+      ungroup()%>%
+    dplyr::mutate(vacio_fech_egres=ifelse(!is.na(fech_egres_imp),1,0))%>%
+    dplyr::select(dias_treat_imp_sin_na,vacio_fech_egres,in_un_caso_dias_trat_mas_1095)%>%
+ggplot(aes(x = factor(vacio_fech_egres), y = dias_treat_imp_sin_na, group=factor(vacio_fech_egres))) +
+    geom_boxplot() +
+      geom_jitter(shape = 15,
+        color = "steelblue",
+        position = position_jitter(width = 0.21)) +
+    theme_classic()+
+  labs(x="Date of Discharge Not Available (=1)",
+       y="Days in treatment until the date of retrieval of the dataset")+
+  facet_wrap(~in_un_caso_dias_trat_mas_1095,ncol = 2, labeller = to_string)
+
+tt <- ttheme_default(colhead=list(fg_params = list(parse=TRUE)),
+                     base_size = 7.5, padding = unit(c(3, 4), "mm"))
+tbl <- tableGrob(desc_dias_mas_1095, rows=NULL,theme=tt)
+
+grid.arrange(fig, tbl, 
+             nrow = 2, heights = c(4, 1),
+             as.table = TRUE)
+
+#:#:#:#:#:#:#:#:#:#:#
+#REGRESION
+if(invisible==4){
+model<-
+    CONS_C1_df_dup_JUL_2020_cons14%>%
+        dplyr::mutate(in_un_caso_dias_trat_mas_1095=ifelse(hash_key %in% unlist(in_un_caso_dias_trat_mas_1095["hash_key"]),1,0))%>%
+      dplyr::mutate(in_un_caso_dias_trat_mas_1095=factor(in_un_caso_dias_trat_mas_1095))%>%
+      dplyr::filter(dias_treat_imp_sin_na>1095)%>%
+          ungroup()%>%
+        dplyr::mutate(vacio_fech_egres=factor(ifelse(!is.na(fech_egres_imp),1,0)))%>%
+        dplyr::select(dias_treat_imp_sin_na,vacio_fech_egres,in_un_caso_dias_trat_mas_1095)
+  library(lsmeans)
+  refR <- lsmeans(lm(dias_treat_imp_sin_na~ vacio_fech_egres*in_un_caso_dias_trat_mas_1095, data=model),
+                  specs = c("vacio_fech_egres","in_un_caso_dias_trat_mas_1095"))
+  g4R <- ggplot(data.frame(refR), aes(x= vacio_fech_egres, y=lsmean,group=in_un_caso_dias_trat_mas_1095, colour=in_un_caso_dias_trat_mas_1095))+
+  geom_errorbar(aes(ymin=lower.CL, ymax=upper.CL), width=.1,position=position_dodge(0.1), size=1) +
+  geom_point(position=position_dodge(0.1), size=2)+
+    xlab("Date of discharge is empty (=1)")+
+    ylab("Days of treatment")+
+    sjPlot::theme_sjplot2() +
+    geom_rect_interactive(alpha = 0.1, xmin=.1, xmax=.1, ymin=.1,ymax=.1) +
+      # Remove plot elements added by geom_rect_interactive
+    theme(legend.position="bottom")+
+    guides(color=guide_legend(ncol=4,name = "Cause of Discharge"))+
+    labs(color="More than one entry by user")+
+    scale_colour_brewer(palette = "Set1",labels=c("More than one entry by user", "Only one entry by user"))+
+    theme(legend.title = element_blank())
+  g4R
+}
+```
+
+<br>
+
+There were `r CONS_C1_df_dup_JUL_2020_cons14%>%dplyr::filter(dias_treat_imp_sin_na>1095)%>% nrow()` entries with >1095 days, that affects `r CONS_C1_df_dup_JUL_2020_cons14%>% dplyr::filter(hash_key %in% mas_1095_usuarios)%>% dplyr::select(hash_key, ano_bd_first, ano_bd_last, fech_ing, dias_treat_imp_sin_na, fech_egres_imp,tipo_de_plan_2,senda)%>% nrow()` users. As seen in the figure presented above, cases with more than 2000 days of treatment could be considered as anomalies, excepting in the group of those cases that showed only one entry by user and  date of discharge, in which more than 50% of the treatments show over than 1800 days of treatment.
+
+<br>
+
+```{r std15b_dias_trat_mas_1095_exp, echo=T, paged.print=TRUE,eval=T}
+cases_w_intermediate_entries_w_more_1095d<-
+CONS_C1_df_dup_JUL_2020_cons14%>%
+    dplyr::filter(hash_key %in% mas_1095_usuarios)%>%
+    dplyr::arrange(hash_key,desc(fech_ing))%>%
+    dplyr::group_by(hash_key)%>%
+    dplyr::mutate(count=n(),rn=row_number())%>%
+    dplyr::ungroup()%>%
+    dplyr::mutate(mas_1095d_trat_intermedio=dplyr::case_when(rn>1 & dias_treat_imp_sin_na>1095~1,TRUE~0))%>%
+    dplyr::group_by(hash_key)%>%
+    dplyr::mutate(users_w_prob_cases=sum(mas_1095d_trat_intermedio))%>%
+    dplyr::ungroup()%>%
+  #Para ver los casos anomalos e intermedios
+  #dplyr::filter(users_w_prob_cases==1)%>%
+  dplyr::select(row,hash_key, fech_ing, dias_treat_imp_sin_na, fech_egres_imp,tipo_de_plan_2,senda,mas_1095d_trat_intermedio,rn,count,row_cont_entries,users_w_prob_cases)%>%
+  #View()
+    dplyr::filter(mas_1095d_trat_intermedio>0)
+```
+
+<br>
+
+We decided to discard `r CONS_C1_df_dup_JUL_2020_cons14%>%dplyr::filter(dias_treat_imp_sin_na>1095)%>% nrow()` entries with more than 1095 days of treatment, excepting intermediate entries of users with more than one treatment that had more than 1095 days (that is to say, users that had a treatment before and after the treatment with more than 1095 days of treatment) (n=`r CONS_C1_df_dup_JUL_2020_cons14%>% dplyr::filter(row %in% unlist(cases_w_intermediate_entries_w_more_1095d[,"row"]))%>% nrow()`; users=`r CONS_C1_df_dup_JUL_2020_cons14%>% dplyr::filter(hash_key %in% unlist(cases_w_intermediate_entries_w_more_1095d[,"hash_key"]))%>% distinct(hash_key)%>% nrow()`).
+
+<br>
+
+```{r std15c_dias_trat_mas_1095_cambio, echo=T, paged.print=TRUE,eval=T}
+rows_more_1095d_no_int_treat_discarded<-
+CONS_C1_df_dup_JUL_2020_cons14%>%
+  dplyr::filter(dias_treat_imp_sin_na>1095)%>%
+  dplyr::filter(!row %in% unlist(cases_w_intermediate_entries_w_more_1095d[,"row"]))%>%
+  dplyr::select(row)
+
+CONS_C1_df_dup_JUL_2020_cons14%>%
+  dplyr::filter(!row %in% unlist(rows_more_1095d_no_int_treat_discarded[,"row"]))%>%
+  assign("CONS_C1_df_dup_JUL_2020_cons15",., envir = .GlobalEnv)
+```
+  
+  
+```{r std16_stand_foll_treat, echo=T, paged.print=TRUE,eval=T}
+CONS_C1_df_dup_JUL_2020_cons15%>%
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(fech_ing_next_treat=dplyr::lag(fech_egres_num))%>%
+  dplyr::mutate(diff_bet_treat=fech_ing_next_treat-fech_egres_num)%>%
+  dplyr::mutate(id_centro_sig_trat=dplyr::lag(id_centro)) %>%
+  dplyr::mutate(tipo_plan_sig_trat=dplyr::lag(tipo_de_plan_2)) %>%
+  dplyr::mutate(tipo_programa_sig_trat=dplyr::lag(tipo_de_programa_2)) %>%
+  dplyr::mutate(senda_sig_trat=dplyr::lag(senda)) %>%
+  dplyr::ungroup()%>%
+  #para tener sólo los casos que corresponde, que tienen comparaciones con un siguiente. Los otros no me interesan
+  dplyr::mutate(menor_60_dias_diff=case_when(diff_bet_treat<60~1,TRUE~0))%>%
+  dplyr::mutate(menor_45_dias_diff= ifelse(diff_bet_treat<45,1,0))%>%
+  dplyr::mutate(obs_cambios=case_when(id_centro_sig_trat!=id_centro~"1.1.cambio centro",TRUE~""))%>%
+  dplyr::mutate(obs_cambios=case_when(tipo_plan_sig_trat!=tipo_de_plan_2~glue::glue("{obs_cambios};1.2.cambio tipo plan"),TRUE~obs_cambios))%>%
+  dplyr::mutate(obs_cambios=case_when(tipo_programa_sig_trat!=tipo_de_programa_2~glue::glue("{obs_cambios};1.3.cambio tipo programa"),TRUE~obs_cambios))%>%
+  dplyr::mutate(obs_cambios=case_when(senda_sig_trat!=senda~glue::glue("{obs_cambios};1.4.cambio senda"),TRUE~obs_cambios))%>%
+  dplyr::mutate(obs_cambios_ninguno=case_when(obs_cambios==""~1,TRUE~0))%>%
+  dplyr::mutate(obs_cambios_num=case_when(id_centro_sig_trat!=id_centro~1,TRUE~0))%>%
+  dplyr::mutate(obs_cambios_num=case_when(tipo_plan_sig_trat!=tipo_de_plan_2~obs_cambios_num+1,TRUE~obs_cambios_num))%>%
+  dplyr::mutate(obs_cambios_num=case_when(tipo_programa_sig_trat!=tipo_de_programa_2~obs_cambios_num+1,TRUE~obs_cambios_num))%>%
+  dplyr::mutate(obs_cambios_num=case_when(senda_sig_trat!=senda~obs_cambios_num+1,TRUE~obs_cambios_num))%>%
+  dplyr::mutate(obs_cambios_num=as.numeric(obs_cambios_num))%>%
+  dplyr::mutate(obs_cambios_fac=obs_cambios_num)%>%
+  dplyr::mutate(menor_45_dias_diff= recode(as.character(menor_45_dias_diff),"0"=">= 45 Days of Difference Between Entries","1"="<45 Days of Difference Between Entries"))%>%
+  dplyr::mutate(menor_60_dias_diff= recode(as.character(menor_60_dias_diff),"0"=">= 60 Days of Difference Between Entries","1"="<60 Days of Difference Between Entries"))%>%
+  dplyr::mutate(obs_cambios_ninguno= recode(as.character(obs_cambios_ninguno),"0"="At least 1 Change w/ the Next Entry","1"="No Changes w/ the Next Entry"))%>%
+  dplyr::mutate_at(c('menor_45_dias_diff','menor_60_dias_diff','obs_cambios_ninguno','obs_cambios_fac'),~as.factor(.))%>%  
+  assign("CONS_C1_df_dup_JUL_2020_cons16",., envir = .GlobalEnv)
+```  
+```{r std16_as_factor_vars,eval=T, echo=T, paged.print=TRUE}
+CONS_C1_df_dup_JUL_2020_cons16%>%
   dplyr::mutate_at(vars(contains("cie_10_or"),contains("dsm_iv_or"),contains("tipo_de_plan"),c('tipo_de_programa_2','nombre_centro','tipo_centro','servicio_de_salud','senda','tipo_centro_derivacion','usuario_tribunal_trat_droga','motivodeegreso_mod_imp','macrozona','nombre_region','comuna_residencia_cod','identidad_de_genero','origen_ingreso_mod','x_se_trata_mujer_emb','usuario_tribunal_trat_droga','tiene_menores_de_edad_a_cargo','ha_estado_embarazada_egreso','discapacidad','opcion_discapacidad','escolaridad','edad_al_ing_grupos','nacionalidad','sexo_2','embarazo','estado_conyugal_2','edad_grupos','freq_cons_sus_prin','via_adm_sus_prin_act','etnia_cor','nacionalidad_2','etnia_cor_2','sus_ini_2_mod','sus_ini_3_mod','sus_ini_mod','con_quien_vive','estatus_ocupacional','cat_ocupacional','sus_principal_mod', 'tipo_de_vivienda_mod','tenencia_de_la_vivienda_mod','rubro_trabaja_mod','otras_sus1_mod','otras_sus2_mod','otras_sus3_mod','dg_trs_cons_sus_or','diagnostico_trs_fisico','otros_probl_at_sm_or','ano_bd_first','ano_bd_last','centro_muj','cie_10','dsm_iv')),~as.factor(.))%>%
   dplyr::mutate_at(c('id_centro_sig_trat','tipo_plan_sig_trat','tipo_programa_sig_trat','senda_sig_trat','at_least_one_cont_entry','id_centro'),~as.factor(.)) %>%
   dplyr::mutate_at(c('tipo_de_plan_2_concat_a'),~as.character(.)) %>%
   dplyr::mutate_at(c('fech_ing','fech_egres_imp'),~as.Date(.))%>%
-  
     assign("CONS_C1_df_dup_JUL_2020",., envir = .GlobalEnv)
 ```  
 
@@ -1838,7 +2055,7 @@ CONS_C1_df_dup_JUL_2020_cons13%>%
 
 ```{r change labels,echo=T, paged.print=TRUE, eval=T}
   metadata(CONS_C1_df_dup_JUL_2020)$name <- "Agreement 1 SENDA"
-  metadata(CONS_C1_df_dup_JUL_2020)$description <- "Information About Agreement 1 of SENDA and MINSAL. Contians information about treatments.(*) Intermediate events are collapsed and concatenated in some variables."
+  metadata(CONS_C1_df_dup_JUL_2020)$description <- "Information About Agreement 1 of SENDA and MINSAL. Contians information about treatments.(*) Intermediate events are collapsed and concatenated in some variables; Criteria to select values from entries that were collapsed into single treatments: Wide format(a),Maximum/Last value(b), Minimum/First value(c), Kept more vulnerable category(d), Same value(e), Largest treatment(f), Favored dgs.-a(g), Sum values(h)"
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_  
   
@@ -1850,7 +2067,7 @@ hash_rut_completo= 'HASH alternativo, en el escenario en que se asuma que el ind
 id= 'Codigo Identificación de SENDA/SENDAs ID',
 id_mod= 'ID de SENDA para Presentación en Página Web (enmascara caracteres 5 y 6)/SENDAs ID (mask characters 5 & 6)',
 fech_ing= 'Fecha de Ingreso a Tratamiento (Primera Entrada)/Date of Admission to Treatment (First Entry)',
-fech_egres_imp= 'Fecha de Egreso (Imputados KNN & Lógico) del Último Registro/Date of Discharge (Imputed KNN & Logic) of the Last Entry',
+fech_egres_imp= 'Fecha de Egreso (Imputados KNN & Lógico) del Último Registro(b)/Date of Discharge (Imputed KNN & Logic) of the Last Entry(b)',
 tipo_de_plan_2= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry',
 tipo_de_plan_2_largest_treat= 'Tipo de Plan del Registro Más Largo entre entradas intermedias(f)/Type of Plan of the Largest Entry Among Intermediate Entries(f)',
 tipo_de_plan_2_concat_a= 'Tipo de Plan(*)/Type of Plan(*)', 
@@ -1863,13 +2080,13 @@ servicio_de_salud= 'Servicio de Salud(*)/Health Service(*)',
 senda= 'SENDA del Último Registro/SENDA of the Last Entry',
 numero_de_hijos_mod= 'Número de Hijos (Valor Max.)/Number of Children (Max. Value)',
 num_hijos_trat_res_mod= 'Número de Hijos para Ingreso a Tratamiento Residencial del Último Registro/Number of Children to Residential Treatment of the Last Entry',
-tipo_centro_derivacion= 'Tipo de Centro al que el Usuario es Derivado del Último Registro/Type of Center of Derivation of the Last Entry',
-motivodeegreso_mod_imp= 'Motivo de Egreso (con abandono temprano y tardío)(Imputados KNN & Lógico) del Último Registro/Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry',
-macrozona= "Macrozona del Centro del Último Registro/Macrozones of the Center of the Last Entry",
-nombre_region= " Región del Centro del Último Registro/Chilean Region of the Center of the Last Entry",
-comuna_residencia_cod= "Comuna de Residencia del Último Registro/Municipality or District of Residence of the Last Entry",
+tipo_centro_derivacion= 'Tipo de Centro al que el Usuario es Derivado del Último Registro(b)/Type of Center of Derivation of the Last Entry(b)',
+motivodeegreso_mod_imp= 'Motivo de Egreso (con abandono temprano y tardío)(Imputados KNN & Lógico) del Último Registro(b)/Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b)',
+macrozona= "Macrozona del Centro del Último Registro(b)/Macrozones of the Center of the Last Entry(b)",
+nombre_region= "Región del Centro del Último Registro(b)/Chilean Region of the Center of the Last Entry(b)",
+comuna_residencia_cod= "Comuna de Residencia del Último Registro(b)/Municipality or District of Residence of the Last Entry(b)",
 fecha_ingreso_a_convenio_senda= 'Fecha de Ingreso a Convenio SENDA (aún no formateada como fecha) (Primera Entrada)/Date of Admission to SENDA Agreement (First Entry)',
-identidad_de_genero= 'Identidad de Género (Último Registro)/Gender Identity (Last Entry)',
+identidad_de_genero= 'Identidad de Género (Último Registro)(b)/Gender Identity (Last Entry)(b)',
 edad_al_ing= 'Edad a la Fecha de Ingreso a Tratamiento (numérico continuo) (Primera Entrada)/Age at Admission to Treatment (First Entry)',
 origen_ingreso_mod= 'Origen de Ingreso (Primera Entrada)/Motive of Admission to Treatment (First Entry)',
 x_se_trata_mujer_emb= 'Mujer Embarazada al Ingreso (d)/Pregnant at Admission (d)',
