@@ -844,7 +844,7 @@ plot_ly( labels = ~compromiso_biopsicosocial, values = ~n, type = 'pie',hole = 0
 
 <br>
 
-We generated a correlation plot which wraps different type of variables (continuous, polytomous, dichotomous) [@Revelle2019]. We selected mostly the original variables from the instrument.
+We generated a correlation plot which wraps different type of variables (continuous, polytomous, dichotomous) [@RN127]. We selected mostly the original variables from the instrument.
 
 <br>
 
@@ -892,7 +892,7 @@ ggcorrplot(comp_biopsicosoc_mat,
 
 <br>
 
-Also we included an heterogeneus matrix of correlations, consisting of polychoric, biserial and pearson correlations [@Fox2019]. In the following matrix, we selected the recoded variables useful to contrast our  hypotheses.
+Also we included an heterogeneus matrix of correlations, consisting of polychoric, biserial and pearson correlations [@RN128]. In the following matrix, we selected the recoded variables useful to contrast our  hypotheses.
 
 <br>
 
@@ -976,7 +976,7 @@ As seen above, users categorized with a severe Biopsychosocial Compromise showed
 
 <br>
 
-We checked the multivariate normality of these three last variables, in order to choose the technique to perform the analyses that may let us infer whether that users in different levels of Biopsychosocial Compromise derive from the same population.
+We checked the multivariate normality of these four last variables, in order to choose the most adequate technique to perform the analyses. These analyses may let us infer whether that users in different levels of Biopsychosocial Compromise derive from the same population in terms of scores in the Treatment Outcomes Profile.
 
 <br>
 
@@ -990,12 +990,13 @@ showOutliers = FALSE, showNewData = FALSE)
 #la distancia de mahalanois mide la similitud de variables aleatorias multidimensionales
 mvn_test$multivariateNormality%>%
     data.frame()%>% mutate(Statistic=round(as.numeric(as.character(Statistic)),3))%>% 
+      dplyr::mutate(`p.value`=sprintf("%5.3f",as.numeric(as.character(`p.value`))))%>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption="Table 3. Multivariate Normality Test",
                  align =rep('c', 101),
                col.names=c("Test", "Statistic", "P Value", "Normality"))%>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
-  kableExtra::add_footnote( c("Note. Using z-scores distributions of Average Health, Average Frequency of Use in the last Month and Average Dose in the las Month"), notation = "none") %>%
+  kableExtra::add_footnote( c("Note. Using z-scores distributions of Average Health, Average days worked or in assistance to educational institutions, Average Frequency of Use in the last Month and Average Dose in the last Month"), notation = "none") %>%
   kableExtra::scroll_box(width = "100%", height = "175px")
 ```
 <br>
@@ -1033,39 +1034,11 @@ CONS_C1_df_dup_JUL_2020_match_top_sel2<-
   CONS_C1_df_dup_JUL_2020_match_top_sel%>%
       dplyr::mutate_at(vars(hurto, robo,  venta_drogas, rina,  otro, lugar_vivir, vivienda,vif), ~as.numeric(as.factor(as.numeric(.)-1)))
 #https://stackoverflow.com/questions/59166335/need-help-using-npmv-package-nonparametric-testing-in-r
-#https://cran.r-project.org/web/packages/npmv/npmv.pdf
-#R.Ellis, A., W.Burchett, W., W.Harrar, S., & Bathke, A. (2017). Nonparametric Inference for Multivariate Data: the Package npmv. JOURNAL OF STATISTICAL SOFTWARE. https://doi.org/10.18637/jss.v076.i04
+
 invisible(
 prueba_anormalidad1<-npmv::nonpartest(dosis_mean_z|total_mean_z|salud_mean_z|total_trabajo_edu_z|hurto|robo|venta_drogas|rina|otro|lugar_vivir|vivienda|vif~compromiso_biopsicosocial, CONS_C1_df_dup_JUL_2020_match_top_sel2,plots=F,permreps=5000,releffects=TRUE)
 )
 
-#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
-#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
-no_mostrar=6
-if(no_mostrar==1){
-    invisible(
-    prueba_anormalidad2<-npmv::nonpartest(dosis_mean_z|total_mean_z|salud_mean_z|total_trabajo_edu_z|hurto|robo|venta_drogas|rina|otro|lugar_vivir|vivienda|vif~compromiso_biopsicosocial+origen_ingreso_mod, CONS_C1_df_dup_JUL_2020_match_top_sel2,plots=F,permreps=5000,releffects=TRUE)
-    )
-    invisible(
-    prueba_anormalidad3<-npmv::nonpartest(dosis_mean_z|total_mean_z|salud_mean_z|total_trabajo_edu_z|hurto|robo|venta_drogas|rina|otro|lugar_vivir|vivienda|vif~compromiso_biopsicosocial+origen_ingreso_mod+dg_trs_fisico, CONS_C1_df_dup_JUL_2020_match_top_sel2,plots=F,permreps=5000,releffects=TRUE)
-    )
-    invisible(
-    prueba_anormalidad4<-npmv::nonpartest(dosis_mean_z|total_mean_z|salud_mean_z|total_trabajo_edu_z|hurto|robo|venta_drogas|rina|otro|lugar_vivir|vivienda|vif~ compromiso_biopsicosocial+origen_ingreso_mod+dg_trs_fisico+dg_cie_10_rec, CONS_C1_df_dup_JUL_2020_match_top_sel2,plots=F,permreps=5000,releffects=TRUE)
-    )
-    
-      prueba_anormalidad_res2<-data.table::data.table(prueba_anormalidad2$results, keep.rownames=T)
-      prueba_anormalidad_res3<-data.table::data.table(prueba_anormalidad3$results, keep.rownames=T)
-      prueba_anormalidad_res4<-data.table::data.table(prueba_anormalidad4$results, keep.rownames=T)
-
-            prueba_anormalidad_res2,
-            prueba_anormalidad_res3,
-            prueba_anormalidad_res4
-        sum_df_npmv<-data.frame(cbind(Model=                              paste0("npmv",c("Raw","Raw","Raw","Raw","2","2","2","2","3","3","3","3","4","4","4","4")),
- "Raw= No control variables; Controlling for Motive of Admission(2); Controlling for Motive of Admission & Physical Condition(3); Controlling for Motive of Admission, Physical Condition & Psychiatric Condition(4)"
-}
-#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
-#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
-#
 prueba_anormalidad_res1<-data.table::data.table(prueba_anormalidad1$results, keep.rownames=T)
 
 #INOCRPORË LAS VAR DE CONTROL. SON TODAS DE TIPO FACTOR
@@ -1082,7 +1055,7 @@ sum_df_npmv%>%
                  align =rep('c', 101),
                col.names=c("Model", "Parameter", "Statistic", "DF1", "DF2","p-value", "Permutation Test p-value"))%>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
-  kableExtra::add_footnote( c("Note. Model with average dose (z score), average frequency of use (z score), theft, burglary, drug selling, fights, other, place to live, housing condition and domestic violence."), notation = "none") %>%
+  kableExtra::add_footnote( c("Note. Model with average dose (z score), average frequency of use (z score), average reported health (z score), average days worked or attending an educational institution (z score), theft, burglary, drug selling, fights, other, place to live, housing condition and domestic violence."), notation = "none") %>%
   kableExtra::scroll_box(width = "100%", height = "375px")
 ##NO OCUPAR: MUY COMPLICADO
 #The function ssnonpartest performs an all-subset algorithm to determine which variables cause significant effects, and between which factor levels. See the examples below for some basic uses and look in the help pages for each function for a much more detailed look.
@@ -1098,12 +1071,14 @@ We also included the non-parametric relative treatment efects (RTE) for each var
 <br>
 
 ```{r nonpar2, dpi = 96, message=F, error=F}
-data.table(prueba_anormalidad1$releffects,keep.rownames = T)%>% mutate_at(vars(-rn),~scales::percent(.))%>%
+data.table(prueba_anormalidad1$releffects,keep.rownames = T)%>% 
+  #mutate_at(vars(-rn),~scales::percent(.))%>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption="Table 5. Non-parametric treaatment effects for each variable",
                  align =rep('c', 101),
                col.names=c("Levels of Biopsychosocial Compromise","Std.Avg.Dose", "Std.Avg.Drug.Cons.", "Std.Avg.Health", "Std.Avg.Work  & Education", "Robbery","Theft", "Drug-Selling","Fights", "Other Transgressions", "Stable Place to Live", "Basic Housing Cond.", "Dom. Violence"))%>%
-   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) 
+   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8)%>%
+    kableExtra::scroll_box(width = "100%", height = "225px")
 ```
 
 <br>
@@ -1119,54 +1094,57 @@ CONS_C1_df_dup_JUL_2020_match_top_sel2<-
 #https://www.rdocumentation.org/packages/vegan/versions/2.4-2/topics/adonis
 #t looks like the jaccard distance is really only useful for binary data (presence/absence) while The bray-curtis matrix has been found to be robust for many abundance type data sets, especially those with many paired zeros like stomach content data can have.
 
+# Test of significance of the canonical relationship:
+# 6.3. Canonical correspondence analysis (CCA)
+# Beware: there are cca functions in other R packages, in particular in ade4.
+#http://jinliang.weebly.com/uploads/2/5/7/8/25781074/analysis_of_community_ecology_data_in_r.pdf
+#
+#Statistical testing of microbial beta diversity between treatments was conducted in R using the vegan R package ADONIS function with the default 999 permutations. The betadisper function from the vegan R package was used to analyze variance between groups. Differential abundance analysis of the OTUs in microcosms of different treatments was performed using the DESeq2 R package. The DESeq2 generated the log fold change values, normalized relative abundances (“basemean”), and p-values from the Wald test with local fitting.
+#ADONIS results indicate the effect of each factor, substrate, concentration and timepoint, on
+#microbial community dissimilarity
 vegan_1<- 
   vegan::adonis(CONS_C1_df_dup_JUL_2020_match_top_sel2[,c("dosis_mean_z", "total_mean_z", "salud_mean_z","total_trabajo_edu_z", "hurto", "robo", "venta_drogas", "rina", "otro", "lugar_vivir", "vivienda", "vif"),drop = FALSE] ~ compromiso_biopsicosocial, data=CONS_C1_df_dup_JUL_2020_match_top_sel,permutations=1000, parallel = 4, na.rm=T)
+vegan_2<- 
+    vegan::adonis(CONS_C1_df_dup_JUL_2020_match_top_sel2[,c("dosis_mean_z", "total_mean_z", "salud_mean_z","total_trabajo_edu_z", "hurto", "robo", "venta_drogas", "rina", "otro", "lugar_vivir", "vivienda", "vif"),drop = FALSE] ~ compromiso_biopsicosocial, data=CONS_C1_df_dup_JUL_2020_match_top_sel,permutations=1000, parallel = 4, na.rm=T, method="gower")
+#https://trace.tennessee.edu/cgi/viewcontent.cgi?article=5817&context=utk_graddiss
 
-#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
-#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
-no_mostrar=6
-if(no_mostrar==1){
-      vegan_2<- 
-        vegan::adonis(CONS_C1_df_dup_JUL_2020_match_top_sel2[,c("dosis_mean_z", "total_mean_z", "salud_mean_z", "total_trabajo_edu_z", "hurto", "robo", "venta_drogas", "rina", "otro", "lugar_vivir", "vivienda", "vif"),drop = FALSE] ~ compromiso_biopsicosocial+origen_ingreso_mod, data=CONS_C1_df_dup_JUL_2020_match_top_sel,permutations=1000, parallel = 4, na.rm=T)
-      
-      vegan_3<- 
-        vegan::adonis(CONS_C1_df_dup_JUL_2020_match_top_sel2[,c("dosis_mean_z", "total_mean_z", "salud_mean_z", "total_trabajo_edu_z", "hurto", "robo", "venta_drogas", "rina", "otro", "lugar_vivir", "vivienda", "vif"),drop = FALSE] ~ compromiso_biopsicosocial+origen_ingreso_mod+dg_trs_fisico, data=CONS_C1_df_dup_JUL_2020_match_top_sel, permutations=1000, parallel = 4, na.rm=T)
-      
-      vegan_4<- 
-        vegan::adonis(CONS_C1_df_dup_JUL_2020_match_top_sel2[,c("dosis_mean_z", "total_mean_z", "salud_mean_z", "total_trabajo_edu_z", "hurto", "robo", "venta_drogas", "rina", "otro", "lugar_vivir", "vivienda", "vif"), drop = FALSE] ~ compromiso_biopsicosocial+origen_ingreso_mod+dg_trs_fisico+dg_cie_10_rec,  data=CONS_C1_df_dup_JUL_2020_match_top_sel, permutations=1000, parallel = 4, na.rm=T)
-      
-      sum_df_vegan<-data.frame(cbind(Model=paste0("vegan",c("Raw","Raw","Raw",
-                                                            "2","2","2","2",
-                                                            "3","3","3","3","3",
-                                                            "4","4","4","4","4","4")),
-                rbind(data.table::data.table(vegan_1$ aov.tab, keep.rownames=T),
-                      data.table::data.table(vegan_2$ aov.tab, keep.rownames=T),
-                      data.table::data.table(vegan_3$ aov.tab, keep.rownames=T),
-                      data.table::data.table(vegan_4$ aov.tab, keep.rownames=T))))%>%
-                  dplyr::rename("Parameter"="rn")
-      
-      "note. . Raw= No control variables; Controlling for Motive of Admission(2); Controlling for Motive of Admission & Physical Condition(3); Controlling for Motive of Admission, Physical Condition & Psychiatric Condition(4)"
-}
-#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
-#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#v To test for differences in dispersion between groups (permutational multivariate analysis of dispersion [PERMDISP] was significant), we used the betadisper function in vegan
+
+
+#(PERMANOVA pseudo-F = 3.95, p = .0001), and all pairwise comparisons were significant (p < .001, 999 permutations). The PERMDISP was significant (F = 11.47, p = .0003), indicating unequal variances among vegetation habitats.
+# To test for differences in dispersion between groups (permutational multivariate analysis of dispersion [PERMDISP] was significant), we used the betadisper function in vegan
+#to determine if there were significant differences in MDS clusters by sample origin, an analysis of variance was conducted using the function “adonis” in the R package “vegan”. 
 
 sum_df_vegan<-data.frame(cbind(Model=paste0("vegan",c("Raw","Raw","Raw")),
           rbind(data.table::data.table(vegan_1$ aov.tab, keep.rownames=T))))%>%
             dplyr::rename("Parameter"="rn")%>%
-  dplyr::mutate(`P.value`=sprintf("%5.3f",`Pr..F.`))
+  dplyr::mutate(`Pr..F.`=sprintf("%5.3f",`Pr..F.`))
 
 sum_df_vegan%>% 
   dplyr::mutate(R2=round(as.numeric(as.character(R2)),3))%>% 
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 5. Analysis of Variance using bray-curtis matrix",
+               caption="Table 6. Analysis of Variance using bray-curtis matrix",
                  align =rep('c', 101),
                col.names=c("Model","Parameter", "Df","SS", "Mean Squares","Pseudo F","R2", "p-value"))%>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
-  kableExtra::add_footnote( c("Note. Model with average dose (z score), average frequency of use (z score), theft, burglary, drug selling, fights, other, place to live, housing condition and domestic violence."), notation = "none")%>%
+  kableExtra::add_footnote( c("Note. Model with average dose (z score), average frequency of use (z score), average reported health (z score), average days worked or attending an educational institution (z score), theft, burglary, drug selling, fights, other, place to live, housing condition and domestic violence."), notation = "none")%>%
   kableExtra::scroll_box(width = "100%", height = "375px")
+
+get_adjusted_r2 <- function(adonis_object) {
+  n_observations <- ncol(adonis_object$coef.sites)
+  d_freedom <- adonis_object$aov.tab$Df[1]
+  r2 <- adonis_object$aov.tab$R2[1]
+  adjusted_r2 <- vegan::RsquareAdj(r2, n_observations, d_freedom)
+  adjusted_r2
+}
+
 #dg_cons_dep", "sin_otros_prob_sm","abandono_temp",,"dg_cie_10"
 #https://stackoverflow.com/questions/16638297/vegdist-error-message-in-vegan-package
 ```
+
+<br>
+
+Despite both tests indicated significant differences between the levels of biopsychosocial compromise in scores of the TOP, the r-square let us interpret that these differences only explain the `r scales::percent(round(get_adjusted_r2(vegan_1),3))` of the variances of the scores, in such way that levels in the biopsychosocial compromise may not be capable of predicting a determin, affecting the generalizab
 
 <br>
 
@@ -1327,7 +1305,7 @@ data.table::data.table(summary(res@objects[[2]])$coefficients,keep.rownames = T)
   dplyr::rename("Terms"="rn", "OR_lo"="V2","OR_up"="V4")%>%
   dplyr::select(Terms,Estimate,OR,OR_lo,OR_up, everything())%>%
   knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 6. Logistic Regression Coefficients",
+               caption="Table 7. Logistic Regression Coefficients",
                  align =rep('c', 101))%>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8)%>%
   kableExtra::add_footnote( c(paste("Note. AICc=",round(res@objects[[1]]$aic,3)),
@@ -1343,7 +1321,7 @@ The next figures show the marginal effects of the interaction terms among the va
 
 <br>
 
-```{r fig9_int2,eval=T, echo=T, fig.align='center', paged.print=TRUE,fig.cap= "Figure 9. Interactive Effects in the Prob. of Early Drop-out with Diagnose of Physical Diagnosis", eval=F}
+```{r fig9_int2,eval=T, echo=T, fig.align='center', paged.print=TRUE,fig.cap= "Figure 9. Interactive Effects in the Prob. of Early Drop-out with Diagnose of Physical Diagnosis", eval=T}
 library(lsmeans)
 refR_1 <- lsmeans(res@objects[[1]], specs = c("compromiso_biopsicosocial","dg_trs_fisico"))
 ref_dfR_1 <- as.data.frame(cbind(summary(refR_1)[1:2],exp(summary(refR_1)[,c(3,6,7)])))
@@ -1367,7 +1345,7 @@ geom_point(position=position_dodge(0.1), size=2)+
 ggiraph(code = print(g4R_1))
 ```
 
-```{r fig10_int1,eval=T, echo=T, paged.print=TRUE,fig.align='center', fig.cap= "Figure 10. Interactive Effects in the Prob. of Early Drop-out with Diagnose of Psychiatric Diagnosis", eval=F}
+```{r fig10_int1,eval=T, echo=T, paged.print=TRUE,fig.align='center', fig.cap= "Figure 10. Interactive Effects in the Prob. of Early Drop-out with Diagnose of Psychiatric Diagnosis", eval=T}
 library(lsmeans)
 refR_2 <- lsmeans(res@objects[[1]], specs = c("compromiso_biopsicosocial","dg_cie_10_rec"))
 ref_dfR_2 <- as.data.frame(cbind(summary(refR_2)[1:2],exp(summary(refR_2)[,c(3,6,7)])))
@@ -1399,4 +1377,3 @@ sessionInfo()
 
 # References
 
-<div id="refs"></div>
