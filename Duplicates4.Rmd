@@ -65,7 +65,6 @@ if(isTRUE(getOption('knitr.in.progress'))==T){
     nn_K= 1
   }
 }
-
 ```
 
 ```{r setup, include = FALSE, cache=T}
@@ -1517,6 +1516,7 @@ CONS_C1_df_dup_JUL_2020_cons%>%
   dplyr::mutate(obs_cambios_ninguno= recode(as.character(obs_cambios_ninguno),"0"="At least 1 Change w/ the Next Entry","1"="No Changes w/ the Next Entry"))%>%
   dplyr::mutate(motivoegreso_derivacion= recode(as.character(motivoegreso_derivacion),"0"="Other causes of discharge","1"="Referral"))%>%
   dplyr::mutate_at(c('menor_45_dias_diff','menor_60_dias_diff','motivoegreso_derivacion','obs_cambios_ninguno','obs_cambios_fac'),~as.factor(.))%>%
+  dplyr::mutate(via_adm_sus_prin_act=ifelse(grepl("Fumada o Pulmonar",via_adm_sus_prin_act),"Fumada o Pulmonar (aspiración de gases o vapores)",as.character(via_adm_sus_prin_act)))%>%
   assign("CONS_C1_df_dup_JUL_2020_cons2",., envir = .GlobalEnv)
 ```
 
@@ -2034,7 +2034,7 @@ CONS_C1_df_dup_JUL_2020_cons14%>%
   dplyr::group_by(hash_key)%>%
   dplyr::mutate(discarded_more_1095d_treat_by_hash=sum(discarded_more_1095d_treat,na.rm = T))%>%
   dplyr::ungroup()%>%
-  dplyr::mutate(obs=case_when(discarded_more_1095d_treat_by_hash>0~glue::glue("{obs};4.99.HASH w/ cases w/ >1095 d of treat"),TRUE~obs))%>%  
+  dplyr::mutate(obs=case_when(discarded_more_1095d_treat_by_hash>0~glue::glue("{obs};4.98.HASH w/ cases w/ >1095 d of treat"),TRUE~obs))%>%  
   dplyr::filter(!row %in% unlist(rows_more_1095d_no_int_treat_discarded[,"row"]))%>%
   dplyr::select(-discarded_more_1095d_treat,-discarded_more_1095d_treat_by_hash)%>%
   assign("CONS_C1_df_dup_JUL_2020_cons15",., envir = .GlobalEnv)
@@ -2262,13 +2262,296 @@ CONS_C1_df_dup_JUL_2020_cons17%>%
   dplyr::mutate(menor_60_dias_diff= recode(as.character(menor_60_dias_diff),"0"=">= 60 Days of Difference Between Entries","1"="<60 Days of Difference Between Entries"))%>%
   dplyr::mutate(obs_cambios_ninguno= recode(as.character(obs_cambios_ninguno),"0"="At least 1 Change w/ the Next Entry","1"="No Changes w/ the Next Entry"))%>%
   dplyr::mutate_at(c('menor_45_dias_diff','menor_60_dias_diff','obs_cambios_ninguno','obs_cambios_fac'),~as.factor(.))%>%  
-  assign("CONS_C1_df_dup_JUL_2020_cons17",., envir = .GlobalEnv)
-```  
-```{r std16_as_factor_vars,eval=T, echo=T, paged.print=TRUE}
-CONS_C1_df_dup_JUL_2020_cons17%>%
-  dplyr::mutate_at(vars(contains("dg_trs_psiq_cie_10"),contains("dg_trs_psiq_dsm_iv"),contains("dg_trs_psiq_sub_cie_10"),contains("dg_trs_psiq_sub_dsm_iv"),contains("tipo_de_plan"),c('tipo_de_programa_2','nombre_centro','tipo_centro','servicio_de_salud','senda','tipo_centro_derivacion','usuario_tribunal_trat_droga','motivodeegreso_mod_imp','macrozona','nombre_region','comuna_residencia_cod','identidad_de_genero','origen_ingreso_mod','x_se_trata_mujer_emb','usuario_tribunal_trat_droga','tiene_menores_de_edad_a_cargo','ha_estado_embarazada_egreso','discapacidad','opcion_discapacidad','escolaridad','edad_al_ing_grupos','nacionalidad','sexo_2','embarazo','estado_conyugal_2','edad_grupos','freq_cons_sus_prin','via_adm_sus_prin_act','etnia_cor','nacionalidad_2','etnia_cor_2','sus_ini_2_mod','sus_ini_3_mod','sus_ini_mod','con_quien_vive','estatus_ocupacional','cat_ocupacional','sus_principal_mod', 'tipo_de_vivienda_mod','tenencia_de_la_vivienda_mod','rubro_trabaja_mod','otras_sus1_mod','otras_sus2_mod','otras_sus3_mod','dg_trs_cons_sus_or','diagnostico_trs_fisico','otros_probl_at_sm_or','ano_bd_first','ano_bd_last','centro_muj','cie_10','dsm_iv')),~as.factor(.))%>%
-  dplyr::mutate_at(c('id_centro_sig_trat','tipo_plan_sig_trat','tipo_programa_sig_trat','senda_sig_trat','at_least_one_cont_entry','id_centro'),~as.factor(.)) %>%
-  dplyr::mutate_at(c('tipo_de_plan_2_concat_a'),~as.character(.)) %>%
+  assign("CONS_C1_df_dup_JUL_2020_cons18",., envir = .GlobalEnv)
+```
+
+### Normalize Progression of Educational Attainment by Users
+
+<br>
+
+Once treatments were defined between each other, we noticed that many users reported a determined educational attainment, but in a following treatment, registries shown inconsistent levels of educational attainment. This is why we decided to focus on the `r CONS_C1_df_dup_JUL_2020_cons18%>%dplyr::group_by(hash_key)%>%dplyr::mutate(esc_num=as.numeric(substring(as.character(escolaridad), 1, 1)))%>%dplyr::mutate(esc_num_lag=lag(esc_num))%>%dplyr::mutate(fech_ing_lag=lag(fech_ing))%>%dplyr::mutate(escolaridad_lag=lag(escolaridad))%>%dplyr::filter(esc_num_lag>esc_num)%>%nrow()%>% formatC(, format="f", big.mark=",", digits=0)` users with inconsistencies throughout their different treatments.
+
+<br>
+
+```{r std19a_education_series, echo=T, paged.print=TRUE,eval=T, message=F, warning=F}
+hash_key_escolaridad<-
+CONS_C1_df_dup_JUL_2020_cons18%>%
+    dplyr::group_by(hash_key)%>%
+    dplyr::mutate(esc_num=as.numeric(substring(as.character(escolaridad), 1, 1)))%>%
+    dplyr::mutate(esc_num_lag=lag(esc_num))%>%
+    dplyr::mutate(fech_ing_lag=lag(fech_ing))%>%
+    dplyr::mutate(escolaridad_lag=lag(escolaridad))%>%
+    dplyr::filter(esc_num_lag>esc_num)%>% #El tratamiento posterior tiene menor escolaridad que el actual
+    dplyr::select(row,hash_key,fech_ing, esc_num_lag,esc_num,escolaridad,escolaridad_lag,fech_ing_lag)%>%
+          dplyr::distinct(hash_key)
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+hash_key_escolaridad_rules<-
+CONS_C1_df_dup_JUL_2020_cons18%>%
+dplyr::filter(hash_key %in% unlist(hash_key_escolaridad))%>%
+  dplyr::mutate(esc_num=as.numeric(substring(as.character(escolaridad), 1, 1)))%>%
+  dplyr::mutate(nas_ed=ifelse(is.na(escolaridad),1,0))%>%
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(n_dis_esc=n_distinct(escolaridad),n=n(), rn_esc=row_number(),
+                nas_ed=sum(nas_ed),nas_ed=ifelse(nas_ed>0,1,0), min_ed=max(esc_num, na.rm=T))%>%
+  dplyr::ungroup()%>%
+  dplyr::group_by(hash_key,escolaridad)%>%
+  dplyr::mutate(n_hash_esc=n())%>%
+  dplyr::ungroup()%>%
+  dplyr::select(row,hash_key,fech_ing,esc_num,escolaridad,n_dis_esc,n,n_hash_esc,rn_esc,nas_ed,min_ed)%>%
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #Generar variables de comparación
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(esc_num_lag_post=lag(esc_num),esc_num_lead_ant=lead(esc_num))%>% 
+  dplyr::mutate(ed_problematico_post=dplyr::case_when(esc_num_lag_post>esc_num~1,TRUE~0))%>%
+  dplyr::mutate(ed_problematico_ant=dplyr::case_when(esc_num_lead_ant>esc_num~1,TRUE~0))%>%
+  dplyr::mutate(ant_ed_problematico_post=lead(ed_problematico_post))%>%
+  dplyr::mutate(post_ed_problematico_ant=lag(ed_problematico_ant))%>%
+  dplyr::mutate(the_rank= rank(-n_hash_esc, ties.method = "min"))%>% #"max"
+  dplyr::mutate(mfv=ifelse(the_rank==1,esc_num,NA_real_))%>%
+  dplyr::mutate(the_rank_post=lag(the_rank))%>% 
+  dplyr::mutate(the_rank_ant=lead(the_rank))%>% 
+  dplyr::mutate(mfv=max(mfv, na.rm=T))%>%
+  dplyr::ungroup()%>%
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #A.Si no hay perdidos, 3 o más escolaridades, más de 3 casos y existe un caso en medio que es problematico y este no es un caso más frecuente, reemplazar con el valor posterior. A menos que el error esté en el final (a.2). EN ese caso, ver si está en la primera fila (caso más reciente) y no tiene valor posterior, reemplazar con <
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  dplyr::mutate(ed_a= dplyr::case_when(nas_ed==0 & n_dis_esc>2 & n>3 & ant_ed_problematico_post==1 & post_ed_problematico_ant==1 & the_rank>1 & the_rank_post==1~esc_num_lag_post,TRUE~NA_real_))%>%
+  #Error al final
+  dplyr::mutate(ed_a2= dplyr::case_when(nas_ed==0 & n_dis_esc>2 & n>3 & ant_ed_problematico_post==1 & is.na(post_ed_problematico_ant) & the_rank>1 & rn_esc==1 & the_rank_ant==1~esc_num_lead_ant,TRUE~NA_real_))%>%
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #B. Hay un usuario que tiene más de un caso con una educación particular. Es decir, tiene solo un valor más frecuente.
+   ##############NO ME DA LO MISMO SI HAY UN VACIO, NO LO VOY A CAMBIAR IGUAL POR UN VALOR DETERMINADO. EJ: ES UN CASO DEL 2011 Y DE AHI VUELVE EL   2016, e1b2708112875d77f7d3d1bd87c10164	
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  dplyr::mutate(ed_b= dplyr::case_when(n_dis_esc==n-1 & n_hash_esc==1 & the_rank >1 & nas_ed==0~mfv,TRUE~NA_real_))%>%
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #C. En el caso de que todos los casos sean distintos y aunque haya valores perdidos, elegir el valor máximo (en este caso, equivalente al mínimo) , para todos los HASH
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  dplyr::mutate(ed_c= dplyr::case_when(n_dis_esc==n~min_ed,TRUE~NA_real_))%>% # & nas_ed==0
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #Si hay empates y el posterior es the_rank==1, podría reemplazarse con el posterior.
+  #D. (Ej. 154608 04b09b0ad8f6d8cbf9871594cf10f7e5) Tiene 2 casos distintos, aunque no está en el medio. 3 casos iguales (univers), aunque el final es una anomalía (secundaria)
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  dplyr::mutate(ed_d= dplyr::case_when(ant_ed_problematico_post==1 & post_ed_problematico_ant==1 & esc_num_lag_post==esc_num_lead_ant ~esc_num_lag_post,TRUE~NA_real_))%>%
+  #CUIDADO: Si hay empates y el posterior es rank 1 puede ser un caso problemático
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #D. (Ej: 112484 e1b2708112875d77f7d3d1bd87c10164) El caso que está en medio es menor, hay NAs y no hay restricción de n (ant_ed_problematico_post==1 & post_ed_problematico_ant==1 & the_rank>1), . El caso menos frecuente (esc_num_lag_post==esc_num_lead_ant (el mismo valor en el tratamiento anterior y en el tratamiento posterior). 
+  #:#:#:#:#FIJARSE QUE NO HAYA EMPATE EN EL VALOR MÁS FRECUENTE.#_#_#_#__#_#_#_ 
+    dplyr::mutate(ed_d2= dplyr::case_when(ed_problematico_post==1 & ed_problematico_ant==1 & esc_num_lag_post==esc_num_lead_ant ~esc_num_lag_post,TRUE~NA_real_))%>%
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #E. (ej. 157971  fe456c2da940fa8ece275e509a634242), hay un caso igual al anterior, misma frecuencia, por lo que hay empate en mfv y rn_esc>1 (no es el último caso). Hay empate, pero para estos fines no me interesa mucho.
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  dplyr::mutate(ed_e= dplyr::case_when(rn_esc==n & ed_problematico_post==1 ~esc_num_lag_post,TRUE~NA_real_))%>%
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #F. e(ej. 140181 485a5ff2e2c7aa0943c292e337ea1411) Casos distintos, más de 3 casos, no hay NAs debiese ser el caso más reciente qcon el problema, es el probemático y con el rank más alto (no es el caso más frecuente).
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_  
+  dplyr::mutate(ed_f= dplyr::case_when(n_dis_esc==2 & n>3 & rn_esc==1 & ant_ed_problematico_post==1 & the_rank>1~esc_num_lead_ant,TRUE~NA_real_))%>%
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_  
+   #G. (Ej. 114450 e1b2708112875d77f7d3d1bd87c10164), tiene NAs en el primer registro, lo ignoro. Tiene 3 distintos, por lo que si hay una educación en medio, debiese reemplazar. Esto puede usarse si coinciden uno y otro
+  
+  #F. (ej. 39890, faa8263a28f47dbaefa77c326ea96b2a) no tiene valores perdidos, hay eventos intermedios inconsistentes, hay empates
+  ## Ver cómo generar más de un mfv. EN una de esas sacar el mfv posterior para ver si es uno también.
+  ## Puede ser sin el rank==1 mientras que el posterior al problemático tenga ==1 en el rank.
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #H. Hay 3 escolaridades distintas (ej: 72013 bf70334c0a891bee1d016bc530eece8d)
+  
+  ##NO SE QUÉ HAY QUE CAMBIAR AQUÍ, PORQUE HAY QUE VER EL CONJUNTO DE LAS VARIABLES PARA CAMBIARLO. LA CONDICION SERIA QUE POR CADA USUARIO, VER QUE TENGA CASOS PROBLEMATICOS TRAT POSTERIOR, NO TENGA PERDIDOS, ESE CASO PROBLEMATICO POSTERIOR ES TAMBIÉN UN RANK==1
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #i. (EJ. 4e6b041e4a0a40e7c6bc8a8a65f842d6	 132495)
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_  
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_    
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+####  Ver si hay casos que no tienen reglas###
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  dplyr::group_by(hash_key)%>%
+dplyr::mutate(across(c("ed_a", "ed_a2", "ed_b", "ed_c","ed_d","ed_d2","ed_e","ed_f"),~ifelse(abs(max(.,na.rm=T)) == Inf,NA,.), .names= "{col}_n"))%>% 
+  dplyr::select(-ends_with("_n"))%>%
+  dplyr::ungroup() %>% 
+
+#hash_key_escolaridad_rules%>%
+    dplyr::mutate(total_mean = base::rowSums(dplyr::select(., ed_a, ed_a2, ed_b, ed_c, ed_d, ed_d2, ed_e, ed_f), na.rm=T))%>%
+  dplyr::group_by(hash_key) %>% 
+    dplyr::mutate(total_mean=max(total_mean,na.rm=T)) %>% 
+  ungroup() %>% 
+  #dplyr::filter(total_mean==0 ) %>%  #VER SI LO SACO O NO. UNA VEZ QUE TENGA TODO LISTO
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#$G. Hay empate en cantidad de valores distintos. El primer caso tiene educación valor menor (secundaria), después 2 mayores a secundaria, y finalmente en la última entrada (más reciente), pasa de universitaria (1) a completa o menor (2). Cambiar el último porque no hay progresión en ese.
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#7776e5c9335808de3e8389ac2c685056 93804 & 133259  
+  #4 casos, 2 distintas escolaridades, partió con secundaria (2), de ahí siguió con universitaria (1)2 veces, hasta volver con ed. secundaria    
+#7776e5c9335808de3e8389ac2c685056 78986 42125    
+  dplyr::mutate(ed_g= dplyr::case_when(total_mean==0 & n_dis_esc==2 & rn_esc==1 & ant_ed_problematico_post==1~esc_num_lead_ant,TRUE~NA_real_))%>%
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+  #|||°°°°°°°°°°|||°°°°°°°°°°|||°°°°°°°°°°|||°°°°°°°°°°||||||°°°°°°°°°°|||°°°°°°°°°°|||°°°°°°°°°°|||°°°°°°°°°°|||
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#Hay unos que se deben ver en su conjunto (ej: 156063), ver si el primer caso es igual al último al interior de un usuario. Si es así, reemplazar todos los vaalores --> que no sean NAs
+  #Ver casos anómalos en que hay 2 seguidos.
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#$H. Sólo 2 valores distintos, (n= n_dis_esc >2), Hay tratamientos en medio. EN el ejemplo, hay 5 casos, tiene 2 entradas con universitaria (1), luego 2 entradas que se ven contradictorias (ej, 2 casos completa o menor)
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#144b81fab8cd7e2796a133085c6d8d16 131587 & 44293
+  dplyr::group_by(hash_key) %>% 
+    dplyr::mutate(mix_max_esc=ifelse(dplyr::first(esc_num)==dplyr::last(esc_num) & n_dis_esc==2,1,0),esc_num_last=dplyr::last(esc_num))%>% 
+    dplyr::mutate(ties=ifelse(n_distinct(n_hash_esc)>1,0,1), ties=max(ties,na.rm=T))%>%
+    dplyr::ungroup()%>%
+  dplyr::mutate(ed_h= dplyr::case_when(total_mean==0 & mix_max_esc==1 ~esc_num_last,TRUE~NA_real_))%>% #para dejar el valor min y max en reemplazo al resto de los casos.
+  dplyr::mutate(ed_i= dplyr::case_when(total_mean==0 & ties==1 & mix_max_esc==0 & n_dis_esc==2~min_ed,TRUE~NA_real_))%>% #p
+#
+  dplyr::mutate(ed_j= dplyr::case_when(total_mean==0 & is.na(ed_i) & is.na(ed_h)~min_ed,TRUE~NA_real_))%>%
+#49868 0f1218127d5370806310f2ccc6784302
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(across(c("ed_h", "ed_i", "ed_j"),~ifelse(abs(max(.,na.rm=T)) == Inf,NA,.), .names= "{col}_n"))%>% 
+  dplyr::mutate(across(c("ed_a", "ed_a2", "ed_b", "ed_c","ed_d","ed_d2","ed_e","ed_f","ed_h","ed_i","ed_j"),~ifelse(.>0,1,0), .names= "{col}_N-dis"))%>% 
+  dplyr::select(-ends_with("_n"))%>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(no_suggestions = base::rowSums(dplyr::select(., "ed_a_N-dis", "ed_a2_N-dis","ed_b_N-dis","ed_c_N-dis","ed_d_N-dis","ed_d2_N-dis","ed_e_N-dis","ed_f_N-dis","ed_h_N-dis","ed_i_N-dis","ed_j_N-dis"), na.rm=T))%>%
+  dplyr::mutate(total_mean2 = base::rowSums(dplyr::select(., ed_h, ed_i, ed_j), na.rm=T))%>%
+  dplyr::select(-ends_with("_N-dis")) %>% 
+  dplyr::group_by(hash_key) %>% 
+    dplyr::mutate(total_mean2=max(total_mean2,na.rm=T)) %>% 
+    dplyr::mutate(no_suggestions= max(no_suggestions,na.rm = T)) %>% 
+  dplyr::ungroup()
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#4 casos, 2 distintas escolaridades, las 2 primeras universitaria, las 2 que le siguen están en secundaria, hay empate. Debiese dejar la más vulnerable.
+#bde6cd6a3f35291441df7ae58f1ba4bb 118109 103929     ant_ed_problematico_post esc_num_lead_ant  
+
+hash_key_escolaridad_rules_final<-
+hash_key_escolaridad_rules%>%
+  dplyr::select(row,no_suggestions, starts_with("ed_"))
+  #dplyr::filter(no_suggestions>1) %>% 
+```
+```{r std19b_education_series, echo=T, paged.print=TRUE,eval=T}
+#2,285 #6,320
+  CONS_C1_df_dup_JUL_2020_cons18%>%
+  dplyr::mutate(obs=case_when(row %in% as.numeric(unlist(hash_key_escolaridad_rules_final$row))~glue::glue("{obs};4.99. Education Changed"),TRUE~obs))%>%
+  dplyr::left_join(hash_key_escolaridad_rules_final, by="row")%>%
+  dplyr::select(-no_suggestions,ed_problematico_post, ed_problematico_ant) %>% 
+  dplyr::mutate(esc_num=as.numeric(substring(as.character(escolaridad), 1, 1)))%>% #janitor::tabyl(esc_num)
+  dplyr::mutate(esc_num=dplyr::case_when(!is.na(ed_a)~ed_a,
+                                         !is.na(ed_a2)~ed_a2,
+                                         !is.na(ed_b)~ed_b,
+                                         !is.na(ed_c)~ed_c,
+                                         !is.na(ed_d)~ed_d,
+                                         !is.na(ed_d2)~ed_d2,
+                                         !is.na(ed_e)~ed_e,
+                                         !is.na(ed_f)~ed_f,
+                                         !is.na(ed_g)~ed_g,
+                                         !is.na(ed_h)~ed_h,
+                                         !is.na(ed_i)~ed_i,
+                                         !is.na(ed_j)~ed_j,
+                                         TRUE~esc_num)) %>% #janitor::tabyl(esc_num)
+  dplyr::mutate(escolaridad_rec=dplyr::case_when(esc_num==1~"1-Mayor a Ed Secundaria",
+                                                esc_num==2~"2-Ed Secundaria Completa o Menor",
+                                                esc_num==3~"3-Ed Primaria Completa o Menor",
+                                                TRUE~NA_character_)) %>% 
+  dplyr::select(-starts_with("ed_"),-esc_num) %>% 
+  assign("CONS_C1_df_dup_JUL_2020_cons19",., envir = .GlobalEnv)
+# esc_num     n     percent valid_percent
+#       1 19473 0.177420824     0.1781382
+#       2 60782 0.553792048     0.5560312
+#       3 29059 0.264760013     0.2658305
+#      NA   442 0.004027115            NA
+  #UNA VEZ QUE HAGO EL FILTRO
+#   esc_num     n     percent valid_percent
+#       1 18675 0.170150151     0.1708303
+#       2 60843 0.554347826     0.5565638
+#       3 29801 0.271520464     0.2726059
+#      NA   437 0.003981559            NA
+
+hash_key_escolaridad2<-
+CONS_C1_df_dup_JUL_2020_cons19%>%
+    dplyr::group_by(hash_key)%>%
+    dplyr::mutate(esc_num=as.numeric(substring(as.character(escolaridad_rec), 1, 1)))%>%
+    dplyr::mutate(esc_num_lag=lag(esc_num))%>%
+    dplyr::mutate(fech_ing_lag=lag(fech_ing))%>%
+    dplyr::mutate(escolaridad_lag=lag(escolaridad_rec))%>%
+    dplyr::filter(esc_num_lag>esc_num)%>% #El tratamiento posterior tiene menor escolaridad que el actual
+    dplyr::select(row,hash_key,fech_ing, esc_num_lag,esc_num,escolaridad,escolaridad_lag,fech_ing_lag)%>%
+          dplyr::distinct(hash_key)
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+hash_key_escolaridad_rules2<-
+CONS_C1_df_dup_JUL_2020_cons19%>%
+dplyr::filter(hash_key %in% unlist(hash_key_escolaridad2))%>%
+  dplyr::mutate(esc_num=as.numeric(substring(as.character(escolaridad_rec), 1, 1)))%>%
+  dplyr::mutate(nas_ed=ifelse(is.na(escolaridad_rec),1,0))%>%
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(n_dis_esc=n_distinct(escolaridad_rec),n=n(), rn_esc=row_number(),
+                nas_ed=sum(nas_ed),nas_ed=ifelse(nas_ed>0,1,0), min_ed=max(esc_num, na.rm=T))%>%
+  dplyr::ungroup()%>%
+  dplyr::group_by(hash_key,escolaridad_rec)%>%
+  dplyr::mutate(n_hash_esc=n())%>%
+  dplyr::ungroup()%>%
+  dplyr::select(row,hash_key,fech_ing,esc_num,escolaridad,escolaridad_rec,n_dis_esc,n,n_hash_esc,rn_esc,nas_ed,min_ed)%>%
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #Generar variables de comparación
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(esc_num_lag_post=lag(esc_num),esc_num_lead_ant=lead(esc_num))%>% 
+  dplyr::mutate(ed_problematico_post=dplyr::case_when(esc_num_lag_post>esc_num~1,TRUE~0))%>%
+  dplyr::mutate(ed_problematico_ant=dplyr::case_when(esc_num_lead_ant>esc_num~1,TRUE~0))%>%
+  dplyr::mutate(ant_ed_problematico_post=lead(ed_problematico_post))%>%
+  dplyr::mutate(post_ed_problematico_ant=lag(ed_problematico_ant))%>%
+  dplyr::mutate(the_rank= rank(-n_hash_esc, ties.method = "min"))%>% #"max"
+  dplyr::mutate(mfv=ifelse(the_rank==1,esc_num,NA_real_))%>%
+  dplyr::mutate(the_rank_post=lag(the_rank))%>% 
+  dplyr::mutate(the_rank_ant=lead(the_rank))%>% 
+  dplyr::mutate(mfv=max(mfv, na.rm=T))%>%
+  dplyr::ungroup()%>%
+  
+ dplyr::group_by(hash_key) %>% 
+    dplyr::mutate(esc_num_first=dplyr::first(esc_num),esc_num_last=dplyr::last(esc_num))%>% 
+    dplyr::ungroup()%>%
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  dplyr::mutate(ed2_a= dplyr::case_when(esc_num_first==min_ed & nas_ed==0 & n_dis_esc==2~min_ed,TRUE~NA_real_))%>% #
+  dplyr::group_by(hash_key) %>% 
+  dplyr::mutate(ed2_a_n=ifelse(abs(max(ed2_a,na.rm=T)) == Inf,NA,ed2_a)) %>% 
+  ungroup() %>% 
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  dplyr::mutate(ed2_b= dplyr::case_when(is.na(ed2_a_n) & nas_ed==0 & ant_ed_problematico_post==1 & post_ed_problematico_ant==1 & n_dis_esc==2~esc_num_lead_ant,TRUE~NA_real_))
+  
+  CONS_C1_df_dup_JUL_2020_cons19%>%
+  dplyr::left_join(hash_key_escolaridad_rules2[,c("row","ed2_a","ed2_b")], by="row")%>%
+  dplyr::mutate(esc_num=as.numeric(substring(as.character(escolaridad_rec), 1, 1)))%>% #janitor::tabyl(esc_num)
+  dplyr::mutate(esc_num=dplyr::case_when(!is.na(ed2_a)~ed2_a,
+                                         !is.na(ed2_b)~ed2_b,
+                                         TRUE~esc_num)) %>% #janitor::tabyl(esc_num)
+  dplyr::mutate(escolaridad_rec=dplyr::case_when(esc_num==1~"1-Mayor a Ed Secundaria",
+                                                esc_num==2~"2-Ed Secundaria Completa o Menor",
+                                                esc_num==3~"3-Ed Primaria Completa o Menor",
+                                                TRUE~NA_character_)) %>% 
+  dplyr::select(-starts_with("ed2_"),-esc_num) %>% 
+  assign("CONS_C1_df_dup_JUL_2020_cons19b",., envir = .GlobalEnv)
+  
+if(
+  CONS_C1_df_dup_JUL_2020_cons19b%>%
+    dplyr::group_by(hash_key)%>%
+    dplyr::mutate(esc_num=as.numeric(substring(as.character(escolaridad_rec), 1, 1)))%>%
+    dplyr::mutate(esc_num_lag=lag(esc_num))%>%
+    dplyr::mutate(fech_ing_lag=lag(fech_ing))%>%
+    dplyr::mutate(escolaridad_lag=lag(escolaridad_rec))%>%
+    dplyr::filter(esc_num_lag>esc_num)%>% #El tratamiento posterior tiene menor escolaridad que el actual
+    dplyr::select(row,hash_key,fech_ing, esc_num_lag,esc_num,escolaridad,escolaridad_lag,fech_ing_lag)%>%
+    dplyr::distinct(hash_key)%>% nrow()
+>0){"there are still levels of educational attainment left to normalize"}
+```
+
+```{r std20_as_factor_vars,eval=T, echo=T, paged.print=TRUE}
+CONS_C1_df_dup_JUL_2020_cons19b%>%
+  dplyr::mutate_at(vars(contains("dg_trs_psiq_cie_10"),contains("dg_trs_psiq_dsm_iv"),contains("dg_trs_psiq_sub_cie_10"),contains("dg_trs_psiq_sub_dsm_iv"),contains("tipo_de_plan"),c('tipo_de_programa_2','nombre_centro','tipo_centro','servicio_de_salud','senda','tipo_centro_derivacion','usuario_tribunal_trat_droga','motivodeegreso_mod_imp','macrozona','nombre_region','comuna_residencia_cod','identidad_de_genero','origen_ingreso_mod','x_se_trata_mujer_emb','usuario_tribunal_trat_droga','tiene_menores_de_edad_a_cargo','ha_estado_embarazada_egreso','discapacidad','opcion_discapacidad','escolaridad','edad_al_ing_grupos','nacionalidad','sexo_2','embarazo','estado_conyugal_2','edad_grupos','freq_cons_sus_prin','via_adm_sus_prin_act','etnia_cor','nacionalidad_2','etnia_cor_2','sus_ini_2_mod','sus_ini_3_mod','sus_ini_mod','con_quien_vive','estatus_ocupacional','cat_ocupacional','sus_principal_mod', 'tipo_de_vivienda_mod','tenencia_de_la_vivienda_mod','rubro_trabaja_mod','otras_sus1_mod','otras_sus2_mod','otras_sus3_mod','dg_trs_cons_sus_or','diagnostico_trs_fisico','otros_probl_at_sm_or','ano_bd_first','ano_bd_last','centro_muj','cie_10','dsm_iv','escolaridad_rec')),~as.factor(.))%>%
+  dplyr::mutate_at(c('id_centro_sig_trat','tipo_plan_sig_trat','tipo_programa_sig_trat','senda_sig_trat','at_least_one_cont_entry','id_centro'),~as.factor(.))%>%
+  dplyr::mutate_at(c('tipo_de_plan_2_concat_a'),~as.character(.))%>%
   dplyr::mutate_at(c('fech_ing','fech_egres_imp'),~as.Date(.))%>%
   
     assign("CONS_C1_df_dup_JUL_2020",., envir = .GlobalEnv)
@@ -2336,6 +2619,7 @@ ha_estado_embarazada_egreso= '¿Ha estado embarazada? (al Egreso)(d)/Have you be
 discapacidad= 'Presenta Discapacidad(d)/Disability(d)',
 opcion_discapacidad= 'Origen de Discapacidad(d)/Cause of Disability(d)',
 escolaridad= 'Escolaridad: Nivel Eduacional(d)/Educational Attainment(d)',
+escolaridad_rec= 'Escolaridad: Nivel Eduacional(d) Normalizado a Progresión de Tratamientos/Educational Attainment(d) & Normalized Following Progression of Treatments',
 edad_al_ing_grupos= 'Edad a la Fecha de Ingreso a Tratamiento en Grupos(c)/Age at Admission to Treatment In Groups(c)',
 nacionalidad= 'Nacionalidad/Nationality',
 sexo_2= 'Sexo Usuario/Sex of User',

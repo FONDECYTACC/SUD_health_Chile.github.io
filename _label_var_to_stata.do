@@ -134,6 +134,7 @@ cap label variable x4_dg_trs_psiq_sub_dsm_iv_or "Diagnóstico de Trastorno Psiqu
 cap label variable cnt_otros_probl_at_sm_or "Recuento de Otros Problemas de Atención Vinculados a Salud Mental/Count of Other problems linked to Mental Health"
 cap label variable cie_10 "Diagnóstico CIE-10 (1 o más)/Psychiatric Diagnoses (ICD-10)(one or more)"
 cap label variable dsm_iv "Diagnóstico DSM-IV (1 o más)/Psychiatric Diagnoses (DSM-IV)(one or more)"
+cap label variable escolaridad_rec "Escolaridad: Nivel Eduacional(d) Normalizado a Progresión de Tratamientos/Educational Attainment(d) & Normalized Following Progression of Treatments"
 cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020.dta", replace
 cap drop id id_mod nombre_centro consentimiento_informado
 cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020_exp.dta", replace
