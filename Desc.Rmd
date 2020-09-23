@@ -180,17 +180,718 @@ if(!require(radiant.update)){install.packages("radiant.update", repos = "https:/
 #tryCatch(source("https://raw.githubusercontent.com/radiant-rstats/minicran/gh-pages/update.R"), error = function(e) print("updated package, radiant"))
 ```
 
+<!--- SÍ O SÍ, HACER LA LIMPIEZA DE LOS SENDA NO, PRINCIPALMENTE DE LOS QUE SE SUPERPONGAN, TAMBIÉN PREGUNTAR A ACC SI LOS CON 0 DÍAS DE TRATAMIENTO SE BORRARÁN O NO; DE AHI EMPEZAR A NORMALIZAR LOS PROGRAMAS Y PLANES DE ACUERDO CON CRITERIOS MAUREEN, PARA NO GENERAR DIFERENCIAS AHI Y PODER DEDUPLICAR TRANQUILO --->
 
-## R Markdown
+<br>
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+For the purpose of this page, we use the terms "rows" and "cases" as equal to refer to the entries of the dataset. In many of the processes made along the deduplication of entries in C1 dataset, we used unstandardized columns or many other data that was in fact duplicated by HASHs, that did not depend on events related to treatment.In order to find and delete duplicated data that does not add information relevant for the purposes of the study, we now may **use these standardized variables as a criteria to achieve the goal of having a unique event per HASH, by reducing its complexity based on irrelevant differences**.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+<br>
 
-```{r tab3_surv_diff_bet_treat_motivodeegreso,eval=T, echo=T, paged.print=TRUE}                                                       
+<div class = "blue">
+Once we distinguished between the different treatments in the fourth part of the deduplication process, we proceeded to describe the dataset in terms of the time required for determined events to occur.
+</div>
 
+# Characteristics of Population in Agreement 1
+
+<br>
+
+We first compared treatments selected in the database, to the discarded entries due to duplicated or invalid values.
+
+<br>
+
+```{r tab1_descr_c1_deleted_vs_selected,dpi = 96, message=F, error=T,eval=T, warnings=F}
+#Definir la base de datos
+
+CONS_C1_df_SEP_2020<-
+clean_names(CONS_C1_df) %>% 
+    dplyr::filter(!row %in% unlist(CONS_C1_df_dup_JUL_2020$row)) %>% 
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #escolaridad 
+    dplyr::mutate(escolaridad_rec=ifelse(as.character(escolaridad_ultimo_ano_cursado)=="BASICA COMPLETA"|as.character(escolaridad_ultimo_ano_cursado)=="BASICA INCOMPLETA"|as.character(escolaridad_ultimo_ano_cursado)=="SIN ESTUDIOS","Ed Primaria Completa o Menor",as.character(escolaridad_ultimo_ano_cursado))) %>%
+dplyr::mutate(escolaridad_rec=ifelse(escolaridad_rec=="MEDIA COMPLETA"|escolaridad_rec=="MEDIA INCOMPLETA","2-Ed Secundaria Completa o Menor",
+    ifelse(escolaridad_rec=="NO SABE O NO SE APLICA",NA,
+    ifelse(escolaridad_rec %in% c("TECNICA COMPLETA", "TECNICA INCOMPLETA", "UNIVERSITARIA COMPLETA O MAS", "UNIVERSITARIA INCOMPLETA"), "1-Mayor a Ed Secundaria",ifelse(
+      escolaridad_rec=="Ed Primaria Completa o Menor","3-Ed Primaria Completa o Menor",escolaridad_rec))))) %>%
+dplyr::mutate(escolaridad_rec=factor(escolaridad_rec,labels=c('1-More than high school','2-Completed high school or less','3-Completed primary school or less')))  %>% 
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #frecuencia consumo sus principal 
+  
+      dplyr::mutate(freq_cons_sus_prin=ifelse(frecuencia_de_consumo_sustancia_principal== "Desconocida",NA,as.character(frecuencia_de_consumo_sustancia_principal))) %>% 
+
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #tipo de plan 
+      dplyr::mutate(tipo_de_plan_2=dplyr::recode(tipo_de_plan_2,"M-PAI2"= "M-PAI", "M-PR2"="M-PR","PG PAI 2"="PG-PAI", "Otro"="PG-PR", "CALLE"="PG-PR"))%>%
+
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #fecha de nacimiento
+  dplyr::mutate(fech_nac=lubridate::parse_date_time(stringi::stri_sub(id,-8,-1),"dmY")) %>% 
+
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #edad al ingreso
+  dplyr::mutate(edad_al_ing=lubridate::time_length(difftime(as.Date(fech_ing), as.Date(fech_nac)),"years")) %>% #AGREGADO EN APR 2020.
+  dplyr::mutate(edad_al_ing=replace(edad_al_ing, is.na(edad), NA)) %>%
+
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #sus principal  
+  dplyr::mutate(sus_principal= dplyr::recode(sustancia_principal,
+                                             "Hipnóticos "= "Tranquilizantes e Hipnóticos",
+                                             "Sedantes:  diazepam, Valium, clonazepam, Ravotril, alprazolam, adax, barbitúricos, fenobarbital." = "Tranquilizantes e Hipnóticos",
+                                             "Anfetaminas"="Estimulante tipo anfetaminas",
+                                             "Extasis"="Estimulante tipo anfetaminas",
+                                             "Fenilciclidina"="Estimulante tipo anfetaminas",
+                                             "Metanfetaminas y otros derivados"="Estimulante tipo anfetaminas",
+                                             "Otros Estimulantes"="Estimulante tipo anfetaminas",
+                                             "LSD"="Alucinógenos",
+                                             "Otros Alucinógenos"="Alucinógenos",
+                                             "Crack"="Pasta Base",
+                                             "Heroína"="Opioides",
+                                             "Metadona"="Opioides",
+                                             "Otros Opioides Analgésicos: morfina, codeína, meperidina,  demerol, tramadol, tramal."="Opioides",
+                                             "Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
+                                             "Esteroides Anabólicos"="Otros")) %>%
+      dplyr::mutate(sus_principal_mod= dplyr::case_when(sus_principal!="Alcohol"&sus_principal!="Cocaína"&sus_principal!="Marihuana"&sus_principal!="Pasta Base"~"Otros",TRUE~as.character(sus_principal)))%>%
+  
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #motivo de egreso
+      dplyr::mutate(dias_trat_alta_temprana=ifelse(dias_trat>=90,0,1)) %>%
+      dplyr::mutate(dias_trat_alta_temprana=as.factor(dias_trat_alta_temprana)) %>%
+      dplyr::mutate(dias_trat_alta_temprana= dplyr::recode(dias_trat_alta_temprana, "1"="Menos de 90 días", "0"="Mayor o igual a 90 días")) %>%
+      dplyr::mutate(motivodeegreso_mod= ifelse(dias_trat_alta_temprana=="Menos de 90 días" & motivodeegreso=="Abandono", "Abandono Temprano",as.character(motivodeegreso))) %>% 
+      dplyr::mutate(motivodeegreso_mod= ifelse(dias_trat_alta_temprana=="Mayor o igual a 90 días" & motivodeegreso=="Abandono", "Abandono Tardio",as.character(motivodeegreso_mod))) %>% 
+
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #dias_trat
+      dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing)))%>%
+      dplyr::mutate(fech_egres_num=as.numeric(as.Date(fech_egres)))%>%
+      dplyr::mutate(fech_egres_num=ifelse(is.na(fech_egres),18213,fech_egres_num))%>% #equivalente a 2019-11-13
+      dplyr::mutate(dias_treat_imp_sin_na=fech_egres_num-fech_ing_num)%>%
+      
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #motivodeegreso_mod_imp
+      dplyr::mutate(motivodeegreso_mod_imp=ifelse(dias_treat_imp_sin_na<1095 & is.na(fech_egres),"En curso",as.character(motivodeegreso_mod))) %>% 
+
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #origen de ingreso
+      dplyr::mutate(origen_ingreso=ifelse(as.character(origen_de_ingreso)=="Consulta Espontánea", "Consulta Espontánea",as.character(origen_de_ingreso))) %>%
+      dplyr::mutate(origen_ingreso=ifelse(origen_ingreso=="Establecimiento Educacional"|origen_ingreso=="Otros"|origen_ingreso=="Trabajo (empresa o empleador)"|origen_ingreso=="Servicios Sociales u otros (iglesia, Mideplan, ser. comunitarios, etc.)", "Otros",origen_ingreso)) %>%
+      dplyr::mutate(origen_ingreso=ifelse(origen_ingreso=="Juzgado con Competencia en Crimen"|origen_ingreso=="Juzgado de Garantía"|origen_ingreso=="Libertad Vigilada"|origen_ingreso=="Juzgado de Familia"|origen_ingreso=="Juzgado de Policía"|origen_ingreso=="Otros (fiscalía)","Sector Justicia",origen_ingreso)) %>%
+      dplyr::mutate(origen_ingreso=ifelse(origen_ingreso=="Otros de la Red de Salud General Privado"|origen_ingreso=="Estab. de APS"|origen_ingreso=="Estab. de APS "|origen_ingreso=="Otros de la Red de Salud General Público", "Sector Salud", origen_ingreso)) %>%
+      dplyr::mutate(origen_ingreso=ifelse(origen_ingreso=="Otro Centro Tratamiento Drogas"|origen_ingreso=="FONODROGAS"|origen_ingreso=="Previene","Otro Centro Tratamiento Drogas/FONODROGAS/Previene",origen_ingreso)) %>%
+          
+      dplyr::mutate(origen_ingreso_mod= dplyr::case_when(grepl("Otro Centro Tratamiento",as.character(origen_ingreso))~"Derivación Asistida", TRUE~as.character(origen_ingreso)))%>%  
+      dplyr::mutate(origen_ingreso_mod=factor(origen_ingreso_mod,labels=c('Spontaneous','Assisted Referral','Other','Justice Sector','Health Sector')))  %>% 
+
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #CIE_10
+      dplyr::mutate(across(c(diagnostico_trs_psiquiatrico_cie_10,x2_diagnostico_trs_psiquiatrico_cie_10,x3_diagnostico_trs_psiquiatrico_cie_10),~dplyr::case_when(grepl("En estudio",as.character(.))~0,grepl("Sin trastorno",as.character(.))~0,is.na(.)~0,TRUE~1), .names="dg_{col}"))%>%
+      dplyr::mutate(across(c(diagnostico_trs_psiquiatrico_cie_10,x2_diagnostico_trs_psiquiatrico_cie_10,x3_diagnostico_trs_psiquiatrico_cie_10),~dplyr::case_when(grepl("En estudio",as.character(.))~1,grepl("Sin trastorno",as.character(.))~0,is.na(.)~0,TRUE~0), .names="instudy_{col}"))%>%
+      dplyr::mutate(instudy_total_cie_10 = base::rowSums(dplyr::select(., instudy_diagnostico_trs_psiquiatrico_cie_10, instudy_x2_diagnostico_trs_psiquiatrico_cie_10, instudy_x3_diagnostico_trs_psiquiatrico_cie_10)))%>%
+      dplyr::mutate(dg_total_cie_10 = base::rowSums(dplyr::select(., dg_diagnostico_trs_psiquiatrico_cie_10, dg_x2_diagnostico_trs_psiquiatrico_cie_10, dg_x3_diagnostico_trs_psiquiatrico_cie_10)))%>%
+      dplyr::mutate(dg_cie_10_rec=dplyr::case_when(dg_total_cie_10>0 ~2,
+                                             instudy_total_cie_10>0 & dg_total_cie_10==0~1,
+                                             instudy_total_cie_10>0 & is.na(dg_total_cie_10)~1,
+                                             TRUE~0))%>%
+      dplyr::mutate(dg_cie_10_rec=as.factor(dg_cie_10_rec))%>%
+      dplyr::mutate(dg_cie_10_rec=factor(dg_cie_10_rec,labels=c('Without psychiatric comorbidity','Diagnosis unknown (under study)', 'With psychiatric comorbidity'))) %>% 
+      dplyr::mutate(tipo_de_programa_2=dplyr::case_when(grepl("M-", tipo_de_plan_2)~"Women specific",
+                                                        grepl("PG-", tipo_de_plan_2)~"General population",
+                                                        grepl("LV", tipo_de_plan_2)~"Other")) %>% 
+      dplyr::mutate(sexo_2=factor(sexo_2,labels=c('Men','Women'))) %>% 
+      dplyr::mutate(edad_al_ing_grupos=dplyr::case_when(
+      edad_al_ing>=50~"50+",
+          edad_al_ing>=40~"40-49",
+          edad_al_ing>=30~"30-39",
+          edad_al_ing>=18~"18-29",
+          edad_al_ing<18~"<18",
+          TRUE~NA_character_)) %>%
+      dplyr::mutate(edad_al_ing_grupos=as.factor(edad_al_ing_grupos)) %>%  
+      dplyr::mutate(motivodeegreso_mod_imp=factor(motivodeegreso_mod_imp,labels=c('Late Drop-out',
+                                                                                  'Early Drop-out',
+                                                                                  'Administrative discharge',
+                                                                                  'Therapeutic discharge',
+                                                                                  'Referral to another treatment',
+                                                                                  'Ongoing treatment'))) %>% 
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #frequency of consumption
+  dplyr::mutate(freq_cons_sus_prin=factor(freq_cons_sus_prin,labels=c("1 day a week or less",
+                                                                                  "2 to 3 days a week",
+                                                                                  "4 to 6 days a week",
+                                                                                  "Less than 1 day a week",
+                                                                                  "Did not use",
+                                                                                  "Daily"))) %>%     
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #primary substance
+    dplyr::mutate(sus_principal_mod=factor(sus_principal_mod,labels=c("Alcohol",
+                                                                                  "Cocaine hydrochloride",
+                                                                                  "Marijuana",
+                                                                                  "Other",
+                                                                                  "Cocaine paste"))) %>%   
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #marital status
+    dplyr::mutate(estado_conyugal_2=ifelse(as.character(estado_conyugal)=="Casado"|as.character(estado_conyugal)=="Conviviente"|as.character(estado_conyugal)=="conviviente civil", "Casado/Conviviente",stringr::str_trim(as.character(estado_conyugal)))) %>%
+    dplyr::mutate(estado_conyugal_2=ifelse(estado_conyugal_2=="Separado"|estado_conyugal_2=="Divorciado"|estado_conyugal_2=="Anulado", "Separado/Divorciado",estado_conyugal_2)) %>% 
+    dplyr::mutate(estado_conyugal_2=ifelse(estado_conyugal_2=="Nocontesta",NA,estado_conyugal_2)) %>%
+    #dplyr::mutate(estado_conyugal=factor(estado_conyugal, labels=c('asd','asda'))) %>%
+    dplyr::mutate(estado_conyugal_2=factor(estado_conyugal_2, labels=c('Married/Shared living arrangements','Separated/Divorced','Single','Widower'))) %>%
+  
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #region
+   dplyr::mutate(macrozona=as.factor(dplyr::recode(region_del_centro,
+                                              "DE ANTOFAGASTA"="Norte",
+                                              "DE LA ARAUCANIA"="Sur",
+                                              "DE ARICA Y PARINACOTA"="Norte",
+                                              "DE ATACAMA"="Norte",
+                                              "DE AYSEN DEL GENERAL CARLOS IBA?S DEL CAMPO"="Sur",
+                                              "DEL BIO-BIO"="Centro",
+                                              "DE COQUIMBO"="Norte",
+                                              "DE LOS LAGOS"="Sur",
+                                              "DE LOS RIOS"="Sur",
+                                              "DE MAGALLANES Y LA ANTARTICA CHILENA"="Sur",
+                                              "DEL MAULE"="Centro",
+                                              "METROPOLITANA"="Centro",
+                                              "DE ?BLE"="Centro",
+                                              "DEL LIBERTADOR GENERAL  BERNARDO OHIGGINS"="Centro",
+                                              "DE TARAPACA"="Norte",
+                                              "DE VALPARAISO"="Centro")))%>%
+  dplyr::mutate(macrozona=factor(macrozona, labels=c('Center',
+                                                                   'North',
+                                                                   'South'))) %>%
+ dplyr::mutate(nombre_region=as.factor(dplyr::recode(region_del_centro,
+                                              "DE ANTOFAGASTA"="Antofagasta (02)",
+                                              "DE LA ARAUCANIA"="Araucanía (09)",
+                                              "DE ARICA Y PARINACOTA"="Arica (15)",
+                                              "DE ATACAMA"="Atacama (03)",
+                                              "DE AYSEN DEL GENERAL CARLOS IBA?S DEL CAMPO"="Aysén (11)",
+                                              "DEL BIO-BIO"="Biobío (08)",
+                                              "DE COQUIMBO"="Coquimbo (04)",
+                                              "DE LOS LAGOS"="Los Lagos (10)",
+                                              "DE LOS RIOS"="Los Ríos (14)",
+                                              "DE MAGALLANES Y LA ANTARTICA CHILENA"="Magallanes (12)",
+                                              "DEL MAULE"="Maule (07)",
+                                              "METROPOLITANA"="Metropolitana (13)",
+                                              "DE ?BLE"="Ñuble (16)",
+                                              "DEL LIBERTADOR GENERAL  BERNARDO OHIGGINS"="O'Higgins (06)",
+                                              "DE TARAPACA"="Tarapacá (01)",
+                                              "DE VALPARAISO"="Valparaíso (05)")))%>%
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #type of center (pub/priv)
+      dplyr::mutate(tipo_centro=factor(tipo_centro, labels=c('Private','Public'))) %>%
+      dplyr::mutate(nombre_region=factor(nombre_region)) %>% 
+      dplyr::mutate(macrozona=factor(macrozona)) %>% 
+
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #occupational status (inactive…)
+      dplyr::mutate(estatus_ocupacional=ifelse(condicion_ocupacional=="Trabajando actualmente","Empleado",
+                                               ifelse(condicion_ocupacional=="Buscando trabajo por primera vez"|condicion_ocupacional=="Cesante","Desempleado","Inactivo"))) %>%
+      dplyr::mutate(estatus_ocupacional=factor(estatus_ocupacional, labels=c('Unemployed',
+                                                                             'Employed',
+                                                                             'Inactive'))) %>%
+      #Comprende la relación entre una persona económicamente activa y su trabajo o empleo. Sólo se aplica aquellas personas que se encuentran trabajando al momento de ingresar a tratamiento (las que respondieron 1 en la pregunta anterior). Para las personas que no están trabajando (estudiantes, cesante, etc.) esta opción estará bloqueada.
+      #data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Categoría.Ocupacional))
+      dplyr::mutate(cat_ocupacional=ifelse(condicion_ocupacional!="Trabajando actualmente",NA,as.character(categoria_ocupacional)))%>%
+      dplyr::mutate(cat_ocupacional=as.factor(cat_ocupacional)) %>%
+  dplyr::mutate(cat_ocupacional=factor(cat_ocupacional, labels=c('Salaried',
+                                                                             'Self-employed',
+                                                                             'Employer',
+                                                                             'Unpaid family labour',
+                                                                             'Other',
+                                                                             'Volunteer worker'))) %>%
+
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #age of onset of drug use
+    dplyr::mutate(edad_ini_cons= ifelse(edad_inicio_consumo<=edad_al_ing, edad_inicio_consumo, NA)) %>%
+    dplyr::mutate(edad_ini_cons= ifelse(edad_ini_cons<5,NA,edad_ini_cons)) %>%
+  
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #physical diagnose
+    dplyr::mutate(dg_fis_anemia= ifelse(grepl("Anemia",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_card= ifelse(grepl("Cardiopat",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_in_study= ifelse(grepl("En estudio",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_enf_som= ifelse(grepl("somáticas",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_ets= ifelse(grepl("ETS",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_hep_alc= ifelse(grepl("Hepatitis alcohólica",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_hep_b= ifelse(grepl("Hepatitis B",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_hep_cro= ifelse(grepl("Hepatitis crónica",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_inf= ifelse(grepl("Infecciosas relacionadas",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_otr_cond_fis_ries_vit= ifelse(grepl("Condiciones de Riesgo Vital",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_otr_cond_fis= ifelse(grepl("condiciones Fisicas Limitantes",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_pat_buc= ifelse(grepl("Bucal",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_pat_ges_intrau= ifelse(grepl("niño intrauterino",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_trau_sec= ifelse(grepl("Traumatismos y secuelas",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(otros_pr_sm_abu_sex= ifelse(grepl("Abuso Sexual",otros_problemas_de_atencion_de_salud_mental),1,0))%>%
+    dplyr::mutate(otros_pr_sm_exp_com_sex= ifelse(grepl("omercial Sexual",otros_problemas_de_atencion_de_salud_mental),1,0))%>%
+    dplyr::mutate(otros_pr_sm_otros= ifelse(grepl("Otros",otros_problemas_de_atencion_de_salud_mental),1,0))%>%
+    dplyr::mutate(otros_pr_sm_prision= ifelse(grepl("Prisionizaci?",otros_problemas_de_atencion_de_salud_mental),1,0))%>%
+    dplyr::mutate(otros_pr_sm_vif= ifelse(grepl("Violencia Intrafamiliar",otros_problemas_de_atencion_de_salud_mental),1,0)) %>% 
+    dplyr::mutate(dg_trs_cons_sus_or= dplyr::case_when(grepl("Consumo Perjudicial",diagnostico_trs_consumo_sustancia)~"Hazardous consumption",
+                                                    grepl("Dependencia",diagnostico_trs_consumo_sustancia)~"Drug dependence",
+                                                    TRUE~NA_character_)) %>%   
+
+    dplyr::select(row, sexo_2, escolaridad_rec, freq_cons_sus_prin, tipo_de_plan_2, tipo_de_programa_2, edad_al_ing_grupos, sus_principal_mod, motivodeegreso_mod_imp, origen_ingreso_mod, dg_cie_10_rec, estado_conyugal_2, edad_ini_cons, cat_ocupacional, estatus_ocupacional, macrozona, nombre_region, tipo_centro,dias_treat_imp_sin_na, dg_fis_anemia, dg_fis_card, dg_fis_in_study, dg_fis_enf_som, dg_fis_ets, dg_fis_hep_alc, dg_fis_hep_b, dg_fis_hep_cro, dg_fis_inf, dg_fis_otr_cond_fis, dg_fis_otr_cond_fis_ries_vit, dg_fis_pat_buc, dg_fis_pat_ges_intrau, dg_fis_trau_sec, otros_pr_sm_abu_sex, otros_pr_sm_exp_com_sex, otros_pr_sm_otros, otros_pr_sm_prision, otros_pr_sm_vif,dg_trs_cons_sus_or)
+
+
+label(CONS_C1_df_SEP_2020$sexo_2) <- "Sex"
+label(CONS_C1_df_SEP_2020$escolaridad_rec) <- "Educational Attainment"
+label(CONS_C1_df_SEP_2020$freq_cons_sus_prin) <- "Frequency of use of primary drug at admission"
+
+label(CONS_C1_df_SEP_2020$tipo_de_plan_2) <- "Treatment Plan"
+label(CONS_C1_df_SEP_2020$tipo_de_programa_2) <- "Treatment Program"
+label(CONS_C1_df_SEP_2020$edad_al_ing_grupos) <- "Age at Admission"
+label(CONS_C1_df_SEP_2020$sus_principal_mod) <- "Primary substance at admission"
+label(CONS_C1_df_SEP_2020$motivodeegreso_mod_imp) <- "Motive of discharge"
+label(CONS_C1_df_SEP_2020$origen_ingreso_mod) <- "Motive of Admission to Treatment (First Entry)"
+label(CONS_C1_df_SEP_2020$dg_cie_10_rec) <- "Psychiatric comorbidity"
+
+
+label(CONS_C1_df_SEP_2020$estado_conyugal_2) <- "Marital Status"
+label(CONS_C1_df_SEP_2020$edad_ini_cons) <- "Age of Onset of Drug Use"
+label(CONS_C1_df_SEP_2020$cat_ocupacional) <- "Occupational Category"
+label(CONS_C1_df_SEP_2020$estatus_ocupacional) <- "Occupational Status"
+label(CONS_C1_df_SEP_2020$macrozona) <- "Macrozones of the Center"
+label(CONS_C1_df_SEP_2020$nombre_region) <- "Chilean Region of the Center"
+label(CONS_C1_df_SEP_2020$tipo_centro) <- "Type of Center"
+label(CONS_C1_df_SEP_2020$dias_treat_imp_sin_na) <- "Days of Treatment (missing dates of discharge were replaced with difference from 2019-11-13)"
+
+label(CONS_C1_df_SEP_2020$dg_fis_anemia) <- "Physical Dg. Anemia"
+label(CONS_C1_df_SEP_2020$dg_fis_card) <- "Physical Dg. Heart Disease"
+label(CONS_C1_df_SEP_2020$dg_fis_in_study) <- "Physical Dg. Under Study"
+label(CONS_C1_df_SEP_2020$dg_fis_enf_som) <- "Physical Dg. Somatic illnesses"
+label(CONS_C1_df_SEP_2020$dg_fis_ets) <- "Physical Dg. STDs"
+label(CONS_C1_df_SEP_2020$dg_fis_hep_alc) <- "Physical Dg. Alcoholic hepatitis"
+label(CONS_C1_df_SEP_2020$dg_fis_hep_b) <- "Physical Dg. Hepatitis B"
+label(CONS_C1_df_SEP_2020$dg_fis_hep_cro) <- "Physical Dg. Chronic hepatitis"
+label(CONS_C1_df_SEP_2020$dg_fis_inf) <- "Physical Dg. Infectuous diseases"
+label(CONS_C1_df_SEP_2020$dg_fis_otr_cond_fis_ries_vit) <- "Physical Dg. Other phsysical conditions"
+label(CONS_C1_df_SEP_2020$dg_fis_otr_cond_fis) <- "Physical Dg. Other phsysical conditions"
+label(CONS_C1_df_SEP_2020$dg_fis_pat_buc) <- "Physical Dg. Oral-care pathologies"
+label(CONS_C1_df_SEP_2020$dg_fis_pat_ges_intrau) <- "Physical Dg. Development or Intrauterine"
+label(CONS_C1_df_SEP_2020$dg_fis_trau_sec) <- "Traumatisms and disabling sequelae"
+
+label(CONS_C1_df_SEP_2020$otros_pr_sm_abu_sex) <- "Other mental health problems- Sexual abuse"
+label(CONS_C1_df_SEP_2020$otros_pr_sm_exp_com_sex) <- "Other mental health problems- Commercial sexual exploitation"
+label(CONS_C1_df_SEP_2020$otros_pr_sm_otros) <- "Other mental health problems- Other"
+label(CONS_C1_df_SEP_2020$otros_pr_sm_prision) <- "Other mental health problems- Inprisonment"
+label(CONS_C1_df_SEP_2020$otros_pr_sm_vif) <- "Other mental health problems- Domestic violence"
+
+label(CONS_C1_df_SEP_2020$dg_trs_cons_sus_or) <- "Diagnosis of substance use"
+
+#   sexo_2 tipo_de_programa_2 tipo_de_plan_2 escolaridad_ultimo_ano_cursado
+# diagnostico_trs_psiquiatrico_cie_10 x2_diagnostico_trs_psiquiatrico_cie_10 x3_diagnostico_trs_psiquiatrico_cie_10 motivodeegreso 
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#CONS_C1_df_SEP_2020%>% janitor::tabyl(dg_cie_10_rec)
+#CONS_C1_df_dup_JUL_2020%>% janitor::tabyl(tipo_de_programa_2)
+#CONS_C1_df_dup_JUL_2020%>% janitor::tabyl(tipo_de_programa_2)
+
+CONS_C1_df_dup_JUL_2020_explore<-
+    CONS_C1_df_dup_JUL_2020%>% 
+    #dplyr::mutate(treat= ifelse(row %in% unlist(CONS_C1_df_dup_JUL_2020_match_top_sel$row),1,0))%>%
+      dplyr::mutate(origen_ingreso_mod= dplyr::case_when(grepl("Otro Centro Tratamiento",as.character(origen_ingreso_mod))~"Derivación Asistida", TRUE~as.character(origen_ingreso_mod)))%>%  
+      dplyr::mutate(origen_ingreso_mod=factor(origen_ingreso_mod,labels=c('Spontaneous','Assisted Referral','Other','Justice Sector','Health Sector')))  %>% 
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #CIE_10  
+      dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or,x4_dg_trs_psiq_cie_10_or,x5_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl("En estudio",as.character(.))~0,grepl("Sin trastorno",as.character(.))~0,is.na(.)~0,TRUE~1), .names="dg_{col}"))%>%
+      dplyr::mutate(dg_total_cie_10 = base::rowSums(dplyr::select(., dg_dg_trs_psiq_cie_10_or, dg_x2_dg_trs_psiq_cie_10_or, dg_x3_dg_trs_psiq_cie_10_or, dg_x4_dg_trs_psiq_cie_10_or, dg_x5_dg_trs_psiq_cie_10_or)))%>%  
+      dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or,x4_dg_trs_psiq_cie_10_or,x5_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl("En estudio",as.character(.))~1,grepl("Sin trastorno",as.character(.))~0,is.na(.)~0,TRUE~0), .names="instudy_{col}"))%>%
+      dplyr::mutate(instudy_total_cie_10 = base::rowSums(dplyr::select(., instudy_dg_trs_psiq_cie_10_or, instudy_x2_dg_trs_psiq_cie_10_or, instudy_x3_dg_trs_psiq_cie_10_or, instudy_x4_dg_trs_psiq_cie_10_or, instudy_x5_dg_trs_psiq_cie_10_or)))%>%
+      dplyr::mutate(dg_cie_10_rec=dplyr::case_when(dg_total_cie_10>0 ~2,
+                                             instudy_total_cie_10>0 & dg_total_cie_10==0~1,
+                                             instudy_total_cie_10>0 & is.na(dg_total_cie_10)~1,
+                                             TRUE~0))%>%
+      dplyr::mutate(dg_cie_10_rec=as.factor(dg_cie_10_rec))%>%
+      dplyr::mutate(dg_cie_10_rec=factor(dg_cie_10_rec,labels=c('Without psychiatric comorbidity','Diagnosis unknown (under study)', 'With psychiatric comorbidity'))) %>% 
+      dplyr::mutate(macrozona=factor(macrozona, labels=c('Center',
+                                                                   'North',
+                                                                   'South'))) %>%
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #Edad grupos  
+        dplyr::mutate(edad_al_ing_grupos=dplyr::case_when(
+      edad_al_ing>=50~"50+",
+          edad_al_ing>=40~"40-49",
+          edad_al_ing>=30~"30-39",
+          edad_al_ing>=18~"18-29",
+          edad_al_ing<18~"<18",
+          TRUE~NA_character_)) %>%
+  dplyr::mutate(edad_al_ing_grupos=as.factor(edad_al_ing_grupos)) %>%  
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #Tipo de programa
+          dplyr::mutate(tipo_de_programa_2=dplyr::case_when(grepl("M-", tipo_de_plan_2)~"Women specific",
+                                                        grepl("PG-", tipo_de_plan_2)~"General population",
+                                                        grepl("LV", tipo_de_plan_2)~"Other")) %>% 
+          dplyr::mutate(tipo_de_programa_2=as.factor(tipo_de_programa_2)) %>% 
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #Sex
+      dplyr::mutate(sexo_2=factor(sexo_2,labels=c('Men','Women'))) %>% 
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #Cause of Discharge
+  dplyr::mutate(motivodeegreso_mod_imp=factor(motivodeegreso_mod_imp,labels=c('Late Drop-out',
+                                                                                  'Early Drop-out',
+                                                                                  'Administrative discharge',
+                                                                                  'Therapeutic discharge',
+                                                                                  'Referral to another treatment',
+                                                                                  'Ongoing treatment',
+                                                                              'Death'))) %>% 
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #frequency of consumption
+  dplyr::mutate(freq_cons_sus_prin=factor(freq_cons_sus_prin,labels=c("1 day a week or less",
+                                                                                  "2 to 3 days a week",
+                                                                                  "4 to 6 days a week",
+                                                                                  "Less than 1 day a week",
+                                                                                  "Did not use",
+                                                                                  "Daily"))) %>%     
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #primary substance
+    dplyr::mutate(sus_principal_mod=factor(sus_principal_mod,labels=c("Alcohol",
+                                                                                  "Cocaine hydrochloride",
+                                                                                  "Marijuana",
+                                                                                  "Other",
+                                                                                  "Cocaine paste"))) %>%   
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #escolaridad rec
+    dplyr::mutate(escolaridad_rec=factor(escolaridad_rec,labels=c('1-More than high school','2-Completed high school or less','3-Completed primary school or less')))  %>% 
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #marital status
+      dplyr::mutate(estado_conyugal_2=factor(estado_conyugal_2, labels=c('Married/Shared living arrangements','Separated/Divorced','Single','Widower'))) %>%  
+  
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #type of center (pub/priv)
+  dplyr::mutate(tipo_centro=factor(tipo_centro, labels=c('Private','Public'))) %>%
+
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #occupational status (inactive…)
+  dplyr::mutate(estatus_ocupacional=factor(estatus_ocupacional, labels=c('Unemployed',
+                                                                           'Employed',
+                                                                           'Inactive'))) %>%
+  dplyr::mutate(cat_ocupacional=factor(cat_ocupacional, labels=c('Salaried',
+                                                                   'Self-employed',
+                                                                   'Employer',
+                                                                   'Unpaid family labour',
+                                                                   'Other',
+                                                                   'Volunteer worker'))) %>%
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #age of onset of drug use
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #physical diagnose
+
+    dplyr::mutate(dg_fis_anemia= ifelse(grepl("Anemia",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_card= ifelse(grepl("Cardiopat",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_in_study= ifelse(grepl("En estudio",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_enf_som= ifelse(grepl("somáticas",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_ets= ifelse(grepl("ETS",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_hep_alc= ifelse(grepl("Hepatitis alcohólica",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_hep_b= ifelse(grepl("Hepatitis B",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_hep_cro= ifelse(grepl("Hepatitis crónica",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_inf= ifelse(grepl("Infecciosas relacionadas",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_otr_cond_fis_ries_vit= ifelse(grepl("Condiciones de Riesgo Vital",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_otr_cond_fis= ifelse(grepl("condiciones Fisicas Limitantes",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_pat_buc= ifelse(grepl("Bucal",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_pat_ges_intrau= ifelse(grepl("niño intrauterino",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_trau_sec= ifelse(grepl("Traumatismos y secuelas",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(otros_pr_sm_abu_sex= ifelse(grepl("Abuso Sexual",otros_probl_at_sm_or),1,0))%>%
+    dplyr::mutate(otros_pr_sm_exp_com_sex= ifelse(grepl("omercial Sexual",otros_probl_at_sm_or),1,0))%>%
+    dplyr::mutate(otros_pr_sm_otros= ifelse(grepl("Otros",otros_probl_at_sm_or),1,0))%>%
+    dplyr::mutate(otros_pr_sm_prision= ifelse(grepl("Prisionalización",otros_probl_at_sm_or),1,0))%>%
+    dplyr::mutate(otros_pr_sm_vif= ifelse(grepl("Violencia Intrafamiliar",otros_probl_at_sm_or),1,0)) %>% 
+ 
+    dplyr::mutate(dg_trs_cons_sus_or= dplyr::case_when(grepl("Consumo Perjudicial",dg_trs_cons_sus_or)~"Hazardous consumption",
+                                                   grepl("Dependencia",dg_trs_cons_sus_or)~"Drug dependence",
+                                                   TRUE~NA_character_)) %>%   
+#CONS_C1_df_dup_JUL_2020_explore%>% janitor::tabyl(sus_principal_mod)
+
+  dplyr::select(row, sexo_2, escolaridad_rec, freq_cons_sus_prin, tipo_de_plan_2, tipo_de_programa_2, edad_al_ing_grupos, sus_principal_mod, motivodeegreso_mod_imp, origen_ingreso_mod, dg_cie_10_rec, estado_conyugal_2, edad_ini_cons, cat_ocupacional, estatus_ocupacional, macrozona, nombre_region, tipo_centro,dias_treat_imp_sin_na, dg_fis_anemia, dg_fis_card, dg_fis_in_study, dg_fis_enf_som, dg_fis_ets, dg_fis_hep_alc, dg_fis_hep_b, dg_fis_hep_cro, dg_fis_inf, dg_fis_otr_cond_fis_ries_vit, dg_fis_otr_cond_fis, dg_fis_pat_buc, dg_fis_pat_ges_intrau, dg_fis_trau_sec, otros_pr_sm_abu_sex, otros_pr_sm_exp_com_sex, otros_pr_sm_otros, otros_pr_sm_prision, otros_pr_sm_vif, dg_trs_cons_sus_or)
+  
+ #Frecuencia de consumo de la droga principal en los 30 días previos a la admisión a tratamiento
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+label(CONS_C1_df_dup_JUL_2020_explore$sexo_2) <- "Sex"
+label(CONS_C1_df_dup_JUL_2020_explore$escolaridad_rec) <- "Educational Attainment"
+label(CONS_C1_df_dup_JUL_2020_explore$freq_cons_sus_prin) <- "Frequency of use of primary drug at admission"
+
+label(CONS_C1_df_dup_JUL_2020_explore$tipo_de_plan_2) <- "Treatment Plan"
+label(CONS_C1_df_dup_JUL_2020_explore$tipo_de_programa_2) <- "Treatment Program"
+label(CONS_C1_df_dup_JUL_2020_explore$edad_al_ing_grupos) <- "Age at Admission"
+label(CONS_C1_df_dup_JUL_2020_explore$sus_principal_mod) <- "Primary substance at admission"
+label(CONS_C1_df_dup_JUL_2020_explore$motivodeegreso_mod_imp) <- "Motive of discharge"
+label(CONS_C1_df_dup_JUL_2020_explore$origen_ingreso_mod) <- "Motive of Admission to Treatment (First Entry)"
+label(CONS_C1_df_dup_JUL_2020_explore$dg_cie_10_rec) <- "Psychiatric comorbidity"
+
+label(CONS_C1_df_dup_JUL_2020_explore$estado_conyugal_2) <- "Marital Status"
+label(CONS_C1_df_dup_JUL_2020_explore$edad_ini_cons) <- "Age of Onset of Drug Use"
+label(CONS_C1_df_dup_JUL_2020_explore$cat_ocupacional) <- "Occupational Category"
+label(CONS_C1_df_dup_JUL_2020_explore$estatus_ocupacional) <- "Occupational Status"
+label(CONS_C1_df_dup_JUL_2020_explore$macrozona) <- "Macrozones of the Center"
+label(CONS_C1_df_dup_JUL_2020_explore$nombre_region) <- "Chilean Region of the Center"
+label(CONS_C1_df_dup_JUL_2020_explore$tipo_centro) <- "Type of Center"
+label(CONS_C1_df_dup_JUL_2020_explore$dias_treat_imp_sin_na) <- "Days of Treatment (missing dates of discharge were replaced with difference from 2019-11-13)"
+
+label(CONS_C1_df_dup_JUL_2020_explore$dg_fis_anemia) <- "Physical Dg. Anemia"
+label(CONS_C1_df_dup_JUL_2020_explore$dg_fis_card) <- "Physical Dg. Heart Disease"
+label(CONS_C1_df_dup_JUL_2020_explore$dg_fis_in_study) <- "Physical Dg. Under Study"
+label(CONS_C1_df_dup_JUL_2020_explore$dg_fis_enf_som) <- "Physical Dg. Somatic illnesses"
+label(CONS_C1_df_dup_JUL_2020_explore$dg_fis_ets) <- "Physical Dg. STDs"
+label(CONS_C1_df_dup_JUL_2020_explore$dg_fis_hep_alc) <- "Physical Dg. Alcoholic hepatitis"
+label(CONS_C1_df_dup_JUL_2020_explore$dg_fis_hep_b) <- "Physical Dg. Hepatitis B"
+label(CONS_C1_df_dup_JUL_2020_explore$dg_fis_hep_cro) <- "Physical Dg. Chronic hepatitis"
+label(CONS_C1_df_dup_JUL_2020_explore$dg_fis_inf) <- "Physical Dg. Infectuous diseases"
+label(CONS_C1_df_dup_JUL_2020_explore$dg_fis_otr_cond_fis_ries_vit) <- "Physical Dg. Other phsysical conditions"
+label(CONS_C1_df_dup_JUL_2020_explore$dg_fis_otr_cond_fis) <- "Physical Dg. Other phsysical conditions"
+label(CONS_C1_df_dup_JUL_2020_explore$dg_fis_pat_buc) <- "Physical Dg. Oral-care pathologies"
+label(CONS_C1_df_dup_JUL_2020_explore$dg_fis_pat_ges_intrau) <- "Physical Dg. Development or Intrauterine"
+label(CONS_C1_df_dup_JUL_2020_explore$dg_fis_trau_sec) <- "Traumatisms and disabling sequelae"
+
+label(CONS_C1_df_dup_JUL_2020_explore$otros_pr_sm_abu_sex) <- "Other mental health problems- Sexual abuse"
+label(CONS_C1_df_dup_JUL_2020_explore$otros_pr_sm_exp_com_sex) <- "Other mental health problems- Commercial sexual exploitation"
+label(CONS_C1_df_dup_JUL_2020_explore$otros_pr_sm_otros) <- "Other mental health problems- Other"
+label(CONS_C1_df_dup_JUL_2020_explore$otros_pr_sm_prision) <- "Other mental health problems- Inprisonment"
+label(CONS_C1_df_dup_JUL_2020_explore$otros_pr_sm_vif) <- "Other mental health problems- Domestic violence"
+
+label(CONS_C1_df_dup_JUL_2020_explore$dg_trs_cons_sus_or) <- "Diagnosis of substance use"
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+library(compareGroups)
+
+CONS_C1_df_SEP_2020_miss<-rbind(CONS_C1_df_dup_JUL_2020_explore,CONS_C1_df_SEP_2020) %>% 
+  dplyr::mutate(selected=ifelse(row %in% unlist(CONS_C1_df_dup_JUL_2020$row),1,0))
+
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+
+label(CONS_C1_df_SEP_2020_miss$sexo_2) <- "Sex"
+label(CONS_C1_df_SEP_2020_miss$escolaridad_rec) <- "Educational Attainment"
+label(CONS_C1_df_SEP_2020_miss$freq_cons_sus_prin) <- "Frequency of use of primary drug at admission"
+
+label(CONS_C1_df_SEP_2020_miss$tipo_de_plan_2) <- "Treatment Plan"
+label(CONS_C1_df_SEP_2020_miss$tipo_de_programa_2) <- "Treatment Program"
+label(CONS_C1_df_SEP_2020_miss$edad_al_ing_grupos) <- "Age at Admission"
+label(CONS_C1_df_SEP_2020_miss$sus_principal_mod) <- "Primary substance at admission"
+label(CONS_C1_df_SEP_2020_miss$motivodeegreso_mod_imp) <- "Motive of discharge"
+label(CONS_C1_df_SEP_2020_miss$origen_ingreso_mod) <- "Motive of Admission to Treatment (First Entry)"
+label(CONS_C1_df_SEP_2020_miss$dg_cie_10_rec) <- "Psychiatric comorbidity"
+
+label(CONS_C1_df_SEP_2020_miss$estado_conyugal_2) <- "Marital Status"
+label(CONS_C1_df_SEP_2020_miss$edad_ini_cons) <- "Age of Onset of Drug Use"
+label(CONS_C1_df_SEP_2020_miss$cat_ocupacional) <- "Occupational Category"
+label(CONS_C1_df_SEP_2020_miss$estatus_ocupacional) <- "Occupational Status"
+label(CONS_C1_df_SEP_2020_miss$macrozona) <- "Macrozones of the Center"
+label(CONS_C1_df_SEP_2020_miss$nombre_region) <- "Chilean Region of the Center"
+label(CONS_C1_df_SEP_2020_miss$tipo_centro) <- "Type of Center"
+label(CONS_C1_df_SEP_2020_miss$dias_treat_imp_sin_na) <- "Days of Treatment (missing dates of discharge were replaced with difference from 2019-11-13)"
+
+label(CONS_C1_df_SEP_2020_miss$dg_fis_anemia) <- "Physical Dg. Anemia"
+label(CONS_C1_df_SEP_2020_miss$dg_fis_card) <- "Physical Dg. Heart Disease"
+label(CONS_C1_df_SEP_2020_miss$dg_fis_in_study) <- "Physical Dg. Under Study"
+label(CONS_C1_df_SEP_2020_miss$dg_fis_enf_som) <- "Physical Dg. Somatic illnesses"
+label(CONS_C1_df_SEP_2020_miss$dg_fis_ets) <- "Physical Dg. STDs"
+label(CONS_C1_df_SEP_2020_miss$dg_fis_hep_alc) <- "Physical Dg. Alcoholic hepatitis"
+label(CONS_C1_df_SEP_2020_miss$dg_fis_hep_b) <- "Physical Dg. Hepatitis B"
+label(CONS_C1_df_SEP_2020_miss$dg_fis_hep_cro) <- "Physical Dg. Chronic hepatitis"
+label(CONS_C1_df_SEP_2020_miss$dg_fis_inf) <- "Physical Dg. Infectuous diseases"
+label(CONS_C1_df_SEP_2020_miss$dg_fis_otr_cond_fis_ries_vit) <- "Physical Dg. Other phsysical conditions"
+label(CONS_C1_df_SEP_2020_miss$dg_fis_otr_cond_fis) <- "Physical Dg. Other phsysical conditions"
+label(CONS_C1_df_SEP_2020_miss$dg_fis_pat_buc) <- "Physical Dg. Oral-care pathologies"
+label(CONS_C1_df_SEP_2020_miss$dg_fis_pat_ges_intrau) <- "Physical Dg. Development or Intrauterine"
+label(CONS_C1_df_SEP_2020_miss$dg_fis_trau_sec) <- "Traumatisms and disabling sequelae"
+
+label(CONS_C1_df_SEP_2020_miss$otros_pr_sm_abu_sex) <- "Other mental health problems- Sexual abuse"
+label(CONS_C1_df_SEP_2020_miss$otros_pr_sm_exp_com_sex) <- "Other mental health problems- Commercial sexual exploitation"
+label(CONS_C1_df_SEP_2020_miss$otros_pr_sm_otros) <- "Other mental health problems- Other"
+label(CONS_C1_df_SEP_2020_miss$otros_pr_sm_prision) <- "Other mental health problems- Inprisonment"
+label(CONS_C1_df_SEP_2020_miss$otros_pr_sm_vif) <- "Other mental health problems- Domestic violence"
+
+label(CONS_C1_df_SEP_2020_miss$dg_trs_cons_sus_or) <- "Diagnosis of substance use"
+
+table <- compareGroups(selected ~ sexo_2+ escolaridad_rec+ freq_cons_sus_prin+ tipo_de_plan_2+ tipo_de_programa_2+ 
+        edad_al_ing_grupos+  sus_principal_mod+  motivodeegreso_mod_imp+  origen_ingreso_mod+  dg_cie_10_rec+  estado_conyugal_2+  edad_ini_cons+  cat_ocupacional+  estatus_ocupacional+  macrozona+  nombre_region+  tipo_centro+ dias_treat_imp_sin_na+ dg_fis_anemia+ dg_fis_card+ dg_fis_in_study+ dg_fis_enf_som+ dg_fis_ets+ dg_fis_hep_alc+ dg_fis_hep_b+ dg_fis_hep_cro+ dg_fis_inf+ dg_fis_otr_cond_fis_ries_vit+ dg_fis_otr_cond_fis+ dg_fis_pat_buc+ dg_fis_pat_ges_intrau+ dg_fis_trau_sec+ otros_pr_sm_abu_sex+ otros_pr_sm_exp_com_sex+ otros_pr_sm_otros+ otros_pr_sm_prision+ otros_pr_sm_vif+ dg_trs_cons_sus_or,
+                       method= c(sexo_2=3,
+                                   escolaridad_rec=3,
+                                   freq_cons_sus_prin=3,
+                                   tipo_de_plan_2=3,
+                                   tipo_de_programa_2=3,
+                                   edad_al_ing_grupos=3,
+                                   sus_principal_mod=3,
+                                   motivodeegreso_mod_imp=3,
+                                   origen_ingreso_mod=3,
+                                   dg_cie_10_rec=3,
+                                   estado_conyugal_2=3,
+                                   edad_ini_cons=2,
+                                   cat_ocupacional=3,
+                                   estatus_ocupacional=3,
+                                   macrozona=3,
+                                   nombre_region=3,
+                                   tipo_centro=3,
+                                   dias_treat_imp_sin_na=2,
+                                   dg_fis_anemia= 3,
+                                   dg_fis_card= 3,
+                                  dg_fis_in_study= 3, 
+                                  dg_fis_enf_som= 3, 
+                                  dg_fis_ets= 3, 
+                                  dg_fis_hep_alc= 3, 
+                                  dg_fis_hep_b= 3, 
+                                  dg_fis_hep_cro= 3, 
+                                  dg_fis_inf= 3, 
+                                  dg_fis_otr_cond_fis_ries_vit= 3,
+                                  dg_fis_otr_cond_fis= 3,
+                                  dg_fis_pat_buc= 3, 
+                                  dg_fis_pat_ges_intrau= 3, 
+                                  dg_fis_trau_sec= 3, 
+                                  otros_pr_sm_abu_sex= 3, 
+                                  otros_pr_sm_exp_com_sex= 3, 
+                                  otros_pr_sm_otros= 3, 
+                                  otros_pr_sm_prision= 3, 
+                                  otros_pr_sm_vif=3,
+                                  dg_trs_cons_sus_or=3),
+                       data = CONS_C1_df_SEP_2020_miss,
+                       include.miss = T,
+                       var.equal=T
+                       )
+ #Possible values are: 1 - forces analysis as "normal-distributed"; 2 - forces analysis as "continuous non-normal"; 3 - forces analysis as "categorical"; and 4 - NA, which performs a Shapiro-Wilks test to decide between normal or non-normal. 
+
+pvals <- getResults(table)
+#p.adjust(pvals, method = "BH")
+restab <- createTable(table, show.p.overall = F)
+ export2md(restab, size=9, first.strip=T, hide.no="no", position="center",
+           format="html",caption= "Table 1. Summary descriptives table by groups, between selected rows (=1) and records that did not matched, duplicate treatments and invalid ones (=0)")%>%
+  kableExtra::add_footnote(c("Note. Variables of C1 dataset had to be standardized before comparison;", "Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
 ```
-```{r tab3_surv_diff_bet_treat_motivodeegreso,eval=T, echo=T, paged.print=TRUE}                                                       
+
+<br>
+
+As we can see on Table 1, the there was a greater proportion of treatments of women and +50 users that were not available for selection. Also, among the non-selected treatments, there was a greater share of alcohol, but a lower cocaine-paste as a primary substance at admission. Additionally, there was a greater proportion of therapeutic discharges and referrals, but a lower proportion of late and early drop-outs. Regarding the motives of admission to treatment, Spontaneous motives had a lower percentage in comparison to the selected cases. For psychiatric comorbidity, there was a greater proportion of treatments with psychiatric comorbidity, but a lower proportion had a diagnosis under study. Another variable that was worth mentioning was occupational status, where the inactive group had greater proportions among the non- selected group. The treatment lengths were greater in the non-selected treatments (see Table 1).
+
+<br>
+
+# Descriptives at Baseline
+
+
+# Give format to the database
+
+Person days are conceived as the difference in each user, of the minimum date of admission (the first time that each patient was admitted between 2010 and 2019), and the maximum date of discharge (the last time that a patient was discharged from a treatment between 2010 and 2019).
+
+<br>
+
+```{r 1_contar repeticiones hash,eval=T, echo=T, paged.print=TRUE}                                                       
+#** Ordena primero por hash key, y después por fecha de ingreso, 
+#** desde el mas reciente al más nuevo.
+#*dependiendo del signo que se le asigne a fecha de ingreso, 
+#*es si será de menor (más antiguo) a mayor (más reciente) (+), o mayor a menor (-)
+CONS_C1_df_dup_SEP_2020_prev<-
+  CONS_C1_df_dup_JUL_2020 %>% 
+    dplyr::arrange(hash_key,desc(fech_ing)) %>% 
+#*eliminar a menores de 18?
+    #dplyr::filter(edad_al_ing<18) %>% 
+#*0.d. Contar cuántas veces se repite cada HASH
+    dplyr::group_by(hash_key) %>% 
+    dplyr::mutate(dup=row_number()) %>%
+#*La ventaja de duplicates_filtered es que considera los perdidos
+    dplyr::mutate(duplicates_filtered= n()) %>% 
+#*obtener la última fecha en que registra la observación
+    dplyr::mutate(startdate= dplyr::last(fech_ing_num), enddate= dplyr::first(fech_egres_num), 
+                  person_days=enddate-startdate) %>% 
+    dplyr::ungroup()
+
+label(CONS_C1_df_dup_SEP_2020_prev$dup) <- "Número de Tratamientos por HASH (posición a medida que aparecen, menor más reciente)/Number of Treatments by User"
+label(CONS_C1_df_dup_SEP_2020_prev$duplicates_filtered) <- "Número de Tratamientos por HASH (Total)/Number of Treatments by User (Total)"
+label(CONS_C1_df_dup_SEP_2020_prev$startdate) <- "Fecha de Ingreso Primer Tratamiento (x HASH)/Date of Admission to the First Treatment (By User)"
+label(CONS_C1_df_dup_SEP_2020_prev$enddate) <-  "Fecha de Egreso del Último Tratamiento (x HASH)/ Date of Discharge of the Last Treatment (By User)"
+label(CONS_C1_df_dup_SEP_2020_prev$person_days) <- "Días en los que estado un usuario en el sistema para el estudio/User's Days available in the system for the study"
+
+invisible(
+CONS_C1_df_dup_SEP_2020_prev %>% 
+  dplyr::filter(duplicates_filtered>4,person_days>100) %>% 
+  dplyr::select(hash_key, fech_ing, fech_ing_num, fech_egres_imp, fech_egres_num, person_days, dup, duplicates_filtered)
+)
+
+if(CONS_C1_df_dup_SEP_2020_prev %>% 
+   dplyr::filter(person_days<0) %>% 
+   nrow()>0){stop("There are still some cases with negative days of treatment")}
+```
+
+<br>
+
+We selected the first treatment of each user, in order to make an individual overview of users and time available in the dataset.
+
+<br>
+
+```{r 2_alt_1_primer_trat_a_la_cabeza,eval=T, echo=T, paged.print=TRUE}                                                       
+#*ALTERNATIVA 1= primer tratamiento a la cabeza
+CONS_C1_df_dup_SEP_2020_prev2<-
+  CONS_C1_df_dup_SEP_2020_prev %>% 
+    dplyr::mutate(a_botar=ifelse(dup==1,1,NA_real_)) 
+CONS_C1_df_dup_SEP_2020_prev2%>% 
+    janitor::tabyl(a_botar) %>% 
+      knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption="Table 1. First entries of each user",
+               align= c("l",rep('c', 5)), col.names = c("Discarded","n","%", "Valid %"))%>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 8) 
+#%>%  kableExtra::add_footnote("Note= Treatments that were ")
+
+label(CONS_C1_df_dup_SEP_2020_prev2$a_botar) <- "Descarta tratamientos que no permitan ver la duración del usuario entre 2010-2019"
+```
+
+<br>
+
+Next, we discarded posterior treatments.
+
+<br>
+
+```{r 3_event,eval=T, echo=T, paged.print=TRUE}                                                       
+#85048+17764+4853+1449+435+149+45+11+1+1
+#En STATA entrega es en total 85,048 entradas
+#0 |     67,284 = 
+#1 |     17,764 =  
+CONS_C1_df_dup_SEP_2020_prev3<-  
+CONS_C1_df_dup_SEP_2020_prev2 %>% 
+    dplyr::filter(!is.na(a_botar)) %>% #nrow() 85,048
+    dplyr::mutate(event=ifelse(duplicates_filtered>1,1,0)) %>% 
+    dplyr::mutate(person_years=person_days/365.25)#%>% janitor::tabyl(event)
+#table(CONS_C1_df_dup_SEP_2020_prev2$duplicates_filtered)
+label(CONS_C1_df_dup_SEP_2020_prev3$event) <- "Segundo, Tercero o Tratamiento Posterior (1=Reingreso x HASH) /Posterior Treatment of Each User (1=Readmission)"
+```
+
+```{r 3_stset_incidence_rate,eval=T, echo=T, paged.print=TRUE}                                                       
+#**STSET
+#stset person_days, failure(event==1) scale(365.25) id(row)
+#stdescribe, weight
+#**TOTAL INCIDENCE RATE
+#egen sum_0 = total(person_days) if event==0
+#egen sum_1 = total(person_days) if event==1
+#egen sum_tot = total(person_days)
+#codebook sum_0 sum_1 sum_tot
+#tab _d if _d==1
+#*cumulative incidence rate of readmission
+#di %9.1f (r(N)/(sum_tot/365.25)*1000)
+
+#table(CONS_C1_df_dup_SEP_2020_prev3$event)
+#table(is.na(CONS_C1_df_dup_SEP_2020_prev3$person_days))
+```
+
+<br>
+
+Next, we discarded posterior treatments. The total inicidence rate was `r formatC(17764/(sum(CONS_C1_df_dup_SEP_2020_prev3$person_years))*1000,digits=1,format = "f")` readmissions per person-years.
+
+<br>
+
+#Incidence Rate By Groups
+
+```{r tab3_surv_diff_bet_treat_motivodeegreso,eval=T, echo=T, paged.print=TRUE}                                                    
+survfit_days_new_treat_simple<-survfit(Surv(person_days, event) ~ 1, 
+                                data=CONS_C1_df_dup_SEP_2020_prev3)
+
+cuminc<-cmprsk::cuminc(CONS_C1_df_dup_SEP_2020_prev3$person_years, CONS_C1_df_dup_SEP_2020_prev3$event)
+
+#summary(cuminc$`1 1`$time)
+
+#Fitting the survival model
+survival_func=survfit(Surv(CONS_C1_df_dup_SEP_2020_prev3$person_years, CONS_C1_df_dup_SEP_2020_prev3$event== 1)~1)
+
 #http://rstudio-pubs-static.s3.amazonaws.com/316989_83cbe556125645b698c9ff6cf88c4c1a.html
 #https://thriv.github.io/biodatasci2018/r-survival.html
 #http://si.biostat.washington.edu/sites/default/files/modules/SISCR_2018_11_all-2pp_0.pdf
@@ -263,6 +964,12 @@ data.table(survfit_days_new_treat_dataframe$table,keep.rownames = T)%>%
 #The restricted mean (rmean) and its standard error se(rmean) are based on a truncated estimator. When the last censoring time is not random this quantity is occasionally of interest.
 ```
 
+<br>
+
+dsad
+
+<br>
+
 ```{r fig2_survplot_motivoegreso,fig.width = 13, fig.width = 7, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 2. Recurrence-free interval of a treatment according to cause of discharge of the first treatment", error=T}
 
 #El estimador de S es lo que se llama curva de supervivencia (“survival curve”). 
@@ -282,13 +989,3 @@ legend("topright", c("Late Withdrawal", "Early Withdrawal", "Administrative Disc
          col=c("yellow4","thistle","cornflowerblue","violetred3","gray20"), lty=c(1,1,1,1), lwd=2, bty='n')
 mtext("Note. Users who did not finish their first treatment or did not show recurrence have been censored", side=1,size=.5,cex=.7,outer=F,at=1500,4)
 ```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
