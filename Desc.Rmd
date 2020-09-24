@@ -172,12 +172,86 @@ library(choroplethr)
 library(choroplethrMaps)
 library(choroplethrAdmin1)
 library(tidyverse)
+library(epiR)
+library(survminer)
+library(rateratio.test)  
+library(ggfortify)
+library(survMisc)
 
 if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
 #install.packages( repos = "https://radiant-rstats.github.io/minicran/")
 #install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")
 
 #tryCatch(source("https://raw.githubusercontent.com/radiant-rstats/minicran/gh-pages/update.R"), error = function(e) print("updated package, radiant"))
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+ 
+irrs<-function(x, y="event", z="person_days",db){
+  #x= variable que agrupa
+  #y= evento explicado
+  #z= person days
+  #db= base de datos
+  fmla <- as.formula(paste0(y,"~",x))
+  fmla2 <- as.formula(paste0(z,"~",x))
+assign(paste0("irr_",y,"_por_",x),
+       rateratio.test::rateratio.test(
+     x=as.numeric(xtabs(fmla, data=get(db)))[c(2,1)],
+     n=as.numeric(xtabs(fmla, data=get(db)))[c(2,1)]
+    )
+   )
+return(
+  rateratio.test::rateratio.test(
+     x=as.numeric(xtabs(fmla, data=get(db)))[c(2,1)],
+     n=as.numeric(xtabs(fmla2, data=get(db)))[c(2,1)]
+      )
+    )
+}
+
+cool_survival <- function(data = data_frame, time = time, censor = censor, group = group){
+	require(survival)
+	require(ggfortify)
+	fit <- survfit(Surv(time, censor) ~ group, data = data)
+	plot_data <- fortify(fit, surv.connect = TRUE)
+	plot <- ggplot(plot_data, aes(x = time, y = surv * 100)) + 
+		# plot the survival curve(s)
+		geom_step(aes(colour = strata), size = 2) + 
+		# add the censor indicators
+		geom_point(data = subset(plot_data, n.censor > 0), shape = 3, size = 3, stroke = 2, aes(colour = strata)) + 
+		# add confidence intervals using the stepribbon geom in the RcmdrPlugin.KMggplot2 package
+		RcmdrPlugin.KMggplot2::geom_stepribbon(data = plot_data, 
+			aes(x = time, ymin = lower * 100, ymax = upper * 100, fill = strata), 
+			alpha = 0.15, colour = "transparent", show.legend = FALSE, kmplot = TRUE) + 
+		# set the colours of the confidence intervals
+		scale_fill_manual(values = c("steelblue", "darkorange")) +
+		# set the colours of the survival curves
+		scale_colour_manual(values = c("steelblue", "darkorange"), name = "Hip") + 
+		# apply a theme based on the Roboto font size 16
+		theme_bw(base_size = 16, base_family = "Roboto") +
+		# add a title, x label, y label and footnote
+		labs(title = "Custom Made Survival Curve",
+			subtitle = "with ggfortify and ggplot2",
+     	  x = "Time [years]",
+     	  y = "Survival Probability [%]",
+     	  caption = "countcool.com") +
+	  theme_bw()+
+ 		# set the caption to a smaller italic font in darkolivergreen colour
+    	theme(plot.caption = element_text(colour = "darkolivegreen", face = "italic", size = 10)) +
+  		# set the y axis limit in steps of 20 %
+  		scale_y_continuous(breaks = seq(0, 100, 20)) +
+  		# set the x axis in steps of 2 years
+  		scale_x_continuous(breaks = seq(0, max(plot_data$time) + 2, 2)) +
+  		# add numbers at risk when failed (label creates a border)
+		annotate(geom = "label", x = subset(plot_data$time, plot_data$n.censor == 0), 
+			y = -15, label = subset(plot_data$n.risk, plot_data$n.censor == 0)) +
+		annotate(geom = "text", x = 0.2, y = -8, label = "At Risk", fontface = "italic")
+	return(plot)
+}
+
 ```
 
 <!--- SÍ O SÍ, HACER LA LIMPIEZA DE LOS SENDA NO, PRINCIPALMENTE DE LOS QUE SE SUPERPONGAN, TAMBIÉN PREGUNTAR A ACC SI LOS CON 0 DÍAS DE TRATAMIENTO SE BORRARÁN O NO; DE AHI EMPEZAR A NORMALIZAR LOS PROGRAMAS Y PLANES DE ACUERDO CON CRITERIOS MAUREEN, PARA NO GENERAR DIFERENCIAS AHI Y PODER DEDUPLICAR TRANQUILO --->
@@ -764,12 +838,9 @@ restab <- createTable(table, show.p.overall = F)
 
 <br>
 
-As we can see on Table 1, the there was a greater proportion of treatments of women and +50 users that were not available for selection. Also, among the non-selected treatments, there was a greater share of alcohol, but a lower cocaine-paste as a primary substance at admission. Additionally, there was a greater proportion of therapeutic discharges and referrals, but a lower proportion of late and early drop-outs. Regarding the motives of admission to treatment, Spontaneous motives had a lower percentage in comparison to the selected cases. For psychiatric comorbidity, there was a greater proportion of treatments with psychiatric comorbidity, but a lower proportion had a diagnosis under study. Another variable that was worth mentioning was occupational status, where the inactive group had greater proportions among the non- selected group. The treatment lengths were greater in the non-selected treatments (see Table 1).
+As we can see in Table 1, there was a greater proportion of treatments of women and +50 users that were not available for selection. Also, among the non-selected treatments, there was a greater share of alcohol, but a lower cocaine-paste as a primary substance at admission. Additionally, there was a greater proportion of therapeutic discharges and referrals, but a lower proportion of late and early drop-outs. Regarding the motives of admission to treatment, Spontaneous motives had a lower percentage in comparison to the selected cases. For psychiatric comorbidity, there was a greater proportion of treatments with psychiatric comorbidity, but a lower proportion had a diagnosis under study. Another variable that was worth mentioning was occupational status, where the inactive group had greater proportions among the non- selected group. The treatment lengths were greater in the non-selected treatments.
 
 <br>
-
-# Descriptives at Baseline
-
 
 # Give format to the database
 
@@ -816,7 +887,7 @@ if(CONS_C1_df_dup_SEP_2020_prev %>%
 
 <br>
 
-We selected the first treatment of each user, in order to make an individual overview of users and time available in the dataset.
+We selected the **first treatment of each user**, in order to make an individual overview of users and time available in the dataset.
 
 <br>
 
@@ -828,7 +899,7 @@ CONS_C1_df_dup_SEP_2020_prev2<-
 CONS_C1_df_dup_SEP_2020_prev2%>% 
     janitor::tabyl(a_botar) %>% 
       knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
-               caption="Table 1. First entries of each user",
+               caption="Table 2. First entries of each user",
                align= c("l",rep('c', 5)), col.names = c("Discarded","n","%", "Valid %"))%>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 8) 
 #%>%  kableExtra::add_footnote("Note= Treatments that were ")
@@ -851,12 +922,10 @@ CONS_C1_df_dup_SEP_2020_prev3<-
 CONS_C1_df_dup_SEP_2020_prev2 %>% 
     dplyr::filter(!is.na(a_botar)) %>% #nrow() 85,048
     dplyr::mutate(event=ifelse(duplicates_filtered>1,1,0)) %>% 
+      #dplyr::mutate(event=factor(event,labels=c("W/o Readmissions","W/Readmissions"))) %>% 
     dplyr::mutate(person_years=person_days/365.25)#%>% janitor::tabyl(event)
 #table(CONS_C1_df_dup_SEP_2020_prev2$duplicates_filtered)
 label(CONS_C1_df_dup_SEP_2020_prev3$event) <- "Segundo, Tercero o Tratamiento Posterior (1=Reingreso x HASH) /Posterior Treatment of Each User (1=Readmission)"
-```
-
-```{r 3_stset_incidence_rate,eval=T, echo=T, paged.print=TRUE}                                                       
 #**STSET
 #stset person_days, failure(event==1) scale(365.25) id(row)
 #stdescribe, weight
@@ -871,23 +940,354 @@ label(CONS_C1_df_dup_SEP_2020_prev3$event) <- "Segundo, Tercero o Tratamiento Po
 
 #table(CONS_C1_df_dup_SEP_2020_prev3$event)
 #table(is.na(CONS_C1_df_dup_SEP_2020_prev3$person_days))
+
+#http://www.columbia.edu/~cjd11/charles_dimaggio/DIRE/resources/R/packages.pdf
 ```
 
 <br>
 
-Next, we discarded posterior treatments. The total inicidence rate was `r formatC(17764/(sum(CONS_C1_df_dup_SEP_2020_prev3$person_years))*1000,digits=1,format = "f")` readmissions per person-years.
+
+We calculated a total rate from person time, which could be represented as:
+
+$$
+\begin{aligned}
+\frac{\sum cases}{\sum p-t}
+\end{aligned}
+$$
 
 <br>
 
-#Incidence Rate By Groups
+The total incidence rate was `r formatC(17764/(sum(CONS_C1_df_dup_SEP_2020_prev3$person_years))*1000,digits=1,format = "f")` readmissions per person-years.
 
-```{r tab3_surv_diff_bet_treat_motivodeegreso,eval=T, echo=T, paged.print=TRUE}                                                    
-survfit_days_new_treat_simple<-survfit(Surv(person_days, event) ~ 1, 
-                                data=CONS_C1_df_dup_SEP_2020_prev3)
+<br>
 
-cuminc<-cmprsk::cuminc(CONS_C1_df_dup_SEP_2020_prev3$person_years, CONS_C1_df_dup_SEP_2020_prev3$event)
+## Incidence Rate By Groups
 
-#summary(cuminc$`1 1`$time)
+<br>
+
+We recoded the variables of cause of discharge, in order to account for early drop-out and late drop-out. Also we recoded the variables of main type of drug, in order to account for the main substance and comparisons between them: Cocaine vs. Alcohol, Cocaine Paste vs. Alcohol, and Marihuana vs. Alcohol.
+
+<br>
+
+
+```{r tab3_recode_vars,eval=T, echo=T, paged.print=TRUE}                                 
+CONS_C1_df_dup_SEP_2020_prev4<-
+CONS_C1_df_dup_SEP_2020_prev3 %>% 
+  dplyr::mutate(mot_egres_latewdl=dplyr::case_when(grepl("Tard",motivodeegreso_mod_imp)~1,
+                                                        grepl("Terap",motivodeegreso_mod_imp)~0,
+                                                        TRUE~NA_real_)) %>% 
+  dplyr::mutate(mot_egres_latewdl=factor(mot_egres_latewdl,labels=c("0.Therapeutic Disch.","1.Late WDRL"))) %>% 
+  dplyr::mutate(mot_egres_latewdl=factor(mot_egres_latewdl,)) %>% 
+  dplyr::mutate(mot_egres_earlywdl=dplyr::case_when(grepl("Temprano",motivodeegreso_mod_imp)~1,
+                                                        grepl("Terap",motivodeegreso_mod_imp)~0,
+                                                        TRUE~NA_real_)) %>% 
+  dplyr::mutate(mot_egres_earlywdl=factor(mot_egres_earlywdl,labels=c("0.Therapeutic Disch.","1.Early WDRL"))) %>% 
+  dplyr::mutate(droga_rec_coc=dplyr::case_when(grepl("Coca",sus_principal_mod)~1,
+                                                        grepl("Alcohol",sus_principal_mod)~0,
+                                                        TRUE~NA_real_)) %>% 
+  dplyr::mutate(droga_rec_coc=factor(droga_rec_coc,labels=c("0.Alcohol","1.Cocaine"))) %>% 
+  dplyr::mutate(droga_rec_pbase=dplyr::case_when(grepl("Pasta",sus_principal_mod)~1,
+                                                        grepl("Alcohol",sus_principal_mod)~0,
+                                                        TRUE~NA_real_)) %>% 
+  dplyr::mutate(droga_rec_pbase=factor(droga_rec_pbase,labels=c("0.Alcohol","1.Paste Base"))) %>% 
+  dplyr::mutate(droga_rec_mar=dplyr::case_when(grepl("Mari",sus_principal_mod)~1,
+                                                        grepl("Alcohol",sus_principal_mod)~0,
+                                                        TRUE~NA_real_)) %>% 
+  dplyr::mutate(droga_rec_mar=factor(droga_rec_mar,labels=c("0.Alcohol","1.Marijuana")))
+```
+
+<br>
+
+We calculated the incidence-rate ratios of different groups and checked whether there was an association between the exposure and the rate of readmissions.
+
+<br>
+
+```{r tab4_irrs,eval=T, echo=T, paged.print=TRUE}                                 
+#https://www.stata.com/features/tables-for-epidemiologists/
+#https://www.stata.com/manuals/repitab.pdf
+#ir event mot_egres_earlywdl _t
+#ir is used with incidence-rate (incidence-density or person-time) data. It calculates point estimates and confidence intervals for the incidence-rate ratio (IRR) and incidence-rate difference (IRD), along with attributable or prevented fractions for the exposed and total population. iri is the immediate form of ir;
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#table(CONS_C1_df_dup_SEP_2020_prev4$event,as.numeric(CONS_C1_df_dup_SEP_2020_prev4$mot_egres_earlywdl)-1)
+ 
+irrs_early<-irrs(x="mot_egres_earlywdl" ,db="CONS_C1_df_dup_SEP_2020_prev4")
+irrs_late<-irrs(x="mot_egres_latewdl" ,db="CONS_C1_df_dup_SEP_2020_prev4")
+
+irrs_coc<-irrs(x="droga_rec_coc" ,db="CONS_C1_df_dup_SEP_2020_prev4")
+irrs_pbas<-irrs(x="droga_rec_pbase" ,db="CONS_C1_df_dup_SEP_2020_prev4")
+irrs_mar<-irrs(x="droga_rec_mar" ,db="CONS_C1_df_dup_SEP_2020_prev4")
+```
+
+<br>
+
+Compared with users with therapeutic discharge as the cause of discharge, the incidence rate of readmission was `r round(as.numeric(irrs_early$estimate[1]),2)` (95% IC `r round(irrs_early$conf.int[1],2)`-`r round(irrs_early$conf.int[2],2)`) times higher for those that drop-out treatment before 3 months in treatment.
+
+<br>
+
+Compared with users with therapeutic discharge as the cause of discharge, the incidence rate of readmission was `r round(as.numeric(irrs_late$estimate[1]),2)` (95% IC `r round(irrs_late$conf.int[1],2)`-`r round(irrs_late$conf.int[2],2)`) times higher for those that drop-out treatment after 3 months in treatment.
+
+<br>
+
+Compared with those with alcohol as the main substance at admission, the cumulative incidence rate of readmission was `r round(as.numeric(irrs_coc$estimate[1]),2)` (IC95% `r round(irrs_coc$conf.int[1],2)`-`r round(irrs_coc$conf.int[2],2)`) times higher for those using cocaine.
+
+<br>
+
+Compared with those with alcohol as the main substance at admission, the cumulative incidence rate of readmission was `r round(as.numeric(irrs_pbas$estimate[1]),2)` (IC95% `r round(irrs_pbas$conf.int[1],2)`-`r round(irrs_pbas$conf.int[2],2)`) times higher for those using cocaine paste.
+
+<br>
+
+Compared with those with alcohol as the main substance at admission, there were small differences in the cumulative incidence for those using marijuana. However, users that were admitted for marijuana had lower incidence of readmission (`r round(as.numeric(irrs_mar$estimate[1]),2)` [IC95% `r round(irrs_mar$conf.int[1],2)`-`r round(irrs_mar$conf.int[2],2)`]) than users admitted for alcohol.
+
+<!--- (1.03 [IC95% 0.96- 1.10]). --->
+<br>
+
+### Graphical Representation
+
+The following figures shows the Nelson-Aalen for the cumulative hazard of experiencing readmission in the study period.
+
+<br>
+
+```{r fig1_survplot_km_early_widthdrawal, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 1. Cum. Hazards to Experience Readmission to SUD Treatment, by cause of Discharge", error=T,fig.width=8}
+library(survminer)
+fit_earlyw<- survfit(Surv(person_days, event==1) ~mot_egres_earlywdl, data=CONS_C1_df_dup_SEP_2020_prev4,
+                   type ="fleming-harrington", conf.type = "log-log")
+library(tidyverse)
+library(lubridate)
+library(ggfortify) 
+fit_earlyw_na <- fit_earlyw %>% fortify %>% group_by(strata) %>% mutate(CumHaz = cumsum(n.event/n.risk))
+
+#http://rstudio-pubs-static.s3.amazonaws.com/522481_5e55bec9c94044678e680a6d07e96a2e.html
+#https://rstudio-pubs-static.s3.amazonaws.com/258589_cd197f86fb5548ac89d7bcffd4bc6afe.html
+#http://pcool.dyndns.org:8080/statsbook/?page_id=513
+#http://rstudio-pubs-static.s3.amazonaws.com/316989_83cbe556125645b698c9ff6cf88c4c1a.html
+#https://cran.r-project.org/web/packages/survminer/readme/README.html
+#https://docs.ufpr.br/~jlpadilha/CE077/Aulas/2.TecnicasNaoParametricas.pdf 
+#http://www.columbia.edu/~sjm2186/EPIC_R/packages.pdf
+ggsurvplot_earlyw<-
+  ggsurvplot(fit_earlyw, 
+           fun = "cumhaz",
+           conf.int = TRUE,
+           legend.labs = c("Therapeutic Disch.", "Early WDRL"), 
+           risk.table = "abs_pct",
+           #ncensor.plot = TRUE,
+           ggtheme = theme_classic2(base_size=10),
+           risk.table.y.text.col = F,
+           risk.table.col="black",
+           font.tickslab = c(10),
+           risk.table.height = .2,
+           risk.table.fontsize = 2.5,
+           break.time.by = 365,
+           pval = F,
+           ylim=c(0,10),
+           legend = c(0.88, 0.15), 
+           legend.title="Cause of Disch.",
+           #cumevents=T,
+           surv.connect = T,
+           palette = c("skyblue4","orangered4"))
+ggsurvplot_earlyw
+ # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
+```
+
+<br>
+
+```{r fig2_survplot_km_late_widthdrawal, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 2. Cum. Hazards to Experience Readmission to SUD Treatment, by cause of Discharge", error=T,fig.width=8}
+library(survminer)
+fit_latew<- survfit(Surv(person_days, event==1) ~mot_egres_latewdl, data=CONS_C1_df_dup_SEP_2020_prev4,
+                   type ="fleming-harrington", conf.type = "log-log")
+library(tidyverse)
+library(lubridate)
+library(ggfortify) 
+fit_latew_na <- fit_latew %>% fortify %>% group_by(strata) %>% mutate(CumHaz = cumsum(n.event/n.risk))
+
+#http://rstudio-pubs-static.s3.amazonaws.com/522481_5e55bec9c94044678e680a6d07e96a2e.html
+#https://rstudio-pubs-static.s3.amazonaws.com/258589_cd197f86fb5548ac89d7bcffd4bc6afe.html
+#http://pcool.dyndns.org:8080/statsbook/?page_id=513
+#http://rstudio-pubs-static.s3.amazonaws.com/316989_83cbe556125645b698c9ff6cf88c4c1a.html
+#https://cran.r-project.org/web/packages/survminer/readme/README.html
+#https://docs.ufpr.br/~jlpadilha/CE077/Aulas/2.TecnicasNaoParametricas.pdf 
+#http://www.columbia.edu/~sjm2186/EPIC_R/packages.pdf
+ggsurvplot_latew<-
+  ggsurvplot(fit_latew, 
+           fun = "cumhaz",
+           conf.int = TRUE,
+           legend.labs = c("Therapeutic Disch.", "Late WDRL"), 
+           risk.table = "abs_pct",
+           #ncensor.plot = TRUE,
+           ggtheme = theme_classic2(base_size=10),
+           risk.table.y.text.col = F,
+           risk.table.col="black",
+           font.tickslab = c(10),
+           risk.table.height = .2,
+           risk.table.fontsize = 2.5,
+           break.time.by = 365,
+           pval = F,
+           ylim=c(0,10),
+           legend = c(0.88, 0.15), 
+           legend.title="Cause of Disch.",
+           #cumevents=T,
+           surv.connect = T,
+           palette = c("skyblue4","orangered4"))
+ggsurvplot_latew
+ # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
+```
+
+```{r fig3_survplot_coc, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 3. Cum. Hazards to Experience Readmission to SUD Treatment, by Primary Substance At Admission", error=T,fig.width=8}
+library(survminer)
+fit_coc<- survfit(Surv(person_days, event==1) ~droga_rec_coc, data=CONS_C1_df_dup_SEP_2020_prev4,
+                   type ="fleming-harrington", conf.type = "log-log")
+library(tidyverse)
+library(lubridate)
+library(ggfortify) 
+fit_coc_nelson_aalen <- fit_coc %>% fortify %>% group_by(strata) %>% mutate(CumHaz = cumsum(n.event/n.risk))
+
+#http://rstudio-pubs-static.s3.amazonaws.com/522481_5e55bec9c94044678e680a6d07e96a2e.html
+#https://rstudio-pubs-static.s3.amazonaws.com/258589_cd197f86fb5548ac89d7bcffd4bc6afe.html
+#http://pcool.dyndns.org:8080/statsbook/?page_id=513
+#http://rstudio-pubs-static.s3.amazonaws.com/316989_83cbe556125645b698c9ff6cf88c4c1a.html
+#https://cran.r-project.org/web/packages/survminer/readme/README.html
+#https://docs.ufpr.br/~jlpadilha/CE077/Aulas/2.TecnicasNaoParametricas.pdf 
+#http://www.columbia.edu/~sjm2186/EPIC_R/packages.pdf
+ggsurvplot_coc<-
+  ggsurvplot(fit_coc, 
+           fun = "cumhaz",
+           conf.int = TRUE,
+           legend.labs = c("Alcohol", "Cocaine"), 
+           risk.table = "abs_pct",
+           #ncensor.plot = TRUE,
+           ggtheme = theme_classic2(base_size=10),
+           risk.table.y.text.col = F,
+           risk.table.col="black",
+           font.tickslab = c(10),
+           risk.table.height = .2,
+           risk.table.fontsize = 2.5,
+           break.time.by = 365,
+           pval = F,
+           ylim=c(0,10),
+           legend = c(0.88, 0.15), 
+           legend.title="Main Drug at Admission",
+           #cumevents=T,
+           surv.connect = T,
+           palette = c("skyblue4","orangered4"))
+ # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
+ggsurvplot_coc
+```
+
+```{r fig4_survplot_km_coc, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 4. Cum. Hazards to Experience Readmission to SUD Treatment, by Primary Substance At Admission", error=T,fig.width=8}
+library(survminer)
+fit_pbase<- survfit(Surv(person_days, event==1) ~droga_rec_pbase, data=CONS_C1_df_dup_SEP_2020_prev4,
+                   type ="fleming-harrington", conf.type = "log-log")
+library(tidyverse)
+library(lubridate)
+library(ggfortify) 
+fit_pbase_nelson_aalen <- fit_pbase %>% fortify %>% group_by(strata) %>% mutate(CumHaz = cumsum(n.event/n.risk))
+
+#http://rstudio-pubs-static.s3.amazonaws.com/522481_5e55bec9c94044678e680a6d07e96a2e.html
+#https://rstudio-pubs-static.s3.amazonaws.com/258589_cd197f86fb5548ac89d7bcffd4bc6afe.html
+#http://pcool.dyndns.org:8080/statsbook/?page_id=513
+#http://rstudio-pubs-static.s3.amazonaws.com/316989_83cbe556125645b698c9ff6cf88c4c1a.html
+#https://cran.r-project.org/web/packages/survminer/readme/README.html
+#https://docs.ufpr.br/~jlpadilha/CE077/Aulas/2.TecnicasNaoParametricas.pdf 
+#http://www.columbia.edu/~sjm2186/EPIC_R/packages.pdf
+ggsurvplot_pbase<-
+  ggsurvplot(fit_pbase, 
+           fun = "cumhaz",
+           conf.int = TRUE,
+           legend.labs = c("Alcohol", "P.Base"), 
+           risk.table = "abs_pct",
+           #ncensor.plot = TRUE,
+           ggtheme = theme_classic2(base_size=10),
+           risk.table.y.text.col = F,
+           risk.table.col="black",
+           font.tickslab = c(10),
+           risk.table.height = .2,
+           risk.table.fontsize = 2.5,
+           break.time.by = 365,
+           pval = F,
+           ylim=c(0,10),
+           legend = c(0.88, 0.15), 
+           legend.title="Main Drug at Admission",
+           #cumevents=T,
+           surv.connect = T,
+           palette = c("skyblue4","orangered4"))
+ # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
+ggsurvplot_pbase
+```
+
+<br>
+
+```{r fig5_survplot_km_mar, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 5. Cum. Hazards to Experience Readmission to SUD Treatment, by Primary Substance At Admission", error=T,fig.width=8}
+library(survminer)
+fit_mar<- survfit(Surv(person_days, event==1) ~droga_rec_mar, data=CONS_C1_df_dup_SEP_2020_prev4,
+                   type ="fleming-harrington", conf.type = "log-log")
+library(tidyverse)
+library(lubridate)
+library(ggfortify) 
+fit_mar_nelson_aalen <- fit_mar %>% fortify %>% group_by(strata) %>% mutate(CumHaz = cumsum(n.event/n.risk))
+
+#http://rstudio-pubs-static.s3.amazonaws.com/522481_5e55bec9c94044678e680a6d07e96a2e.html
+#https://rstudio-pubs-static.s3.amazonaws.com/258589_cd197f86fb5548ac89d7bcffd4bc6afe.html
+#http://pcool.dyndns.org:8080/statsbook/?page_id=513
+#http://rstudio-pubs-static.s3.amazonaws.com/316989_83cbe556125645b698c9ff6cf88c4c1a.html
+#https://cran.r-project.org/web/packages/survminer/readme/README.html
+#https://docs.ufpr.br/~jlpadilha/CE077/Aulas/2.TecnicasNaoParametricas.pdf 
+#http://www.columbia.edu/~sjm2186/EPIC_R/packages.pdf
+ggsurvplot_mar<-
+  ggsurvplot(fit_mar, 
+           fun = "cumhaz",
+           conf.int = TRUE,
+           legend.labs = c("Alcohol", "Marijuana"), 
+           risk.table = "abs_pct",
+           #ncensor.plot = TRUE,
+           ggtheme = theme_classic2(base_size=10),
+           risk.table.y.text.col = F,
+           risk.table.col="black",
+           font.tickslab = c(10),
+           risk.table.height = .2,
+           risk.table.fontsize = 2.5,
+           break.time.by = 365,
+           pval = F,
+           ylim=c(0,10),
+           legend = c(0.88, 0.15), 
+           legend.title="Main Drug at Admission",
+           #cumevents=T,
+           surv.connect = T,
+           palette = c("skyblue4","orangered4"))
+ # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
+ggsurvplot_mar
+```
+
+
+```{r tab4_surv_diff_bet_treat_motivodeegreso,eval=T, echo=T, paged.print=TRUE, eval=F}                                 
+  #http://minato.sip21c.org/msb/man/ratedifference.html
+library(fmsb)
+diff_rate<- ratedifference(table(CONS_C1_df_dup_SEP_2020_prev4$event,as.numeric(CONS_C1_df_dup_SEP_2020_prev4$mot_egres_earlywdl)-1)[2],table(CONS_C1_df_dup_SEP_2020_prev4$event,as.numeric(CONS_C1_df_dup_SEP_2020_prev4$mot_egres_earlywdl)-1)[4],as.numeric(xtabs(person_days ~ mot_egres_earlywdl, data=CONS_C1_df_dup_SEP_2020_prev4)[2]),as.numeric(xtabs(person_days ~ mot_egres_earlywdl, data=CONS_C1_df_dup_SEP_2020_prev4)[1]), CRC=T, conf.level=0.95) 
+ 
+library(survminer)
+ggsurvplot(
+   fit,                     # survfit object with calculated statistics.
+   pval = TRUE,             # show p-value of log-rank test.
+   conf.int = TRUE,         # show confidence intervals for 
+                            # point estimaes of survival curves.
+   conf.int.style = "step",  # customize style of confidence intervals
+   xlab = "Time in days",   # customize X axis label.
+   break.time.by = 200,     # break X axis in time intervals by 200.
+   ggtheme = theme_light(), # customize plot and risk table with a theme.
+   risk.table = "abs_pct",  # absolute number and percentage at risk.
+  risk.table.y.text.col = T,# colour risk table text annotations.
+  risk.table.y.text = FALSE,# show bars instead of names in text annotations
+                            # in legend of risk table.
+  ncensor.plot = TRUE,      # plot the number of censored subjects at time t
+  surv.median.line = "hv",  # add the median survival pointer.
+  legend.labs = 
+    c("Male", "Female"),    # change legend labels.
+  palette = 
+    c("#E7B800", "#2E9FDF") # custom color palettes.
+)
+
+ggsurvplot(fit2, fun = "event", conf.int = TRUE,
+           ggtheme = theme_bw())
 
 #Fitting the survival model
 survival_func=survfit(Surv(CONS_C1_df_dup_SEP_2020_prev3$person_years, CONS_C1_df_dup_SEP_2020_prev3$event== 1)~1)
@@ -966,11 +1366,7 @@ data.table(survfit_days_new_treat_dataframe$table,keep.rownames = T)%>%
 
 <br>
 
-dsad
-
-<br>
-
-```{r fig2_survplot_motivoegreso,fig.width = 13, fig.width = 7, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 2. Recurrence-free interval of a treatment according to cause of discharge of the first treatment", error=T}
+```{r fig2_survplot_motivoegreso,fig.width = 13, fig.width = 7, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 2. Recurrence-free interval of a treatment according to cause of discharge of the first treatment", error=T, eval=F}
 
 #El estimador de S es lo que se llama curva de supervivencia (“survival curve”). 
 event="no"
@@ -988,4 +1384,233 @@ plot(survfit_days_new_treat,
 legend("topright", c("Late Withdrawal", "Early Withdrawal", "Administrative Discharge", "Therapeutic Discharge","Referral"),
          col=c("yellow4","thistle","cornflowerblue","violetred3","gray20"), lty=c(1,1,1,1), lwd=2, bty='n')
 mtext("Note. Users who did not finish their first treatment or did not show recurrence have been censored", side=1,size=.5,cex=.7,outer=F,at=1500,4)
+```
+
+<br>
+
+# Descriptives at Baseline
+
+Bivariate descriptive analyses were conducted using student’s t, ANOVA, Wilcoxon or Kruskall-Wallis tests (two-tailed) for continuous data and chi-square tests for categorical data stratified with readmission status.
+<!--- no es sólo t-test y chi-square --->
+
+<br>
+
+```{r tab2_descr_c1_baseline_vs._readmitted,dpi = 96, message=F, error=T,eval=T, warnings=F}
+CONS_C1_df_dup_SEP_2020_prev2_explore<-
+    CONS_C1_df_dup_SEP_2020_prev4%>% 
+    dplyr::mutate(event=ifelse(duplicates_filtered>1,1,0)) %>% 
+    dplyr::mutate(person_years=person_days/365.25)%>% 
+    #dplyr::mutate(treat= ifelse(row %in% unlist(CONS_C1_df_dup_JUL_2020_match_top_sel$row),1,0))%>%
+      dplyr::mutate(origen_ingreso_mod= dplyr::case_when(grepl("Otro Centro Tratamiento",as.character(origen_ingreso_mod))~"Derivación Asistida", TRUE~as.character(origen_ingreso_mod)))%>%  
+      dplyr::mutate(origen_ingreso_mod=factor(origen_ingreso_mod,labels=c('Spontaneous','Assisted Referral','Other','Justice Sector','Health Sector')))  %>% 
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #CIE_10  
+      dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or,x4_dg_trs_psiq_cie_10_or,x5_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl("En estudio",as.character(.))~0,grepl("Sin trastorno",as.character(.))~0,is.na(.)~0,TRUE~1), .names="dg_{col}"))%>%
+      dplyr::mutate(dg_total_cie_10 = base::rowSums(dplyr::select(., dg_dg_trs_psiq_cie_10_or, dg_x2_dg_trs_psiq_cie_10_or, dg_x3_dg_trs_psiq_cie_10_or, dg_x4_dg_trs_psiq_cie_10_or, dg_x5_dg_trs_psiq_cie_10_or)))%>%  
+      dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or,x4_dg_trs_psiq_cie_10_or,x5_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl("En estudio",as.character(.))~1,grepl("Sin trastorno",as.character(.))~0,is.na(.)~0,TRUE~0), .names="instudy_{col}"))%>%
+      dplyr::mutate(instudy_total_cie_10 = base::rowSums(dplyr::select(., instudy_dg_trs_psiq_cie_10_or, instudy_x2_dg_trs_psiq_cie_10_or, instudy_x3_dg_trs_psiq_cie_10_or, instudy_x4_dg_trs_psiq_cie_10_or, instudy_x5_dg_trs_psiq_cie_10_or)))%>%
+      dplyr::mutate(dg_cie_10_rec=dplyr::case_when(dg_total_cie_10>0 ~2,
+                                             instudy_total_cie_10>0 & dg_total_cie_10==0~1,
+                                             instudy_total_cie_10>0 & is.na(dg_total_cie_10)~1,
+                                             TRUE~0))%>%
+      dplyr::mutate(dg_cie_10_rec=as.factor(dg_cie_10_rec))%>%
+      dplyr::mutate(dg_cie_10_rec=factor(dg_cie_10_rec,labels=c('Without psychiatric comorbidity','Diagnosis unknown (under study)', 'With psychiatric comorbidity'))) %>% 
+      dplyr::mutate(macrozona=factor(macrozona, labels=c('Center', 'North', 'South'))) %>%
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #Edad grupos  
+        dplyr::mutate(edad_al_ing_grupos=dplyr::case_when(
+      edad_al_ing>=50~"50+",
+          edad_al_ing>=40~"40-49",
+          edad_al_ing>=30~"30-39",
+          edad_al_ing>=18~"18-29",
+          edad_al_ing<18~"<18",
+          TRUE~NA_character_)) %>%
+  dplyr::mutate(edad_al_ing_grupos=as.factor(edad_al_ing_grupos)) %>%  
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #Tipo de programa
+          dplyr::mutate(tipo_de_programa_2=dplyr::case_when(grepl("M-", tipo_de_plan_2)~"Women specific",
+                                                        grepl("PG-", tipo_de_plan_2)~"General population",
+                                                        grepl("LV", tipo_de_plan_2)~"Other")) %>% 
+          dplyr::mutate(tipo_de_programa_2=as.factor(tipo_de_programa_2)) %>% 
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #Sex
+      dplyr::mutate(sexo_2=factor(sexo_2,labels=c('Men','Women'))) %>% 
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #Cause of Discharge
+  dplyr::mutate(motivodeegreso_mod_imp=factor(motivodeegreso_mod_imp,labels=c('Late Drop-out',
+                                                                                  'Early Drop-out',
+                                                                                  'Administrative discharge',
+                                                                                  'Therapeutic discharge',
+                                                                                  'Referral to another treatment',
+                                                                                  'Ongoing treatment',
+                                                                              'Death'))) %>% 
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #frequency of consumption
+  dplyr::mutate(freq_cons_sus_prin=factor(freq_cons_sus_prin,labels=c("1 day a week or less",
+                                                                                  "2 to 3 days a week",
+                                                                                  "4 to 6 days a week",
+                                                                                  "Less than 1 day a week",
+                                                                                  "Did not use",
+                                                                                  "Daily"))) %>%     
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #primary substance
+    dplyr::mutate(sus_principal_mod=factor(sus_principal_mod,labels=c("Alcohol",
+                                                                                  "Cocaine hydrochloride",
+                                                                                  "Marijuana",
+                                                                                  "Other",
+                                                                                  "Cocaine paste"))) %>%   
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #escolaridad rec
+    dplyr::mutate(escolaridad_rec=factor(escolaridad_rec,labels=c('1-More than high school','2-Completed high school or less','3-Completed primary school or less')))  %>% 
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #marital status
+      dplyr::mutate(estado_conyugal_2=factor(estado_conyugal_2, labels=c('Married/Shared living arrangements','Separated/Divorced','Single','Widower'))) %>%  
+  
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #type of center (pub/priv)
+  dplyr::mutate(tipo_centro=factor(tipo_centro, labels=c('Private','Public'))) %>%
+
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #occupational status (inactive…)
+  dplyr::mutate(estatus_ocupacional=factor(estatus_ocupacional, labels=c('Unemployed',
+                                                                           'Employed',
+                                                                           'Inactive'))) %>%
+  dplyr::mutate(cat_ocupacional=factor(cat_ocupacional, labels=c('Salaried',
+                                                                   'Self-employed',
+                                                                   'Employer',
+                                                                   'Unpaid family labour',
+                                                                   'Other',
+                                                                   'Volunteer worker'))) %>%
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #age of onset of drug use
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #physical diagnose
+
+    dplyr::mutate(dg_fis_anemia= ifelse(grepl("Anemia",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_card= ifelse(grepl("Cardiopat",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_in_study= ifelse(grepl("En estudio",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_enf_som= ifelse(grepl("somáticas",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_ets= ifelse(grepl("ETS",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_hep_alc= ifelse(grepl("Hepatitis alcohólica",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_hep_b= ifelse(grepl("Hepatitis B",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_hep_cro= ifelse(grepl("Hepatitis crónica",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_inf= ifelse(grepl("Infecciosas relacionadas",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_otr_cond_fis_ries_vit= ifelse(grepl("Condiciones de Riesgo Vital",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_otr_cond_fis= ifelse(grepl("condiciones Fisicas Limitantes",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_pat_buc= ifelse(grepl("Bucal",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_pat_ges_intrau= ifelse(grepl("niño intrauterino",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(dg_fis_trau_sec= ifelse(grepl("Traumatismos y secuelas",diagnostico_trs_fisico),1,0))%>%
+    dplyr::mutate(otros_pr_sm_abu_sex= ifelse(grepl("Abuso Sexual",otros_probl_at_sm_or),1,0))%>%
+    dplyr::mutate(otros_pr_sm_exp_com_sex= ifelse(grepl("omercial Sexual",otros_probl_at_sm_or),1,0))%>%
+    dplyr::mutate(otros_pr_sm_otros= ifelse(grepl("Otros",otros_probl_at_sm_or),1,0))%>%
+    dplyr::mutate(otros_pr_sm_prision= ifelse(grepl("Prisionalización",otros_probl_at_sm_or),1,0))%>%
+    dplyr::mutate(otros_pr_sm_vif= ifelse(grepl("Violencia Intrafamiliar",otros_probl_at_sm_or),1,0)) %>% 
+ 
+    dplyr::mutate(dg_trs_cons_sus_or= dplyr::case_when(grepl("Consumo Perjudicial",dg_trs_cons_sus_or)~"Hazardous consumption",
+                                                   grepl("Dependencia",dg_trs_cons_sus_or)~"Drug dependence",
+                                                   TRUE~NA_character_)) #%>%   
+  
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+library(compareGroups)
+
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$sexo_2) <- "Sex"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$escolaridad_rec) <- "Educational Attainment"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$freq_cons_sus_prin) <- "Frequency of use of primary drug at admission"
+
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$tipo_de_plan_2) <- "Treatment Plan"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$tipo_de_programa_2) <- "Treatment Program"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$edad_al_ing_grupos) <- "Age at Admission"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$sus_principal_mod) <- "Primary substance at admission"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$motivodeegreso_mod_imp) <- "Motive of discharge"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$origen_ingreso_mod) <- "Motive of Admission to Treatment (First Entry)"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_cie_10_rec) <- "Psychiatric comorbidity"
+
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$estado_conyugal_2) <- "Marital Status"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$edad_ini_cons) <- "Age of Onset of Drug Use"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$cat_ocupacional) <- "Occupational Category"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$estatus_ocupacional) <- "Occupational Status"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$macrozona) <- "Macrozones of the Center"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$nombre_region) <- "Chilean Region of the Center"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$tipo_centro) <- "Type of Center"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dias_treat_imp_sin_na) <- "Days of Treatment (missing dates of discharge were replaced with difference from 2019-11-13)"
+
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_anemia) <- "Physical Dg. Anemia"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_card) <- "Physical Dg. Heart Disease"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_in_study) <- "Physical Dg. Under Study"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_enf_som) <- "Physical Dg. Somatic illnesses"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_ets) <- "Physical Dg. STDs"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_hep_alc) <- "Physical Dg. Alcoholic hepatitis"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_hep_b) <- "Physical Dg. Hepatitis B"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_hep_cro) <- "Physical Dg. Chronic hepatitis"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_inf) <- "Physical Dg. Infectuous diseases"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_otr_cond_fis_ries_vit) <- "Physical Dg. Other phsysical conditions"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_otr_cond_fis) <- "Physical Dg. Other phsysical conditions"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_pat_buc) <- "Physical Dg. Oral-care pathologies"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_pat_ges_intrau) <- "Physical Dg. Development or Intrauterine"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_trau_sec) <- "Traumatisms and disabling sequelae"
+
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$otros_pr_sm_abu_sex) <- "Other mental health problems- Sexual abuse"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$otros_pr_sm_exp_com_sex) <- "Other mental health problems- Commercial sexual exploitation"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$otros_pr_sm_otros) <- "Other mental health problems- Other"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$otros_pr_sm_prision) <- "Other mental health problems- Inprisonment"
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$otros_pr_sm_vif) <- "Other mental health problems- Domestic violence"
+
+label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_trs_cons_sus_or) <- "Diagnosis of substance use"
+
+table <- compareGroups(event ~ sexo_2+ escolaridad_rec+ freq_cons_sus_prin+ tipo_de_plan_2+ tipo_de_programa_2+ 
+        edad_al_ing_grupos+  sus_principal_mod+  motivodeegreso_mod_imp+  origen_ingreso_mod+  dg_cie_10_rec+  estado_conyugal_2+  edad_ini_cons+  cat_ocupacional+  estatus_ocupacional+  macrozona+  nombre_region+  tipo_centro+ dias_treat_imp_sin_na+ dg_fis_anemia+ dg_fis_card+ dg_fis_in_study+ dg_fis_enf_som+ dg_fis_ets+ dg_fis_hep_alc+ dg_fis_hep_b+ dg_fis_hep_cro+ dg_fis_inf+ dg_fis_otr_cond_fis_ries_vit+ dg_fis_otr_cond_fis+ dg_fis_pat_buc+ dg_fis_pat_ges_intrau+ dg_fis_trau_sec+ otros_pr_sm_abu_sex+ otros_pr_sm_exp_com_sex+ otros_pr_sm_otros+ otros_pr_sm_prision+ otros_pr_sm_vif+ dg_trs_cons_sus_or,
+                       method= c(sexo_2=3,
+                                   escolaridad_rec=3,
+                                   freq_cons_sus_prin=3,
+                                   tipo_de_plan_2=3,
+                                   tipo_de_programa_2=3,
+                                   edad_al_ing_grupos=3,
+                                   sus_principal_mod=3,
+                                   motivodeegreso_mod_imp=3,
+                                   origen_ingreso_mod=3,
+                                   dg_cie_10_rec=3,
+                                   estado_conyugal_2=3,
+                                   edad_ini_cons=2,
+                                   cat_ocupacional=3,
+                                   estatus_ocupacional=3,
+                                   macrozona=3,
+                                   nombre_region=3,
+                                   tipo_centro=3,
+                                   dias_treat_imp_sin_na=2,
+                                   dg_fis_anemia= 3,
+                                   dg_fis_card= 3,
+                                  dg_fis_in_study= 3, 
+                                  dg_fis_enf_som= 3, 
+                                  dg_fis_ets= 3, 
+                                  dg_fis_hep_alc= 3, 
+                                  dg_fis_hep_b= 3, 
+                                  dg_fis_hep_cro= 3, 
+                                  dg_fis_inf= 3, 
+                                  dg_fis_otr_cond_fis_ries_vit= 3,
+                                  dg_fis_otr_cond_fis= 3,
+                                  dg_fis_pat_buc= 3, 
+                                  dg_fis_pat_ges_intrau= 3, 
+                                  dg_fis_trau_sec= 3, 
+                                  otros_pr_sm_abu_sex= 3, 
+                                  otros_pr_sm_exp_com_sex= 3, 
+                                  otros_pr_sm_otros= 3, 
+                                  otros_pr_sm_prision= 3, 
+                                  otros_pr_sm_vif=3,
+                                  dg_trs_cons_sus_or=3),
+                       data = CONS_C1_df_dup_SEP_2020_prev2_explore,
+                       include.miss = T,
+                       var.equal=T
+                       )
+ #Possible values are: 1 - forces analysis as "normal-distributed"; 2 - forces analysis as "continuous non-normal"; 3 - forces analysis as "categorical"; and 4 - NA, which performs a Shapiro-Wilks test to decide between normal or non-normal. 
+
+pvals <- getResults(table)
+#p.adjust(pvals, method = "BH")
+restab <- createTable(table, show.p.overall = T)
+ export2md(restab, size=9, first.strip=T, hide.no="no", position="center",
+           format="html",caption= "Table 1. Summary descriptives table by groups, between selected rows (=1) and records that did not matched, duplicate treatments and invalid ones (=0)")%>%
+  kableExtra::add_footnote(c("Note. Variables of C1 dataset had to be standardized before comparison;", "Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
 ```
