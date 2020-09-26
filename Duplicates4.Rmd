@@ -1522,7 +1522,7 @@ CONS_C1_df_dup_JUL_2020_cons%>%
 
 <br>
 
-We replaced the number of children/dependents (`numero_de_hijos_mod`) if the number of children/dependents is 0 and the number of children that are admitted to a residential treatment (`num_hijos_trat_res_mod`) is greated than 0. Also, we declared as invalid values if the user had no children but declares living with them. Finally, we excluded the number of kids in a residential treatment if the user declared having no children/dependents but reported being admitted with at least one dependent. 
+We replaced the number of children/dependents (`numero_de_hijos_mod`) if the number of children/dependents is 0 and the number of children that are admitted to a residential treatment (`num_hijos_trat_res_mod`) is greated than 0. Also, we declared as invalid values if the user had no children but declares living with them. Additionally, we excluded the number of kids in a residential treatment if the user declared having no children/dependents but reported being admitted with at least one dependent. Finally, we collapsed the Age of Onset of Drug Use of Primary Substance in the variable `edad_ini_sus_prin_grupos`.
 
 <br>
 
@@ -1548,6 +1548,11 @@ dplyr::mutate(across(c(edad_al_ing),~as.numeric(.)))%>%
   #dplyr::filter(numero_de_hijos_mod==num_hijos_ing_trat_res,num_hijos_ing_trat_res>0,grepl("hij",con_quien_vive))%>%dplyr::select(numero_de_hijos_mod,num_hijos_ing_trat_res,numero_de_hijos,con_quien_vive) 
   dplyr::mutate(num_hijos_trat_res_mod= dplyr::case_when(numero_de_hijos_mod==0 & num_hijos_trat_res_mod>0 ~NA_integer_,TRUE~num_hijos_trat_res_mod))%>%
   dplyr::mutate(numero_de_hijos_mod= dplyr::case_when(numero_de_hijos_mod==0 & grepl("hij",con_quien_vive,ignore.case=T)~NA_integer_,TRUE~numero_de_hijos_mod))%>%
+  dplyr::mutate(edad_ini_sus_prin_grupos=ifelse(edad_ini_sus_prin>=25,">=25",
+                                                ifelse(edad_ini_sus_prin>18,"19-24",
+                                                ifelse(edad_ini_sus_prin>15,"16-18",
+                                                ifelse(edad_ini_sus_prin>0,"<=15",
+                                                NA_character_)))))%>% 
 assign("CONS_C1_df_dup_JUL_2020_cons3",., envir = .GlobalEnv)
 ```
 ```{r std4_cause_of_referral_cause_of_discharge,echo=T, paged.print=TRUE, eval=F}
@@ -1789,14 +1794,14 @@ CONS_C1_df_dup_JUL_2020_cons7%>%
   assign("CONS_C1_df_dup_JUL_2020_cons11",., envir = .GlobalEnv)
 ```
 
-```{r std12_cie10, echo=T, paged.print=TRUE,eval=F}
+```{r std12_cie10, echo=T, paged.print=TRUE,eval=T}
 CONS_C1_df_dup_JUL_2020_cons11%>%
 dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or,x4_dg_trs_psiq_cie_10_or,x5_dg_trs_psiq_cie_10_or,x6_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl("En estudio",as.character(.),ignore.case = T)~1,grepl("Sin trastorno",as.character(.),ignore.case = T)~0,is.na(.)~0,TRUE~0),.names = "{col}_mod1a"))%>%
   dplyr::mutate(total_cie_10_en_est = base::rowSums(dplyr::select(.,ends_with("_mod1a"))))%>%  
   dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or,x4_dg_trs_psiq_cie_10_or,x5_dg_trs_psiq_cie_10_or,x6_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl("En estudio",as.character(.),ignore.case = T)~0,grepl("Sin trastorno",as.character(.),ignore.case = T)~0,is.na(.)~0,TRUE~1),.names = "{col}_mod2a"))%>%
   dplyr::mutate(total_cie_10_dg = base::rowSums(dplyr::select(.,ends_with("_mod2a"))))%>%  
     
-  dplyr::mutate(cie_10=dplyr::case_when(total_cie_10_dg>0 & total_cie_10_en_est>0~"Diagnosticado/a",
+  dplyr::mutate(cie_10=dplyr::case_when(total_cie_10_dg>0 & total_cie_10_en_est>0~"Diagnosticado/a (1 o más)",
                        total_cie_10_dg>0 & total_cie_10_en_est==0~"Diagnosticado/a (1 o más)",
                        total_cie_10_dg==0 & total_cie_10_en_est>0~"En estudio",
                        TRUE~"Sin información diagnóstica"))%>%
@@ -1825,7 +1830,7 @@ We also restricted the number of dependants at the admission of a residential tr
 ```{r std13_type_treatment_num_kids, echo=T, paged.print=TRUE,eval=T}
 #table(CONS_C1_df_dup_JUL_2020_cons12$tipo_de_plan_2,CONS_C1_df_dup_JUL_2020_cons12$num_hijos_trat_res_mod)%>% View()
 #
-CONS_C1_df_dup_JUL_2020_cons11%>%
+CONS_C1_df_dup_JUL_2020_cons12%>%
   dplyr::mutate(num_hijos_trat_res_mod=dplyr::case_when(
     !grepl("pr",tipo_de_plan_2,ignore.case=T) & num_hijos_trat_res_mod>0~NA_integer_,
     TRUE~num_hijos_trat_res_mod))%>%
@@ -1853,6 +1858,41 @@ CONS_C1_df_dup_JUL_2020_cons13%>%
 
 <br> 
 
+yoyo
+
+<br>
+
+
+```{r std14b_type_treatment_type_program, echo=T, paged.print=TRUE,eval=T}
+#janitor::tabyl(CONS_C1_df_dup_JUL_2020_cons14$con_quien_vive)
+
+CONS_C1_df_dup_JUL_2020_cons14b<-
+CONS_C1_df_dup_JUL_2020_cons14 %>% 
+  dplyr::mutate(con_quien_vive_rec=dplyr::case_when(
+    grepl("Solo$",con_quien_vive, ignore.case=T)~"Solo",
+    
+    grepl("Con abuelos",con_quien_vive, ignore.case=T)~"Con familiares",
+    grepl("Con hermanos",con_quien_vive, ignore.case=T)~"Con familiares",
+    grepl("Con la madre \\(sola\\)",con_quien_vive, ignore.case=T)~"Con familiares",
+    grepl("Con otro pariente",con_quien_vive, ignore.case=T)~"Con familiares",
+    grepl("con hijos y padres o familia",con_quien_vive, ignore.case=T)~"Con familiares",
+    grepl("con la pareja y padres o familia de origen",con_quien_vive, ignore.case=T)~"Con familiares",
+    grepl("con padres o familia de origen",con_quien_vive, ignore.case=T)~"Con familiares",
+    
+    grepl("Únicamente con hijos",con_quien_vive, ignore.case=T)~"Únicamente con hijos",
+    
+    grepl("Únicamente con pareja",con_quien_vive, ignore.case=T)~"Únicamente con pareja",
+    
+    grepl("Hijos y Padres o Familia de Origen",con_quien_vive, ignore.case=T)~"Con pareja e hijos",
+    grepl("Únicamente con la pareja e hijos",con_quien_vive, ignore.case=T)~"Con pareja e hijos",
+    grepl("Únicamente con hijos",con_quien_vive, ignore.case=T)~"Únicamente con hijos",
+    
+    grepl("Con amigos",con_quien_vive, ignore.case=T)~"Otros",
+    grepl("Con otro NO pariente",con_quien_vive, ignore.case=T)~"Otros",
+    grepl("*Otros$",con_quien_vive, ignore.case=T)~"Otros")) #%>% 
+    #janitor::tabyl(con_quien_vive, con_quien_vive_rec)
+```
+
 ### Cases with more than 1095  days of treatment
 
 Finally, we focused on treatment days in some of the cases, due to the collapse of treatments may sum additional days to a treatment, resulting in extensive treatments (>1095 days) that would not be considered as valid treatments to SENDAs professionals. We distinguished between cases that corresponded to users that had more than one treatment, and cases that did not have an availbable date of dischargefa
@@ -1864,14 +1904,14 @@ Finally, we focused on treatment days in some of the cases, due to the collapse 
 #table(CONS_C1$Tipo.de.Plan,CONS_C1$Tipo.de.Programa)
 
 mas_1095_usuarios<-
-      CONS_C1_df_dup_JUL_2020_cons14%>%
+      CONS_C1_df_dup_JUL_2020_cons14b%>%
         dplyr::filter(dias_treat_imp_sin_na>1095)%>%
         dplyr::distinct(hash_key)%>%
         unlist()%>%
         as.character()
 
 df_tab5<-
-CONS_C1_df_dup_JUL_2020_cons14%>%
+CONS_C1_df_dup_JUL_2020_cons14b%>%
     dplyr::filter(hash_key %in% mas_1095_usuarios)%>%
     dplyr::select(hash_key, ano_bd_first, ano_bd_last, fech_ing, dias_treat_imp_sin_na, fech_egres_imp,tipo_de_plan_2,senda)%>%
   dplyr::group_by(hash_key)%>%
@@ -1880,7 +1920,7 @@ CONS_C1_df_dup_JUL_2020_cons14%>%
 
 #Individuos con un caso, sin fecha de egreso y ordenada por dias de tratamiento.
 in_un_caso_dias_trat_mas_1095<-
-CONS_C1_df_dup_JUL_2020_cons14%>%
+CONS_C1_df_dup_JUL_2020_cons14b%>%
     dplyr::filter(hash_key %in% mas_1095_usuarios)%>%
     dplyr::select(hash_key, ano_bd_first, ano_bd_last, fech_ing, dias_treat_imp_sin_na, fech_egres_imp,tipo_de_plan_2,senda)%>%
   dplyr::group_by(hash_key)%>%
@@ -1895,14 +1935,14 @@ CONS_C1_df_dup_JUL_2020_cons14%>%
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 invisible=5
 if(invisible==4){
-CONS_C1_df_dup_JUL_2020_cons14%>%
+CONS_C1_df_dup_JUL_2020_cons14b%>%
   dplyr::mutate(date_by_quarter = lubridate::round_date(as.Date(fech_ing), unit="quarter"))%>%
   janitor::tabyl(date_by_quarter,motivodeegreso_mod_imp)
 }
 to_string <- as_labeller(c(`0` = "More than one entry by user (n=163)", `1` = "Only one entry by user (n=555)"))
 
 desc_dias_mas_1095<-
-CONS_C1_df_dup_JUL_2020_cons14%>%
+CONS_C1_df_dup_JUL_2020_cons14b%>%
     dplyr::mutate(in_un_caso_dias_trat_mas_1095=ifelse(hash_key %in% unlist(in_un_caso_dias_trat_mas_1095["hash_key"]),1,0))%>%
     dplyr::mutate(in_un_caso_dias_trat_mas_1095=factor(in_un_caso_dias_trat_mas_1095))%>%
     dplyr::filter(dias_treat_imp_sin_na>1095)%>%
@@ -1920,7 +1960,7 @@ CONS_C1_df_dup_JUL_2020_cons14%>%
 
   library(gridExtra)
 fig<-
-CONS_C1_df_dup_JUL_2020_cons14%>%
+CONS_C1_df_dup_JUL_2020_cons14b%>%
     dplyr::mutate(in_un_caso_dias_trat_mas_1095=ifelse(hash_key %in% unlist(in_un_caso_dias_trat_mas_1095["hash_key"]),1,0))%>%
   dplyr::mutate(in_un_caso_dias_trat_mas_1095=factor(in_un_caso_dias_trat_mas_1095))%>%
   dplyr::filter(dias_treat_imp_sin_na>1095)%>%
@@ -1949,7 +1989,7 @@ grid.arrange(fig, tbl,
 #REGRESION
 if(invisible==4){
 model<-
-    CONS_C1_df_dup_JUL_2020_cons14%>%
+    CONS_C1_df_dup_JUL_2020_cons14b%>%
         dplyr::mutate(in_un_caso_dias_trat_mas_1095=ifelse(hash_key %in% unlist(in_un_caso_dias_trat_mas_1095["hash_key"]),1,0))%>%
       dplyr::mutate(in_un_caso_dias_trat_mas_1095=factor(in_un_caso_dias_trat_mas_1095))%>%
       dplyr::filter(dias_treat_imp_sin_na>1095)%>%
@@ -1978,13 +2018,13 @@ model<-
 
 <br>
 
-There were `r CONS_C1_df_dup_JUL_2020_cons14%>%dplyr::filter(dias_treat_imp_sin_na>1095)%>% nrow()` entries with >1095 days, that affects `r CONS_C1_df_dup_JUL_2020_cons14%>% dplyr::filter(hash_key %in% mas_1095_usuarios)%>% dplyr::select(hash_key, ano_bd_first, ano_bd_last, fech_ing, dias_treat_imp_sin_na, fech_egres_imp,tipo_de_plan_2,senda)%>% nrow()` users. As seen in the figure presented above, cases with more than 2000 days of treatment could be considered as anomalies, excepting in the group of those cases that showed only one entry by user and  date of discharge, in which more than 50% of the treatments show over than 1800 days of treatment.
+There were `r CONS_C1_df_dup_JUL_2020_cons14b%>%dplyr::filter(dias_treat_imp_sin_na>1095)%>% nrow()` entries with >1095 days, that affects `r CONS_C1_df_dup_JUL_2020_cons14b%>% dplyr::filter(hash_key %in% mas_1095_usuarios)%>% dplyr::select(hash_key, ano_bd_first, ano_bd_last, fech_ing, dias_treat_imp_sin_na, fech_egres_imp,tipo_de_plan_2,senda)%>% nrow()` users. As seen in the figure presented above, cases with more than 2000 days of treatment could be considered as anomalies, excepting in the group of those cases that showed only one entry by user and  date of discharge, in which more than 50% of the treatments show over than 1800 days of treatment.
 
 <br>
 
 ```{r std15b_dias_trat_mas_1095_exp, echo=T, paged.print=TRUE,eval=T}
 cases_w_intermediate_entries_w_more_1095d<-
-CONS_C1_df_dup_JUL_2020_cons14%>%
+CONS_C1_df_dup_JUL_2020_cons14b%>%
     dplyr::filter(hash_key %in% mas_1095_usuarios)%>%
     dplyr::arrange(hash_key,desc(fech_ing))%>%
     dplyr::group_by(hash_key)%>%
@@ -2003,7 +2043,7 @@ CONS_C1_df_dup_JUL_2020_cons14%>%
 no_mostrar=1
 if(no_mostrar==0){
   invisible(c("importante: los casos que se unieron pueden llegar hasta 3000 días"))
-CONS_C1_df_dup_JUL_2020_cons14%>%
+CONS_C1_df_dup_JUL_2020_cons14b%>%
     dplyr::filter(dias_treat_imp_sin_na>1095)%>%
     dplyr::filter(!is.na(row_cont_entries))%>%
     summarise(
@@ -2018,18 +2058,18 @@ CONS_C1_df_dup_JUL_2020_cons14%>%
 
 <br>
 
-We decided to discard `r CONS_C1_df_dup_JUL_2020_cons14%>%dplyr::filter(dias_treat_imp_sin_na>1095)%>% nrow()` entries with more than 1095 days of treatment, excepting intermediate entries of users with more than one treatment that had more than 1095 days (that is to say, users that had a treatment before and after the treatment with more than 1095 days of treatment) (n=`r CONS_C1_df_dup_JUL_2020_cons14%>% dplyr::filter(row %in% unlist(cases_w_intermediate_entries_w_more_1095d[,"row"]))%>% nrow()`; users=`r CONS_C1_df_dup_JUL_2020_cons14%>% dplyr::filter(hash_key %in% unlist(cases_w_intermediate_entries_w_more_1095d[,"hash_key"]))%>% distinct(hash_key)%>% nrow()`).
+We decided to discard `r CONS_C1_df_dup_JUL_2020_cons14b%>%dplyr::filter(dias_treat_imp_sin_na>1095)%>% nrow()` entries with more than 1095 days of treatment, excepting intermediate entries of users with more than one treatment that had more than 1095 days (that is to say, users that had a treatment before and after the treatment with more than 1095 days of treatment) (n=`r CONS_C1_df_dup_JUL_2020_cons14b%>% dplyr::filter(row %in% unlist(cases_w_intermediate_entries_w_more_1095d[,"row"]))%>% nrow()`; users=`r CONS_C1_df_dup_JUL_2020_cons14b%>% dplyr::filter(hash_key %in% unlist(cases_w_intermediate_entries_w_more_1095d[,"hash_key"]))%>% distinct(hash_key)%>% nrow()`).
 
 <br>
 
 ```{r std15c_dias_trat_mas_1095_cambio, echo=T, paged.print=TRUE,eval=T}
 rows_more_1095d_no_int_treat_discarded<-
-CONS_C1_df_dup_JUL_2020_cons14%>%
+CONS_C1_df_dup_JUL_2020_cons14b%>%
   dplyr::filter(dias_treat_imp_sin_na>1095)%>%
   dplyr::filter(!row %in% unlist(cases_w_intermediate_entries_w_more_1095d[,"row"]))%>%
   dplyr::select(row)
 
-CONS_C1_df_dup_JUL_2020_cons14%>%
+CONS_C1_df_dup_JUL_2020_cons14b%>%
   dplyr::mutate(discarded_more_1095d_treat=ifelse(row %in% unlist(rows_more_1095d_no_int_treat_discarded[,"row"]),1,0))%>%
   dplyr::group_by(hash_key)%>%
   dplyr::mutate(discarded_more_1095d_treat_by_hash=sum(discarded_more_1095d_treat,na.rm = T))%>%
@@ -2059,7 +2099,7 @@ Additionally, we generated a category to detect whether a user had at least one 
 dg_trs_psiq_sub_dsm_iv_or_cat<-CONS_C1_df_dup_JUL_2020_cons15%>% 
   dplyr::mutate(dg_trs_psiq_sub_dsm_iv_or=stringr::str_trim(as.character(dg_trs_psiq_sub_dsm_iv_or)))%>% 
   janitor::tabyl(dg_trs_psiq_sub_dsm_iv_or)%>% data.frame()%>% 
-  select(dg_trs_psiq_sub_dsm_iv_or)%>% 
+  dplyr::select(dg_trs_psiq_sub_dsm_iv_or)%>% 
   dplyr::filter(!dg_trs_psiq_sub_dsm_iv_or %in% c(NA))%>% unlist()%>% as.character() 
 
 sub_dsm_iv_to_cie_10_comp_table <- readxl::read_excel("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/sub_dsm_iv_to_cie_10_comp_table.xlsx", col_names = c("original","mod"))
@@ -2237,7 +2277,7 @@ assign("CONS_C1_df_dup_JUL_2020_cons17",., envir = .GlobalEnv)
 ```{r std18_stand_foll_treat, echo=T, paged.print=TRUE,eval=T}
 CONS_C1_df_dup_JUL_2020_cons17%>%
   dplyr::group_by(hash_key)%>%
-  dplyr::mutate(fech_ing_next_treat=dplyr::lag(fech_egres_num))%>%
+  dplyr::mutate(fech_ing_next_treat=dplyr::lag(fech_ing_num))%>%
   dplyr::mutate(diff_bet_treat=fech_ing_next_treat-fech_egres_num)%>%
   dplyr::mutate(id_centro_sig_trat=dplyr::lag(id_centro)) %>%
   dplyr::mutate(tipo_plan_sig_trat=dplyr::lag(tipo_de_plan_2)) %>%
@@ -2547,9 +2587,77 @@ if(
 >0){"there are still levels of educational attainment left to normalize"}
 ```
 
-```{r std20_as_factor_vars,eval=T, echo=T, paged.print=TRUE}
-CONS_C1_df_dup_JUL_2020_cons19b%>%
-  dplyr::mutate_at(vars(contains("dg_trs_psiq_cie_10"),contains("dg_trs_psiq_dsm_iv"),contains("dg_trs_psiq_sub_cie_10"),contains("dg_trs_psiq_sub_dsm_iv"),contains("tipo_de_plan"),c('tipo_de_programa_2','nombre_centro','tipo_centro','servicio_de_salud','senda','tipo_centro_derivacion','usuario_tribunal_trat_droga','motivodeegreso_mod_imp','macrozona','nombre_region','comuna_residencia_cod','identidad_de_genero','origen_ingreso_mod','x_se_trata_mujer_emb','usuario_tribunal_trat_droga','tiene_menores_de_edad_a_cargo','ha_estado_embarazada_egreso','discapacidad','opcion_discapacidad','escolaridad','edad_al_ing_grupos','nacionalidad','sexo_2','embarazo','estado_conyugal_2','edad_grupos','freq_cons_sus_prin','via_adm_sus_prin_act','etnia_cor','nacionalidad_2','etnia_cor_2','sus_ini_2_mod','sus_ini_3_mod','sus_ini_mod','con_quien_vive','estatus_ocupacional','cat_ocupacional','sus_principal_mod', 'tipo_de_vivienda_mod','tenencia_de_la_vivienda_mod','rubro_trabaja_mod','otras_sus1_mod','otras_sus2_mod','otras_sus3_mod','dg_trs_cons_sus_or','diagnostico_trs_fisico','otros_probl_at_sm_or','ano_bd_first','ano_bd_last','centro_muj','cie_10','dsm_iv','escolaridad_rec')),~as.factor(.))%>%
+### Generate values of the trajectories of users
+
+<br>
+
+We created variables to obtain a summary of each trajectory in terms of the days treated. One variable, `cum_dias_trat_sin_na` and their mean (`mean_cum_dias_trat_sin_na`) aim to get the cumulative days treated by each patient, depending on the number of treatments up to a determined treatment. Also, we added variables related to the cumulative difference between treatments (`cum_diff_bet_treat` and `mean_cum_diff_bet_treat`). These variables let us identify changes in the treatment lengths and time to readmission throughout the trajectory of each user in SENDA between 2010-2019. 
+
+<br>
+
+```{r std20_generate_info_of , echo=T, paged.print=TRUE, messages=F, warnings=F,eval=T}
+library(magrittr)
+
+CONS_C1_df_dup_JUL_2020_cons19b %>% 
+  dplyr::arrange(hash_key,fech_ing) %>%
+  dplyr::mutate(keep_tipo_de_plan_2=tipo_de_plan_2)%>% 
+  dplyr::group_by(hash_key) %>% 
+  dplyr::mutate(rn_hash_discard=row_number())%>% 
+  dplyr::mutate(rn_hash=row_number())%>% 
+  dplyr::mutate(n_hash=n())%>% 
+  dplyr::mutate(cum_dias_trat_sin_na=cumsum(tidyr::replace_na(dias_treat_imp_sin_na, 0)))%>%
+  dplyr::mutate(keep_cum_dias_trat_sin_na=cumsum(tidyr::replace_na(dias_treat_imp_sin_na, 0)))%>%
+  dplyr::mutate(mean_cum_dias_trat_sin_na=cum_dias_trat_sin_na/rn_hash)%>%
+  dplyr::mutate(keep_mean_cum_dias_trat_sin_na=cum_dias_trat_sin_na/rn_hash)%>% 
+  dplyr::mutate(cum_diff_bet_treat=cumsum(tidyr::replace_na(diff_bet_treat, 0)))%>% 
+  dplyr::mutate(keep_cum_diff_bet_treat=cumsum(tidyr::replace_na(diff_bet_treat, 0)))%>% 
+  dplyr::mutate(mean_cum_diff_bet_treat=cum_diff_bet_treat/rn_hash)%>%
+  dplyr::mutate(keep_mean_cum_diff_bet_treat=mean_cum_diff_bet_treat)%>%
+  dplyr::ungroup()%>% 
+
+  #":":":":":":"":":":":": Prueba
+  #dplyr::select(hash_key,rn_hash_discard,rn_hash,n_hash,cum_dias_trat_sin_na_rev,mean_cum_dias_trat_sin_na_rev,cum_diff_bet_treat_rev,n_hash,diff_bet_treat)%>% dplyr::filter(hash_key=="0093cc44fee21895b9e55f3d84e51928") %>% View()
+  tidyr::pivot_wider(
+    names_from =  rn_hash_discard, 
+    names_sep="_",
+    values_from = c(tipo_de_plan_2, 
+                    dias_treat_imp_sin_na, 
+                    diff_bet_treat,
+                    cum_dias_trat_sin_na,
+                    mean_cum_dias_trat_sin_na, 
+                    cum_diff_bet_treat,
+                    mean_cum_diff_bet_treat)
+  )%>% #glimpse()
+
+  #dplyr::filter(hash_key=="0093cc44fee21895b9e55f3d84e51928") %>% View()
+   dplyr::group_by(hash_key)%>%
+  dplyr::mutate_at(vars(tipo_de_plan_2_1:mean_cum_diff_bet_treat_10),~suppressWarnings(max(as.character(.),na.rm=T)))%>%
+  dplyr::ungroup() %>%
+  
+  dplyr::mutate_at(vars(dias_treat_imp_sin_na_1:mean_cum_diff_bet_treat_10),~as.numeric(.))%>%
+  dplyr::mutate(diff_bet_treat=fech_ing_next_treat-fech_egres_num)%>%
+  dplyr::mutate(dias_treat_imp_sin_na=fech_egres_num-fech_ing_num)%>%
+  #dplyr::select(hash_key,n_hash,fech_ing, starts_with("tipo_de_plan_2"),starts_with("dias_treat_imp_sin_na"),starts_with("diff_bet_treat_"),starts_with("mean_cum_dias_trat_sin_na_"),starts_with("mean_cum_dias_trat_sin_na_"))%>% dplyr::filter(hash_key=="0093cc44fee21895b9e55f3d84e51928")%>% View()
+  dplyr::rename_at(.vars = vars(matches("^keep_")),
+            .funs = funs(sub("^keep_", "", .)))%>%
+      assign("CONS_C1_df_dup_JUL_2020_cons20",., envir = .GlobalEnv)
+
+no_mostrar=0
+if(no_mostrar==1){
+CONS_C1_df_dup_JUL_2020_cons20 %>% 
+    dplyr::group_by(hash_key) %>% 
+    dplyr::mutate(n_hash=n())%>% 
+   dplyr::ungroup()%>% 
+    dplyr::filter(n_hash>3) %>% 
+    dplyr::mutate_at(vars(dias_treat_imp_sin_na:cum_diff_bet_treat_rev_10),~suppressWarnings(max(as.character(.),na.rm=T)))%>%
+  dplyr::select(hash_key,n_hash,fech_ing, starts_with("tipo_de_plan_2"),starts_with("dias_treat_imp_sin_na"),starts_with("diff_bet_treat_"),starts_with("mean_cum_dias_trat_sin_na_"),starts_with("mean_cum_dias_trat_sin_na_"),starts_with("mean_cum_diff_bet_treat_"))%>% View()
+}
+ # CONS_C1_df_dup_JUL_2020_cons19 %>% dplyr::mutate(n_hash=n())%>% dplyr::filter(n_hash>1)%>% select(diff_bet_treat_1) %>%  summary()
+```
+
+```{r std_final_as_factor_vars,eval=T, echo=T, paged.print=TRUE}
+CONS_C1_df_dup_JUL_2020_cons20%>%
+  dplyr::mutate_at(vars(contains("dg_trs_psiq_cie_10"),contains("dg_trs_psiq_dsm_iv"),contains("dg_trs_psiq_sub_cie_10"),contains("dg_trs_psiq_sub_dsm_iv"),contains("tipo_de_plan"),c('tipo_de_programa_2','nombre_centro','tipo_centro','servicio_de_salud','senda','tipo_centro_derivacion','usuario_tribunal_trat_droga','motivodeegreso_mod_imp','macrozona','nombre_region','comuna_residencia_cod','identidad_de_genero','origen_ingreso_mod','x_se_trata_mujer_emb','usuario_tribunal_trat_droga','tiene_menores_de_edad_a_cargo','ha_estado_embarazada_egreso','discapacidad','opcion_discapacidad','escolaridad','edad_al_ing_grupos','nacionalidad','sexo_2','embarazo','estado_conyugal_2','edad_grupos','freq_cons_sus_prin','via_adm_sus_prin_act','etnia_cor','nacionalidad_2','etnia_cor_2','sus_ini_2_mod','sus_ini_3_mod','sus_ini_mod','con_quien_vive','estatus_ocupacional','cat_ocupacional','sus_principal_mod', 'tipo_de_vivienda_mod','tenencia_de_la_vivienda_mod','rubro_trabaja_mod','otras_sus1_mod','otras_sus2_mod','otras_sus3_mod','dg_trs_cons_sus_or','diagnostico_trs_fisico','otros_probl_at_sm_or','ano_bd_first','ano_bd_last','centro_muj','cie_10','dsm_iv','escolaridad_rec','con_quien_vive_rec','edad_ini_sus_prin_grupos')),~as.factor(.))%>%
   dplyr::mutate_at(c('id_centro_sig_trat','tipo_plan_sig_trat','tipo_programa_sig_trat','senda_sig_trat','at_least_one_cont_entry','id_centro'),~as.factor(.))%>%
   dplyr::mutate_at(c('tipo_de_plan_2_concat_a'),~as.character(.))%>%
   dplyr::mutate_at(c('fech_ing','fech_egres_imp'),~as.Date(.))%>%
@@ -2561,7 +2669,7 @@ CONS_C1_df_dup_JUL_2020_cons19b%>%
 
 ```{r change labels,echo=T, paged.print=TRUE, eval=T}
   metadata(CONS_C1_df_dup_JUL_2020)$name <- "Agreement 1 SENDA"
-  metadata(CONS_C1_df_dup_JUL_2020)$description <- "Information About Agreement 1 of SENDA and MINSAL. Contians information about treatments.(*) Intermediate events are collapsed and concatenated in some variables; Criteria to select values from entries that were collapsed into single treatments: Wide format(a),Maximum/Last value(b), Minimum/First value(c), Kept more vulnerable category(d), Same value(e), Largest treatment(f), Favored dgs.-a(g), Sum values(h)"
+  metadata(CONS_C1_df_dup_JUL_2020)$description <- "Information About Agreement 1 of SENDA and MINSAL. Contians information about treatments.(*) Intermediate events are collapsed and concatenated in some variables; Criteria to select values from entries that were collapsed into single treatments: Wide format(a),Maximum/Last value(b), Minimum/First value(c), Kept more vulnerable category(d), Same value(e), Largest treatment(f), Favored dgs.-a(g), Sum values(h). In case of 'tipo_de_plan_2','dias_treat_imp_sin_na', 'diff_bet_treat', 'cum_dias_trat_sin_na', 'mean_cum_dias_trat_sin_na' & 'cum_diff_bet_treat', the first variable, 10 variables were generated for each variable and represents each treatment of user, since the first(1) to the last(10)"
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_  
   
@@ -2627,6 +2735,7 @@ embarazo= 'Embarazo al Ingreso(c)/Pregnant at Admission(c)',
 fech_nac= 'Fecha de Nacimiento/Date of Birth',
 edad_ini_cons= 'Edad de Inicio de Consumo/Age of Onset of Drug Use',
 edad_ini_sus_prin=  'Edad de Inicio de Consumo Sustancia Principal/Age of Onset of Drug Use of Primary Substance',
+edad_ini_sus_prin_grupos=  'Edad de Inicio de Consumo Sustancia Principal (en Grupos)/Age of Onset of Drug Use of Primary Substance (in Groups)',
 estado_conyugal_2= 'Estado Conyugal/Marital Status',
 edad_grupos= 'Edad agrupada/Age in groups',
 freq_cons_sus_prin= 'Frecuencia de Consumo de la Sustancia Principal (30 días previos a la admisión)(f)/Frequency of Consumption of the Primary or Main Substance (30 days previous to admission)(f)',
@@ -2638,6 +2747,7 @@ sus_ini_2_mod= 'Segunda Sustancia de Inicio(Sólo más frecuentes)/Second Starti
 sus_ini_3_mod= 'Tercera Sustancia de Inicio(Sólo más frecuentes)/Third Starting Substance',
 sus_ini_mod= "Sustancia de Inicio (Sólo más frecuentes)/Starting Substance (Only more frequent)",
 con_quien_vive= 'Persona con la que vive el Usuario(f)/People that Share Household with the User (Cohabitation Status)(f)',
+con_quien_vive_rec= 'Persona con la que vive el Usuario (Recodificada)(f)/People that Share Household with the User (Cohabitation Status)(Recoded)(f)',
 estatus_ocupacional= 'Condición Ocupacional(f)/Occupational Status(f)',
 cat_ocupacional= 'Categoría Ocupacional(f)/Occupational Category(f)',
 sus_principal_mod= 'Sustancia Principal de Consumo (Sólo más frecuentes)(f)/Primary or Main Substance of Consumption at Admission (Only more frequent)(f)',
@@ -2700,7 +2810,13 @@ abandono_temprano= 'Abandono temprano(<3 meses)/ Early Drop-out(<3 months)',
 cnt_mod_dsm_iv_or= 'Recuento de Diagnóstico DSM-IV/Count of Psychiatric Diagnoses (DSM-IV)',
 cnt_mod_cie_10_or= 'Recuento de Diagnóstico CIE-10/Count of Psychiatric Diagnoses (ICD-10)',
 cnt_diagnostico_trs_fisico= 'Recuento de Diagnóstico de Trastorno Físico/Count of Physical Disorder',
-cnt_otros_probl_at_sm_or= 'Recuento de Otros Problemas de Atención Vinculados a Salud Mental/Count of Other problems linked to Mental Health'
+cnt_otros_probl_at_sm_or= 'Recuento de Otros Problemas de Atención Vinculados a Salud Mental/Count of Other problems linked to Mental Health',
+cum_dias_trat_sin_na= 'Suma acumulada de Días de Tratamiento por Usuario/Cumulative Days of Treatment by User',
+mean_cum_dias_trat_sin_na= 'Promedio acumulado de Días de Tratamiento por Usuario/Cumulative Average Days of Treatment by User',
+cum_diff_bet_treat= 'Suma acumulada de Diferencia en Días con Tratamiento Siguiente por Usuario/Cumulative sum of Days of difference between the Next Treatment by User',
+mean_cum_diff_bet_treat= 'Promedio acumulado de Diferencia en Días entre Tratamientos por Usuario/Cumulative Average Days of Differences Between Treatments By User',
+rn_hash= 'Número de Tratamientos por Usuario (menor, tratamiento más antiguo)/Number of Treatments by User (less, older treatment)',
+n_hash= 'Número total de Tratamientos por Usuario/Total Number of Treatments by User'  
 )
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_

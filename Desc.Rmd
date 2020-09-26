@@ -211,47 +211,6 @@ return(
       )
     )
 }
-
-cool_survival <- function(data = data_frame, time = time, censor = censor, group = group){
-	require(survival)
-	require(ggfortify)
-	fit <- survfit(Surv(time, censor) ~ group, data = data)
-	plot_data <- fortify(fit, surv.connect = TRUE)
-	plot <- ggplot(plot_data, aes(x = time, y = surv * 100)) + 
-		# plot the survival curve(s)
-		geom_step(aes(colour = strata), size = 2) + 
-		# add the censor indicators
-		geom_point(data = subset(plot_data, n.censor > 0), shape = 3, size = 3, stroke = 2, aes(colour = strata)) + 
-		# add confidence intervals using the stepribbon geom in the RcmdrPlugin.KMggplot2 package
-		RcmdrPlugin.KMggplot2::geom_stepribbon(data = plot_data, 
-			aes(x = time, ymin = lower * 100, ymax = upper * 100, fill = strata), 
-			alpha = 0.15, colour = "transparent", show.legend = FALSE, kmplot = TRUE) + 
-		# set the colours of the confidence intervals
-		scale_fill_manual(values = c("steelblue", "darkorange")) +
-		# set the colours of the survival curves
-		scale_colour_manual(values = c("steelblue", "darkorange"), name = "Hip") + 
-		# apply a theme based on the Roboto font size 16
-		theme_bw(base_size = 16, base_family = "Roboto") +
-		# add a title, x label, y label and footnote
-		labs(title = "Custom Made Survival Curve",
-			subtitle = "with ggfortify and ggplot2",
-     	  x = "Time [years]",
-     	  y = "Survival Probability [%]",
-     	  caption = "countcool.com") +
-	  theme_bw()+
- 		# set the caption to a smaller italic font in darkolivergreen colour
-    	theme(plot.caption = element_text(colour = "darkolivegreen", face = "italic", size = 10)) +
-  		# set the y axis limit in steps of 20 %
-  		scale_y_continuous(breaks = seq(0, 100, 20)) +
-  		# set the x axis in steps of 2 years
-  		scale_x_continuous(breaks = seq(0, max(plot_data$time) + 2, 2)) +
-  		# add numbers at risk when failed (label creates a border)
-		annotate(geom = "label", x = subset(plot_data$time, plot_data$n.censor == 0), 
-			y = -15, label = subset(plot_data$n.risk, plot_data$n.censor == 0)) +
-		annotate(geom = "text", x = 0.2, y = -8, label = "At Risk", fontface = "italic")
-	return(plot)
-}
-
 ```
 
 <!--- SÍ O SÍ, HACER LA LIMPIEZA DE LOS SENDA NO, PRINCIPALMENTE DE LOS QUE SE SUPERPONGAN, TAMBIÉN PREGUNTAR A ACC SI LOS CON 0 DÍAS DE TRATAMIENTO SE BORRARÁN O NO; DE AHI EMPEZAR A NORMALIZAR LOS PROGRAMAS Y PLANES DE ACUERDO CON CRITERIOS MAUREEN, PARA NO GENERAR DIFERENCIAS AHI Y PODER DEDUPLICAR TRANQUILO --->
@@ -266,6 +225,97 @@ For the purpose of this page, we use the terms "rows" and "cases" as equal to re
 Once we distinguished between the different treatments in the fourth part of the deduplication process, we proceeded to describe the dataset in terms of the time required for determined events to occur.
 </div>
 
+The process is shown in the following figure:
+
+<br>
+
+```{r fig1, flowchart, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 1.Summary of Process of Data Cleaning and Standardization", error=T}
+#knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/Figure_Duplicates.svg")
+#foreign::write.dta(CONS_C1_df_dup_JUL_2020_match_top_sel, "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/c1_top.dta")
+
+#CONS_C1_df_dup_JUL_2020 CONS_C1_df_dup_JUL_2020_match_top CONS_TOP_df_dup_ENE_2020_prev9_match CONS_TOP_df_dup_ENE_2020_prev9
+#sólo match
+comb_datasets_a_n<-CONS_C1_df%>%
+    janitor::clean_names() %>% 
+    nrow()
+comb_datasets_a_users<-CONS_C1_df%>%
+    janitor::clean_names() %>% 
+    dplyr::distinct(hash_key)%>% nrow()
+#sólo los que tienen compromiso biopsicosocial
+comb_datasets_b_n<-CONS_C1_df_dup_JUL_2020%>%
+    nrow()
+comb_datasets_b_users<-CONS_C1_df_dup_JUL_2020%>%
+    dplyr::distinct(hash_key)%>% nrow()
+#sólo los que tienen etapa de tratamiento de inicio de tratamiento
+comb_datasets_c_n<-CONS_C1_df_dup_JUL_2020%>%
+    dplyr::group_by(hash_key) %>% 
+    dplyr::mutate(dup=row_number()) %>%
+  #janitor::tabyl(dup) %>% 
+#*La ventaja de duplicates_filtered es que considera los perdidos
+    dplyr::mutate(duplicates_filtered= n()) %>%
+      dplyr::filter(dup==1) %>% 
+  #janitor::tabyl(duplicates_filtered)
+    nrow()
+comb_datasets_c_users<-CONS_C1_df_dup_JUL_2020%>%
+    dplyr::group_by(hash_key) %>% 
+    dplyr::mutate(dup=row_number()) %>%
+  #janitor::tabyl(dup) %>% 
+#*La ventaja de duplicates_filtered es que considera los perdidos
+    dplyr::mutate(duplicates_filtered= n()) %>%
+    dplyr::filter(dup==1) %>% 
+    dplyr::distinct(hash_key)%>% nrow()
+
+comb_datasets_d_n<-CONS_C1_df_dup_JUL_2020%>%
+    dplyr::group_by(hash_key) %>% 
+    dplyr::mutate(dup=row_number()) %>%
+  #janitor::tabyl(dup) %>% 
+#*La ventaja de duplicates_filtered es que considera los perdidos
+    dplyr::mutate(duplicates_filtered= n()) %>%
+      dplyr::filter(dup>1) %>% 
+  #janitor::tabyl(duplicates_filtered)
+    nrow()
+comb_datasets_d_users<-CONS_C1_df_dup_JUL_2020%>%
+    dplyr::group_by(hash_key) %>% 
+    dplyr::mutate(dup=row_number()) %>%
+  #janitor::tabyl(dup) %>% 
+#*La ventaja de duplicates_filtered es que considera los perdidos
+    dplyr::mutate(duplicates_filtered= n()) %>%
+    dplyr::filter(dup>1) %>% 
+    dplyr::distinct(hash_key)%>% nrow()
+
+#https://stackoverflow.com/questions/46750364/diagrammer-and-graphviz
+#https://mikeyharper.uk/flowcharts-in-r-using-diagrammer/
+#http://blog.nguyenvq.com/blog/2012/05/29/better-decision-tree-graphics-for-rpart-via-party-and-partykit/
+#http://blog.nguyenvq.com/blog/2014/01/17/skeleton-to-create-fast-automatic-tree-diagrams-using-r-and-graphviz/
+#https://cran.r-project.org/web/packages/DiagrammeR/vignettes/graphviz-mermaid.html
+#https://stackoverflow.com/questions/39133058/how-to-use-graphviz-graphs-in-diagrammer-for-r
+#https://subscription.packtpub.com/book/big_data_and_business_intelligence/9781789802566/1/ch01lvl1sec21/creating-diagrams-via-the-diagrammer-package
+#https://justlegal.be/2019/05/using-flowcharts-to-display-legal-procedures/
+#
+#
+library(DiagrammeR) #⋉
+grViz("digraph flowchart {
+      # node definitions with substituted label text
+      node [fontname = Helvetica, shape = rectangle,fontsize = 10]        
+      tab1 [label = '@@1']
+      tab2 [label = '@@2']
+      tab3 [label = '@@3']
+      tab4 [label = '@@4']
+
+      # edge definitions with the node IDs
+      tab1 -> tab2 [label='  Discarded duplicated & abnormal records',fontsize = 9];
+      tab2 -> {tab3 tab4} 
+      }
+Only rows with available data on TOP scores
+
+      [1]:  paste0('Original records \\n(n = ', formatC(comb_datasets_a_n, format='f', big.mark=',', digits=0), ';\\n users: ',formatC(comb_datasets_a_users, format='f', big.mark=',', digits=0),')')
+      [2]:  paste0('Normalized & standardized \\nrecords \\n(n = ', formatC(comb_datasets_b_n, format='f', big.mark=',', digits=0), ';\\n users:',formatC(comb_datasets_b_users, format='f', big.mark=',', digits=0),')')
+      [3]:  paste0('Only records at baseline \\n(n = ', formatC(comb_datasets_c_n, format='f', big.mark=',', digits=0), ';\\n users:',formatC(comb_datasets_c_users, format='f', big.mark=',', digits=0),')')
+      [4]:  paste0('Posterior records \\n(n = ', formatC(comb_datasets_d_n, format='f', big.mark=',', digits=0), ';\\n users:',formatC(comb_datasets_d_users, format='f', big.mark=',', digits=0),')')
+      ")
+```
+
+
 # Characteristics of Population in Agreement 1
 
 <br>
@@ -276,6 +326,7 @@ We first compared treatments selected in the database, to the discarded entries 
 
 ```{r tab1_descr_c1_deleted_vs_selected,dpi = 96, message=F, error=T,eval=T, warnings=F}
 #Definir la base de datos
+library(magrittr)
 
 CONS_C1_df_SEP_2020<-
 clean_names(CONS_C1_df) %>% 
@@ -381,6 +432,16 @@ dplyr::mutate(escolaridad_rec=factor(escolaridad_rec,labels=c('1-More than high 
           edad_al_ing<18~"<18",
           TRUE~NA_character_)) %>%
       dplyr::mutate(edad_al_ing_grupos=as.factor(edad_al_ing_grupos)) %>%  
+    #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #Edad Inicio Sus Principal  
+   dplyr::mutate(edad_ini_sus_prin_grupos=ifelse(edad_inicio_sustancia_principal>=25,">=25",
+                                                ifelse(edad_inicio_sustancia_principal>18,"19-24",
+                                                ifelse(edad_inicio_sustancia_principal>15,"16-18",
+                                                ifelse(edad_inicio_sustancia_principal>0,"<=15",
+                                                NA_character_)))))%>% 
+    dplyr::mutate(edad_ini_sus_prin_grupos=as.factor(edad_ini_sus_prin_grupos)) %>%
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #Cause of discharge
       dplyr::mutate(motivodeegreso_mod_imp=factor(motivodeegreso_mod_imp,labels=c('Late Drop-out',
                                                                                   'Early Drop-out',
                                                                                   'Administrative discharge',
@@ -503,7 +564,7 @@ dplyr::mutate(escolaridad_rec=factor(escolaridad_rec,labels=c('1-More than high 
                                                     grepl("Dependencia",diagnostico_trs_consumo_sustancia)~"Drug dependence",
                                                     TRUE~NA_character_)) %>%   
 
-    dplyr::select(row, sexo_2, escolaridad_rec, freq_cons_sus_prin, tipo_de_plan_2, tipo_de_programa_2, edad_al_ing_grupos, sus_principal_mod, motivodeegreso_mod_imp, origen_ingreso_mod, dg_cie_10_rec, estado_conyugal_2, edad_ini_cons, cat_ocupacional, estatus_ocupacional, macrozona, nombre_region, tipo_centro,dias_treat_imp_sin_na, dg_fis_anemia, dg_fis_card, dg_fis_in_study, dg_fis_enf_som, dg_fis_ets, dg_fis_hep_alc, dg_fis_hep_b, dg_fis_hep_cro, dg_fis_inf, dg_fis_otr_cond_fis, dg_fis_otr_cond_fis_ries_vit, dg_fis_pat_buc, dg_fis_pat_ges_intrau, dg_fis_trau_sec, otros_pr_sm_abu_sex, otros_pr_sm_exp_com_sex, otros_pr_sm_otros, otros_pr_sm_prision, otros_pr_sm_vif,dg_trs_cons_sus_or)
+    dplyr::select(row, sexo_2, escolaridad_rec, freq_cons_sus_prin, tipo_de_plan_2, tipo_de_programa_2, edad_al_ing_grupos, sus_principal_mod, motivodeegreso_mod_imp, origen_ingreso_mod, dg_cie_10_rec, estado_conyugal_2, edad_ini_cons, cat_ocupacional, estatus_ocupacional, macrozona, nombre_region, tipo_centro,dias_treat_imp_sin_na, dg_fis_anemia, dg_fis_card, dg_fis_in_study, dg_fis_enf_som, dg_fis_ets, dg_fis_hep_alc, dg_fis_hep_b, dg_fis_hep_cro, dg_fis_inf, dg_fis_otr_cond_fis, dg_fis_otr_cond_fis_ries_vit, dg_fis_pat_buc, dg_fis_pat_ges_intrau, dg_fis_trau_sec, otros_pr_sm_abu_sex, otros_pr_sm_exp_com_sex, otros_pr_sm_otros, otros_pr_sm_prision, otros_pr_sm_vif,dg_trs_cons_sus_or,edad_ini_sus_prin_grupos)
 
 
 label(CONS_C1_df_SEP_2020$sexo_2) <- "Sex"
@@ -551,6 +612,8 @@ label(CONS_C1_df_SEP_2020$otros_pr_sm_vif) <- "Other mental health problems- Dom
 
 label(CONS_C1_df_SEP_2020$dg_trs_cons_sus_or) <- "Diagnosis of substance use"
 
+label(CONS_C1_df_SEP_2020$edad_ini_sus_prin_grupos) <- "Age of Onset of Drug Use Primary/Main Substance"
+
 #   sexo_2 tipo_de_programa_2 tipo_de_plan_2 escolaridad_ultimo_ano_cursado
 # diagnostico_trs_psiquiatrico_cie_10 x2_diagnostico_trs_psiquiatrico_cie_10 x3_diagnostico_trs_psiquiatrico_cie_10 motivodeegreso 
 
@@ -590,7 +653,7 @@ CONS_C1_df_dup_JUL_2020_explore<-
           edad_al_ing>=18~"18-29",
           edad_al_ing<18~"<18",
           TRUE~NA_character_)) %>%
-  dplyr::mutate(edad_al_ing_grupos=as.factor(edad_al_ing_grupos)) %>%  
+  dplyr::mutate(edad_al_ing_grupos=as.factor(edad_al_ing_grupos)) %>%
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #Tipo de programa
           dplyr::mutate(tipo_de_programa_2=dplyr::case_when(grepl("M-", tipo_de_plan_2)~"Women specific",
@@ -676,7 +739,7 @@ CONS_C1_df_dup_JUL_2020_explore<-
                                                    TRUE~NA_character_)) %>%   
 #CONS_C1_df_dup_JUL_2020_explore%>% janitor::tabyl(sus_principal_mod)
 
-  dplyr::select(row, sexo_2, escolaridad_rec, freq_cons_sus_prin, tipo_de_plan_2, tipo_de_programa_2, edad_al_ing_grupos, sus_principal_mod, motivodeegreso_mod_imp, origen_ingreso_mod, dg_cie_10_rec, estado_conyugal_2, edad_ini_cons, cat_ocupacional, estatus_ocupacional, macrozona, nombre_region, tipo_centro,dias_treat_imp_sin_na, dg_fis_anemia, dg_fis_card, dg_fis_in_study, dg_fis_enf_som, dg_fis_ets, dg_fis_hep_alc, dg_fis_hep_b, dg_fis_hep_cro, dg_fis_inf, dg_fis_otr_cond_fis_ries_vit, dg_fis_otr_cond_fis, dg_fis_pat_buc, dg_fis_pat_ges_intrau, dg_fis_trau_sec, otros_pr_sm_abu_sex, otros_pr_sm_exp_com_sex, otros_pr_sm_otros, otros_pr_sm_prision, otros_pr_sm_vif, dg_trs_cons_sus_or)
+  dplyr::select(row, sexo_2, escolaridad_rec, freq_cons_sus_prin, tipo_de_plan_2, tipo_de_programa_2, edad_al_ing_grupos, sus_principal_mod, motivodeegreso_mod_imp, origen_ingreso_mod, dg_cie_10_rec, estado_conyugal_2, edad_ini_cons, cat_ocupacional, estatus_ocupacional, macrozona, nombre_region, tipo_centro,dias_treat_imp_sin_na, dg_fis_anemia, dg_fis_card, dg_fis_in_study, dg_fis_enf_som, dg_fis_ets, dg_fis_hep_alc, dg_fis_hep_b, dg_fis_hep_cro, dg_fis_inf, dg_fis_otr_cond_fis_ries_vit, dg_fis_otr_cond_fis, dg_fis_pat_buc, dg_fis_pat_ges_intrau, dg_fis_trau_sec, otros_pr_sm_abu_sex, otros_pr_sm_exp_com_sex, otros_pr_sm_otros, otros_pr_sm_prision, otros_pr_sm_vif, dg_trs_cons_sus_or,edad_ini_sus_prin_grupos)
   
  #Frecuencia de consumo de la droga principal en los 30 días previos a la admisión a tratamiento
 
@@ -780,58 +843,60 @@ label(CONS_C1_df_SEP_2020_miss$otros_pr_sm_prision) <- "Other mental health prob
 label(CONS_C1_df_SEP_2020_miss$otros_pr_sm_vif) <- "Other mental health problems- Domestic violence"
 
 label(CONS_C1_df_SEP_2020_miss$dg_trs_cons_sus_or) <- "Diagnosis of substance use"
+label(CONS_C1_df_SEP_2020_miss$edad_ini_sus_prin_grupos) <- "Age of Onset of Drug Use Primary/Main Substance"
 
-table <- compareGroups(selected ~ sexo_2+ escolaridad_rec+ freq_cons_sus_prin+ tipo_de_plan_2+ tipo_de_programa_2+ 
-        edad_al_ing_grupos+  sus_principal_mod+  motivodeegreso_mod_imp+  origen_ingreso_mod+  dg_cie_10_rec+  estado_conyugal_2+  edad_ini_cons+  cat_ocupacional+  estatus_ocupacional+  macrozona+  nombre_region+  tipo_centro+ dias_treat_imp_sin_na+ dg_fis_anemia+ dg_fis_card+ dg_fis_in_study+ dg_fis_enf_som+ dg_fis_ets+ dg_fis_hep_alc+ dg_fis_hep_b+ dg_fis_hep_cro+ dg_fis_inf+ dg_fis_otr_cond_fis_ries_vit+ dg_fis_otr_cond_fis+ dg_fis_pat_buc+ dg_fis_pat_ges_intrau+ dg_fis_trau_sec+ otros_pr_sm_abu_sex+ otros_pr_sm_exp_com_sex+ otros_pr_sm_otros+ otros_pr_sm_prision+ otros_pr_sm_vif+ dg_trs_cons_sus_or,
+table <- suppressWarnings(compareGroups(selected ~ sexo_2+ escolaridad_rec+ freq_cons_sus_prin+ tipo_de_plan_2+ tipo_de_programa_2+ 
+        edad_al_ing_grupos+  sus_principal_mod+  motivodeegreso_mod_imp+  origen_ingreso_mod+  dg_cie_10_rec+  estado_conyugal_2+  edad_ini_cons+ edad_ini_sus_prin_grupos+ cat_ocupacional+  estatus_ocupacional+  macrozona+  nombre_region+  tipo_centro+ dias_treat_imp_sin_na+ dg_fis_anemia+ dg_fis_card+ dg_fis_in_study+ dg_fis_enf_som+ dg_fis_ets+ dg_fis_hep_alc+ dg_fis_hep_b+ dg_fis_hep_cro+ dg_fis_inf+ dg_fis_otr_cond_fis_ries_vit+ dg_fis_otr_cond_fis+ dg_fis_pat_buc+ dg_fis_pat_ges_intrau+ dg_fis_trau_sec+ otros_pr_sm_abu_sex+ otros_pr_sm_exp_com_sex+ otros_pr_sm_otros+ otros_pr_sm_prision+ otros_pr_sm_vif+ dg_trs_cons_sus_or,
                        method= c(sexo_2=3,
-                                   escolaridad_rec=3,
-                                   freq_cons_sus_prin=3,
-                                   tipo_de_plan_2=3,
-                                   tipo_de_programa_2=3,
-                                   edad_al_ing_grupos=3,
-                                   sus_principal_mod=3,
-                                   motivodeegreso_mod_imp=3,
-                                   origen_ingreso_mod=3,
-                                   dg_cie_10_rec=3,
-                                   estado_conyugal_2=3,
-                                   edad_ini_cons=2,
-                                   cat_ocupacional=3,
-                                   estatus_ocupacional=3,
-                                   macrozona=3,
-                                   nombre_region=3,
-                                   tipo_centro=3,
-                                   dias_treat_imp_sin_na=2,
-                                   dg_fis_anemia= 3,
-                                   dg_fis_card= 3,
-                                  dg_fis_in_study= 3, 
-                                  dg_fis_enf_som= 3, 
-                                  dg_fis_ets= 3, 
-                                  dg_fis_hep_alc= 3, 
-                                  dg_fis_hep_b= 3, 
-                                  dg_fis_hep_cro= 3, 
-                                  dg_fis_inf= 3, 
-                                  dg_fis_otr_cond_fis_ries_vit= 3,
-                                  dg_fis_otr_cond_fis= 3,
-                                  dg_fis_pat_buc= 3, 
-                                  dg_fis_pat_ges_intrau= 3, 
-                                  dg_fis_trau_sec= 3, 
-                                  otros_pr_sm_abu_sex= 3, 
-                                  otros_pr_sm_exp_com_sex= 3, 
-                                  otros_pr_sm_otros= 3, 
-                                  otros_pr_sm_prision= 3, 
-                                  otros_pr_sm_vif=3,
-                                  dg_trs_cons_sus_or=3),
+                                      escolaridad_rec=3,
+                                      freq_cons_sus_prin=3,
+                                      tipo_de_plan_2=3,
+                                      tipo_de_programa_2=3,
+                                      edad_al_ing_grupos=3,
+                                      sus_principal_mod=3,
+                                      motivodeegreso_mod_imp=3,
+                                      origen_ingreso_mod=3,
+                                      dg_cie_10_rec=3,
+                                      estado_conyugal_2=3,
+                                      edad_ini_cons=2,
+                                      edad_ini_sus_prin_grupos=3,
+                                      cat_ocupacional=3,
+                                      estatus_ocupacional=3,
+                                      macrozona=3,
+                                      nombre_region=3,
+                                      tipo_centro=3,
+                                      dias_treat_imp_sin_na=2,
+                                      dg_fis_anemia= 3,
+                                      dg_fis_card= 3,
+                                      dg_fis_in_study= 3, 
+                                      dg_fis_enf_som= 3, 
+                                      dg_fis_ets= 3, 
+                                      dg_fis_hep_alc= 3, 
+                                      dg_fis_hep_b= 3, 
+                                      dg_fis_hep_cro= 3, 
+                                      dg_fis_inf= 3, 
+                                      dg_fis_otr_cond_fis_ries_vit= 3,
+                                      dg_fis_otr_cond_fis= 3,
+                                      dg_fis_pat_buc= 3, 
+                                      dg_fis_pat_ges_intrau= 3, 
+                                      dg_fis_trau_sec= 3, 
+                                      otros_pr_sm_abu_sex= 3, 
+                                      otros_pr_sm_exp_com_sex= 3, 
+                                      otros_pr_sm_otros= 3, 
+                                      otros_pr_sm_prision= 3, 
+                                      otros_pr_sm_vif=3,
+                                      dg_trs_cons_sus_or=3),
                        data = CONS_C1_df_SEP_2020_miss,
                        include.miss = T,
                        var.equal=T
-                       )
+                       ))
  #Possible values are: 1 - forces analysis as "normal-distributed"; 2 - forces analysis as "continuous non-normal"; 3 - forces analysis as "categorical"; and 4 - NA, which performs a Shapiro-Wilks test to decide between normal or non-normal. 
 
-pvals <- getResults(table)
+pvals <- suppressWarnings(getResults(table))
 #p.adjust(pvals, method = "BH")
-restab <- createTable(table, show.p.overall = F)
- export2md(restab, size=9, first.strip=T, hide.no="no", position="center",
-           format="html",caption= "Table 1. Summary descriptives table by groups, between selected rows (=1) and records that did not matched, duplicate treatments and invalid ones (=0)")%>%
+restab <- suppressWarnings(createTable(table, show.p.overall = F))
+ suppressWarnings(export2md(restab, size=9, first.strip=T, hide.no="no", position="center",
+           format="html",caption= "Table 1. Summary descriptives table by groups, between selected rows (=1) and records that did not matched, duplicate treatments and invalid ones (=0)"))%>%
   kableExtra::add_footnote(c("Note. Variables of C1 dataset had to be standardized before comparison;", "Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
   kableExtra::scroll_box(width = "100%", height = "375px")
 ```
@@ -909,7 +974,7 @@ label(CONS_C1_df_dup_SEP_2020_prev2$a_botar) <- "Descarta tratamientos que no pe
 
 <br>
 
-Next, we discarded posterior treatments.
+Next, we discarded posterior treatments, selecting `r CONS_C1_df_dup_SEP_2020_prev2%>%  dplyr::filter(!is.na(a_botar))%>% nrow()%>% formatC(big.mark=",")` records.
 
 <br>
 
@@ -946,18 +1011,7 @@ label(CONS_C1_df_dup_SEP_2020_prev3$event) <- "Segundo, Tercero o Tratamiento Po
 
 <br>
 
-
-We calculated a total rate from person time, which could be represented as:
-
-$$
-\begin{aligned}
-\frac{\sum cases}{\sum p-t}
-\end{aligned}
-$$
-
-<br>
-
-The total incidence rate was `r formatC(17764/(sum(CONS_C1_df_dup_SEP_2020_prev3$person_years))*1000,digits=1,format = "f")` readmissions per person-years.
+The total incidence rate was `r formatC(17764/(sum(CONS_C1_df_dup_SEP_2020_prev3$person_years))*1000,digits=1,format = "f")` readmissions per 1,000 person-years.
 
 <br>
 
@@ -1043,13 +1097,26 @@ Compared with those with alcohol as the main substance at admission, there were 
 <!--- (1.03 [IC95% 0.96- 1.10]). --->
 <br>
 
+## Time outside treatment
+
+<br>
+
+To calculate the average time outside treatment, we needed to drop cases with only one treatment and keep those with more than one treatment.
+
+<br>
+
+Then, we had to order the dataset by HASHs and date of admission and date of discharge, and replace the date of discharge if it is greater than the next date of admission.
+
+<br>
+
+
 ### Graphical Representation
 
 The following figures shows the Nelson-Aalen for the cumulative hazard of experiencing readmission in the study period.
 
 <br>
 
-```{r fig1_survplot_km_early_widthdrawal, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 1. Cum. Hazards to Experience Readmission to SUD Treatment, by cause of Discharge", error=T,fig.width=8}
+```{r fig2_survplot_km_early_widthdrawal, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 2. Cum. Hazards to Experience Readmission to SUD Treatment, by cause of Discharge", error=T,fig.width=8}
 library(survminer)
 fit_earlyw<- survfit(Surv(person_days, event==1) ~mot_egres_earlywdl, data=CONS_C1_df_dup_SEP_2020_prev4,
                    type ="fleming-harrington", conf.type = "log-log")
@@ -1092,7 +1159,7 @@ ggsurvplot_earlyw
 
 <br>
 
-```{r fig2_survplot_km_late_widthdrawal, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 2. Cum. Hazards to Experience Readmission to SUD Treatment, by cause of Discharge", error=T,fig.width=8}
+```{r fig3_survplot_km_late_widthdrawal, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 3. Cum. Hazards to Experience Readmission to SUD Treatment, by cause of Discharge", error=T,fig.width=8}
 library(survminer)
 fit_latew<- survfit(Surv(person_days, event==1) ~mot_egres_latewdl, data=CONS_C1_df_dup_SEP_2020_prev4,
                    type ="fleming-harrington", conf.type = "log-log")
@@ -1133,7 +1200,7 @@ ggsurvplot_latew
  # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
 ```
 
-```{r fig3_survplot_coc, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 3. Cum. Hazards to Experience Readmission to SUD Treatment, by Primary Substance At Admission", error=T,fig.width=8}
+```{r fig4_survplot_coc, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 4. Cum. Hazards to Experience Readmission to SUD Treatment, by Primary Substance At Admission", error=T,fig.width=8}
 library(survminer)
 fit_coc<- survfit(Surv(person_days, event==1) ~droga_rec_coc, data=CONS_C1_df_dup_SEP_2020_prev4,
                    type ="fleming-harrington", conf.type = "log-log")
@@ -1174,7 +1241,7 @@ ggsurvplot_coc<-
 ggsurvplot_coc
 ```
 
-```{r fig4_survplot_km_coc, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 4. Cum. Hazards to Experience Readmission to SUD Treatment, by Primary Substance At Admission", error=T,fig.width=8}
+```{r fig5_survplot_km_coc, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 5. Cum. Hazards to Experience Readmission to SUD Treatment, by Primary Substance At Admission", error=T,fig.width=8}
 library(survminer)
 fit_pbase<- survfit(Surv(person_days, event==1) ~droga_rec_pbase, data=CONS_C1_df_dup_SEP_2020_prev4,
                    type ="fleming-harrington", conf.type = "log-log")
@@ -1217,7 +1284,7 @@ ggsurvplot_pbase
 
 <br>
 
-```{r fig5_survplot_km_mar, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 5. Cum. Hazards to Experience Readmission to SUD Treatment, by Primary Substance At Admission", error=T,fig.width=8}
+```{r fig6_survplot_km_mar, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 6. Cum. Hazards to Experience Readmission to SUD Treatment, by Primary Substance At Admission", error=T,fig.width=8}
 library(survminer)
 fit_mar<- survfit(Surv(person_days, event==1) ~droga_rec_mar, data=CONS_C1_df_dup_SEP_2020_prev4,
                    type ="fleming-harrington", conf.type = "log-log")
@@ -1396,7 +1463,7 @@ Bivariate descriptive analyses were conducted using student’s t, ANOVA, Wilcox
 <br>
 
 ```{r tab2_descr_c1_baseline_vs._readmitted,dpi = 96, message=F, error=T,eval=T, warnings=F}
-CONS_C1_df_dup_SEP_2020_prev2_explore<-
+CONS_C1_df_dup_SEP_2020_prev4_explore<-
     CONS_C1_df_dup_SEP_2020_prev4%>% 
     dplyr::mutate(event=ifelse(duplicates_filtered>1,1,0)) %>% 
     dplyr::mutate(person_years=person_days/365.25)%>% 
@@ -1516,94 +1583,97 @@ library(compareGroups)
 
 knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
 
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$sexo_2) <- "Sex"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$escolaridad_rec) <- "Educational Attainment"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$freq_cons_sus_prin) <- "Frequency of use of primary drug at admission"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$sexo_2) <- "Sex"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$escolaridad_rec) <- "Educational Attainment"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$freq_cons_sus_prin) <- "Frequency of use of primary drug at admission"
 
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$tipo_de_plan_2) <- "Treatment Plan"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$tipo_de_programa_2) <- "Treatment Program"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$edad_al_ing_grupos) <- "Age at Admission"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$sus_principal_mod) <- "Primary substance at admission"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$motivodeegreso_mod_imp) <- "Motive of discharge"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$origen_ingreso_mod) <- "Motive of Admission to Treatment (First Entry)"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_cie_10_rec) <- "Psychiatric comorbidity"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$tipo_de_plan_2) <- "Treatment Plan"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$tipo_de_programa_2) <- "Treatment Program"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$edad_al_ing_grupos) <- "Age at Admission"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$sus_principal_mod) <- "Primary substance at admission"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$motivodeegreso_mod_imp) <- "Motive of discharge"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$origen_ingreso_mod) <- "Motive of Admission to Treatment (First Entry)"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_cie_10_rec) <- "Psychiatric comorbidity"
 
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$estado_conyugal_2) <- "Marital Status"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$edad_ini_cons) <- "Age of Onset of Drug Use"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$cat_ocupacional) <- "Occupational Category"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$estatus_ocupacional) <- "Occupational Status"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$macrozona) <- "Macrozones of the Center"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$nombre_region) <- "Chilean Region of the Center"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$tipo_centro) <- "Type of Center"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dias_treat_imp_sin_na) <- "Days of Treatment (missing dates of discharge were replaced with difference from 2019-11-13)"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$estado_conyugal_2) <- "Marital Status"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$edad_ini_cons) <- "Age of Onset of Drug Use"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$cat_ocupacional) <- "Occupational Category"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$estatus_ocupacional) <- "Occupational Status"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$macrozona) <- "Macrozones of the Center"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$nombre_region) <- "Chilean Region of the Center"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$tipo_centro) <- "Type of Center"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dias_treat_imp_sin_na) <- "Days of Treatment (missing dates of discharge were replaced with difference from 2019-11-13)"
 
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_anemia) <- "Physical Dg. Anemia"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_card) <- "Physical Dg. Heart Disease"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_in_study) <- "Physical Dg. Under Study"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_enf_som) <- "Physical Dg. Somatic illnesses"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_ets) <- "Physical Dg. STDs"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_hep_alc) <- "Physical Dg. Alcoholic hepatitis"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_hep_b) <- "Physical Dg. Hepatitis B"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_hep_cro) <- "Physical Dg. Chronic hepatitis"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_inf) <- "Physical Dg. Infectuous diseases"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_otr_cond_fis_ries_vit) <- "Physical Dg. Other phsysical conditions"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_otr_cond_fis) <- "Physical Dg. Other phsysical conditions"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_pat_buc) <- "Physical Dg. Oral-care pathologies"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_pat_ges_intrau) <- "Physical Dg. Development or Intrauterine"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_fis_trau_sec) <- "Traumatisms and disabling sequelae"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_anemia) <- "Physical Dg. Anemia"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_card) <- "Physical Dg. Heart Disease"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_in_study) <- "Physical Dg. Under Study"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_enf_som) <- "Physical Dg. Somatic illnesses"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_ets) <- "Physical Dg. STDs"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_hep_alc) <- "Physical Dg. Alcoholic hepatitis"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_hep_b) <- "Physical Dg. Hepatitis B"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_hep_cro) <- "Physical Dg. Chronic hepatitis"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_inf) <- "Physical Dg. Infectuous diseases"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_otr_cond_fis_ries_vit) <- "Physical Dg. Other phsysical conditions"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_otr_cond_fis) <- "Physical Dg. Other phsysical conditions"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_pat_buc) <- "Physical Dg. Oral-care pathologies"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_pat_ges_intrau) <- "Physical Dg. Development or Intrauterine"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_trau_sec) <- "Traumatisms and disabling sequelae"
 
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$otros_pr_sm_abu_sex) <- "Other mental health problems- Sexual abuse"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$otros_pr_sm_exp_com_sex) <- "Other mental health problems- Commercial sexual exploitation"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$otros_pr_sm_otros) <- "Other mental health problems- Other"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$otros_pr_sm_prision) <- "Other mental health problems- Inprisonment"
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$otros_pr_sm_vif) <- "Other mental health problems- Domestic violence"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$otros_pr_sm_abu_sex) <- "Other mental health problems- Sexual abuse"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$otros_pr_sm_exp_com_sex) <- "Other mental health problems- Commercial sexual exploitation"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$otros_pr_sm_otros) <- "Other mental health problems- Other"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$otros_pr_sm_prision) <- "Other mental health problems- Inprisonment"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$otros_pr_sm_vif) <- "Other mental health problems- Domestic violence"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$edad_ini_sus_prin_grupos) <- "Age of Onset of Drug Use Primary/Main Substance"
 
-label(CONS_C1_df_dup_SEP_2020_prev2_explore$dg_trs_cons_sus_or) <- "Diagnosis of substance use"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_trs_cons_sus_or) <- "Diagnosis of substance use"
 
-table <- compareGroups(event ~ sexo_2+ escolaridad_rec+ freq_cons_sus_prin+ tipo_de_plan_2+ tipo_de_programa_2+ 
-        edad_al_ing_grupos+  sus_principal_mod+  motivodeegreso_mod_imp+  origen_ingreso_mod+  dg_cie_10_rec+  estado_conyugal_2+  edad_ini_cons+  cat_ocupacional+  estatus_ocupacional+  macrozona+  nombre_region+  tipo_centro+ dias_treat_imp_sin_na+ dg_fis_anemia+ dg_fis_card+ dg_fis_in_study+ dg_fis_enf_som+ dg_fis_ets+ dg_fis_hep_alc+ dg_fis_hep_b+ dg_fis_hep_cro+ dg_fis_inf+ dg_fis_otr_cond_fis_ries_vit+ dg_fis_otr_cond_fis+ dg_fis_pat_buc+ dg_fis_pat_ges_intrau+ dg_fis_trau_sec+ otros_pr_sm_abu_sex+ otros_pr_sm_exp_com_sex+ otros_pr_sm_otros+ otros_pr_sm_prision+ otros_pr_sm_vif+ dg_trs_cons_sus_or,
+table <- suppressWarnings(compareGroups(event ~ sexo_2+ escolaridad_rec+ freq_cons_sus_prin+ tipo_de_plan_2+ tipo_de_programa_2+ 
+        edad_al_ing_grupos+  sus_principal_mod+  motivodeegreso_mod_imp+  origen_ingreso_mod+  dg_cie_10_rec+  estado_conyugal_2+  edad_ini_cons+  edad_ini_sus_prin_grupos+ cat_ocupacional+  estatus_ocupacional+  macrozona+  nombre_region+  tipo_centro+ dias_treat_imp_sin_na+ dg_fis_anemia+ dg_fis_card+ dg_fis_in_study+ dg_fis_enf_som+ dg_fis_ets+ dg_fis_hep_alc+ dg_fis_hep_b+ dg_fis_hep_cro+ dg_fis_inf+ dg_fis_otr_cond_fis_ries_vit+ dg_fis_otr_cond_fis+ dg_fis_pat_buc+ dg_fis_pat_ges_intrau+ dg_fis_trau_sec+ otros_pr_sm_abu_sex+ otros_pr_sm_exp_com_sex+ otros_pr_sm_otros+ otros_pr_sm_prision+ otros_pr_sm_vif+ dg_trs_cons_sus_or,
                        method= c(sexo_2=3,
-                                   escolaridad_rec=3,
-                                   freq_cons_sus_prin=3,
-                                   tipo_de_plan_2=3,
-                                   tipo_de_programa_2=3,
-                                   edad_al_ing_grupos=3,
-                                   sus_principal_mod=3,
-                                   motivodeegreso_mod_imp=3,
-                                   origen_ingreso_mod=3,
-                                   dg_cie_10_rec=3,
-                                   estado_conyugal_2=3,
-                                   edad_ini_cons=2,
-                                   cat_ocupacional=3,
-                                   estatus_ocupacional=3,
-                                   macrozona=3,
-                                   nombre_region=3,
-                                   tipo_centro=3,
-                                   dias_treat_imp_sin_na=2,
-                                   dg_fis_anemia= 3,
-                                   dg_fis_card= 3,
-                                  dg_fis_in_study= 3, 
-                                  dg_fis_enf_som= 3, 
-                                  dg_fis_ets= 3, 
-                                  dg_fis_hep_alc= 3, 
-                                  dg_fis_hep_b= 3, 
-                                  dg_fis_hep_cro= 3, 
-                                  dg_fis_inf= 3, 
-                                  dg_fis_otr_cond_fis_ries_vit= 3,
-                                  dg_fis_otr_cond_fis= 3,
-                                  dg_fis_pat_buc= 3, 
-                                  dg_fis_pat_ges_intrau= 3, 
-                                  dg_fis_trau_sec= 3, 
-                                  otros_pr_sm_abu_sex= 3, 
-                                  otros_pr_sm_exp_com_sex= 3, 
-                                  otros_pr_sm_otros= 3, 
-                                  otros_pr_sm_prision= 3, 
-                                  otros_pr_sm_vif=3,
-                                  dg_trs_cons_sus_or=3),
-                       data = CONS_C1_df_dup_SEP_2020_prev2_explore,
+                                            escolaridad_rec=3,
+                                            freq_cons_sus_prin=3,
+                                            tipo_de_plan_2=3,
+                                            tipo_de_programa_2=3,
+                                            edad_al_ing_grupos=3,
+                                            sus_principal_mod=3,
+                                            motivodeegreso_mod_imp=3,
+                                            origen_ingreso_mod=3,
+                                            dg_cie_10_rec=3,
+                                            estado_conyugal_2=3,
+                                            edad_ini_cons=2,
+                                            edad_ini_sus_prin_grupos=3,
+                                            cat_ocupacional=3,
+                                            estatus_ocupacional=3,
+                                            macrozona=3,
+                                            nombre_region=3,
+                                            tipo_centro=3,
+                                            dias_treat_imp_sin_na=2,
+                                            dg_fis_anemia= 3,
+                                            dg_fis_card= 3,
+                                            dg_fis_in_study= 3, 
+                                            dg_fis_enf_som= 3, 
+                                            dg_fis_ets= 3, 
+                                            dg_fis_hep_alc= 3, 
+                                            dg_fis_hep_b= 3, 
+                                            dg_fis_hep_cro= 3, 
+                                            dg_fis_inf= 3, 
+                                            dg_fis_otr_cond_fis_ries_vit= 3,
+                                            dg_fis_otr_cond_fis= 3,
+                                            dg_fis_pat_buc= 3, 
+                                            dg_fis_pat_ges_intrau= 3, 
+                                            dg_fis_trau_sec= 3, 
+                                            otros_pr_sm_abu_sex= 3, 
+                                            otros_pr_sm_exp_com_sex= 3, 
+                                            otros_pr_sm_otros= 3, 
+                                            otros_pr_sm_prision= 3, 
+                                            otros_pr_sm_vif=3,
+                                            dg_trs_cons_sus_or=3),
+                       data = CONS_C1_df_dup_SEP_2020_prev4_explore,
                        include.miss = T,
                        var.equal=T
                        )
+)
  #Possible values are: 1 - forces analysis as "normal-distributed"; 2 - forces analysis as "continuous non-normal"; 3 - forces analysis as "categorical"; and 4 - NA, which performs a Shapiro-Wilks test to decide between normal or non-normal. 
 
 pvals <- getResults(table)
@@ -1614,3 +1684,32 @@ restab <- createTable(table, show.p.overall = T)
   kableExtra::add_footnote(c("Note. Variables of C1 dataset had to be standardized before comparison;", "Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
   kableExtra::scroll_box(width = "100%", height = "375px")
 ```
+
+
+# Differences within users with more than one treatment
+
+<br>
+
+We selected the entries of users that had at least 2 treatments (n= `r  CONS_C1_df_dup_JUL_2020%>% dplyr::group_by(hash_key)%>% dplyr::mutate(n_hash=n())%>% dplyr::filter(n_hash>1)%>%  nrow()%>%  formatC(big.mark=",")`; users= `CONS_C1_df_dup_JUL_2020%>% dplyr::group_by(hash_key)%>% dplyr::mutate(n_hash=n())%>% dplyr::filter(n_hash>1)%>% distinct(hash_key)%>% nrow()%>%  formatC(big.mark=",")`).
+
+<br>
+
+```{r fig8_hist_spaces_treatments2,eval=T, echo=T, paged.print=TRUE, fig.cap="Figure 7. Histogram of Diff Between Treatments", fig.align='center'}
+p<-ggplot(CONS_C1_df_dup_JUL_2020,aes(x=diff_bet_treat), alpha=.7)+
+  geom_histogram_interactive(bins=120)+
+  #   geom_vline(aes(xintercept=30), color="darkred", linetype="dashed")+
+  #   geom_vline(aes(xintercept=45), color="darkmagenta", linetype="solid")+
+  #   geom_vline(aes(xintercept=60), color="darkblue", linetype="dotted")+
+  sjPlot::theme_sjplot2() +
+  #facet_wrap(~motivodeegreso_mod_imp)+
+labs(y = "Frequency",x="Diff. Between Treatments")#+
+# xlim(c(-1,2000))
+tooltip_css <- "background-color:gray;color:white;font-style:italic;padding:10px;border-radius:10px 20px 10px 20px;"
+ggiraph(code = {print(p)}, tooltip_extra_css = tooltip_css, tooltip_opacity = .75)
+```
+
+<br>
+
+Summarising by HASHs, the average treatment span between treatments among the readmitted (`r CONS_C1_df_dup_JUL_2020%>% dplyr::group_by(hash_key)%>% dplyr::mutate(n_hash=n())%>% dplyr::filter(n_hash>1)%>% distinct(hash_key) %>% nrow() %>%  formatC(big.mark = ",")`) was around `r CONS_C1_df_dup_JUL_2020%>% dplyr::group_by(hash_key)%>% dplyr::mutate(n_hash=n())%>% dplyr::filter(n_hash>1)%>%  dplyr::mutate(span_treat= diff_bet_treat/365.25)%>% dplyr::group_by(hash_key)%>% summarise(avg_span_treat= mean(span_treat,na.rm=T))%>% dplyr::ungroup()%>%  dplyr::summarise(avg_span_treat_tot= mean(avg_span_treat,na.rm=T))%>% as.numeric()%>% round(2)` years.
+
+<br>
