@@ -1713,3 +1713,79 @@ ggiraph(code = {print(p)}, tooltip_extra_css = tooltip_css, tooltip_opacity = .7
 Summarising by HASHs, the average treatment span between treatments among the readmitted (`r CONS_C1_df_dup_JUL_2020%>% dplyr::group_by(hash_key)%>% dplyr::mutate(n_hash=n())%>% dplyr::filter(n_hash>1)%>% distinct(hash_key) %>% nrow() %>%  formatC(big.mark = ",")`) was around `r CONS_C1_df_dup_JUL_2020%>% dplyr::group_by(hash_key)%>% dplyr::mutate(n_hash=n())%>% dplyr::filter(n_hash>1)%>%  dplyr::mutate(span_treat= diff_bet_treat/365.25)%>% dplyr::group_by(hash_key)%>% summarise(avg_span_treat= mean(span_treat,na.rm=T))%>% dplyr::ungroup()%>%  dplyr::summarise(avg_span_treat_tot= mean(avg_span_treat,na.rm=T))%>% as.numeric()%>% round(2)` years.
 
 <br>
+
+```{r fig8_bar_days_diff_bet_treat, eval=T, echo=T, fig.align='center', fig.cap="Figure 8. Average Cum. Differences Between Treatments, depending on the amount of treatments by User", paged.print=TRUE}
+
+CONS_C1_df_dup_JUL_2020 %>% 
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(n_hash=n())%>% 
+  dplyr::filter(n_hash>1)%>%
+  slice(1) %>% 
+  ungroup() %>% 
+  dplyr::select(starts_with("diff_bet_treat_")) %>%  #mean_cum_dias_trat_sin_na_1
+  gather(option,value) %>%
+  dplyr::mutate(option=dplyr::case_when(option=="diff_bet_treat_1"~"01",
+                                        option=="diff_bet_treat_2"~"02",
+                                        option=="diff_bet_treat_3"~"03",
+                                        option=="diff_bet_treat_4"~"04",
+                                        option=="diff_bet_treat_5"~"05",
+                                        option=="diff_bet_treat_6"~"06",
+                                        option=="diff_bet_treat_7"~"07",
+                                        option=="diff_bet_treat_8"~"08",
+                                        option=="diff_bet_treat_9"~"09",
+                                        option=="diff_bet_treat_10"~"10")) %>% 
+  ggplot(aes(x = factor(option), y=value,group=option)) +
+  stat_summary(fun = mean, geom="bar", alpha=.8)+
+  stat_summary(fun = median, geom="point")+
+  stat_summary(fun = median,
+                fun.min = function(x) quantile(x,.25), 
+                fun.max = function(x) quantile(x,.75), 
+               geom = "errorbar", width = 0.5)+
+  labs(x="Number of Treatment of Each User", y="Difference Between Treatments",caption=paste0("Note. ",CONS_C1_df_dup_JUL_2020 %>% dplyr::group_by(hash_key)%>% dplyr::mutate(n_hash=n())%>%  dplyr::filter(n_hash>1)%>%slice(1) %>% nrow() %>%  formatC(big.mark=",")," users; Dots= Medians, Error bars= Percentiles 25 and 75"))+
+  theme_classic2()
+```
+
+<br>
+
+A view on the differences between treatments but considering the times each user had been readmitted from 2010-2019, shown that on average, the differences between the first and the second treatment were apparently greater than the rest. However, this difference also had a greater variability.
+
+<br>
+
+```{r fig9_bar_days_in_treatment, eval=T, echo=T, fig.align='center', fig.cap="Figure 9. Average Cum. Treatment Length, depending on the amount of treatments by User", paged.print=TRUE}
+
+CONS_C1_df_dup_JUL_2020 %>% 
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(n_hash=n())%>% 
+  dplyr::filter(n_hash>1)%>%
+  slice(1) %>% 
+  ungroup() %>% 
+  dplyr::select(starts_with("mean_cum_dias_trat_sin_na_")) %>%  #mean_cum_dias_trat_sin_na_1
+  gather(option,value) %>%
+  dplyr::mutate(option=dplyr::case_when(option=="mean_cum_dias_trat_sin_na_1"~"01",
+                                        option=="mean_cum_dias_trat_sin_na_2"~"02",
+                                        option=="mean_cum_dias_trat_sin_na_3"~"03",
+                                        option=="mean_cum_dias_trat_sin_na_4"~"04",
+                                        option=="mean_cum_dias_trat_sin_na_5"~"05",
+                                        option=="mean_cum_dias_trat_sin_na_6"~"06",
+                                        option=="mean_cum_dias_trat_sin_na_7"~"07",
+                                        option=="mean_cum_dias_trat_sin_na_8"~"08",
+                                        option=="mean_cum_dias_trat_sin_na_9"~"09",
+                                        option=="mean_cum_dias_trat_sin_na_10"~"10")) %>% 
+  ggplot(aes(x = factor(option), y=value,group= option)) +
+      stat_summary(fun = mean, geom="bar",alpha=.8)+
+    stat_summary(fun = median, geom="point")+
+  stat_summary(fun.y = median,
+                   fun.min = function(x) quantile(x,.25), 
+               fun.max = function(x) quantile(x,.75), 
+               geom = "errorbar", width = 0.5)+
+  #geom_bar(stat = "identity")+
+    #geom_errorbar() +
+  labs(x="Number of Treatment of Each User", y="Avg. Cum. Days in Treatment",caption=paste0("Note. ",CONS_C1_df_dup_JUL_2020 %>% dplyr::group_by(hash_key)%>% dplyr::mutate(n_hash=n())%>%  dplyr::filter(n_hash>1)%>%slice(1) %>% nrow() %>%  formatC(big.mark=",")," users; Dots= Medians, Error bars= Percentiles 25 and 75"))+
+  theme_classic2()
+```
+
+<br>
+
+The average cumulative days in treatment tended to remain stable, independently of the amount of previous treatments.
+
+<br>
