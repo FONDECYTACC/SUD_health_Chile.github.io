@@ -1,5 +1,5 @@
 *final
-use "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020.dta", clear
+use "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_SEP_2020.dta", clear
 cap label variable row "Numerador de los eventos presentes en la Base de Datos (Último registro)/Events in the Dataset (Last Entry)"
 cap label variable row_cont_entries "Numerador de los eventos presentes en la Base de Datos(*)/Events in the Dataset(*)"
 cap label variable hash_key "Codificación del RUT/Masked Identifier (RUT)"
@@ -223,6 +223,34 @@ cap label variable mean_cum_diff_bet_treat_9 ""
 cap label variable mean_cum_diff_bet_treat_10 ""
 cap label variable diff_bet_treat "Días de diferencia con el Tratamiento Posterior/Days of difference between the Next Treatment"
 cap label variable dias_treat_imp_sin_na "Días de Tratamiento (valores perdidos en la fecha de egreso se reemplazaron por la diferencia con 2019-11-13)/Days of Treatment (missing dates of discharge were replaced with difference from 2019-11-13)"
-cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020.dta", replace
+cap label variable dup "Número de Tratamientos por HASH (posición a medida que aparecen, menor más reciente)/Number of Treatments by User"
+cap label variable duplicates_filtered "Número de Tratamientos por HASH (Total)/Number of Treatments by User (Total)"
+cap label variable startdate "Fecha de Ingreso Primer Tratamiento (x HASH)/Date of Admission to the First Treatment (By User)"
+cap label variable enddate "Fecha de Egreso del Último Tratamiento (x HASH)/Date of Discharge of the Last Treatment (By User)"
+cap label variable person_days "Días en los que estado un usuario en el sistema para el estudio/User's Days available in the system for the study"
+cap label variable a_botar "Descarta tratamientos posteriores por usuario/Discard posterior treatments by each user"
+cap label variable event "Segundo, Tercero o Tratamiento Posterior (1=Reingreso x HASH)/Posterior Treatment of Each User (1=Readmission)"
+cap label variable person_years "Años en los que estado un usuario en el sistema para el estudio/User's Years available in the system for the study"
+cap label variable dg_cie_10_rec "Diagnóstico CIE-10 (1 o más)(Recodificado)/Psychiatric Diagnoses (ICD-10)(one or more)(Recoded)"
+cap label variable sus_ini_mod_mvv "Sustancia de Inicio (Valor más vulnerable)/Starting Substance (Most vulnerable value)"
+cap label variable dg_fis_anemia "Dignóstico Físico, Anemia/Physical Dg. Anemia"
+cap label variable dg_fis_card "Dignóstico Físico, Enfermedad Cardiaca/Physical Dg. Heart Disease"
+cap label variable dg_fis_in_study "Dignóstico Físico, En estudio/Physical Dg. Under Study"
+cap label variable dg_fis_enf_som "Dignóstico Físico, /Physical Dg. Somatic illnesses"
+cap label variable dg_fis_ets "Dignóstico Físico, ETSs/Physical Dg. STDs"
+cap label variable dg_fis_hep_alc "Dignóstico Físico, Hepatitis Alcohólica Subaguda/Physical Dg. Alcoholic hepatitis"
+cap label variable dg_fis_hep_b "Dignóstico Físico, Hepatitis B, C, D/Physical Dg. Hepatitis B, C, D"
+cap label variable dg_fis_hep_cro "Dignóstico Físico, Hepatitis Crónica/Physical Dg. Chronic hepatitis"
+cap label variable dg_fis_inf "Dignóstico Físico, Enfermedades Infeccisas Rel. con Consumo/Physical Dg. Infectuous diseases related to SUDs"
+cap label variable dg_fis_otr_cond_fis_ries_vit "Dignóstico Físico, Otras condiciones de riesgo vital/Physical Dg. Other phsysical conditions of vital risk"
+cap label variable dg_fis_otr_cond_fis "Dignóstico Físico, Otras condiciones limitantes/Physical Dg. Other phsysical limitations"
+cap label variable dg_fis_pat_buc "Dignóstico Físico, Patología Bucal/Physical Dg. Oral-care pathologies"
+cap label variable dg_fis_pat_ges_intrau "Dignóstico Físico, Patología de la gestión y del niño intrauterino/Physical Dg. Development or Intrauterine"
+cap label variable dg_fis_trau_sec "Dignóstico Físico, Traumatismos y secuelas secundarias/Physical Dg. Traumatisms and disabling sequelae"
+cap label variable otros_pr_sm_abu_sex "Otros problemas de Atención de Salud Mental, Abuso Sexual/Other mental health problems, Sexual abuse"
+cap label variable otros_pr_sm_exp_com_sex "Otros problemas de Atención de Salud Mental, Explotación Sexual Comercial/Other mental health problems, Commercial sexual exploitation"
+cap label variable otros_pr_sm_otros "Otros problemas de Atención de Salud Mental, Otros/Other mental health problems, Other"
+cap label variable otros_pr_sm_vif "tros problemas de Atención de Salud Mental, Violencia Intrafamiliar/Other mental health problems, Domestic violence"
+cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_SEP_2020.dta", replace
 cap drop id id_mod nombre_centro consentimiento_informado
-cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020_exp.dta", replace
+cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_SEP_2020_exp.dta", replace
