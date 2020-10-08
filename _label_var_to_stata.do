@@ -233,6 +233,7 @@ cap label variable event "Segundo, Tercero o Tratamiento Posterior (1=Reingreso 
 cap label variable person_years "Años en los que estado un usuario en el sistema para el estudio/User's Years available in the system for the study"
 cap label variable dg_cie_10_rec "Diagnóstico CIE-10 (1 o más)(Recodificado)/Psychiatric Diagnoses (ICD-10)(one or more)(Recoded)"
 cap label variable sus_ini_mod_mvv "Sustancia de Inicio (Valor más vulnerable)/Starting Substance (Most vulnerable value)"
+cap label variable hijos_trat_res "Tiene Hijos en Ingreso a Tratamiento Residencial del Último Registro/Have Children in Residential Treatment of the Last Entry"
 cap label variable dg_fis_anemia "Dignóstico Físico, Anemia/Physical Dg. Anemia"
 cap label variable dg_fis_card "Dignóstico Físico, Enfermedad Cardiaca/Physical Dg. Heart Disease"
 cap label variable dg_fis_in_study "Dignóstico Físico, En estudio/Physical Dg. Under Study"

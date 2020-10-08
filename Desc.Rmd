@@ -1575,9 +1575,7 @@ CONS_C1_df_dup_SEP_2020_prev4_explore<-
     dplyr::mutate(otros_pr_sm_otros= ifelse(grepl("Prisionalización",otros_probl_at_sm_or),1,otros_pr_sm_otros))%>%
     dplyr::mutate(otros_pr_sm_vif= ifelse(grepl("Violencia Intrafamiliar",otros_probl_at_sm_or),1,0)) %>% 
  
-    dplyr::mutate(dg_trs_cons_sus_or= dplyr::case_when(grepl("Consumo Perjudicial",dg_trs_cons_sus_or)~"Hazardous consumption",
-                                                   grepl("Dependencia",dg_trs_cons_sus_or)~"Drug dependence",
-                                                   TRUE~NA_character_)) #%>%   
+    dplyr::mutate(dg_trs_cons_sus_or= dplyr::case_when(grepl("Consumo Perjudicial",dg_trs_cons_sus_or)~"Hazardous consumption",grepl("Dependencia",dg_trs_cons_sus_or)~"Drug dependence",TRUE~NA_character_)) #%>%   
   
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
@@ -1838,9 +1836,7 @@ dplyr::mutate(escolaridad_rec=factor(escolaridad_rec,labels=c('1-More than high 
                                              "Crack"="Pasta Base",
                                              "Heroína"="Opioides",
                                              "Metadona"="Opioides",
-                                             "Otros Opioides Analgésicos: morfina, codeína, meperidina,  demerol, tramadol, tramal."="Opioides",
-                                             "Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables",
-                                             "Esteroides Anabólicos"="Otros")) %>%
+                                             "Otros Opioides Analgésicos: morfina, codeína, meperidina,  demerol, tramadol, tramal."="Opioides","Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables","Esteroides Anabólicos"="Otros")) %>%
       dplyr::mutate(sus_principal_mod= dplyr::case_when(sus_principal!="Alcohol"&sus_principal!="Cocaína"&sus_principal!="Marihuana"&sus_principal!="Pasta Base"~"Otros",TRUE~as.character(sus_principal)))%>%
   
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
@@ -2164,6 +2160,15 @@ dplyr::group_by(hash_key) %>%
                                                                  'Unpaid family labour',
                                                                  'Other',
                                                                  'Volunteer worker'))) %>%
+
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #Had children into Residential Treatment
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  
+  dplyr::mutate(hijos_trat_res=ifelse(num_hijos_trat_res_mod>0,1,0)) %>% 
+  dplyr::mutate(hijos_trat_res=factor(hijos_trat_res, labels=c('Did not had children in treatment',
+                                                              'Had children in treatments'))) %>% 
+                  
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #age of onset of drug use
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
@@ -2193,7 +2198,8 @@ dplyr::group_by(hash_key) %>%
   
   dplyr::select(-sus_ini_mod_pb, -sus_ini_mod_oh, -sus_ini_mod_coc, -sus_ini_mod_mar, -sus_ini_mod_otr,
                 -dg_dg_trs_psiq_cie_10_or,-dg_x2_dg_trs_psiq_cie_10_or,-dg_x3_dg_trs_psiq_cie_10_or,-dg_x4_dg_trs_psiq_cie_10_or,-dg_x5_dg_trs_psiq_cie_10_or,-instudy_dg_trs_psiq_cie_10_or,-instudy_x2_dg_trs_psiq_cie_10_or,-instudy_x3_dg_trs_psiq_cie_10_or,-instudy_x4_dg_trs_psiq_cie_10_or,-instudy_x5_dg_trs_psiq_cie_10_or,-dg_total_cie_10,-instudy_total_cie_10) %>% 
-
+  dplyr::mutate_at(vars(starts_with("otros_pr_sm_"),
+                                   starts_with("dg_fis_")),~factor(., labels=c("Absence", "Presence")))%>%
   assign("CONS_C1_df_dup_SEP_2020",., envir = .GlobalEnv)
 ```
 
@@ -2384,7 +2390,8 @@ otros_pr_sm_otros= "Otros problemas de Atención de Salud Mental, Otros/Other me
 otros_pr_sm_vif= "tros problemas de Atención de Salud Mental, Violencia Intrafamiliar/Other mental health problems, Domestic violence",
 dg_cie_10_rec= 'Diagnóstico CIE-10 (1 o más)/Psychiatric Diagnoses (ICD-10)(one or more)',
 
-sus_ini_mod_mvv= "Sustancia de Inicio (Valor más vulnerable)/Starting Substance (Most vulnerable value)"
+sus_ini_mod_mvv= "Sustancia de Inicio (Valor más vulnerable)/Starting Substance (Most vulnerable value)",
+hijos_trat_res= 'Tiene Hijos en Ingreso a Tratamiento Residencial del Último Registro/Have Children in Residential Treatment of the Last Entry'
 
 )
 
