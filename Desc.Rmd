@@ -248,6 +248,7 @@ comb_datasets_b_users<-CONS_C1_df_dup_JUL_2020%>%
     dplyr::distinct(hash_key)%>% nrow()
 #sólo los que tienen etapa de tratamiento de inicio de tratamiento
 comb_datasets_c_n<-CONS_C1_df_dup_JUL_2020%>%
+    dplyr::arrange(hash_key,fech_ing) %>% 
     dplyr::group_by(hash_key) %>% 
     dplyr::mutate(dup=row_number()) %>%
   #janitor::tabyl(dup) %>% 
@@ -933,6 +934,7 @@ CONS_C1_df_dup_SEP_2020_prev<-
     dplyr::mutate(startdate= dplyr::last(fech_ing_num), enddate= dplyr::first(fech_egres_num), 
                   person_days=enddate-startdate) %>% 
     dplyr::ungroup()
+#+     #dplyr::arrange(hash_key, fech_ing) %>% 
 
 label(CONS_C1_df_dup_SEP_2020_prev$dup) <- "Número de Tratamientos por HASH (posición a medida que aparecen, menor más reciente)/Number of Treatments by User"
 label(CONS_C1_df_dup_SEP_2020_prev$duplicates_filtered) <- "Número de Tratamientos por HASH (Total)/Number of Treatments by User (Total)"
@@ -961,7 +963,10 @@ We selected the **first treatment of each user**, in order to make an individual
 #*ALTERNATIVA 1= primer tratamiento a la cabeza
 CONS_C1_df_dup_SEP_2020_prev2<-
   CONS_C1_df_dup_SEP_2020_prev %>% 
-    dplyr::mutate(a_botar=ifelse(dup==1,1,NA_real_)) 
+    dplyr::arrange(hash_key,fech_ing) %>% 
+    dplyr::group_by(hash_key) %>% 
+    dplyr::mutate(a_botar=ifelse(row_number()==1,NA_real_,1)) %>% 
+    dplyr::ungroup()
 CONS_C1_df_dup_SEP_2020_prev2%>% 
     janitor::tabyl(a_botar) %>% 
   
@@ -976,7 +981,7 @@ label(CONS_C1_df_dup_SEP_2020_prev2$a_botar) <- "Descarta tratamientos que no pe
 
 <br>
 
-Next, we discarded posterior treatments, selecting `r CONS_C1_df_dup_SEP_2020_prev2%>%  dplyr::filter(!is.na(a_botar))%>% nrow()%>% formatC(big.mark=",")` records.
+Next, we discarded posterior treatments, selecting `r CONS_C1_df_dup_SEP_2020_prev2%>%  dplyr::filter(is.na(a_botar) | a_botar != 1)%>% nrow()%>% formatC(big.mark=",")` records.
 
 <br>
 
@@ -987,7 +992,7 @@ Next, we discarded posterior treatments, selecting `r CONS_C1_df_dup_SEP_2020_pr
 #1 |     17,764 =  
 CONS_C1_df_dup_SEP_2020_prev3<-  
 CONS_C1_df_dup_SEP_2020_prev2 %>% 
-    dplyr::filter(!is.na(a_botar)) %>% #nrow() 85,048
+    dplyr::filter(is.na(a_botar)) %>% #nrow() 85,048, QUEDARME SÓLO CON LOS CASOS QUE SON IS.NA
     dplyr::mutate(event=ifelse(duplicates_filtered>1,1,0)) %>% 
       #dplyr::mutate(event=factor(event,labels=c("W/o Readmissions","W/Readmissions"))) %>% 
     dplyr::mutate(person_years=person_days/365.25)#%>% janitor::tabyl(event)
@@ -1013,7 +1018,7 @@ label(CONS_C1_df_dup_SEP_2020_prev3$event) <- "Segundo, Tercero o Tratamiento Po
 
 <br>
 
-The total incidence rate was `r formatC(17764/(sum(CONS_C1_df_dup_SEP_2020_prev3$person_years))*1000,digits=1,format = "f")` readmissions per 1,000 person-years.
+The total incidence rate was `r formatC(table(CONS_C1_df_dup_SEP_2020_prev3$event)[2]/(sum(CONS_C1_df_dup_SEP_2020_prev3$person_years))*1000,digits=1,format = "f")` readmissions per 1,000 person-years.
 
 <br>
 
@@ -1029,27 +1034,25 @@ We recoded the variables of cause of discharge, in order to account for early dr
 ```{r tab3_recode_vars,eval=T, echo=T, paged.print=TRUE}                                 
 CONS_C1_df_dup_SEP_2020_prev4<-
 CONS_C1_df_dup_SEP_2020_prev3 %>% 
-  dplyr::mutate(mot_egres_latewdl=dplyr::case_when(grepl("Tard",motivodeegreso_mod_imp)~1,
-                                                        grepl("Terap",motivodeegreso_mod_imp)~0,
-                                                        TRUE~NA_real_)) %>% 
-  dplyr::mutate(mot_egres_latewdl=factor(mot_egres_latewdl,labels=c("0.Therapeutic Disch.","1.Late WDRL"))) %>% 
-  dplyr::mutate(mot_egres_latewdl=factor(mot_egres_latewdl,)) %>% 
-  dplyr::mutate(mot_egres_earlywdl=dplyr::case_when(grepl("Temprano",motivodeegreso_mod_imp)~1,
-                                                        grepl("Terap",motivodeegreso_mod_imp)~0,
-                                                        TRUE~NA_real_)) %>% 
-  dplyr::mutate(mot_egres_earlywdl=factor(mot_egres_earlywdl,labels=c("0.Therapeutic Disch.","1.Early WDRL"))) %>% 
-  dplyr::mutate(droga_rec_coc=dplyr::case_when(grepl("Coca",sus_principal_mod)~1,
-                                                        grepl("Alcohol",sus_principal_mod)~0,
-                                                        TRUE~NA_real_)) %>% 
-  dplyr::mutate(droga_rec_coc=factor(droga_rec_coc,labels=c("0.Alcohol","1.Cocaine"))) %>% 
-  dplyr::mutate(droga_rec_pbase=dplyr::case_when(grepl("Pasta",sus_principal_mod)~1,
-                                                        grepl("Alcohol",sus_principal_mod)~0,
-                                                        TRUE~NA_real_)) %>% 
-  dplyr::mutate(droga_rec_pbase=factor(droga_rec_pbase,labels=c("0.Alcohol","1.Paste Base"))) %>% 
-  dplyr::mutate(droga_rec_mar=dplyr::case_when(grepl("Mari",sus_principal_mod)~1,
-                                                        grepl("Alcohol",sus_principal_mod)~0,
-                                                        TRUE~NA_real_)) %>% 
-  dplyr::mutate(droga_rec_mar=factor(droga_rec_mar,labels=c("0.Alcohol","1.Marijuana")))
+  dplyr::mutate(mot_egres_latewdl=dplyr::case_when(grepl("Tard",motivodeegreso_mod_imp)~"1.Late WDRL",
+                                                        grepl("Terap",motivodeegreso_mod_imp)~"0.Therapeutic Disch.",TRUE~NA_character_)) %>% 
+  dplyr::mutate(mot_egres_latewdl= factor(mot_egres_latewdl)) %>% 
+  dplyr::mutate(mot_egres_earlywdl=dplyr::case_when(grepl("Temprano",motivodeegreso_mod_imp)~"1.Early WDRL",
+                                                        grepl("Terap",motivodeegreso_mod_imp)~"0.Therapeutic Disch.",TRUE~NA_character_)) %>% 
+  dplyr::mutate(mot_egres_earlywdl= as.factor(mot_egres_earlywdl)) %>% 
+  dplyr::mutate(droga_rec_coc=dplyr::case_when(grepl("Coca",sus_principal_mod)~"1.Cocaine",
+                                                        grepl("Alcohol",sus_principal_mod)~"0.Alcohol",
+                                                        TRUE~NA_character_)) %>% 
+  dplyr::mutate(droga_rec_coc=as.factor(droga_rec_coc)) %>% 
+  dplyr::mutate(droga_rec_pbase=dplyr::case_when(grepl("Pasta",sus_principal_mod)~"1.Paste Base",
+                                                        grepl("Alcohol",sus_principal_mod)~"0.Alcohol",
+                                                        TRUE~NA_character_)) %>% 
+  dplyr::mutate(droga_rec_pbase=as.factor(droga_rec_pbase)) %>% 
+  dplyr::mutate(droga_rec_mar=dplyr::case_when(grepl("Mari",sus_principal_mod)~"1.Marijuana",
+                                                        grepl("Alcohol",sus_principal_mod)~"0.Alcohol",
+                                                        TRUE~NA_character_)) %>% 
+  dplyr::mutate(droga_rec_mar=as.factor(droga_rec_mar)) %>% 
+  ungroup()
 ```
 
 <br>
@@ -1094,7 +1097,7 @@ Compared with those with alcohol as the main substance at admission, the cumulat
 
 <br>
 
-Compared with those with alcohol as the main substance at admission, there were small differences in the cumulative incidence for those using marijuana. However, users that were admitted for marijuana had lower incidence of readmission (`r round(as.numeric(irrs_mar$estimate[1]),2)` [IC95% `r round(irrs_mar$conf.int[1],2)`-`r round(irrs_mar$conf.int[2],2)`]) than users admitted for alcohol.
+Compared with those with alcohol as the main substance at admission, there were non-significant differences in the cumulative incidence for those using marijuana in comparison to those using alcohol (p = `r round(irrs_mar$p.value,3)`).
 
 <!--- (1.03 [IC95% 0.96- 1.10]). --->
 <br>
@@ -1147,13 +1150,16 @@ ggsurvplot_earlyw<-
            font.tickslab = c(10),
            risk.table.height = .2,
            risk.table.fontsize = 2.5,
-           break.time.by = 365,
+           break.time.by = 365.25,
            pval = F,
            ylim=c(0,10),
            legend = c(0.88, 0.15), 
            legend.title="Cause of Disch.",
+           xlab= "Time (in years)", 
            #cumevents=T,
            surv.connect = T,
+           censor= F,
+           xscale=  "d_y",
            palette = c("skyblue4","orangered4"))
 ggsurvplot_earlyw
  # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
@@ -1190,13 +1196,16 @@ ggsurvplot_latew<-
            font.tickslab = c(10),
            risk.table.height = .2,
            risk.table.fontsize = 2.5,
-           break.time.by = 365,
+           break.time.by = 365.25,
            pval = F,
            ylim=c(0,10),
            legend = c(0.88, 0.15), 
            legend.title="Cause of Disch.",
+           xlab= "Time (in years)", 
            #cumevents=T,
            surv.connect = T,
+           censor= F,
+           xscale=  "d_y",
            palette = c("skyblue4","orangered4"))
 ggsurvplot_latew
  # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
@@ -1231,13 +1240,16 @@ ggsurvplot_coc<-
            font.tickslab = c(10),
            risk.table.height = .2,
            risk.table.fontsize = 2.5,
-           break.time.by = 365,
+           break.time.by = 365.25,
            pval = F,
            ylim=c(0,10),
            legend = c(0.88, 0.15), 
-           legend.title="Main Drug at Admission",
+           legend.title="Main Drug\nat Admission",
+           xlab= "Time (in years)", 
            #cumevents=T,
            surv.connect = T,
+           censor= F,
+           xscale=  "d_y",
            palette = c("skyblue4","orangered4"))
  # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
 ggsurvplot_coc
@@ -1272,13 +1284,16 @@ ggsurvplot_pbase<-
            font.tickslab = c(10),
            risk.table.height = .2,
            risk.table.fontsize = 2.5,
-           break.time.by = 365,
+           break.time.by = 365.25,
            pval = F,
            ylim=c(0,10),
            legend = c(0.88, 0.15), 
-           legend.title="Main Drug at Admission",
+           legend.title="Main Drug\nat Admission",
+           xlab= "Time (in years)", 
            #cumevents=T,
            surv.connect = T,
+           censor= F,
+           xscale=  "d_y",
            palette = c("skyblue4","orangered4"))
  # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
 ggsurvplot_pbase
@@ -1315,13 +1330,16 @@ ggsurvplot_mar<-
            font.tickslab = c(10),
            risk.table.height = .2,
            risk.table.fontsize = 2.5,
-           break.time.by = 365,
+           break.time.by = 365.25,
            pval = F,
            ylim=c(0,10),
            legend = c(0.88, 0.15), 
-           legend.title="Main Drug at Admission",
+           legend.title="Main Drug\nat Admission",
+           xlab= "Time (in years)", 
            #cumevents=T,
            surv.connect = T,
+           censor= F,
+           xscale=  "d_y",
            palette = c("skyblue4","orangered4"))
  # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
 ggsurvplot_mar
@@ -1466,14 +1484,19 @@ Bivariate descriptive analyses were conducted using student’s t, ANOVA, Wilcox
 
 ```{r tab2_descr_c1_baseline_vs._readmitted,dpi = 96, message=F, error=T,eval=T, warnings=F}
 CONS_C1_df_dup_SEP_2020_prev4_explore<-
-    CONS_C1_df_dup_SEP_2020_prev4%>% 
+    CONS_C1_df_dup_SEP_2020_prev4%>%
+    dplyr::ungroup() %>% 
     dplyr::mutate(event=ifelse(duplicates_filtered>1,1,0)) %>% 
     dplyr::mutate(person_years=person_days/365.25)%>% 
     #dplyr::mutate(treat= ifelse(row %in% unlist(CONS_C1_df_dup_JUL_2020_match_top_sel$row),1,0))%>%
-      dplyr::mutate(origen_ingreso_mod= dplyr::case_when(grepl("Otro Centro Tratamiento",as.character(origen_ingreso_mod))~"Derivación Asistida", TRUE~as.character(origen_ingreso_mod)))%>%  
-      dplyr::mutate(origen_ingreso_mod=factor(origen_ingreso_mod,labels=c('Spontaneous','Assisted Referral','Other','Justice Sector','Health Sector')))  %>% 
+      dplyr::mutate(origen_ingreso_mod= dplyr::case_when(grepl("Otro Centro Tratamiento",as.character(origen_ingreso_mod))~"Derivación Asistida", TRUE~as.character(origen_ingreso_mod)))
+
+CONS_C1_df_dup_SEP_2020_prev4_explore$origen_ingreso_mod<-factor(CONS_C1_df_dup_SEP_2020_prev4_explore$origen_ingreso_mod,labels=c('Spontaneous','Assisted Referral','Other','Justice Sector','Health Sector'))
+
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
-  #CIE_10  
+  #CIE_10 
+CONS_C1_df_dup_SEP_2020_prev4_explore<-
+CONS_C1_df_dup_SEP_2020_prev4_explore %>% 
       dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or,x4_dg_trs_psiq_cie_10_or,x5_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl("En estudio",as.character(.))~0,grepl("Sin trastorno",as.character(.))~0,is.na(.)~0,TRUE~1), .names="dg_{col}"))%>%
       dplyr::mutate(dg_total_cie_10 = base::rowSums(dplyr::select(., dg_dg_trs_psiq_cie_10_or, dg_x2_dg_trs_psiq_cie_10_or, dg_x3_dg_trs_psiq_cie_10_or, dg_x4_dg_trs_psiq_cie_10_or, dg_x5_dg_trs_psiq_cie_10_or)))%>%  
       dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or,x4_dg_trs_psiq_cie_10_or,x5_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl("En estudio",as.character(.))~1,grepl("Sin trastorno",as.character(.))~0,is.na(.)~0,TRUE~0), .names="instudy_{col}"))%>%
@@ -1482,79 +1505,93 @@ CONS_C1_df_dup_SEP_2020_prev4_explore<-
                                              instudy_total_cie_10>0 & dg_total_cie_10==0~1,
                                              instudy_total_cie_10>0 & is.na(dg_total_cie_10)~1,
                                              TRUE~0))%>%
-      dplyr::mutate(dg_cie_10_rec=as.factor(dg_cie_10_rec))%>%
-      dplyr::mutate(dg_cie_10_rec=factor(dg_cie_10_rec,labels=c('Without psychiatric comorbidity','Diagnosis unknown (under study)', 'With psychiatric comorbidity'))) %>% 
-      dplyr::mutate(macrozona=factor(macrozona, labels=c('Center', 'North', 'South'))) %>%
+      dplyr::mutate(dg_cie_10_rec=as.factor(dg_cie_10_rec))
+
+CONS_C1_df_dup_SEP_2020_prev4_explore$dg_cie_10_rec<-factor(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_cie_10_rec,labels=c('Without psychiatric comorbidity','Diagnosis unknown (under study)', 'With psychiatric comorbidity'))
+
+CONS_C1_df_dup_SEP_2020_prev4_explore$macrozona<-factor(CONS_C1_df_dup_SEP_2020_prev4_explore$macrozona, labels=c('Center', 'North', 'South'))
+        
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
-  #Edad grupos  
-        dplyr::mutate(edad_al_ing_grupos=dplyr::case_when(
-      edad_al_ing>=50~"50+",
-          edad_al_ing>=40~"40-49",
-          edad_al_ing>=30~"30-39",
-          edad_al_ing>=18~"18-29",
-          edad_al_ing<18~"<18",
-          TRUE~NA_character_)) %>%
+  #Edad grupos
+CONS_C1_df_dup_SEP_2020_prev4_explore<-
+CONS_C1_df_dup_SEP_2020_prev4_explore %>% 
+      dplyr::mutate(edad_al_ing_grupos=dplyr::case_when(
+        edad_al_ing>=50~"50+",
+        edad_al_ing>=40~"40-49",
+        edad_al_ing>=30~"30-39",
+        edad_al_ing>=18~"18-29",
+        edad_al_ing<18~"<18",
+        TRUE~NA_character_)) %>%
   dplyr::mutate(edad_al_ing_grupos=as.factor(edad_al_ing_grupos)) %>%  
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #Tipo de programa
-          dplyr::mutate(tipo_de_programa_2=dplyr::case_when(grepl("M-", tipo_de_plan_2)~"Women specific",
-                                                        grepl("PG-", tipo_de_plan_2)~"General population",
-                                                        grepl("LV", tipo_de_plan_2)~"Other")) %>% 
-          dplyr::mutate(tipo_de_programa_2=as.factor(tipo_de_programa_2)) %>% 
+    dplyr::mutate(tipo_de_programa_2=dplyr::case_when(grepl("M-", tipo_de_plan_2)~"Women specific",
+                                                  grepl("PG-", tipo_de_plan_2)~"General population",
+                                                  grepl("LV", tipo_de_plan_2)~"Other")) %>% 
+    dplyr::mutate(tipo_de_programa_2=as.factor(tipo_de_programa_2))
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #Sex
-      dplyr::mutate(sexo_2=factor(sexo_2,labels=c('Men','Women'))) %>% 
+CONS_C1_df_dup_SEP_2020_prev4_explore$sexo_2 <- factor(CONS_C1_df_dup_SEP_2020_prev4_explore$sexo_2,
+                                                       labels=c('Men','Women'))
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #Cause of Discharge
-  dplyr::mutate(motivodeegreso_mod_imp=factor(motivodeegreso_mod_imp,labels=c('Late Drop-out',
+
+CONS_C1_df_dup_SEP_2020_prev4_explore$motivodeegreso_mod_imp <- factor(CONS_C1_df_dup_SEP_2020_prev4_explore$motivodeegreso_mod_imp,labels=c('Late Drop-out',
                                                                                   'Early Drop-out',
                                                                                   'Administrative discharge',
                                                                                   'Therapeutic discharge',
                                                                                   'Referral to another treatment',
-                                                                                  'Ongoing treatment',
-                                                                              'Death'))) %>% 
+                                                                                  'Ongoing treatment'))
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #frequency of consumption
-  dplyr::mutate(freq_cons_sus_prin=factor(freq_cons_sus_prin,labels=c("1 day a week or less",
+CONS_C1_df_dup_SEP_2020_prev4_explore$freq_cons_sus_prin <- factor(CONS_C1_df_dup_SEP_2020_prev4_explore$freq_cons_sus_prin,labels=c("1 day a week or less",
                                                                                   "2 to 3 days a week",
                                                                                   "4 to 6 days a week",
                                                                                   "Less than 1 day a week",
                                                                                   "Did not use",
-                                                                                  "Daily"))) %>%     
+                                                                                  "Daily"))
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #primary substance
-    dplyr::mutate(sus_principal_mod=factor(sus_principal_mod,labels=c("Alcohol",
+  CONS_C1_df_dup_SEP_2020_prev4_explore$sus_principal_mod <- 
+    factor(CONS_C1_df_dup_SEP_2020_prev4_explore$sus_principal_mod, labels=c("Alcohol",
                                                                                   "Cocaine hydrochloride",
                                                                                   "Marijuana",
                                                                                   "Other",
-                                                                                  "Cocaine paste"))) %>%   
+                                                                                  "Cocaine paste"))
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #escolaridad rec
-    dplyr::mutate(escolaridad_rec=factor(escolaridad_rec,labels=c('1-More than high school','2-Completed high school or less','3-Completed primary school or less')))  %>% 
+  CONS_C1_df_dup_SEP_2020_prev4_explore$escolaridad_rec<-
+  factor(CONS_C1_df_dup_SEP_2020_prev4_explore$escolaridad_rec,labels=c('1-More than high school','2-Completed high school or less','3-Completed primary school or less'))
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #marital status
-      dplyr::mutate(estado_conyugal_2=factor(estado_conyugal_2, labels=c('Married/Shared living arrangements','Separated/Divorced','Single','Widower'))) %>%  
+    CONS_C1_df_dup_SEP_2020_prev4_explore$estado_conyugal_2<-
+      factor(CONS_C1_df_dup_SEP_2020_prev4_explore$estado_conyugal_2, 
+             labels=c('Married/Shared living arrangements','Separated/Divorced','Single','Widower'))
   
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #type of center (pub/priv)
-  dplyr::mutate(tipo_centro=factor(tipo_centro, labels=c('Private','Public'))) %>%
+  CONS_C1_df_dup_SEP_2020_prev4_explore$tipo_centro<-
+  factor(CONS_C1_df_dup_SEP_2020_prev4_explore$tipo_centro, labels=c('Private','Public'))
 
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #occupational status (inactive…)
-  dplyr::mutate(estatus_ocupacional=factor(estatus_ocupacional, labels=c('Unemployed',
+  CONS_C1_df_dup_SEP_2020_prev4_explore$estatus_ocupacional<-
+  factor(CONS_C1_df_dup_SEP_2020_prev4_explore$estatus_ocupacional, labels=c('Unemployed',
                                                                            'Employed',
-                                                                           'Inactive'))) %>%
-  dplyr::mutate(cat_ocupacional=factor(cat_ocupacional, labels=c('Salaried',
+                                                                           'Inactive'))
+  CONS_C1_df_dup_SEP_2020_prev4_explore$cat_ocupacional<-
+  factor(CONS_C1_df_dup_SEP_2020_prev4_explore$cat_ocupacional, labels=c('Salaried',
                                                                    'Self-employed',
                                                                    'Employer',
                                                                    'Unpaid family labour',
                                                                    'Other',
-                                                                   'Volunteer worker'))) %>%
+                                                                   'Volunteer worker'))
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #age of onset of drug use
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #physical diagnose
-
+CONS_C1_df_dup_SEP_2020_prev4_explore<-
+  CONS_C1_df_dup_SEP_2020_prev4_explore %>% 
     dplyr::mutate(dg_fis_anemia= ifelse(grepl("Anemia",diagnostico_trs_fisico),1,0))%>%
     dplyr::mutate(dg_fis_card= ifelse(grepl("Cardiopat",diagnostico_trs_fisico),1,0))%>%
     dplyr::mutate(dg_fis_in_study= ifelse(grepl("En estudio",diagnostico_trs_fisico),1,0))%>%
@@ -1574,9 +1611,54 @@ CONS_C1_df_dup_SEP_2020_prev4_explore<-
     dplyr::mutate(otros_pr_sm_otros= ifelse(grepl("Otros",otros_probl_at_sm_or),1,0))%>%
     dplyr::mutate(otros_pr_sm_otros= ifelse(grepl("Prisionalización",otros_probl_at_sm_or),1,otros_pr_sm_otros))%>%
     dplyr::mutate(otros_pr_sm_vif= ifelse(grepl("Violencia Intrafamiliar",otros_probl_at_sm_or),1,0)) %>% 
- 
-    dplyr::mutate(dg_trs_cons_sus_or= dplyr::case_when(grepl("Consumo Perjudicial",dg_trs_cons_sus_or)~"Hazardous consumption",grepl("Dependencia",dg_trs_cons_sus_or)~"Drug dependence",TRUE~NA_character_)) #%>%   
+    dplyr::mutate(dg_trs_cons_sus_or= factor(dplyr::case_when(grepl("Consumo Perjudicial",dg_trs_cons_sus_or)~"Hazardous consumption",grepl("Dependencia",dg_trs_cons_sus_or)~"Drug dependence",TRUE~NA_character_))) %>%   
   
+    #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #starting substance
+  #Segunda Sustancia de Inicio(Sólo más frecuentes)	Second Starting Substance
+  #Tercera Sustancia de Inicio(Sólo más frecuentes)	Third Starting Substance
+  #Sustancia de Inicio (Sólo más frecuentes)	Starting Substance (Only more frequent)
+  dplyr::mutate(sus_ini_mod_pb=dplyr::case_when(grepl("Past",sus_ini_3_mod)~"Paste Base",
+                                                grepl("Past",sus_ini_2_mod)~"Paste Base",
+                                                grepl("Past",sus_ini_mod)~"Paste Base",
+                                                TRUE~NA_character_)) %>%
+  dplyr::mutate(sus_ini_mod_oh=dplyr::case_when(grepl("Alcohol",sus_ini_3_mod)~"Alcohol",
+                                                grepl("Alcohol",sus_ini_2_mod)~"Alcohol",
+                                                grepl("Alcohol",sus_ini_mod)~"Alcohol",
+                                                TRUE~NA_character_)) %>% 
+  dplyr::mutate(sus_ini_mod_coc=dplyr::case_when(grepl("Coca",sus_ini_3_mod)~"Cocaine hydrochloride",
+                                                grepl("Coca",sus_ini_2_mod)~"Cocaine hydrochloride",
+                                                grepl("Coca",sus_ini_mod)~"Cocaine hydrochloride",
+                                                TRUE~NA_character_)) %>%   
+  dplyr::mutate(sus_ini_mod_mar=dplyr::case_when(grepl("Mari",sus_ini_3_mod)~"Marijuana",
+                                                grepl("Mari",sus_ini_2_mod)~"Marijuana",
+                                                grepl("Mari",sus_ini_mod)~"Marijuana",
+                                                TRUE~NA_character_)) %>%   
+  dplyr::mutate(sus_ini_mod_otr=dplyr::case_when(grepl("Ot",sus_ini_3_mod)~"Other",
+                                                grepl("Ot",sus_ini_2_mod)~"Other",
+                                                grepl("Ot",sus_ini_mod)~"Other",
+                                                TRUE~NA_character_)) %>%
+  dplyr::mutate(sus_ini_mod_mvv=dplyr::case_when(grepl("Other",sus_ini_mod_otr)~"Other",
+                                                 grepl("Marijuana",sus_ini_mod_mar)~"Marijuana",
+                                                 grepl("Alcohol",sus_ini_mod_oh)~"Alcohol",
+                                                 grepl("Cocaine hydrochloride",sus_ini_mod_coc)~"Cocaine hydrochloride",
+                                                grepl("Paste Base",sus_ini_mod_pb)~"Paste Base",
+                                                TRUE~NA_character_)) %>%
+  dplyr::mutate(sus_ini_mod_mvv=factor(sus_ini_mod_mvv,labels=c("Alcohol",
+                                                                "Cocaine hydrochloride",
+                                                                "Marijuana",
+                                                                "Other",
+                                                                "Cocaine paste"))) %>%   
+  dplyr::mutate(con_quien_vive_rec=factor(con_quien_vive_rec,labels=c("With relatives",
+                                                                "With couple and children",
+                                                                "Other",
+                                                                "Alone",
+                                                                "With children only",
+                                                                "With couple only"))) %>%  
+  dplyr::mutate(hijos_trat_res=ifelse(num_hijos_trat_res_mod>0,1,0)) %>% 
+  dplyr::mutate(hijos_trat_res=factor(hijos_trat_res,labels=c("Without children","With children")))
+
+
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 library(compareGroups)
@@ -1586,11 +1668,15 @@ knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
 label(CONS_C1_df_dup_SEP_2020_prev4_explore$sexo_2) <- "Sex"
 label(CONS_C1_df_dup_SEP_2020_prev4_explore$escolaridad_rec) <- "Educational Attainment"
 label(CONS_C1_df_dup_SEP_2020_prev4_explore$freq_cons_sus_prin) <- "Frequency of use of primary drug at admission"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$con_quien_vive_rec) <- 'People that Share Household with the User (Cohabitation Status)'
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$hijos_trat_res) <- 'Have Children in Treatment'
+
 
 label(CONS_C1_df_dup_SEP_2020_prev4_explore$tipo_de_plan_2) <- "Treatment Plan"
 label(CONS_C1_df_dup_SEP_2020_prev4_explore$tipo_de_programa_2) <- "Treatment Program"
 label(CONS_C1_df_dup_SEP_2020_prev4_explore$edad_al_ing_grupos) <- "Age at Admission"
 label(CONS_C1_df_dup_SEP_2020_prev4_explore$sus_principal_mod) <- "Primary substance at admission"
+label(CONS_C1_df_dup_SEP_2020_prev4_explore$sus_ini_mod_mvv) <- "Starting Substance (Most vulnerable value)"
 label(CONS_C1_df_dup_SEP_2020_prev4_explore$motivodeegreso_mod_imp) <- "Motive of discharge"
 label(CONS_C1_df_dup_SEP_2020_prev4_explore$origen_ingreso_mod) <- "Motive of Admission to Treatment (First Entry)"
 label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_cie_10_rec) <- "Psychiatric comorbidity"
@@ -1627,15 +1713,16 @@ label(CONS_C1_df_dup_SEP_2020_prev4_explore$edad_ini_sus_prin_grupos) <- "Age of
 
 label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_trs_cons_sus_or) <- "Diagnosis of substance use"
 
-table <- suppressWarnings(compareGroups(event ~ sexo_2+ escolaridad_rec+ freq_cons_sus_prin+ tipo_de_plan_2+ tipo_de_programa_2+ 
-        edad_al_ing_grupos+  sus_principal_mod+  motivodeegreso_mod_imp+  origen_ingreso_mod+  dg_cie_10_rec+  estado_conyugal_2+  edad_ini_cons+  edad_ini_sus_prin_grupos+ cat_ocupacional+  estatus_ocupacional+  macrozona+  nombre_region+  tipo_centro+ dias_treat_imp_sin_na+ dg_fis_anemia+ dg_fis_card+ dg_fis_in_study+ dg_fis_enf_som+ dg_fis_ets+ dg_fis_hep_alc+ dg_fis_hep_b+ dg_fis_hep_cro+ dg_fis_inf+ dg_fis_otr_cond_fis_ries_vit+ dg_fis_otr_cond_fis+ dg_fis_pat_buc+ dg_fis_pat_ges_intrau+ dg_fis_trau_sec+ otros_pr_sm_abu_sex+ otros_pr_sm_exp_com_sex+ otros_pr_sm_otros+ otros_pr_sm_vif+ dg_trs_cons_sus_or,
-                       method= c(sexo_2=3,
+table2 <- suppressWarnings(compareGroups(event ~ sexo_2+ con_quien_vive_rec+ hijos_trat_res+ escolaridad_rec+ freq_cons_sus_prin+ tipo_de_plan_2+ tipo_de_programa_2+ edad_al_ing_grupos+  sus_principal_mod+ sus_ini_mod_mvv+ motivodeegreso_mod_imp+  origen_ingreso_mod+  dg_cie_10_rec+  estado_conyugal_2+  edad_ini_cons+  edad_ini_sus_prin_grupos+ cat_ocupacional+  estatus_ocupacional+  macrozona+  nombre_region+  tipo_centro+ dias_treat_imp_sin_na+ dg_fis_anemia+ dg_fis_card+ dg_fis_in_study+ dg_fis_enf_som+ dg_fis_ets+ dg_fis_hep_alc+ dg_fis_hep_b+ dg_fis_hep_cro+ dg_fis_inf+ dg_fis_otr_cond_fis_ries_vit+ dg_fis_otr_cond_fis+ dg_fis_pat_buc+ dg_fis_pat_ges_intrau+ dg_fis_trau_sec+ otros_pr_sm_abu_sex+ otros_pr_sm_exp_com_sex+ otros_pr_sm_otros+ otros_pr_sm_vif+ dg_trs_cons_sus_or, method= c(
+                                            sexo_2=3,
                                             escolaridad_rec=3,
                                             freq_cons_sus_prin=3,
+                                            hijos_trat_res=3,
                                             tipo_de_plan_2=3,
                                             tipo_de_programa_2=3,
                                             edad_al_ing_grupos=3,
                                             sus_principal_mod=3,
+                                            sus_ini_mod_mvv=3,
                                             motivodeegreso_mod_imp=3,
                                             origen_ingreso_mod=3,
                                             dg_cie_10_rec=3,
@@ -1672,12 +1759,12 @@ table <- suppressWarnings(compareGroups(event ~ sexo_2+ escolaridad_rec+ freq_co
                        var.equal=T
                        )
 )
- #Possible values are: 1 - forces analysis as "normal-distributed"; 2 - forces analysis as "continuous non-normal"; 3 - forces analysis as "categorical"; and 4 - NA, which performs a Shapiro-Wilks test to decide between normal or non-normal. 
+ #Possible values are: 1 - forcvovvves analysis as "normal-distributed"; 2 - forces analysis as "continuous non-normal"; 3 - forces analysis as "categorical"; and 4 - NA, which performs a Shapiro-Wilks test to decide between normal or non-normal. 
 
-pvals <- getResults(table)
+pvals2 <- getResults(table2)
 #p.adjust(pvals, method = "BH")
-restab <- createTable(table, show.p.overall = T)
- export2md(restab, size=9, first.strip=T, hide.no="no", position="center",
+restab2 <- createTable(table2, show.p.overall = T)
+ export2md(restab2, size=9, first.strip=T, hide.no="no", position="center",
            format="html",caption= "Table 3. Summary descriptives at baseline, between Users with more than one treatment (=1) and Users with only a single treatment (=0) from 2010-2019",col.names=c("Variables","Users w/ only one treatment", "Users w/ more than one treatment", "p-value"))%>%
   kableExtra::add_footnote(c("Note. Variables of C1 dataset had to be standardized before comparison;", "Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
   kableExtra::scroll_box(width = "100%", height = "375px")
@@ -2028,17 +2115,18 @@ dplyr::mutate(escolaridad_rec=factor(escolaridad_rec,labels=c('1-More than high 
 
 ```{r cons1_sep,echo=T, paged.print=TRUE, eval=T}
 CONS_C1_df_dup_JUL_2020 %>% 
-  dplyr::arrange(hash_key,desc(fech_ing)) %>% 
+  dplyr::arrange(hash_key,fech_ing) %>% 
 dplyr::group_by(hash_key) %>% 
   dplyr::mutate(dup=row_number()) %>%
   #*La ventaja de duplicates_filtered es que considera los perdidos
   dplyr::mutate(duplicates_filtered= n()) %>% 
   #*obtener la última fecha en que registra la observación
-  dplyr::mutate(startdate= dplyr::last(fech_ing_num), enddate= dplyr::first(fech_egres_num), 
+  dplyr::mutate(startdate= dplyr::first(fech_ing_num), enddate= dplyr::last(fech_egres_num), 
                 person_days=enddate-startdate) %>% 
   dplyr::ungroup() %>% 
   dplyr::mutate(a_botar=ifelse(dup==1,1,NA_real_)) %>% 
   dplyr::mutate(event=ifelse(duplicates_filtered>1,1,0)) %>% 
+  #dplyr::select(hash_key,fech_ing,dup, startdate, enddate,person_days,a_botar,event)
 
   dplyr::mutate(person_years=person_days/365.25)%>% 
   #dplyr::mutate(treat= ifelse(row %in% unlist(CONS_C1_df_dup_JUL_2020_match_top_sel$row),1,0))%>%
@@ -2160,7 +2248,6 @@ dplyr::group_by(hash_key) %>%
                                                                  'Unpaid family labour',
                                                                  'Other',
                                                                  'Volunteer worker'))) %>%
-
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #Had children into Residential Treatment
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
@@ -2168,7 +2255,15 @@ dplyr::group_by(hash_key) %>%
   dplyr::mutate(hijos_trat_res=ifelse(num_hijos_trat_res_mod>0,1,0)) %>% 
   dplyr::mutate(hijos_trat_res=factor(hijos_trat_res, labels=c('Did not had children in treatment',
                                                               'Had children in treatments'))) %>% 
-                  
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #Cohabitation Status
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+    dplyr::mutate(con_quien_vive_rec=factor(con_quien_vive_rec,labels=c("With relatives",
+                                                                        "With couple and children",
+                                                                        "Other",
+                                                                        "Alone",
+                                                                        "With children only",
+                                                                        "With couple only"))) %>%    
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #age of onset of drug use
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
