@@ -2656,8 +2656,24 @@ CONS_C1_df_dup_JUL_2020_cons20 %>%
  # CONS_C1_df_dup_JUL_2020_cons19 %>% dplyr::mutate(n_hash=n())%>% dplyr::filter(n_hash>1)%>% select(diff_bet_treat_1) %>%  summary()
 ```
 
-```{r std_final_as_factor_vars,eval=T, echo=T, paged.print=TRUE}
+### Homologate Occupational Status from Occupational Categories
+
+<br>
+
+Due to the collapse in the databases, many occupational status did not coincide with the occupational category in some users. This is why we decided to consider as employed those users that had an occupational category.
+
+<br>
+
+```{r std21_occupational_status_category, echo=T, paged.print=TRUE, messages=F, warnings=F,eval=T}
 CONS_C1_df_dup_JUL_2020_cons20%>%
+    dplyr::mutate(estatus_ocupacional= dplyr::case_when(!is.na(cat_ocupacional)&!is.na(estatus_ocupacional)~"Empleado",
+                                                        TRUE~as.character(estatus_ocupacional)))%>% 
+    dplyr::mutate(estatus_ocupacional= as.factor(estatus_ocupacional))%>% 
+      assign("CONS_C1_df_dup_JUL_2020_cons21",., envir = .GlobalEnv)
+```
+
+```{r std_final_as_factor_vars,eval=T, echo=T, paged.print=TRUE}
+CONS_C1_df_dup_JUL_2020_cons21%>%
   dplyr::mutate_at(vars(contains("dg_trs_psiq_cie_10"),contains("dg_trs_psiq_dsm_iv"),contains("dg_trs_psiq_sub_cie_10"),contains("dg_trs_psiq_sub_dsm_iv"),contains("tipo_de_plan"),c('tipo_de_programa_2','nombre_centro','tipo_centro','servicio_de_salud','senda','tipo_centro_derivacion','usuario_tribunal_trat_droga','motivodeegreso_mod_imp','macrozona','nombre_region','comuna_residencia_cod','identidad_de_genero','origen_ingreso_mod','x_se_trata_mujer_emb','usuario_tribunal_trat_droga','tiene_menores_de_edad_a_cargo','ha_estado_embarazada_egreso','discapacidad','opcion_discapacidad','escolaridad','edad_al_ing_grupos','nacionalidad','sexo_2','embarazo','estado_conyugal_2','edad_grupos','freq_cons_sus_prin','via_adm_sus_prin_act','etnia_cor','nacionalidad_2','etnia_cor_2','sus_ini_2_mod','sus_ini_3_mod','sus_ini_mod','con_quien_vive','estatus_ocupacional','cat_ocupacional','sus_principal_mod', 'tipo_de_vivienda_mod','tenencia_de_la_vivienda_mod','rubro_trabaja_mod','otras_sus1_mod','otras_sus2_mod','otras_sus3_mod','dg_trs_cons_sus_or','diagnostico_trs_fisico','otros_probl_at_sm_or','ano_bd_first','ano_bd_last','centro_muj','cie_10','dsm_iv','escolaridad_rec','con_quien_vive_rec','edad_ini_sus_prin_grupos')),~as.factor(.))%>%
   dplyr::mutate_at(c('id_centro_sig_trat','tipo_plan_sig_trat','tipo_programa_sig_trat','senda_sig_trat','at_least_one_cont_entry','id_centro'),~as.factor(.))%>%
   dplyr::mutate_at(c('tipo_de_plan_2_concat_a'),~as.character(.))%>%
