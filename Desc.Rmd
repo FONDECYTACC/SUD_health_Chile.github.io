@@ -2133,7 +2133,7 @@ dplyr::group_by(hash_key) %>%
   dplyr::mutate(origen_ingreso_mod= dplyr::case_when(grepl("Otro Centro Tratamiento",as.character(origen_ingreso_mod))~"Derivación Asistida", TRUE~as.character(origen_ingreso_mod)))%>%  
   dplyr::mutate(origen_ingreso_mod=factor(origen_ingreso_mod,labels=c('Spontaneous','Assisted Referral','Other','Justice Sector','Health Sector')))  %>% 
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
-  #CIE_10  
+  #CIE_10 - CORREGIDO
   dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or,x4_dg_trs_psiq_cie_10_or,x5_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl("En estudio",as.character(.))~0,grepl("Sin trastorno",as.character(.))~0,is.na(.)~0,TRUE~1), .names="dg_{col}"))%>%
   dplyr::mutate(dg_total_cie_10 = base::rowSums(dplyr::select(., dg_dg_trs_psiq_cie_10_or, dg_x2_dg_trs_psiq_cie_10_or, dg_x3_dg_trs_psiq_cie_10_or, dg_x4_dg_trs_psiq_cie_10_or, dg_x5_dg_trs_psiq_cie_10_or), na.rm=T))%>%  
   dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_psiq_cie_10_or,x4_dg_trs_psiq_cie_10_or,x5_dg_trs_psiq_cie_10_or),~dplyr::case_when(grepl("En estudio",as.character(.))~1,grepl("Sin trastorno",as.character(.))~0,is.na(.)~0,TRUE~0), .names="instudy_{col}"))%>%
@@ -2144,6 +2144,21 @@ dplyr::group_by(hash_key) %>%
                                                TRUE~0))%>%
   dplyr::mutate(dg_cie_10_rec=as.factor(dg_cie_10_rec))%>%
   dplyr::mutate(dg_cie_10_rec=factor(dg_cie_10_rec,labels=c('Without psychiatric comorbidity','Diagnosis unknown (under study)', 'With psychiatric comorbidity'))) %>% 
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+    #DSM-IV -CORREGIDO
+dplyr::mutate(across(c(dg_trs_psiq_dsm_iv_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or,x4_dg_trs_psiq_dsm_iv_or),~dplyr::case_when(grepl("En estudio",as.character(.))~1,grepl("Sin trastorno",as.character(.))~0,is.na(.)~0,TRUE~0),.names = "{col}_mod1b"))%>%
+  dplyr::mutate(total_dsm_iv_en_est = base::rowSums(dplyr::select(.,ends_with("_mod1b"))))%>%  
+dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or,x4_dg_trs_psiq_dsm_iv_or),~dplyr::case_when(grepl("En estudio",as.character(.),ignore.case = T)~0,grepl("Sin trastorno",as.character(.),ignore.case = T)~0,is.na(.)~0,TRUE~1),.names = "{col}_mod2b"))%>%
+  dplyr::mutate(total_dsm_iv_dg = base::rowSums(dplyr::select(.,ends_with("_mod2b"))))%>%  
+  
+  dplyr::mutate(dg_dsm_iv_rec=dplyr::case_when(total_dsm_iv_dg>0 ~"With psychiatric comorbidity",
+                       is.na(total_dsm_iv_dg) & total_dsm_iv_en_est>0~"Diagnosis unknown (under study)",
+                       total_dsm_iv_dg==0 & total_dsm_iv_en_est>0~"Diagnosis unknown (under study)",
+                       TRUE~"Without psychiatric comorbidity"))%>%
+  dplyr::mutate(dg_dsm_iv_rec=as.factor(dg_dsm_iv_rec)) %>% 
+  dplyr::select(-ends_with("_mod1b"),-ends_with("_mod2b"),-total_dsm_iv_dg,-total_dsm_iv_en_est)%>%
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+  #MACROZONA
   dplyr::mutate(macrozona=factor(macrozona, labels=c('Center', 'North', 'South'))) %>%
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #Edad grupos  
@@ -2185,7 +2200,7 @@ dplyr::group_by(hash_key) %>%
   #primary substance
   dplyr::mutate(sus_principal_mod=factor(sus_principal_mod,labels=c("Alcohol",
                                                                     "Cocaine hydrochloride",
-                                                                    "Marijuangma",
+                                                                    "Marijuana",
                                                                     "Other",
                                                                     "Cocaine paste"))) %>%   
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
@@ -2307,14 +2322,14 @@ dplyr::group_by(hash_key) %>%
                                    starts_with("dg_fis_")),~factor(., labels=c("Absence", "Presence")))%>%
   
   #_#_#_#_#_#_#_#_#_#_#_
-#Corrección número de diagnósticos cie-10
+#Corrección número de diagnósticos dsm-iv
   #_#_#_#_#_#_#_#_#_#_#_
     dplyr::mutate(cnt_mod_cie_10_or= dplyr::case_when(as.character(cie_10)=="Diagnosticado/a (uno en estudio)"~cnt_mod_cie_10_or-1, is.na(dg_trs_psiq_cie_10_or)~0, TRUE~cnt_mod_cie_10_or)) %>% 
+      dplyr::mutate(cnt_mod_dsm_iv_or= dplyr::case_when(as.character(dsm_iv)=="Diagnosticado/a (uno en estudio)"~cnt_mod_dsm_iv_or-1, is.na(dg_trs_psiq_dsm_iv_or)~0, TRUE~cnt_mod_dsm_iv_or)) %>% 
 #_#_#_#_#_#_#_#_#_#_#_
   #Corrección número de diagnósticos físicos
 #_#_#_#_#_#_#_#_#_#_#_
-  #sumrows de los diagnósticos, excluyendo a "instudy" dg_fis_in_study
-
+  #sumrows de los diagnósticos, excalesism1actevv
 #otros_pr_sm_abu_sex, otros_pr_sm_exp_com_sex, otros_pr_sm_otros, otros_pr_sm_vif
       dplyr::mutate(across(c(dg_fis_anemia, dg_fis_card,  dg_fis_enf_som, dg_fis_ets, dg_fis_hep_alc, dg_fis_hep_b, dg_fis_hep_cro, dg_fis_inf, dg_fis_otr_cond_fis_ries_vit, dg_fis_otr_cond_fis, dg_fis_pat_buc, dg_fis_pat_ges_intrau, dg_fis_trau_sec),~as.numeric(.)-1, .names="num_dg_fis_{col}"))%>%
       dplyr::mutate(cnt_diagnostico_trs_fisico= base::rowSums(dplyr::select(., num_dg_fis_dg_fis_anemia,  num_dg_fis_dg_fis_card,  num_dg_fis_dg_fis_enf_som, num_dg_fis_dg_fis_ets, num_dg_fis_dg_fis_hep_alc, num_dg_fis_dg_fis_hep_b, num_dg_fis_dg_fis_hep_cro, num_dg_fis_dg_fis_inf, num_dg_fis_dg_fis_otr_cond_fis_ries_vit, num_dg_fis_dg_fis_otr_cond_fis, num_dg_fis_dg_fis_pat_buc, num_dg_fis_dg_fis_pat_ges_intrau, num_dg_fis_dg_fis_trau_sec)))%>% 
@@ -2346,7 +2361,7 @@ dplyr::group_by(hash_key) %>%
 
 # Health Conditions & Readmissions
 
-To describe the incidence rate of SUD treatment readmissions by type of health conditions
+To describe the incidence rate of SUD treatment readmissions by type of health conditions, we recoded the different variables of interest into pairs of different groups by each variable.
 
 <br>
 
@@ -2367,8 +2382,8 @@ CONS_C1_df_dup_SEP_2020 %>%
       dplyr::mutate(cnt_mod_cie_10_or_irr=dplyr::case_when(cnt_mod_cie_10_or==0 & dg_cie_10_rec!="Diagnosis unknown (under study)"~0,
                                                            cnt_mod_cie_10_or>0~1,
                                                            TRUE~NA_real_)) %>% 
-      dplyr::mutate(cnt_mod_cie_10_or_in_study_irr=dplyr::case_when(dg_cie_10_rec=="Diagnosis unknown (under study)"~1,
-                                                                    dg_cie_10_rec=="Without psychiatric comorbidity"~0,
+      dplyr::mutate(cnt_mod_cie_10_or_in_study_irr=dplyr::case_when(as.character(dg_cie_10_rec)=="Diagnosis unknown (under study)"~1,
+                                                                    as.character(dg_cie_10_rec)=="Without psychiatric comorbidity"~0,
                                                                     TRUE~NA_real_)) %>% 
 
       dplyr::mutate(cnt_otros_probl_at_sm_or_irr=dplyr::case_when(cnt_otros_probl_at_sm_or==0~0,

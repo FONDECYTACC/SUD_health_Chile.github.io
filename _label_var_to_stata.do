@@ -232,6 +232,7 @@ cap label variable a_botar "Descarta tratamientos posteriores por usuario(Perdid
 cap label variable event "Usuarios con Tratamiento Posterior (1=Reingreso x HASH)/Users with Posterior Treatments (1=Readmission)"
 cap label variable person_years "Años en los que estado un usuario en el sistema para el estudio/User's Years available in the system for the study"
 cap label variable dg_cie_10_rec "Diagnóstico CIE-10 (1 o más)(Recodificado)/Psychiatric Diagnoses (ICD-10)(one or more)(Recoded)"
+cap label variable dg_dsm_iv_rec ""
 cap label variable sus_ini_mod_mvv "Sustancia de Inicio (Valor más vulnerable)/Starting Substance (Most vulnerable value)"
 cap label variable hijos_trat_res "Tiene Hijos en Ingreso a Tratamiento Residencial del Último Registro/Have Children in Residential Treatment of the Last Entry"
 cap label variable dg_fis_anemia "Dignóstico Físico, Anemia/Physical Dg. Anemia"

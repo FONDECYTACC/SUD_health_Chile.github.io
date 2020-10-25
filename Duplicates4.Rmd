@@ -2167,9 +2167,9 @@ CONS_C1_df_dup_JUL_2020_cons15%>%
   dplyr::mutate(mod_dsm_iv_or= sub(";Sin trastorno;",replacement= ";",mod_dsm_iv_or,ignore.case=T,perl=T))%>%
   dplyr::mutate(mod_dsm_iv_or= stringr::str_replace_all(mod_dsm_iv_or, "; Sin trastorno;", ";"))%>%
   
-  dplyr::mutate(mod_cie_10_or=dplyr::case_when(mod_cie_10_or=="Sin trastorno\\(NA\\); En estudio\\(NA\\)"~"En estudio(NA)",mod_cie_10_or=="En estudio\\(NA\\); Sin trastorno\\(NA\\)"~"En estudio(NA)",TRUE~mod_cie_10_or))%>%
-  dplyr::mutate(mod_dsm_iv_or=dplyr::case_when(mod_dsm_iv_or=="Sin trastorno; En estudio"~"En estudio",
-                                               mod_dsm_iv_or=="En estudio; Sin trastorno"~"En estudio",
+  dplyr::mutate(mod_cie_10_or=dplyr::case_when(grepl("Sin trastorno\\(NA\\); En estudio\\(NA\\)",mod_cie_10_or)~"En estudio(NA)",grepl("En estudio\\(NA\\); Sin trastorno\\(NA\\)",mod_cie_10_or)~"En estudio(NA)",TRUE~mod_cie_10_or))%>%
+  dplyr::mutate(mod_dsm_iv_or=dplyr::case_when(grepl("Sin trastorno; En estudio",mod_dsm_iv_or)~"En estudio",
+                                               grepl("En estudio; Sin trastorno",mod_dsm_iv_or)~"En estudio",
                                                TRUE~mod_dsm_iv_or))%>%
   
        dplyr::mutate(across(c("mod_dsm_iv_or","mod_cie_10_or","diagnostico_trs_fisico","otros_probl_at_sm_or"),~str_count(., pattern = ";")+1,.names="cnt_{col}"))%>% 
@@ -2258,12 +2258,12 @@ dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_cie_10_or,x3_dg_trs_
                        total_cie_10_dg==0 & total_cie_10_en_est>0~"En estudio (sin diagnosticados)",
                        TRUE~"Sin información diagnóstica"))%>%
   
-dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or,x4_dg_trs_psiq_dsm_iv_or),~dplyr::case_when(grepl("En estudio",as.character(.))~1,grepl("Sin trastorno",as.character(.))~0,is.na(.)~0,TRUE~0),.names = "{col}_mod1b"))%>%
+dplyr::mutate(across(c(dg_trs_psiq_dsm_iv_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or,x4_dg_trs_psiq_dsm_iv_or),~dplyr::case_when(grepl("En estudio",as.character(.))~1,grepl("Sin trastorno",as.character(.))~0,is.na(.)~0,TRUE~0),.names = "{col}_mod1b"))%>%
   dplyr::mutate(total_dsm_iv_en_est = base::rowSums(dplyr::select(.,ends_with("_mod1b"))))%>%  
-dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or,x4_dg_trs_psiq_dsm_iv_or),~dplyr::case_when(grepl("En estudio",as.character(.),ignore.case = T)~0,grepl("Sin trastorno",as.character(.),ignore.case = T)~0,is.na(.)~0,TRUE~1),.names = "{col}_mod2b"))%>%
+dplyr::mutate(across(c(dg_trs_psiq_dsm_iv_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or,x4_dg_trs_psiq_dsm_iv_or),~dplyr::case_when(grepl("En estudio",as.character(.),ignore.case = T)~0,grepl("Sin trastorno",as.character(.),ignore.case = T)~0,is.na(.)~0,TRUE~1),.names = "{col}_mod2b"))%>%
   dplyr::mutate(total_dsm_iv_dg = base::rowSums(dplyr::select(.,ends_with("_mod2b"))))%>%  
   
-  dplyr::mutate(dsm_iv=dplyr::case_when(total_dsm_iv_dg>0 & total_dsm_iv_en_est>0~"Diagnosticado/a (sin otros registros)",
+  dplyr::mutate(dsm_iv=dplyr::case_when(total_dsm_iv_dg>0 & total_dsm_iv_en_est>0~"Diagnosticado/a (uno en estudio)",
                        total_dsm_iv_dg>0 & total_dsm_iv_en_est==0~"Diagnosticado/a (sin otros registros)",
                        total_dsm_iv_dg==0 & total_dsm_iv_en_est>0~"En estudio (sin diagnosticados)",
                        TRUE~"Sin información diagnóstica"))%>%
@@ -2271,6 +2271,9 @@ dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_
                 -total_cie_10_dg,-total_cie_10_en_est,-total_dsm_iv_dg,-total_dsm_iv_en_est)%>%
   
 assign("CONS_C1_df_dup_JUL_2020_cons17",., envir = .GlobalEnv)
+#CONS_C1_df_dup_JUL_2020_cons17 %>%  janitor::tabyl(dsm_iv)
+#CONS_C1_df_dup_JUL_2020_cons17 %>%  janitor::tabyl(cie_10)
+#CONS_C1_df_dup_JUL_2020_cons17 %>%  janitor::tabyl(cnt_mod_cie_10_or)
 ```  
   
 ```{r std18_stand_foll_treat, echo=T, paged.print=TRUE,eval=T}
@@ -2467,7 +2470,7 @@ hash_key_escolaridad_rules%>%
   dplyr::select(row,no_suggestions, starts_with("ed_"))
   #dplyr::filter(no_suggestions>1) %>% 
 ```
-```{r std19b_education_series, echo=T, paged.print=TRUE,eval=T}
+```{r std19b_education_series, eval=T, echo=T, warning=FALSE, paged.print=TRUE}
 #2,285 #6,320
   CONS_C1_df_dup_JUL_2020_cons18%>%
   dplyr::mutate(obs=case_when(row %in% as.numeric(unlist(hash_key_escolaridad_rules_final$row))~glue::glue("{obs};4.99. Education Changed"),TRUE~obs))%>%
@@ -2553,12 +2556,12 @@ dplyr::filter(hash_key %in% unlist(hash_key_escolaridad2))%>%
     dplyr::mutate(esc_num_first=dplyr::first(esc_num),esc_num_last=dplyr::last(esc_num))%>% 
     dplyr::ungroup()%>%
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-  dplyr::mutate(ed2_a= dplyr::case_when(esc_num_first==min_ed & nas_ed==0 & n_dis_esc==2~min_ed,TRUE~NA_real_))%>% #
+  dplyr::mutate(ed2_a= suppressWarnings(dplyr::case_when(esc_num_first==min_ed & nas_ed==0 & n_dis_esc==2~min_ed,TRUE~NA_real_)))%>% #
   dplyr::group_by(hash_key) %>% 
-  dplyr::mutate(ed2_a_n=ifelse(abs(max(ed2_a,na.rm=T)) == Inf,NA,ed2_a)) %>% 
+  dplyr::mutate(ed2_a_n=ifelse(abs(suppressWarnings(max(ed2_a,na.rm=T))) == Inf,NA,ed2_a)) %>% 
   ungroup() %>% 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-  dplyr::mutate(ed2_b= dplyr::case_when(is.na(ed2_a_n) & nas_ed==0 & ant_ed_problematico_post==1 & post_ed_problematico_ant==1 & n_dis_esc==2~esc_num_lead_ant,TRUE~NA_real_))
+  dplyr::mutate(ed2_b= suppressWarnings(dplyr::case_when(is.na(ed2_a_n) & nas_ed==0 & ant_ed_problematico_post==1 & post_ed_problematico_ant==1 & n_dis_esc==2~esc_num_lead_ant,TRUE~NA_real_)))
   
   CONS_C1_df_dup_JUL_2020_cons19%>%
   dplyr::left_join(hash_key_escolaridad_rules2[,c("row","ed2_a","ed2_b")], by="row")%>%
@@ -2609,9 +2612,10 @@ CONS_C1_df_dup_JUL_2020_cons19b %>%
   dplyr::mutate(keep_cum_dias_trat_sin_na=cumsum(tidyr::replace_na(dias_treat_imp_sin_na, 0)))%>%
   dplyr::mutate(mean_cum_dias_trat_sin_na=cum_dias_trat_sin_na/rn_hash)%>%
   dplyr::mutate(keep_mean_cum_dias_trat_sin_na=cum_dias_trat_sin_na/rn_hash)%>% 
-  dplyr::mutate(cum_diff_bet_treat=cumsum(tidyr::replace_na(diff_bet_treat, 0)))%>% 
+  dplyr::mutate(cum_diff_bet_treat=cumsum(tidyr::replace_na(diff_bet_treat, 0)))%>%
   dplyr::mutate(keep_cum_diff_bet_treat=cumsum(tidyr::replace_na(diff_bet_treat, 0)))%>% 
   dplyr::mutate(mean_cum_diff_bet_treat=cum_diff_bet_treat/rn_hash)%>%
+  dplyr::mutate(mean_cum_diff_bet_treat=dplyr::case_when(n_hash== rn_hash~NA_real_,TRUE~mean_cum_diff_bet_treat)) %>% 
   dplyr::mutate(keep_mean_cum_diff_bet_treat=mean_cum_diff_bet_treat)%>%
   dplyr::ungroup()%>% 
 
@@ -2656,24 +2660,8 @@ CONS_C1_df_dup_JUL_2020_cons20 %>%
  # CONS_C1_df_dup_JUL_2020_cons19 %>% dplyr::mutate(n_hash=n())%>% dplyr::filter(n_hash>1)%>% select(diff_bet_treat_1) %>%  summary()
 ```
 
-### Homologate Occupational Status from Occupational Categories
-
-<br>
-
-Due to the collapse in the databases, many occupational status did not coincide with the occupational category in some users. This is why we decided to consider as employed those users that had an occupational category.
-
-<br>
-
-```{r std21_occupational_status_category, echo=T, paged.print=TRUE, messages=F, warnings=F,eval=T}
-CONS_C1_df_dup_JUL_2020_cons20%>%
-    dplyr::mutate(estatus_ocupacional= dplyr::case_when(!is.na(cat_ocupacional)&!is.na(estatus_ocupacional)~"Empleado",
-                                                        TRUE~as.character(estatus_ocupacional)))%>% 
-    dplyr::mutate(estatus_ocupacional= as.factor(estatus_ocupacional))%>% 
-      assign("CONS_C1_df_dup_JUL_2020_cons21",., envir = .GlobalEnv)
-```
-
 ```{r std_final_as_factor_vars,eval=T, echo=T, paged.print=TRUE}
-CONS_C1_df_dup_JUL_2020_cons21%>%
+CONS_C1_df_dup_JUL_2020_cons20%>%
   dplyr::mutate_at(vars(contains("dg_trs_psiq_cie_10"),contains("dg_trs_psiq_dsm_iv"),contains("dg_trs_psiq_sub_cie_10"),contains("dg_trs_psiq_sub_dsm_iv"),contains("tipo_de_plan"),c('tipo_de_programa_2','nombre_centro','tipo_centro','servicio_de_salud','senda','tipo_centro_derivacion','usuario_tribunal_trat_droga','motivodeegreso_mod_imp','macrozona','nombre_region','comuna_residencia_cod','identidad_de_genero','origen_ingreso_mod','x_se_trata_mujer_emb','usuario_tribunal_trat_droga','tiene_menores_de_edad_a_cargo','ha_estado_embarazada_egreso','discapacidad','opcion_discapacidad','escolaridad','edad_al_ing_grupos','nacionalidad','sexo_2','embarazo','estado_conyugal_2','edad_grupos','freq_cons_sus_prin','via_adm_sus_prin_act','etnia_cor','nacionalidad_2','etnia_cor_2','sus_ini_2_mod','sus_ini_3_mod','sus_ini_mod','con_quien_vive','estatus_ocupacional','cat_ocupacional','sus_principal_mod', 'tipo_de_vivienda_mod','tenencia_de_la_vivienda_mod','rubro_trabaja_mod','otras_sus1_mod','otras_sus2_mod','otras_sus3_mod','dg_trs_cons_sus_or','diagnostico_trs_fisico','otros_probl_at_sm_or','ano_bd_first','ano_bd_last','centro_muj','cie_10','dsm_iv','escolaridad_rec','con_quien_vive_rec','edad_ini_sus_prin_grupos')),~as.factor(.))%>%
   dplyr::mutate_at(c('id_centro_sig_trat','tipo_plan_sig_trat','tipo_programa_sig_trat','senda_sig_trat','at_least_one_cont_entry','id_centro'),~as.factor(.))%>%
   dplyr::mutate_at(c('tipo_de_plan_2_concat_a'),~as.character(.))%>%
