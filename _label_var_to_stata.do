@@ -236,6 +236,7 @@ cap label variable dg_cie_10_rec "Diagnóstico CIE-10 (1 o más)(Recodificado)/P
 cap label variable dg_total_dsm_iv "Conteo de Diagnósticos DSM-IV(sólo diagnósticos)/Count of DSM-IV Diagnostics(only diagnoses)"
 cap label variable dg_dsm_iv_rec "Diagnóstico DSM-IV (1 o más)(Recodificado)/Psychiatric Diagnoses (DSM-IV)(one or more)(Recoded)"
 cap label variable sus_ini_mod_mvv "Sustancia de Inicio (Valor más vulnerable)/Starting Substance (Most vulnerable value)"
+cap label variable estatus_ocupacional_rec "Condición Ocupacional, corregido por categoría(f)/Occupational Status, corrected for categories(f)"
 cap label variable hijos_trat_res "Tiene Hijos en Ingreso a Tratamiento Residencial del Último Registro/Have Children in Residential Treatment of the Last Entry"
 cap label variable dg_fis_anemia "Dignóstico Físico, Anemia/Physical Dg. Anemia"
 cap label variable dg_fis_card "Dignóstico Físico, Enfermedad Cardiaca/Physical Dg. Heart Disease"

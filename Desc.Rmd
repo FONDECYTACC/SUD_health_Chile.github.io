@@ -2254,7 +2254,10 @@ dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_
   
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #occupational status (inactive…)
-  dplyr::mutate(estatus_ocupacional=factor(estatus_ocupacional, labels=c('Unemployed',
+  # Due to the collapse in the databases, many occupational status did not coincide with the occupational category in some users. This is why we decided to consider as employed those users that had an occupational category.
+  dplyr::mutate(estatus_ocupacional_rec= dplyr::case_when(!is.na(cat_ocupacional)&!is.na(estatus_ocupacional)~"Empleado",
+                                                      TRUE~as.character(estatus_ocupacional)))%>% 
+  dplyr::mutate(estatus_ocupacional_rec=factor(estatus_ocupacional_rec, labels=c('Unemployed',
                                                                          'Employed',
                                                                          'Inactive'))) %>%
   dplyr::mutate(cat_ocupacional=factor(cat_ocupacional, labels=c('Salaried',
@@ -2266,7 +2269,6 @@ dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #Had children into Residential Treatment
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
-  
   dplyr::mutate(hijos_trat_res=ifelse(num_hijos_trat_res_mod>0,1,0)) %>% 
   dplyr::mutate(hijos_trat_res=factor(hijos_trat_res, labels=c('Did not had children in treatment',
                                                               'Had children in treatments'))) %>% 
@@ -2283,7 +2285,6 @@ dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_
   #age of onset of drug use
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #physical diagnose
-  
   dplyr::mutate(dg_fis_anemia= ifelse(grepl("Anemia",diagnostico_trs_fisico),1,0))%>%
   dplyr::mutate(dg_fis_card= ifelse(grepl("Cardiopat",diagnostico_trs_fisico),1,0))%>%
   dplyr::mutate(dg_fis_in_study= ifelse(grepl("En estudio",diagnostico_trs_fisico),1,0))%>%
@@ -2803,6 +2804,7 @@ sus_ini_mod= "Sustancia de Inicio (Sólo más frecuentes)/Starting Substance (On
 con_quien_vive= 'Persona con la que vive el Usuario(f)/People that Share Household with the User (Cohabitation Status)(f)',
 con_quien_vive_rec= 'Persona con la que vive el Usuario (Recodificada)(f)/People that Share Household with the User (Cohabitation Status)(Recoded)(f)',
 estatus_ocupacional= 'Condición Ocupacional(f)/Occupational Status(f)',
+estatus_ocupacional_rec= 'Condición Ocupacional, corregido por categoría(f)/Occupational Status, corrected for categories(f)',
 cat_ocupacional= 'Categoría Ocupacional(f)/Occupational Category(f)',
 sus_principal_mod= 'Sustancia Principal de Consumo (Sólo más frecuentes)(f)/Primary or Main Substance of Consumption at Admission (Only more frequent)(f)',
 tipo_de_vivienda_mod= 'Tipo de Vivienda(f)/Type of Housing(f)', 
