@@ -1,0 +1,985 @@
+---
+title: "Matching Process"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: hide  
+    toc: true # table of content true
+    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_float: true
+---
+
+<style type="text/css">
+.tablelines table, .tablelines td, .tablelines th {
+        border: 1px solid black;
+        }
+.centrado {
+    text-align: center;
+}
+.table.center {
+    margin-left:auto; 
+    margin-right:auto;
+  }
+.table_wrapper{
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+code.r{
+  font-size: 8px;
+}
+body{ /* Normal  */
+      text-align: justify;
+  }
+.superbigimage{
+    overflow-y:scroll;
+    white-space: nowrap;
+}
+.superbigimage img{
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+</style>
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
+</style>
+
+```{r prev_setup, include = FALSE, cache=T}
+rm(list=ls());gc()
+load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+rm(list=setdiff(ls(), c("CONS_C1_df_dup_SEP_2020_match","CONS_C1_df_dup_SEP_2020","CONS_C1")))
+
+if(isTRUE(getOption('knitr.in.progress'))==T){
+    nn_size= 1:5 # size= 1:5
+    nn_seq=seq(0, 1, .5)
+    nn_K= 10
+} else {
+  input <- readline('¿Are you gonna run the results seriously? (Si/No): ')
+  if(input=="Si"){
+    nn_size= 1:5 # size= 1:5
+    nn_seq=seq(0, 1, .5)
+    nn_K= 10
+  } else {
+    nn_size= 1 # size= 1:5
+    nn_seq=1
+    nn_K= 1
+  }
+}
+```
+
+```{r setup, include = FALSE, cache=T}
+#Libraries used in the routine. Dont change the order
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
+  if(class(ungroup(x))[1]=="tbl_df"){
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)    
+        }
+  } else {
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)       
+  }
+ }
+}  
+#packageVersion("codebook")
+#https://github.com/RevolutionAnalytics/checkpoint
+#if(!require(checkpoint)){install.packages("checkpoint")}
+#if(!require(here)){install.packages("here")}
+#checkpoint::checkpoint("2020-02-19",project=here::here(),checkpointLocation=paste0(here::here(),"/dedup"), use.lock=F, use.knitr=T, auto.install.knitr = T,scan.rnw.with.knitr=T, forceInstall=T,scanForPackages = TRUE)
+#checkpointArchives(tempdir(), full.names = TRUE)
+
+#if(!require(tidyr)){install.packages("tidyr")}
+#if(!require(DataExplorer)){install.packages("DataExplorer")}
+#if(!require(stringi)){install.packages("stringi")}
+#if(!require(stringr)){install.packages("stringr")}
+#if(!require(ggplot2)){install.packages("ggplot2")}
+#if(!require(Hmisc)){install.packages("Hmisc")}
+#if(!require(kableExtra)){install.packages("kableExtra")}
+#if(!require(plotly)){install.packages("plotly")}
+#if(!require(rbokeh)){install.packages("rbokeh")}
+#if(!require(altair)){install.packages("altair")}
+#if(!require(zoo)){install.packages("zoo")}
+#if(!require(codebook)){install.packages("codebook")}
+#if(!require(broom)){install.packages("broom")}
+#if(!require(sqldf)){install.packages("sqldf")} 
+#if(!require(devtools)){install.packages("devtools")}
+#if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
+#if(!require(data.table)){install.packages("data.table")}
+#if(!require(dplyr)){install.packages("dplyr")}
+
+#if(!require(boot)){install.packages("boot")}
+#if(!require(plyr)){install.packages("plyr")}
+#if(!require(matrixStats)){install.packages("matrixStats")}
+#if(!require(radiant)){install.packages("radiant", repos = "https://radiant-rstats.github.io/minicran/")}
+
+try(library(boot))
+library(matrixStats)
+library(knitr)
+library(tidyr)
+library(stringi)
+library(stringr)
+library(ggplot2)
+library(Hmisc)
+library(kableExtra)
+library(plotly)
+library(janitor)
+library(rbokeh)
+library(altair)
+library(zoo)
+library(broom)
+library(sqldf)
+library(devtools)
+library(Statamarkdown)
+library(codebook)
+library(data.table)
+library(dplyr)
+library(panelr)
+library(RColorBrewer)
+library(choroplethr)
+library(choroplethrMaps)
+library(choroplethrAdmin1)
+library(lsmeans)
+library(finalfit)
+library(chilemapas)
+suppressPackageStartupMessages(library(ggiraph))
+suppressPackageStartupMessages(library(sf))
+library(treemapify)
+library(dplyr)
+library(choroplethr)
+library(choroplethrMaps)
+library(choroplethrAdmin1)
+library(tidyverse)
+library(epiR)
+library(survminer)
+library(rateratio.test)  
+library(ggfortify)
+library(survMisc)
+
+
+library(designmatch)
+library(glpkAPI) #
+library(foreign)
+library(Hmisc)
+library(gridExtra)
+library(exactRankTests)
+library(ggplot2)
+library(reshape2)
+library(stargazer)
+library(Rglpk)
+library(tableone)
+library(MatchIt)
+library(sensitivity2x2xk)
+library(sensitivityfull)
+library(cobalt)
+
+#devtools::install_github('ChristopherLucas/MatchingFrontier')
+
+if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
+#install.packages( repos = "https://radiant-rstats.github.io/minicran/")
+#install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")
+
+#tryCatch(source("https://raw.githubusercontent.com/radiant-rstats/minicran/gh-pages/update.R"), error = function(e) print("updated package, radiant"))
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+tot_sin_motivo_egreso <-
+CONS_C1_df_dup_SEP_2020 %>% 
+  dplyr::mutate(diff_bet_treat_not_na=ifelse(!is.na(diff_bet_treat),1,0)) %>% 
+  dplyr::mutate(mot_egres_en_curso=ifelse(as.character(motivodeegreso_mod_imp)=="Ongoing treatment",1,0)) %>% 
+  dplyr::mutate(diff_bet_treat_not_na2=ifelse(!is.na(diff_bet_treat),1,0)) %>% 
+  dplyr::filter(diff_bet_treat_not_na==1,is.na(mot_egres_en_curso)) %>% 
+  dplyr::select(row,hash_key, fech_ing, fech_egres_imp, diff_bet_treat)
+
+invisible(
+CONS_C1 %>% 
+    dplyr::filter(row %in% unlist(tot_sin_motivo_egreso[,"row"])) %>% 
+    dplyr::select(HASH_KEY,Motivo.de.Egreso)
+)
+  
+sel_treat_tabyl <-
+CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(as.character(motivodeegreso_mod_imp)!="Ongoing treatment"|is.na(motivodeegreso_mod_imp)) %>% 
+  dplyr::mutate(diff_bet_treat_not_na=ifelse(!is.na(diff_bet_treat),1,0)) %>% 
+  janitor::tabyl(diff_bet_treat_not_na)
+
+sel_treat_more_one_treat<-
+CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(as.character(motivodeegreso_mod_imp)!="Ongoing treatment"|is.na(motivodeegreso_mod_imp)) %>% tabyl(dup) %>% summarise(more_one_treat=sum(n[dup>1]))
+
+```
+
+# Model
+
+```{r model,eval=F, echo=T, paged.print=TRUE}                                 
+library(DiagrammeR) #⋉
+DiagrammeR::grViz("
+digraph causal {
+
+  # Nodes
+  node [shape = plaintext]
+  X [label = 'Observed\nConfounders\n(X)',fontsize=10]
+  Z [label = 'Residential\nPrograms\n(Z)',fontsize=10]
+  Y [label = 'Early Drop-out\n(Y)',fontsize=10]
+  U [label = 'Unobserved\nConfounders\n(U)',fontsize=10]
+
+# Nodes
+ node [shape = box]
+  S [label = 'Matched\n(S=1)',fontsize=7]
+  C [label = 'Not censored\n(C=0)',fontsize=7]
+  # Edges
+  edge [color = black,
+        arrowhead = vee]
+  rankdir = LR
+  
+  Z-> Y [minlen=2]
+  X -> Z [minlen=2]
+  X -> Y 
+
+  U -> Z 
+  U -> Y 
+  
+  X -> S #[minlen=1]
+  Z -> S #[minlen=1]
+  
+  X -> C #[minlen=3]
+  Z -> C #[minlen=3]
+#{ rank = same; X; Y }
+{ rank = same; S; C }
+{ rank = same; X; U }
+
+  # Graph
+  graph [overlap = true]
+}")
+#  {rank=same ; A -> B -> C -> D};
+#       {rank=same ;           F -> E[dir=back]};
+#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3733703/
+#Cohort matching on a variable associated with both outcome and censoring
+#Cohort matching on a confounder. We let A denote an exposure, Y denote an outcome, and C denote a confounder and matching variable. The variable S indicates whether an individual in the source population is selected for the matched study (1: selected, 0: not selected). See Section 2-7 for details.
+#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7064555/
+
+```
+
+# Balance
+
+<br>
+
+We selected the cases that had completed treatments, leaving `r `as.numeric(sum(sel_treat_tabyl$n))%>%  formatC(big.mark=",")` observations. Must take note that we did not excluded those that did not have a status of a finished treatment (n= `r `tot_sin_motivo_egreso %>% nrow() %>% formatC(big.mark=",")`), or had more than one finished treatment previous to the selected (n= `r sel_treat_more_one_treat %>%  as.numeric() %>% formatC(big.mark=",")`).
+
+<br>
+
+We selected the following variables of interest:
+
+- "Starting Substance" (`sus_ini_mvv`)
+- "Marital Status" (`estado_conyugal_2`)
+- "Educational Attainment" (`escolaridad_rec`)
+- "Occupational Status" (`estatus_ocupacional_rec`)
+- "Age of Onset of Drug Use" (`edad_ini_cons`)
+- "Frequency of use of primary drug" (`freq_cons_sus_prin`)
+- "Motive of Admission to Treatment" (`origen_ingreso_mod`)
+- "Psychiatric comorbidity" (`dg_cie_10_rec`)
+- "Chilean Region of the Center" (`nombre_region`)
+- "Type of Center (Public)" (`tipo_centro_pub`)
+- "Early Dropout" (`abandono_temprano_rec`) (Y)
+- "Residential Type of Plan" (`tipo_de_plan_res`) (Z)
+- "Evaluation of the Therapeutic Process (Min. Achievement)" (*) (`evaluacindelprocesoteraputico_min`)
+- "No. of Previous Treatments" (`prev_treat`)
+- "Sex" (`sexo_2`)
+- "Age at Admission to Treatment" (`edad_al_ing`)
+- "Date of Admission to Treatment" (`fech_ing_num`)
+
+<br>
+
+We generated a correlation plot to get an overview of heterogeneous correlations between the different variables.
+
+<br>
+
+```{r hetcor, echo=T, cache= T, paged.print=TRUE,eval=T, error=T, dpi=320, fig.align="left",fig.cap="Figure 1. Heterogeneous Correlation Matrix of Variables of Interest", eval= T}
+
+require(polycor)
+#Corresponde a la apreciación clínica que hace el equipo o profesional tratante, la persona en tratamiento y su familia, del nivel alcanzado de logro de los objetivos terapéuticos planteados al inicio del proceso y descritos en el plan de tratamiento personalizado. Los criterios incluyen la evaluación del estado clínico y psicosocial al momento del egreso y una apreciación pronostica del equipo tratante.
+
+match.on_tot <- c("row", "hash_key","sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","estatus_ocupacional_rec","edad_ini_cons","freq_cons_sus_prin","origen_ingreso_mod","dg_cie_10_rec","nombre_region","tipo_centro_pub","abandono_temprano_rec","tipo_de_plan_res","evaluacindelprocesoteraputico_min","prev_treat","sexo_2","edad_al_ing","fech_ing_num")
+
+#CONS_C1_df_dup_SEP_2020 %>% janitor::tabyl(evaluacindelprocesoteraputico)
+
+CONS_C1_df_dup_SEP_2020_match<-
+  CONS_C1_df_dup_SEP_2020 %>% 
+#:#:#:#:#:#:#:#:
+  #sacar tratamientos truncados
+  dplyr::filter(as.character(motivodeegreso_mod_imp)!="Ongoing treatment"|is.na(motivodeegreso_mod_imp)) %>% 
+#:#:#:#:#:#:#:#:
+  #dplyr::mutate(tipo_de_plan_ambulatorio=ifelse(grepl("-PA",as.character(tipo_de_plan_2)),TRUE,FALSE)) %>% 
+  dplyr::mutate(tipo_de_plan_res=if_else(as.character(tipo_de_plan_2) %in% c("M-PR","PG-PR"),TRUE,FALSE,NA)) %>% 
+  dplyr::mutate(abandono_temprano_rec=ifelse(as.character(abandono_temprano)=="Menos de 90 días",TRUE,FALSE)) %>% 
+  dplyr::mutate(evaluacindelprocesoteraputico_min=ifelse(as.character(evaluacindelprocesoteraputico)=="3-Logro Minimo",TRUE,FALSE)) %>% 
+  dplyr::mutate(tipo_centro_pub=if_else(as.character(tipo_centro)=="Public",TRUE,FALSE,NA)) %>% 
+  dplyr::mutate(prev_treat=factor(dplyr::case_when(dup>=3~"2 or more",
+                                                   TRUE~as.character(dup-1)))) %>% 
+  dplyr::select_(.dots = match.on_tot) %>% 
+  data.table::data.table()
+
+#CONS_C1_df_dup_SEP_2020_match %>% janitor::tabyl(prev_treat)
+#CONS_C1_df_dup_SEP_2020 %>% janitor::tabyl(motivodeegreso_mod_imp)
+
+#monthly_dataset_comp_wise_dt<-monthly_dataset_comp_wise%>% dplyr::select_if(is.numeric)%>% dplyr::select(-stringency_ind_oxf,-owid_gbd_year)%>% dplyr::select(-ends_with("mth")) %>% data.frame()
+
+#Computes a heterogenous correlation matrix, consisting of Pearson product-moment correlations between numeric variables, polyserial correlations between numeric and ordinal variables, and polychoric correlations between 
+tiempo_antes_hetcor<-Sys.time()
+hetcor_mat<-hetcor(CONS_C1_df_dup_SEP_2020_match[,-c("hash_key","row")], ML = T, std.err =T, use="pairwise.complete.obs", bins=3, pd=TRUE)
+tiempo_despues_hetcor<-Sys.time()
+tiempo_hetcor<-tiempo_despues_hetcor-tiempo_antes_hetcor
+#umx_hetcor_mat<-umx::umxHetCor(CONS_C1_df_dup_SEP_2020_match[,-c("hash_key","row")], ML = T, use = c("pairwise.complete.obs"), treatAllAsFactor = FALSE, verbose = F)
+
+attr(umx_hetcor_mat,"dimnames")[[2]][1]<-"Starting Substance"
+attr(umx_hetcor_mat,"dimnames")[[2]][2]<-"Marital Status"
+attr(umx_hetcor_mat,"dimnames")[[2]][3]<-"Educational Attainment"
+attr(umx_hetcor_mat,"dimnames")[[2]][4]<-"Occupational Status"
+attr(umx_hetcor_mat,"dimnames")[[2]][5]<-"Age of Onset of Drug Use"
+attr(umx_hetcor_mat,"dimnames")[[2]][6]<-"Frequency of use of primary drug"
+attr(umx_hetcor_mat,"dimnames")[[2]][7]<-"Motive of Admission to Treatment"
+attr(umx_hetcor_mat,"dimnames")[[2]][8]<-"Psychiatric comorbidity"
+attr(umx_hetcor_mat,"dimnames")[[2]][9]<-"Chilean Region of the Center"
+attr(umx_hetcor_mat,"dimnames")[[2]][10]<-"Type of Center (Public)"
+attr(umx_hetcor_mat,"dimnames")[[2]][11]<-"Early Dropout"
+attr(umx_hetcor_mat,"dimnames")[[2]][12]<-"Residential Type of Plan"
+attr(umx_hetcor_mat,"dimnames")[[2]][13]<-"Evaluation of the Therapeutic Process (Min. Achievement)"
+attr(umx_hetcor_mat,"dimnames")[[2]][14]<-"No. of Previous Treatments"
+attr(umx_hetcor_mat,"dimnames")[[2]][15]<-"Sex"
+attr(umx_hetcor_mat,"dimnames")[[2]][16]<-"Age at Admission"
+
+
+attr(umx_hetcor_mat,"dimnames")[[1]][1]<-"Starting Substance"
+attr(umx_hetcor_mat,"dimnames")[[1]][2]<-"Marital Status"
+attr(umx_hetcor_mat,"dimnames")[[1]][3]<-"Educational Attainment"
+attr(umx_hetcor_mat,"dimnames")[[1]][4]<-"Occupational Status"
+attr(umx_hetcor_mat,"dimnames")[[1]][5]<-"Age of Onset of Drug Use"
+attr(umx_hetcor_mat,"dimnames")[[1]][6]<-"Frequency of use of primary drug"
+attr(umx_hetcor_mat,"dimnames")[[1]][7]<-"Motive of Admission to Treatment"
+attr(umx_hetcor_mat,"dimnames")[[1]][8]<-"Psychiatric comorbidity"
+attr(umx_hetcor_mat,"dimnames")[[1]][9]<-"Chilean Region of the Center"
+attr(umx_hetcor_mat,"dimnames")[[1]][10]<-"Type of Center (Public)"
+attr(umx_hetcor_mat,"dimnames")[[1]][11]<-"Early Dropout"
+attr(umx_hetcor_mat,"dimnames")[[1]][12]<-"Residential Type of Plan"
+attr(umx_hetcor_mat,"dimnames")[[1]][13]<-"Evaluation of the Therapeutic Process (Min. Achievement)"
+attr(umx_hetcor_mat,"dimnames")[[1]][14]<-"No. of Previous Treatments"
+attr(umx_hetcor_mat,"dimnames")[[1]][15]<-"Sex"
+attr(umx_hetcor_mat,"dimnames")[[1]][16]<-"Age at Admission"
+
+attr(hetcor_mat$correlations,"dimnames")[[2]][1]<-"Starting Substance"
+attr(hetcor_mat$correlations,"dimnames")[[2]][2]<-"Marital Status"
+attr(hetcor_mat$correlations,"dimnames")[[2]][3]<-"Educational Attainment"
+attr(hetcor_mat$correlations,"dimnames")[[2]][4]<-"Occupational Status"
+attr(hetcor_mat$correlations,"dimnames")[[2]][5]<-"Age of Onset of Drug Use"
+attr(hetcor_mat$correlations,"dimnames")[[2]][6]<-"Frequency of use of primary drug"
+attr(hetcor_mat$correlations,"dimnames")[[2]][7]<-"Motive of Admission to Treatment"
+attr(hetcor_mat$correlations,"dimnames")[[2]][8]<-"Psychiatric comorbidity"
+attr(hetcor_mat$correlations,"dimnames")[[2]][9]<-"Chilean Region of the Center"
+attr(hetcor_mat$correlations,"dimnames")[[2]][10]<-"Type of Center (Public)"
+attr(hetcor_mat$correlations,"dimnames")[[2]][11]<-"Early Dropout"
+attr(hetcor_mat$correlations,"dimnames")[[2]][12]<-"Residential Type of Plan"
+attr(hetcor_mat$correlations,"dimnames")[[2]][13]<-"Evaluation of the Therapeutic Process (Min. Achievement)"
+attr(hetcor_mat$correlations,"dimnames")[[2]][14]<-"No. of Previous Treatments"
+attr(hetcor_mat$correlations,"dimnames")[[2]][15]<-"Sex"
+attr(hetcor_mat$correlations,"dimnames")[[2]][16]<-"Age at Admission"
+attr(hetcor_mat$correlations,"dimnames")[[2]][17]<-"Date of Admission"
+
+attr(hetcor_mat$correlations,"dimnames")[[1]][1]<-"Starting Substance"
+attr(hetcor_mat$correlations,"dimnames")[[1]][2]<-"Marital Status"
+attr(hetcor_mat$correlations,"dimnames")[[1]][3]<-"Educational Attainment"
+attr(hetcor_mat$correlations,"dimnames")[[1]][4]<-"Occupational Status"
+attr(hetcor_mat$correlations,"dimnames")[[1]][5]<-"Age of Onset of Drug Use"
+attr(hetcor_mat$correlations,"dimnames")[[1]][6]<-"Frequency of use of primary drug"
+attr(hetcor_mat$correlations,"dimnames")[[1]][7]<-"Motive of Admission to Treatment"
+attr(hetcor_mat$correlations,"dimnames")[[1]][8]<-"Psychiatric comorbidity"
+attr(hetcor_mat$correlations,"dimnames")[[1]][9]<-"Chilean Region of the Center"
+attr(hetcor_mat$correlations,"dimnames")[[1]][10]<-"Type of Center (Public)"
+attr(hetcor_mat$correlations,"dimnames")[[1]][11]<-"Early Dropout"
+attr(hetcor_mat$correlations,"dimnames")[[1]][12]<-"Residential Type of Plan"
+attr(hetcor_mat$correlations,"dimnames")[[1]][13]<-"Evaluation of the Therapeutic Process (Min. Achievement)"
+attr(hetcor_mat$correlations,"dimnames")[[1]][14]<-"No. of Previous Treatments"
+attr(hetcor_mat$correlations,"dimnames")[[1]][15]<-"Sex"
+attr(hetcor_mat$correlations,"dimnames")[[1]][16]<-"Age at Admission"
+attr(hetcor_mat$correlations,"dimnames")[[1]][17]<-"Date of Admission"
+
+attr(hetcor_mat$tests,"dimnames")[[2]][1]<-"Starting Substance"
+attr(hetcor_mat$tests,"dimnames")[[2]][2]<-"Marital Status"
+attr(hetcor_mat$tests,"dimnames")[[2]][3]<-"Educational Attainment"
+attr(hetcor_mat$tests,"dimnames")[[2]][4]<-"Occupational Status"
+attr(hetcor_mat$tests,"dimnames")[[2]][5]<-"Age of Onset of Drug Use"
+attr(hetcor_mat$tests,"dimnames")[[2]][6]<-"Frequency of use of primary drug"
+attr(hetcor_mat$tests,"dimnames")[[2]][7]<-"Motive of Admission to Treatment"
+attr(hetcor_mat$tests,"dimnames")[[2]][8]<-"Psychiatric comorbidity"
+attr(hetcor_mat$tests,"dimnames")[[2]][9]<-"Chilean Region of the Center"
+attr(hetcor_mat$tests,"dimnames")[[2]][10]<-"Type of Center (Public)"
+attr(hetcor_mat$tests,"dimnames")[[2]][11]<-"Early Dropout"
+attr(hetcor_mat$tests,"dimnames")[[2]][12]<-"Residential Type of Plan"
+attr(hetcor_mat$tests,"dimnames")[[2]][13]<-"Evaluation of the Therapeutic Process (Min. Achievement)"
+attr(hetcor_mat$tests,"dimnames")[[2]][14]<-"No. of Previous Treatments"
+attr(hetcor_mat$tests,"dimnames")[[2]][15]<-"Sex"
+attr(hetcor_mat$tests,"dimnames")[[2]][16]<-"Age at Admission"
+attr(hetcor_mat$tests,"dimnames")[[2]][17]<-"Date of Admission"
+
+attr(hetcor_mat$tests,"dimnames")[[1]][1]<-"Starting Substance"
+attr(hetcor_mat$tests,"dimnames")[[1]][2]<-"Marital Status"
+attr(hetcor_mat$tests,"dimnames")[[1]][3]<-"Educational Attainment"
+attr(hetcor_mat$tests,"dimnames")[[1]][4]<-"Occupational Status"
+attr(hetcor_mat$tests,"dimnames")[[1]][5]<-"Age of Onset of Drug Use"
+attr(hetcor_mat$tests,"dimnames")[[1]][6]<-"Frequency of use of primary drug"
+attr(hetcor_mat$tests,"dimnames")[[1]][7]<-"Motive of Admission to Treatment"
+attr(hetcor_mat$tests,"dimnames")[[1]][8]<-"Psychiatric comorbidity"
+attr(hetcor_mat$tests,"dimnames")[[1]][9]<-"Chilean Region of the Center"
+attr(hetcor_mat$tests,"dimnames")[[1]][10]<-"Type of Center (Public)"
+attr(hetcor_mat$tests,"dimnames")[[1]][11]<-"Early Dropout"
+attr(hetcor_mat$tests,"dimnames")[[1]][12]<-"Residential Type of Plan"
+attr(hetcor_mat$tests,"dimnames")[[1]][13]<-"Evaluation of the Therapeutic Process (Min. Achievement)"
+attr(hetcor_mat$tests,"dimnames")[[1]][14]<-"No. of Previous Treatments"
+attr(hetcor_mat$tests,"dimnames")[[1]][15]<-"Sex"
+attr(hetcor_mat$tests,"dimnames")[[1]][16]<-"Age at Admission"
+attr(hetcor_mat$tests,"dimnames")[[1]][17]<-"Date of Admission"
+
+hetcor_mat$tests[is.na(hetcor_mat$tests)]<-1
+
+ggcorrplot<-
+ggcorrplot::ggcorrplot(hetcor_mat$correlations,
+           ggtheme = ggplot2::theme_void,
+           insig = "blank",
+           pch=1,
+           pch.cex=3,
+           tl.srt = 45, 
+           #pch="ns",
+            p.mat = hetcor_mat$tests, #  replacement has 144 rows, data has 169
+            #type = "lower",
+           colors = c("#6D9EC1", "white", "#E46726"), 
+           tl.cex=8,
+           lab=F)+
+  #scale_x_discrete(labels = var_lbls_p345, drop = F) +
+  #scale_y_discrete(labels = var_lbls_p345, drop = F) +
+  theme(axis.text.x = element_blank())+
+  #theme(axis.text.y = element_text(size=7.5,color ="black", hjust = 1))+
+  theme(axis.text.y = element_blank())+
+  theme(legend.position="bottom")
+
+umx_ggcorrplot<-
+ggcorrplot::ggcorrplot(umx_hetcor_mat,
+           ggtheme = ggplot2::theme_void,
+           insig = "blank",
+           #pch=1,
+           pch.cex=3,
+           tl.srt = 45, 
+           pch="ns",
+          p.mat = hetcor_mat$tests, #  replacement has 144 rows, data has 169
+            #type = "lower",
+           colors = c("#6D9EC1", "white", "#E46726"), 
+           tl.cex=8,
+           lab=F)+
+  #scale_x_discrete(labels = var_lbls_p345, drop = F) +
+  #scale_y_discrete(labels = var_lbls_p345, drop = F) +
+  theme(axis.text.x = element_blank())+
+  #theme(axis.text.y = element_text(size=7.5,color ="black", hjust = 1))+
+  theme(axis.text.y = element_blank())+
+  theme(legend.position="bottom")
+
+ggplotly(ggcorrplot, height = 800, width=800)%>% 
+  layout(xaxis= list(showticklabels = FALSE)) %>% 
+ layout(annotations = 
+ list(x = .1, y = -0.031, text = "", 
+      showarrow = F, xref='paper', yref='paper', 
+      #xanchor='center', yanchor='auto', xshift=0, yshift=-0,
+      font=list(size=11, color="darkblue"))
+ )
+```
+
+<br>
+
+## Imputation
+
+<br>
+
+```{r miss_plot_perc_var, warning=F,message=F,fig.align='center', fig.cap="Figure 2. Bar plot of Porcentaje of Missing Values per Variables", error=T}
+#<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:400px; overflow-x: scroll; width:100%">
+
+missing.values<-
+CONS_C1_df_dup_SEP_2020_match %>%
+  rowwise %>%
+  dplyr::mutate_at(.vars = vars(sus_ini_mod_mvv:fech_ing_num),
+                   .funs = ~ifelse(is.na(.), 1, 0)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::summarise_at(vars(sus_ini_mod_mvv:fech_ing_num),~sum(.))
+
+plot_miss<-
+missing.values %>%
+  melt() %>% 
+  dplyr::mutate(perc= value/sum(sel_treat_tabyl[,2])) %>% 
+  dplyr::mutate(label_text= paste0("Variable= ",variable,"<br>n= ",value,"<br>",scales::percent(round(perc,3)))) %>%
+  dplyr::mutate(perc=perc*100) %>% 
+  ggplot() +
+  geom_bar(aes(x=factor(variable), y=perc,label= label_text), stat = 'identity') +
+  sjPlot::theme_sjplot()+
+#  scale_y_continuous(limits=c(0,1), labels=percent)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size=9))+
+  labs(x=NULL, y="% of Missing Values", caption=paste0("Nota. Porcentaje de perdidos del total (",sum(sel_treat_tabyl[,2]),")"))
+  ggplotly(plot_miss, tooltip = c("label_text"))%>% layout(xaxis= list(showticklabels = T), height = 600, width=800) %>%   layout(yaxis = list(tickformat='%',  range = c(0, 7)))
+
+  #</div>
+```
+
+<br>
+
+From the figure above, we could see that the starting substance (`sus_ini_mvv`) and the onset of drug use (`edad_ini_cons`) had around 6% of missing data. These values should be imputed. We first focused on the age of onset of drug use.
+
+<br>
+
+```{r mice1, warning=F,message=F,fig.align='center', fig.cap="Figure 3. Bar plot of Porcentaje of Missing Values per Variables", error=T}
+
+
+label(CONS_C1_df_dup_SEP_2020_match$sus_ini_mod_mvv)<-"Starting Substance"
+label(CONS_C1_df_dup_SEP_2020_match$estado_conyugal_2)<-"Marital Status"
+label(CONS_C1_df_dup_SEP_2020_match$escolaridad_rec)<-"Educational Attainment"
+label(CONS_C1_df_dup_SEP_2020_match$estatus_ocupacional_rec)<-"Occupational Status"
+label(CONS_C1_df_dup_SEP_2020_match$edad_ini_cons)<-"Age of Onset of Drug Use"
+label(CONS_C1_df_dup_SEP_2020_match$freq_cons_sus_prin)<-"Frequency of use of primary drug"
+label(CONS_C1_df_dup_SEP_2020_match$origen_ingreso_mod)<-"Motive of Admission to Treatment"
+label(CONS_C1_df_dup_SEP_2020_match$dg_cie_10_rec)<-"Psychiatric comorbidity"
+label(CONS_C1_df_dup_SEP_2020_match$nombre_region)<-"Chilean Region of the Center"
+label(CONS_C1_df_dup_SEP_2020_match$tipo_centro_pub)<-"Type of Center (Public)"
+label(CONS_C1_df_dup_SEP_2020_match$abandono_temprano_rec)<-"Early Dropout"
+label(CONS_C1_df_dup_SEP_2020_match$tipo_de_plan_res)<-"Residential Type of Plan"
+label(CONS_C1_df_dup_SEP_2020_match$evaluacindelprocesoteraputico_min)<-"Evaluation of the Therapeutic Process (Min. Achievement)"
+label(CONS_C1_df_dup_SEP_2020_match$prev_treat)<-"No. of Previous Treatments"
+label(CONS_C1_df_dup_SEP_2020_match$sexo_2)<-"Sex"
+label(CONS_C1_df_dup_SEP_2020_match$edad_al_ing)<-"Age at Admission"
+label(CONS_C1_df_dup_SEP_2020_match$fech_ing_num)<-"Date of Admission to Treatment (Numeric)"
+
+
+#origen_ingreso #dg_global_nec_int_soc_or_1 "Diagnóstico global de necesidades de integración social" #evaluacindelprocesoteraputico "Evaluación del proceso terapéutico" #escolaridad_rec "macrozona"
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+#CONS_C1_df_dup_SEP_2020 %>% janitor::tabyl(evaluacindelprocesoteraputico) 
+#CONS_C1_df_dup_SEP_2020 %>% janitor::tabyl(evaluacindelprocesoteraputico) 
+#CONS_C1_df_dup_SEP_2020 %>% janitor::tabyl(nombre_region)
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+library(Amelia)
+CONS_C1_df_dup_SEP_2020_match<-
+CONS_C1_df_dup_SEP_2020_match %>% 
+    dplyr::group_by(hash_key) %>% 
+    dplyr::mutate(rn=row_number()) %>% 
+    dplyr::ungroup() %>% 
+    data.table::data.table()
+
+dataset_match_miss_sus_prin<-  CONS_C1_df_dup_SEP_2020 %>% 
+    dplyr::filter(row %in% unlist(CONS_C1_df_dup_SEP_2020_match$row)) %>% 
+    dplyr::select(row, edad_ini_sus_prin)
+
+CONS_C1_df_dup_SEP_2020_match_miss<-
+  CONS_C1_df_dup_SEP_2020_match %>%
+  dplyr::left_join(dataset_match_miss_sus_prin,by="row")
+  
+amelia_fit <- amelia(CONS_C1_df_dup_SEP_2020_match_miss, 
+                     m=30, parallel = "multicore", #noms = "row",
+                     idvars=c("row"),#"hash_key","rn"
+                     noms= c("sus_ini_mod_mvv", "estado_conyugal_2", "escolaridad_rec", "estatus_ocupacional_rec", "freq_cons_sus_prin", "origen_ingreso_mod",  "nombre_region", "sexo_2"),
+                     ords= c("dg_cie_10_rec", "prev_treat"),
+                     cs = "hash_key", ts = "rn")
+
+#amelia_fit$imputations$imp1
+#CONS_C1_df_dup_SEP_2020_match[!complete.cases(CONS_C1_df_dup_SEP_2020_match[,..match.on_tot])]
+
+compare.density(amelia_fit,var="edad_ini_cons")
+```
+
+<br>
+
+Based on the figure above, the age of onset of drug use was similar between the imputed values and the observed. However, there were two logical conditions to fulfill in order to replace adequately these values in the database: the age of onset must not be greater than the age of onset of drug use in the primary substance at admission, and may not be lower than
+
+<br>
+
+```{r mice2, warning=F,message=F,fig.align='center', fig.cap="Figure 4. Bar plot of Percentage of Incorrect Imputed Values per Imputation Sample", error=T}
+
+#On this graph, a y = x line indicates the line of perfect agreement; that is, if the imputation model was a perfect predictor of the true value, all the imputations would fall on this line
+
+no_mostrar=0
+if(no_mostrar==1){
+  res <- { 
+    setTimeLimit(nn_K*500)
+    ovr_imp_edad_ini_cons<-overimpute(amelia_fit, var = "edad_ini_cons")
+  }
+}
+#Hay poca relación en las imputaciones.
+
+# Ver si alguno de los usuarios con valores perdidos tiene de todas formas datos en esta variable.
+edad_ini_sus_prin_for_imp<-
+CONS_C1_df_dup_SEP_2020 %>% 
+    dplyr::filter( hash_key %in% unlist(unique(CONS_C1_df_dup_SEP_2020_match[which(!complete.cases(CONS_C1_df_dup_SEP_2020_match$edad_ini_cons)),"hash_key"]))) %>%
+    dplyr::filter(!is.na(edad_ini_sus_prin)) %>% 
+    dplyr::group_by(hash_key) %>% 
+    summarise(min_edad_ini_sus_prin=min(edad_ini_sus_prin, na.rm=T), edad_al_ing_min=min(edad_al_ing,na.rm=T))
+
+cumplimiento_errores<-data.frame()
+for (i in paste0("imp",1:30)){
+  rn_cum_err<-data.frame(amelia_fit$imputations[i]) %>% 
+    dplyr::rename(hash_key = 2) %>% 
+    dplyr::rename(edad_ini_cons = 7) %>% 
+    dplyr::mutate(hash_key=as.character(hash_key)) %>% 
+    dplyr::left_join(edad_ini_sus_prin_for_imp, by="hash_key") %>% 
+    dplyr::filter(edad_al_ing_min<edad_ini_cons|edad_ini_cons>min_edad_ini_sus_prin) %>% # edad de inicio de consumo no debe ser mayor a la menor edad a la ingreso de cada usuario, y la mínima edad de inicio de consumo de sustancia principal es menor a la edad de inicio de consumo
+    nrow()
+  rn_cum_err<-cbind(i,rn_cum_err)
+ cumplimiento_errores<- rbind(cumplimiento_errores,rn_cum_err)
+}
+colnames(cumplimiento_errores)<- c("imp","no_errors_age_of_onset_drug_use")
+
+
+n_miss_edad_ini_cons<-nrow(CONS_C1_df_dup_SEP_2020_match[which(!complete.cases(CONS_C1_df_dup_SEP_2020_match$edad_ini_cons)),"hash_key"])
+plot_imps<-
+cumplimiento_errores %>%
+  dplyr::mutate(no_errors_age_of_onset_drug_use=as.numeric(no_errors_age_of_onset_drug_use)) %>% 
+  dplyr::mutate(imp=factor(imp, levels =paste0("imp",1:30))) %>% 
+  dplyr::mutate(perc= no_errors_age_of_onset_drug_use/n_miss_edad_ini_cons) %>% 
+  dplyr::mutate(label_text= paste0("Variable= ",imp,"<br>n= ",no_errors_age_of_onset_drug_use,"<br>",scales::percent(round(perc,2)))) %>%
+  dplyr::mutate(perc=perc*100) %>% 
+  ggplot() +
+  geom_bar(aes(x=imp, y=perc,label= label_text), stat = 'identity') +
+  sjPlot::theme_sjplot()+
+#  scale_y_continuous(limits=c(0,1), labels=percent)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size=9))+
+  labs(x=NULL, y="% of Values With Logical Discrepancies")+
+  theme(aspect.ratio = 2/1)
+  ggplotly(plot_imps, tooltip = c("label_text"))%>% layout(xaxis= list(showticklabels = T)) %>%   layout(yaxis = list(tickformat='%',  range = c(0, 40)), height = 600, width=800) 
+
+edad_ini_cons_imputed<-
+  cbind.data.frame(amelia_fit$imputations$imp1$row,
+       amelia_fit$imputations$imp1$edad_ini_cons,
+       amelia_fit$imputations$imp2$edad_ini_cons,
+       amelia_fit$imputations$imp3$edad_ini_cons,
+       amelia_fit$imputations$imp4$edad_ini_cons,
+       amelia_fit$imputations$imp5$edad_ini_cons,
+       amelia_fit$imputations$imp6$edad_ini_cons,
+       amelia_fit$imputations$imp7$edad_ini_cons,
+       amelia_fit$imputations$imp8$edad_ini_cons,
+       amelia_fit$imputations$imp9$edad_ini_cons,
+       amelia_fit$imputations$imp10$edad_ini_cons,
+       amelia_fit$imputations$imp11$edad_ini_cons,
+       amelia_fit$imputations$imp12$edad_ini_cons,
+       amelia_fit$imputations$imp13$edad_ini_cons,
+       amelia_fit$imputations$imp14$edad_ini_cons,
+       amelia_fit$imputations$imp15$edad_ini_cons,
+       amelia_fit$imputations$imp16$edad_ini_cons,
+       amelia_fit$imputations$imp17$edad_ini_cons,
+       amelia_fit$imputations$imp18$edad_ini_cons,
+       amelia_fit$imputations$imp19$edad_ini_cons,
+       amelia_fit$imputations$imp20$edad_ini_cons,
+       amelia_fit$imputations$imp21$edad_ini_cons,
+       amelia_fit$imputations$imp22$edad_ini_cons,
+       amelia_fit$imputations$imp23$edad_ini_cons,
+       amelia_fit$imputations$imp24$edad_ini_cons,
+       amelia_fit$imputations$imp25$edad_ini_cons,
+       amelia_fit$imputations$imp26$edad_ini_cons,
+       amelia_fit$imputations$imp27$edad_ini_cons,
+       amelia_fit$imputations$imp28$edad_ini_cons,
+       amelia_fit$imputations$imp29$edad_ini_cons,
+       amelia_fit$imputations$imp30$edad_ini_cons
+       ) 
+
+
+edad_ini_cons_imputed<-cbind(data.table(edad_ini_cons_imputed[,1],data.table(edad_ini_cons_imputed[,2:31])[, AVG := rowMeans(.SD, na.rm=T)]))
+edad_ini_cons_imputed<-data.frame(dplyr::select(edad_ini_cons_imputed, V1, AVG)) %>% janitor::clean_names()
+
+
+# Reemplazo los valores perdidos:
+CONS_C1_df_dup_SEP_2020_match<-
+CONS_C1_df_dup_SEP_2020_match %>% 
+  dplyr::left_join(edad_ini_cons_imputed,by=c("row"="v1")) %>% 
+  dplyr::mutate(edad_ini_cons=dplyr::case_when(is.na(edad_ini_cons)~as.numeric(avg),
+                                 TRUE~as.numeric(edad_ini_cons)))
+```
+
+<br>
+
+Then, we focused on the starting substance.
+
+<br>
+
+```{r mice3,eval=T, echo=T, paged.print=TRUE}
+# Ver distintos valores propuestos para sustancia de inciio
+sus_ini_mod_mvv_imputed<-
+ cbind.data.frame(amelia_fit$imputations$imp1$row,
+       amelia_fit$imputations$imp1$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp2$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp3$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp4$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp5$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp6$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp7$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp8$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp9$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp10$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp11$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp12$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp13$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp14$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp15$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp16$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp17$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp18$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp19$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp20$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp21$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp22$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp23$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp24$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp25$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp26$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp27$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp28$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp29$sus_ini_mod_mvv,
+       amelia_fit$imputations$imp30$sus_ini_mod_mvv
+       ) 
+
+sus_ini_mod_mvv_imputed<-
+sus_ini_mod_mvv_imputed %>% 
+  data.frame() %>% 
+dplyr::mutate(across(c(amelia_fit.imputations.imp1.sus_ini_mod_mvv:amelia_fit.imputations.imp30.sus_ini_mod_mvv),~dplyr::case_when(grepl("Marijuana",as.character(.))~1,TRUE~0), .names="mar_{col}"))%>%
+dplyr::mutate(across(c(amelia_fit.imputations.imp1.sus_ini_mod_mvv:amelia_fit.imputations.imp30.sus_ini_mod_mvv),~dplyr::case_when(grepl("Alcohol",as.character(.))~1,TRUE~0), .names="oh_{col}"))%>%
+dplyr::mutate(across(c(amelia_fit.imputations.imp1.sus_ini_mod_mvv:amelia_fit.imputations.imp30.sus_ini_mod_mvv),~dplyr::case_when(grepl("Cocaine paste",as.character(.))~1,TRUE~0), .names="pb_{col}"))%>%
+  dplyr::mutate(across(c(amelia_fit.imputations.imp1.sus_ini_mod_mvv:amelia_fit.imputations.imp30.sus_ini_mod_mvv),~dplyr::case_when(grepl("Cocaine hydrochloride",as.character(.))~1,TRUE~0), .names="coc_{col}"))%>%
+  dplyr::mutate(across(c(amelia_fit.imputations.imp1.sus_ini_mod_mvv:amelia_fit.imputations.imp30.sus_ini_mod_mvv),~dplyr::case_when(grepl("Other",as.character(.))~1,TRUE~0), .names="otr_{col}"))%>%
+        dplyr::mutate(sus_ini_mod_mvv_mar = base::rowSums(dplyr::select(., contains("mar_"))))%>%
+  dplyr::mutate(sus_ini_mod_mvv_oh = base::rowSums(dplyr::select(., contains("oh_"))))%>%
+  dplyr::mutate(sus_ini_mod_mvv_pb = base::rowSums(dplyr::select(., contains("pb_"))))%>%
+  dplyr::mutate(sus_ini_mod_mvv_coc = base::rowSums(dplyr::select(., contains("coc_"))))%>%
+  dplyr::mutate(sus_ini_mod_mvv_otr = base::rowSums(dplyr::select(., contains("otr_")))) %>% 
+  #dplyr::summarise(min_mar=max(sus_ini_mod_mvv_mar[sus_ini_mod_mvv_mar<30]),min_oh=max(sus_ini_mod_mvv_oh[sus_ini_mod_mvv_oh<30]),min_pb=max(sus_ini_mod_mvv_pb[sus_ini_mod_mvv_pb<30]),min_coc=max(sus_ini_mod_mvv_coc[sus_ini_mod_mvv_coc<30]),min_otr=max(sus_ini_mod_mvv_otr[sus_ini_mod_mvv_otr<30]))
+  dplyr::mutate(sus_ini_mod_mvv_tot=dplyr::case_when(!is.na(sus_ini_mod_mvv_mar)~1,TRUE~0)) %>% 
+  dplyr::mutate(sus_ini_mod_mvv_tot=dplyr::case_when(!is.na(sus_ini_mod_mvv_oh)~sus_ini_mod_mvv_tot+1,TRUE~sus_ini_mod_mvv_tot)) %>% 
+  dplyr::mutate(sus_ini_mod_mvv_tot=dplyr::case_when(!is.na(sus_ini_mod_mvv_pb)~sus_ini_mod_mvv_tot+1,TRUE~sus_ini_mod_mvv_tot)) %>% 
+  dplyr::mutate(sus_ini_mod_mvv_tot=dplyr::case_when(!is.na(sus_ini_mod_mvv_coc)~sus_ini_mod_mvv_tot+1,TRUE~sus_ini_mod_mvv_tot)) %>% 
+  dplyr::mutate(sus_ini_mod_mvv_tot=dplyr::case_when(!is.na(sus_ini_mod_mvv_otr)~sus_ini_mod_mvv_tot+1,TRUE~sus_ini_mod_mvv_tot)) %>% 
+  dplyr::mutate(sus_ini_mod_mvv_to_imputation=dplyr::case_when(sus_ini_mod_mvv_tot==1 & sus_ini_mod_mvv_pb>0~"Cocaine paste",
+                                                               sus_ini_mod_mvv_tot==1 & sus_ini_mod_mvv_coc>0~"Cocaine hydrochloride",
+                                                               sus_ini_mod_mvv_tot==1 & sus_ini_mod_mvv_mar>0~"Marijuana",
+                                                               sus_ini_mod_mvv_tot==1 & sus_ini_mod_mvv_oh>0~"Alcohol",
+                                                               sus_ini_mod_mvv_tot==1 & sus_ini_mod_mvv_otr>0~"Other",
+                                                                
+                                                               sus_ini_mod_mvv_tot>1 & sus_ini_mod_mvv_pb>0~"Cocaine paste",
+                                                               sus_ini_mod_mvv_tot>1 & sus_ini_mod_mvv_coc>0~"Cocaine hydrochloride",
+                                                                sus_ini_mod_mvv_tot>1 & sus_ini_mod_mvv_mar>0~"Marijuana",
+                                                                sus_ini_mod_mvv_tot>1 & sus_ini_mod_mvv_oh>0~"Alcohol",
+                                                                sus_ini_mod_mvv_tot>1 & sus_ini_mod_mvv_otr>0~"Other")) %>% 
+  janitor::clean_names()
+
+sus_ini_mod_mvv_imputed<-
+dplyr::select(sus_ini_mod_mvv_imputed,amelia_fit_imputations_imp1_row,sus_ini_mod_mvv_to_imputation)
+
+#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:
+
+CONS_C1_df_dup_SEP_2020_match<-
+CONS_C1_df_dup_SEP_2020_match %>% 
+   dplyr::left_join(sus_ini_mod_mvv_imputed, by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
+    dplyr::mutate(sus_ini_mod_mvv=factor(dplyr::case_when(is.na(sus_ini_mod_mvv)~as.character(sus_ini_mod_mvv_to_imputation),
+                                 TRUE~as.character(sus_ini_mod_mvv)))) %>% 
+  dplyr::select(-avg,-sus_ini_mod_mvv_to_imputation) %>% 
+  data.table()
+ 
+#_#_#_#_#_#_#__#_##_#_#_#_#_#_#_#_#_#_#_#_#__#_##_#_#_#_#_##_#_#_#_#_#_#__#_##_#_#_#_#_#_#_#_#_#_#_#_#__#_##_#_#_#_#_#
+#_#_#_#_#_#_#__#_##_#_#_#_#_#_#_#_#_#_#_#_#__#_##_#_#_#_#_##_#_#_#_#_#_#__#_##_#_#_#_#_#_#_#_#_#_#_#_#__#_##_#_#_#_#_#
+sus_ini_mvv_for_imp<-
+CONS_C1_df_dup_SEP_2020 %>% 
+    dplyr::filter( hash_key %in% unlist(unique(CONS_C1_df_dup_SEP_2020_match[which(!complete.cases(CONS_C1_df_dup_SEP_2020_match$sus_ini_mod_mvv)),"hash_key"]))) %>%
+    dplyr::filter(!is.na(sus_ini_mod_mvv)) %>% 
+    dplyr::group_by(hash_key) %>% 
+    summarise(min=min(edad_ini_sus_prin, na.rm=T),max=max(edad_ini_sus_prin, na.rm=T),n_dis=n_distinct(edad_ini_sus_prin), edad_al_ing_min=min(edad_al_ing,na.rm=T)) 
+```
+
+<br>
+
+## Sample Characteristics
+
+<br>
+
+We checked the characteristics of the sample depending on type of treatment (Residential or Ambulatory).
+
+<br>
+
+```{r bal1,eval=T, echo=T, paged.print=TRUE}                                 
+#prop.table(table(CONS_C1_df_dup_SEP_2020_match$abandono_temprano_rec,CONS_C1_df_dup_SEP_2020_match$tipo_de_plan_res),2)
+kableone <- function(x, ...) {
+  capture.output(x <- print(x,...))
+  knitr::kable(x,format= "html", format.args= list(decimal.mark= ".", big.mark= ","))
+}
+
+match.on.sel<-c("sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","estatus_ocupacional_rec","edad_ini_cons","freq_cons_sus_prin","origen_ingreso_mod","dg_cie_10_rec","nombre_region","tipo_centro_pub","prev_treat","sexo_2","edad_al_ing","fech_ing_num")
+
+catVars<-
+c("sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","estatus_ocupacional_rec","freq_cons_sus_prin","origen_ingreso_mod","dg_cie_10_rec","nombre_region","tipo_centro_pub","tipo_de_plan_res","prev_treat","sexo_2")
+
+#length(unique(CONS_C1_df_dup_SEP_2020_match$fech_ing_num))
+#:#:#:#:#: DISMINUIR LA HETEROGENEIDAD DE LA FECHA DE INGRESO
+# FORMAS DE CONSTREÑIR LA VARIABLE:
+#CONS_C1_df_dup_SEP_2020_match$fech_ing_num<-round(CONS_C1_df_dup_SEP_2020_match$fech_ing_num/10,0)
+#CONS_C1_df_dup_SEP_2020_match$fech_ing_num<-cut(CONS_C1_df_dup_SEP_2020_match$fech_ing_num,100)
+#CONS_C1_df_dup_SEP_2020_match$fech_ing_num<-CONS_C1_df_dup_SEP_2020_match_fech_ing_num
+#CONS_C1_df_dup_SEP_2020_match_fech_ing_num<-CONS_C1_df_dup_SEP_2020_match$fech_ing_num
+#length(unique(round(CONS_C1_df_dup_SEP_2020_match$fech_ing_num,0)))
+#length(unique(round(CONS_C1_df_dup_SEP_2020_match$fech_ing_num/10,0)))
+
+#CONS_C1_df_dup_SEP_2020_match$fech_ing_num<-round(CONS_C1_df_dup_SEP_2020_match$fech_ing_num/10,0)
+#:#:#:#:#: 
+
+pre_tab1<-Sys.time()
+tab1<-
+CreateTableOne(vars = match.on.sel, strata = "tipo_de_plan_res", 
+                       data = CONS_C1_df_dup_SEP_2020_match, factorVars = catVars,smd=T)
+post_tab1<-Sys.time()
+diff_time_tab1=post_tab1-pre_tab1
+
+kableone(tab1, nonnormal= c("edad_ini_cons","edad_al_ing","fech_ing_num"),
+                       smd=T, test=T, varLabels=T,noSpaces=T, printToggle=T, dropEqual=F) %>% 
+    kableExtra::kable_styling(bootstrap_options = c("striped", "hover","condensed"),font_size= 11) %>%
+  row_spec(1, bold = T) %>%
+  #footnote(general = "Here is a general comments of the table. ",
+  #        number = c("Footnote 1; ", "Footnote 2; "),
+  #         alphabet = c("Footnote A; ", "Footnote B; "),
+  #         symbol = c("Footnote Symbol 1; ", "Footnote Symbol 2")
+  #         )%>%
+  scroll_box(width = "100%", height = "400px") 
+#"tipo_de_plan_ambulatorio",
+#https://cran.r-project.org/web/packages/tableone/vignettes/smd.html
+#http://rstudio-pubs-static.s3.amazonaws.com/405765_2ce448f9bde24148a5f94c535a34b70e.html
+#https://cran.r-project.org/web/packages/tableone/vignettes/introduction.html
+#https://cran.r-project.org/web/packages/tableone/tableone.pdf
+#https://www.rdocumentation.org/packages/tableone/versions/0.12.0/topics/CreateTableOne
+
+## Construct a table 
+#standardized mean differences of greater than 0.1
+```
+
+<br>
+
+
+
+<br>
+
+```{r bal2,eval=F, echo=T, paged.print=TRUE}                                 
+#,
+library(cobalt)
+bal2<-bal.tab(CONS_C1_df_dup_SEP_2020_match[,..match.on.sel], treat = CONS_C1_df_dup_SEP_2020_match$tipo_de_plan_res,
+         thresholds = c(m = .1, v = 2),
+         binary = "std", continuous = "std",
+         stats = c("mean.diffs", "variance.ratios","ks.statistics"))
+#"mean.diffs", "variance.ratios","ks.statistics","ovl.coefficient"
+
+bal2$Balance %>% 
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption = paste0("Table 2. Covariate Balance in the Variables of Interest"),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 9) %>%
+  kableExtra::add_footnote( c(paste("Note. ")), 
+                            notation = "none") %>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+  
+```
+
+<br>
+
+
+
+<br>
+
+```{r  Fig 1_dist_no_treat_treat, warning=FALSE, fig.align = "center", message=F, fig.height=10, cache=T, eval=T, fig.cap="Figure 1. Covariates Balance on Different Values"}
+
+love.plot(bal2, binary = "std", thresholds = c(m = .1, m=.2))+
+  theme_bw()+
+  ggtitle(NULL)+
+  labs(caption="Note. Vertical dashed line= Standardized Differences of .1")+
+  theme( plot.caption=element_text(hjust=0))
+
+#ggplot(idh_pre, aes(idh_pre$quintil_0,idh_pre$idh_0)) + 
+#  geom_point(aes(colour = idh_pre$groups), size = 5) + labs(x="Quintiles", y="Percentage")  + 
+#  theme_bw() +  
+#  scale_fill_manual(values=c("black", "gray60") ) + 
+#  scale_colour_manual(name="Groups",values =c("Control"="black", "Exposed"="gray60")) + 
+#  theme(legend.key = element_rect(colour = NA)) + 
+#  theme(text = element_text(size=20)) + 
+#  scale_y_continuous( limits = c(0,0.4), breaks = seq(.05,.4,by=.05))
+```
+
+
+```{r bal3,eval=T, echo=T, paged.print=TRUE, eval=F}                                 
+
+columna_dummy <- function(df, columna) {
+  df %>% 
+  mutate_at(columna, ~paste(columna, eval(as.symbol(columna)), sep = "_")) %>% 
+    mutate(valor = 1) %>% 
+    spread(key = columna, value = valor, fill = 0)
+}
+
+match.on<-c("sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","estatus_ocupacional_rec","edad_ini_cons","freq_cons_sus_prin","origen_ingreso_mod","dg_cie_10_rec","nombre_region","tipo_centro_pub","abandono_temprano_rec","tipo_de_plan_res","evaluacindelprocesoteraputico_min","prev_treat","sexo_2","edad_al_ing")
+
+#nrow(CONS_C1_df_dup_SEP_2020_match[complete.cases(CONS_C1_df_dup_SEP_2020_match[,match.on_tot]),match.on_tot]) #101,384
+CONS_C1_df_dup_SEP_2020_match2<-
+  CONS_C1_df_dup_SEP_2020_match[complete.cases(CONS_C1_df_dup_SEP_2020_match[,..match.on_tot]),..match.on_tot]
+
+for (i in c(1:length(catVars[-10]))){
+  cat<-as.character(catVars[-10][i])
+  CONS_C1_df_dup_SEP_2020_match2<-columna_dummy(CONS_C1_df_dup_SEP_2020_match2,cat)
+}
+match.on.sel2<-names(CONS_C1_df_dup_SEP_2020_match2)[-c(1,2,5)]
+
+#dim(CONS_C1_df_dup_SEP_2020_match[complete.cases(CONS_C1_df_dup_SEP_2020_match[,..match.on_tot]),..match.on_tot]) #94,097
+library(MatchingFrontier)
+mahal.frontier <- makeFrontier(dataset =CONS_C1_df_dup_SEP_2020_match2,
+ treatment = 'tipo_de_plan_res',
+ #outcome = 'diff_bet_treat',
+ match.on = match.on.sel2)
+
+L1.frontier <- makeFrontier(dataset =CONS_C1_df_dup_SEP_2020_match2,
+ treatment = 'tipo_de_plan_res',
+ #outcome = 'abandono_temprano_rec',
+ match.on = match.on.sel2,
+ QOI = 'SATT',
+ metric = 'L1',
+ ratio = 'fixed')
+ 
+ #Error: In makeFrontier(), missing values in the data; remove them (or impute) and try again.
+
+# By default, makeFrontier() calculates the frontier with the Average Mahalanobis Imbalance. However, as we demonstrate, MatchingFrontier works just as easily with L1 difference.
+#The default quantity of interest is the feasible sample average treatment effect on the treated or FSATT
+```
+
+# Specification
+
+# Match
+
+
+
+# Inference
+
+
+# Sensitiviy Analyses
+
