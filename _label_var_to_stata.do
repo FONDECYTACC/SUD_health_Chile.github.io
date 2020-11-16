@@ -256,6 +256,8 @@ cap label variable otros_pr_sm_abu_sex "Otros problemas de Atención de Salud Me
 cap label variable otros_pr_sm_exp_com_sex "Otros problemas de Atención de Salud Mental, Explotación Sexual Comercial/Other mental health problems, Commercial sexual exploitation"
 cap label variable otros_pr_sm_otros "Otros problemas de Atención de Salud Mental, Otros/Other mental health problems, Other"
 cap label variable otros_pr_sm_vif "Otros problemas de Atención de Salud Mental, Violencia Intrafamiliar/Other mental health problems, Domestic violence"
+cap label variable condicion_ocupacional_corr "Condición Ocupacional Criterio Corregido(f)/Occupational Status Corrected(f)"
+cap label variable cat_ocupacional_corr "Categoría Ocupacional Criterio Corregido(f)/Occupational Category Corrected(f)"
 cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_SEP_2020.dta", replace
 cap drop id id_mod nombre_centro consentimiento_informado
 cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_SEP_2020_exp.dta", replace

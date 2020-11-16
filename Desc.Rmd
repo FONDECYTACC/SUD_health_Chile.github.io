@@ -2353,7 +2353,214 @@ dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_
       dplyr::mutate(across(c(otros_pr_sm_abu_sex, otros_pr_sm_exp_com_sex, otros_pr_sm_otros, otros_pr_sm_vif),~as.numeric(.)-1, .names="num_dg_otros_pr_{col}"))%>%
      dplyr::mutate(cnt_otros_probl_at_sm_or= base::rowSums(dplyr::select(., num_dg_otros_pr_otros_pr_sm_abu_sex, num_dg_otros_pr_otros_pr_sm_exp_com_sex, num_dg_otros_pr_otros_pr_sm_otros, num_dg_otros_pr_otros_pr_sm_vif))) %>% 
       dplyr::select(-starts_with("num_dg_otros_pr_")) %>% 
+#_#_#_#_#_#_#_#_#_#_#_
+# 2020-11-15: sacar el último tratamiento acumulado que se replica, para no tener errores con la estimación de los four
+  dplyr::mutate(cum_diff_bet_treat_2= dplyr::case_when(!is.na(cum_diff_bet_treat_2) & duplicates_filtered==2~NA_real_,TRUE~cum_diff_bet_treat_2)) %>% 
+  dplyr::mutate(cum_diff_bet_treat_3= dplyr::case_when(!is.na(cum_diff_bet_treat_3) & duplicates_filtered==3~NA_real_,TRUE~cum_diff_bet_treat_3)) %>% 
+  dplyr::mutate(cum_diff_bet_treat_4= dplyr::case_when(!is.na(cum_diff_bet_treat_4) & duplicates_filtered==4~NA_real_,TRUE~cum_diff_bet_treat_4)) %>% 
+  dplyr::mutate(cum_diff_bet_treat_5= dplyr::case_when(!is.na(cum_diff_bet_treat_5) & duplicates_filtered==5~NA_real_,TRUE~cum_diff_bet_treat_5)) %>% 
+  dplyr::mutate(cum_diff_bet_treat_6= dplyr::case_when(!is.na(cum_diff_bet_treat_6) & duplicates_filtered==6~NA_real_,TRUE~cum_diff_bet_treat_6)) %>% 
+  dplyr::mutate(cum_diff_bet_treat_7= dplyr::case_when(!is.na(cum_diff_bet_treat_7) & duplicates_filtered==7~NA_real_,TRUE~cum_diff_bet_treat_7)) %>% 
+  dplyr::mutate(cum_diff_bet_treat_8= dplyr::case_when(!is.na(cum_diff_bet_treat_8) & duplicates_filtered==8~NA_real_,TRUE~cum_diff_bet_treat_8)) %>% 
+  dplyr::mutate(cum_diff_bet_treat_9= dplyr::case_when(!is.na(cum_diff_bet_treat_9) & duplicates_filtered==9~NA_real_,TRUE~cum_diff_bet_treat_9)) %>% 
+  dplyr::mutate(cum_diff_bet_treat_10= dplyr::case_when(!is.na(cum_diff_bet_treat_10) & duplicates_filtered==10~NA_real_,TRUE~cum_diff_bet_treat_10)) %>% 
+  
   assign("CONS_C1_df_dup_SEP_2020",., envir = .GlobalEnv)
+```
+
+<br>
+
+# Adding another criteria for classifying occupations
+
+<br>
+
+We redone the task of collapsing the occupational condition (`condicion_ocupacional`) into an occupational status composed of three categories: Employed, Unemployed and Inactive made on `Duplicatates` process (1st deduplication stage). However, many values of the different rows may be different due to some changes in the stage of collapsing continuous treatments (`Desc4`). For this, we had to replicate this steps in order to track down the value of the largest intermediate treatment to generate a occupational condition following a different criteria.
+
+<br>
+
+```{r lo_q_hice_en_duplicates_oculto, eval=F}
+#EL PROBLEMA PRINCIPAL ES QUE HICE MAL LA RECODIFICACION AL PRINCIPIO: EXCLUI A LOS TRABJANDO Y ESTUDIANDO, 
+
+#- Collapse the occupational condition into an occupational status composed of three categories: Employed, Unemployed and Inactive
+#Esta variable busca establecer si la persona desarrolló alguna actividad laboral o productiva, es decir, si participó en la producción de un bien o servicio para la venta o para el autoconsumo, por un mínimo de una hora semanal en la semana anterior (lunes a domingo) a la entrevista. Los quehaceres del hogar no son considerados una actividad productiva o ‘razón de ocupación’.
+#Si la respuesta es afirmativa se debe seleccionar la opción “Trabajando actualmente” Si la persona No Trabajó, interesa saber si está Desocupada (“busca trabajo por primera vez” o “cesante”) o Inactiva (que corresponde al resto de la opciones, quehaceres del hogar, estudiando, jubilado, etc.) 
+#
+#Inactivo, desempleado, empleado
+#     Buscando trabajo por primera vez |        245        0.21        0.21
+#                              Cesante |     43,299       36.67       36.87
+#              Estudiando sin trabajar |      1,353        1.15       38.02
+#Incapacitado permanente para trabajar |        294        0.25       38.27
+#                                   NA |          1        0.00       38.27
+#                     No busca Trabajo |      1,250        1.06       39.33
+#                           Otra razón |      1,348        1.14       40.47
+#   Pensionado o jubilado sin trabajar |      1,872        1.59       42.05
+#                 Quehaceres del hogar |      7,683        6.51       48.56
+#                             Rentista |         78        0.07       48.63
+#                        Sin actividad |      7,449        6.31       54.93
+#               Trabajando actualmente |     53,120       44.98       99.92
+#              Trabajando y estudiando |         97        0.08      100.00
+CONS_C1_df %>% 
+dplyr::mutate(estatus_ocupacional=ifelse(Condicion.Ocupacional=="Trabajando actualmente","Empleado",
+                                         ifelse(Condicion.Ocupacional=="Buscando trabajo por primera vez"|Condicion.Ocupacional=="Cesante",
+                                                "Desempleado","Inactivo"))) %>%
+dplyr::mutate(estatus_ocupacional=as.factor(estatus_ocupacional)) %>%
+  janitor::tabyl(Condicion.Ocupacional,estatus_ocupacional)
+#Comprende la relación entre una persona económicamente activa y su trabajo o empleo. Sólo se aplica aquellas personas que se encuentran trabajando al momento de ingresar a tratamiento (las que respondieron 1 en la pregunta anterior). Para las personas que no están trabajando (estudiantes, cesante, etc.) esta opción estará bloqueada.
+#data.table(table(CONS_C1_df_dup_ENE_2020_prev3$Categoría.Ocupacional))
+dplyr::mutate(cat_ocupacional=ifelse(Condicion.Ocupacional!="Trabajando actualmente",NA,as.character(`Categoría.Ocupacional`))) %>%
+dplyr::mutate(cat_ocupacional=as.factor(cat_ocupacional)) %>%
+```
+
+```{r cons2_sep,echo=T, paged.print=TRUE, eval=T}
+#Primero es necesario determinar qué tratamiento fue más largo, para volver a recuperar el valor de la `condicion_ocupacional` presente en las primeras bases de datos.
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#¿cómo determinar qué tratamiento fue el más largo?
+CONS_C1_JUN_2020_row_sig_row<-
+  CONS_C1_df_dup_JUN_2020%>%
+  #dplyr::filter(!is.na(diff_bet_treat))%>% #31,609, no hay NAs en derivación, los que son NA son 0.
+  dplyr::mutate(filter_complex= dplyr::case_when(!is.na(diff_bet_treat) & diff_bet_treat<45 & as.character(motivoegreso_derivacion)=="Referral"~1,TRUE~0))%>%
+  dplyr::arrange(hash_key)%>%
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(sig_row=lag(row), sig_fech_egres_imp=lag(fech_egres_imp),sig_motivoegres_ref=lag(motivoegreso_derivacion),n_por_hash=n())%>%
+  ungroup()%>%
+  dplyr::filter(filter_complex==1)%>%
+  # dplyr::select(row,hash_key,fech_ing,fech_egres_imp,motivoegreso_derivacion,obs_cambios,diff_bet_treat,sig_row,n_por_hash) %>% View() #0007678b8b35fa0961d1e8110fbf9620 
+  dplyr::select(row,sig_row)  
+
+CONS_C1_JUN_2020_cont_treat<-
+  CONS_C1_df_dup_JUN_2020%>%
+  dplyr::filter(row %in% unlist(c(CONS_C1_JUN_2020_row_sig_row$row,CONS_C1_JUN_2020_row_sig_row$sig_row)))%>%
+  dplyr::arrange(hash_key,desc(fech_ing))%>%
+  dplyr::mutate(filter_complex_anterior= dplyr::case_when(!is.na(lag(diff_bet_treat)) & lag(diff_bet_treat)<45 & as.character(lag(motivoegreso_derivacion))=="Referral"~1,TRUE~0))%>%
+  dplyr::mutate(filter_complex= dplyr::case_when(!is.na(diff_bet_treat) & diff_bet_treat<45 & as.character(motivoegreso_derivacion)=="Referral"~1,TRUE~0))%>%
+  dplyr::ungroup() %>% 
+  dplyr::group_by(hash_key)%>%
+  dplyr::slice_max(dias_trat) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::select(row,hash_key,dias_trat,cat_ocupacional,estatus_ocupacional) %>% 
+  dplyr::mutate(row_larg_treat=row)
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+#Se hace el pareamiento de la base de datos anterior con la actual, y se elije de una fila con los registros colapsados, aquel registro que contiene más días de tratamiento. Para eso me traigo los valores de condición ocupacional de la base de datos original, para cada cada `row`. De ellos, dejo aquel valor de la fila que tenga más días de tratamiento  (considerando que ese fue el criterio de selección para esta variable de acuerdo a la Fig. 5 de Duplicates4). Hubo hasta 7 eventos que se colapsaron en uno.
+#Ver qué row corresponde al tratamiento más largo
+CONS_C1_df_dup_SEP_2020 %>% 
+  #dplyr::mutate(row=as.character(row)) %>%
+  dplyr::mutate(row_cont_entries2=row_cont_entries) %>% 
+  tidyr::separate(row_cont_entries2,into=paste0("rows",1:7),sep="; ", convert=T) %>% #se supone que tiene 7 distintos
+  dplyr::left_join(dplyr::select(CONS_C1,row,Condicion.Ocupacional),by="row")%>% 
+  dplyr::rename("condicion_ocupacional_row_all"="Condicion.Ocupacional") %>% 
+  dplyr::left_join(dplyr::select(CONS_C1,row,Condicion.Ocupacional),by=c("rows1"="row"))%>% 
+  dplyr::rename("condicion_ocupacional_row1"="Condicion.Ocupacional") %>% 
+  dplyr::left_join(dplyr::select(CONS_C1,row,Condicion.Ocupacional),by=c("rows2"="row"))%>% 
+  dplyr::rename("condicion_ocupacional_row2"="Condicion.Ocupacional") %>% 
+  dplyr::left_join(dplyr::select(CONS_C1,row,Condicion.Ocupacional),by=c("rows3"="row"))%>% 
+  dplyr::rename("condicion_ocupacional_row3"="Condicion.Ocupacional") %>% 
+  dplyr::left_join(dplyr::select(CONS_C1,row,Condicion.Ocupacional),by=c("rows4"="row"))%>% 
+  dplyr::rename("condicion_ocupacional_row4"="Condicion.Ocupacional") %>% 
+  dplyr::left_join(dplyr::select(CONS_C1,row,Condicion.Ocupacional),by=c("rows5"="row"))%>% 
+  dplyr::rename("condicion_ocupacional_row5"="Condicion.Ocupacional") %>% 
+  dplyr::left_join(dplyr::select(CONS_C1,row,Condicion.Ocupacional),by=c("rows6"="row"))%>% 
+  dplyr::rename("condicion_ocupacional_row6"="Condicion.Ocupacional") %>% 
+  dplyr::left_join(dplyr::select(CONS_C1,row,Condicion.Ocupacional),by=c("rows7"="row"))%>% 
+  dplyr::rename("condicion_ocupacional_row7"="Condicion.Ocupacional") %>% 
+  
+  dplyr::left_join(CONS_C1_JUN_2020_cont_treat[,c("row","row_larg_treat")],by="row")%>% 
+  dplyr::mutate(condicion_ocupacional_larg_treat=dplyr::case_when(row_larg_treat==rows1~condicion_ocupacional_row1,
+                                                                  row_larg_treat==rows2~condicion_ocupacional_row2,
+                                                                  row_larg_treat==rows3~condicion_ocupacional_row3,
+                                                                  row_larg_treat==rows4~condicion_ocupacional_row4,
+                                                                  row_larg_treat==rows5~condicion_ocupacional_row5,
+                                                                  row_larg_treat==rows6~condicion_ocupacional_row6,
+                                                                  row_larg_treat==rows7~condicion_ocupacional_row7)) %>% 
+  dplyr::mutate(condicion_ocupacional_row_all2=ifelse(!is.na(condicion_ocupacional_larg_treat),
+                                                     condicion_ocupacional_larg_treat,condicion_ocupacional_row_all)) %>% 
+  dplyr::select(-condicion_ocupacional_row1,-condicion_ocupacional_row2,-condicion_ocupacional_row3,-condicion_ocupacional_row4,
+                -condicion_ocupacional_row5,-condicion_ocupacional_row6,-condicion_ocupacional_row7,-rows1,-rows2,-rows3,-rows4,
+                -rows5,-rows6,-rows7,-row_larg_treat) %>%
+  dplyr::mutate(condicion_ocupacional_corr=dplyr::case_when(
+    #categorizados como inactive en estatus_ocupacional_rec
+    grepl("Buscando trabajo por primera vez",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Inactive",estatus_ocupacional_rec)~"Looking for a job for the first time",
+    grepl("Cesante",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Inactive",estatus_ocupacional_rec)~"Unemployed",
+    grepl("No busca Trabajo",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Inactive",estatus_ocupacional_rec)~"Not seeking for work",
+    grepl("Sin actividad",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Inactive",estatus_ocupacional_rec)~"No activity",
+    grepl("Trabajando actualmente",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Inactive",estatus_ocupacional_rec)~"Employed",
+    grepl("Trabajando y estudiando",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Inactive",estatus_ocupacional_rec)~"Employed",
+  #categorizados como unemployed en estatus_ocupacional_rec
+    grepl("Cesante",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Unemployed",estatus_ocupacional_rec)~"Unemployed",
+    grepl("Estudiando sin trabajar",condicion_ocupacional_row_all2) & is.na(cat_ocupacional) & grepl("Unemployed",estatus_ocupacional_rec)~"Inactive",
+    grepl("Incapacitado permanente para trabajar",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Unemployed",estatus_ocupacional_rec)~"Inactive",
+    grepl("Otra razón",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Unemployed",estatus_ocupacional_rec)~"Inactive",
+    grepl("Pensionado o jubilado sin trabajar",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Unemployed",estatus_ocupacional_rec)~"Inactive",
+    grepl("Quehaceres del hogar",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Unemployed",estatus_ocupacional_rec)~"Inactive",
+    grepl("Rentista",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Unemployed",estatus_ocupacional_rec)~"Inactive",  
+    grepl("No busca Trabajo",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Unemployed",estatus_ocupacional_rec)~"Not seeking for work",
+    grepl("Sin actividad",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Unemployed",estatus_ocupacional_rec)~"No activity",
+    grepl("Buscando trabajo por primera vez",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Unemployed",estatus_ocupacional_rec)~"Looking for a job for the first time",
+    grepl("Trabajando actualmente",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Unemployed",estatus_ocupacional_rec)~"Employed",
+  #categorizados como employed en estatus_ocupacional_rec
+  #categorizados como Salaried en cat__ocupacional y employed en estatus_ocupacional_rec
+    grepl("Cesante",condicion_ocupacional_row_all2)& grepl("Salaried",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Unemployed", #--> debiese no ser cat_ocupacional Salaried
+    grepl("Estudiando sin trabajar",condicion_ocupacional_row_all2)& grepl("Salaried",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Inactive", #--> debiese no ser cat_ocupacional Salaried
+    grepl("Incapacitado permanente para trabajar",condicion_ocupacional_row_all2)& grepl("Salaried",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Inactive", #--> debiese no ser cat_ocupacional Salaried  
+    grepl("Otra razón",condicion_ocupacional_row_all2)& grepl("Salaried",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Inactive", #--> debiese no ser cat_ocupacional Salaried
+    grepl("Pensionado o jubilado sin trabajar",condicion_ocupacional_row_all2)& grepl("Salaried",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Inactive", #--> debiese no ser cat_ocupacional Salaried
+    grepl("Quehaceres del hogar",condicion_ocupacional_row_all2)& grepl("Salaried",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Inactive", #--> debiese no ser cat_ocupacional Salaried
+    grepl("No busca Trabajo",condicion_ocupacional_row_all2)& grepl("Salaried",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Not seeking for work", #--> debiese no ser cat_ocupacional Salaried
+    grepl("Sin actividad",condicion_ocupacional_row_all2)& grepl("Salaried",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"No activity", #--> debiese no ser cat_ocupacional Salaried
+  #categorizados como Employer en cat__ocupacional y employed en estatus_ocupacional_rec
+    grepl("Buscando trabajo por primera vez",condicion_ocupacional_row_all2)& grepl("Self-employed",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Looking for a job for the first time", #--> debiese no ser cat_ocupacional Self-employed
+    grepl("Cesante",condicion_ocupacional_row_all2)& grepl("Self-employed",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Unemployed", #--> debiese no ser cat_ocupacional Self-employed
+    grepl("Estudiando sin trabajar|Incapacitado permanente para trabajar|Otra razón|Pensionado o jubilado sin trabajar|Quehaceres del hogar",condicion_ocupacional_row_all2)& grepl("Self-employed",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Inactive", #--> debiese no ser cat_ocupacional Self-employed
+    grepl("No busca Trabajo",condicion_ocupacional_row_all2)& grepl("Self-employed",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Not seeking for work",
+    grepl("Sin actividad",condicion_ocupacional_row_all2)& grepl("Self-employed",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"No activity",
+  #categorizados como Employer en cat__ocupacional y employed en estatus_ocupacional_rec
+    grepl("Cesante",condicion_ocupacional_row_all2)& grepl("Employer",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Unemployed",
+    grepl("Estudiando sin trabajar",condicion_ocupacional_row_all2)& grepl("Employer",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Inactive", #--> debiese no ser cat_ocupacional Employer
+    grepl("Otra razón",condicion_ocupacional_row_all2)& grepl("Employer",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Inactive", #--> debiese no ser cat_ocupacional Employer
+    grepl("Quehaceres del hogar",condicion_ocupacional_row_all2)& grepl("Employer",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Inactive", #--> debiese no ser cat_ocupacional Employer
+    grepl("Sin actividad",condicion_ocupacional_row_all2)& grepl("Employer",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"No activity",
+  #categorizados como Unpaid family labour en cat__ocupacional y employed en estatus_ocupacional_rec
+    grepl("Cesante",condicion_ocupacional_row_all2)& grepl("Unpaid family labour",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Unemployed",
+  #categorizados como Other en cat__ocupacional y employed en estatus_ocupacional_rec
+    grepl("Sin actividad",condicion_ocupacional_row_all2)& grepl("Other",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"No activity",
+    grepl("Cesante",condicion_ocupacional_row_all2)& grepl("Other",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Unemployed",
+    grepl("Quehaceres del hogar",condicion_ocupacional_row_all2)& grepl("Other",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Inactive", #--> debiese no ser cat_ocupacional Employer  
+  #categorizados como Volunteer worker en cat__ocupacional y employed en estatus_ocupacional_rec
+    grepl("Cesante",condicion_ocupacional_row_all2)& grepl("Volunteer worker",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Unemployed",
+    grepl("No busca Trabajo",condicion_ocupacional_row_all2)& grepl("Volunteer worker",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Not seeking for work",
+    grepl("Quehaceres del hogar",condicion_ocupacional_row_all2)& grepl("Volunteer worker",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Inactive",
+    grepl("Sin actividad",condicion_ocupacional_row_all2)& grepl("Volunteer worker",cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"No activity",
+  #categorizados como NA en cat__ocupacional y employed en estatus_ocupacional_rec
+    grepl("Cesante",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Unemployed",
+    grepl("Estudiando sin trabajar",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Inactive", #--> debiese no ser cat_ocupacional Employer
+    grepl("Pensionado o jubilado sin trabajar",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Inactive", #--> debiese no ser cat_ocupacional Employer
+    grepl("Quehaceres del hogar",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"Inactive", #--> debiese no ser cat_ocupacional Employer
+    grepl("Sin actividad",condicion_ocupacional_row_all2)& is.na(cat_ocupacional) & grepl("Employed",estatus_ocupacional_rec)~"No activity",
+  TRUE~as.character(estatus_ocupacional_rec))) %>% 
+  assign("CONS_C1_df_dup_SEP_2020_joel",., envir=.GlobalEnv)
+
+#generar cat_ocupacional_corr
+#:#:#:#:#:#:#:#:#:#:#:
+CONS_C1_df_dup_SEP_2020_joel %>% 
+    dplyr::mutate(cat_ocupacional_corr=dplyr::case_when(
+    grepl("Employed",condicion_ocupacional_corr)~as.character(cat_ocupacional),
+    TRUE~NA_character_)) %>% 
+  dplyr::select(-condicion_ocupacional_row_all2,-condicion_ocupacional_larg_treat,-condicion_ocupacional_row_all) %>% 
+  dplyr::mutate(cat_ocupacional_corr=factor(cat_ocupacional_corr),condicion_ocupacional_corr= factor(condicion_ocupacional_corr))%>% 
+assign("CONS_C1_df_dup_SEP_2020",., envir=.GlobalEnv)
+#De ahí generar un cat_ocupacional_corr que converse con condicion_ocupacional_row_all2 y con esttus_ocupacional_corr  
+
+#CONS_C1_df_dup_SEP_2020_joel %>%
+#    dplyr::filter(condicion_ocupacional_row_all2=="Estudiando sin trabajar",estatus_ocupacional_rec=="Employed",condicion_ocupacional_corr=="Employed") %>% 
+#    dplyr::select(condicion_ocupacional_row_all2, cat_ocupacional, estatus_ocupacional_rec, condicion_ocupacional_corr)
+  
+#NO CALZAN PORQUE PUSE UNA OPCIÖN DE QUE SI HABÏA VACIO EN UNO; LO REEMPLAZARA
+#CONS_C1_df_dup_SEP_2020_joel %>%  janitor::tabyl(cat_ocupacional,condicion_ocupacional_larg_treat)    
+#CONS_C1_df_dup_SEP_2020_joel %>%  janitor::tabyl(estatus_ocupacional,condicion_ocupacional_larg_treat)
+#CONS_C1_df_dup_SEP_2020_joel %>%  janitor::tabyl(condicion_ocupacional_row_all2,cat_ocupacional)  
 ```
 
 <br>
@@ -2909,7 +3116,10 @@ otros_pr_sm_vif= "Otros problemas de Atención de Salud Mental, Violencia Intraf
 sus_ini_mod_mvv= "Sustancia de Inicio (Valor más vulnerable)/Starting Substance (Most vulnerable value)",
 hijos_trat_res= "Tiene Hijos en Ingreso a Tratamiento Residencial del Último Registro/Have Children in Residential Treatment of the Last Entry",
 dg_total_cie_10= "Conteo de Diagnósticos CIE-10(sólo diagnósticos)/Count of ICD-10 Diagnostics(only diagnoses)",
-dg_total_dsm_iv= "Conteo de Diagnósticos DSM-IV(sólo diagnósticos)/Count of DSM-IV Diagnostics(only diagnoses)"
+dg_total_dsm_iv= "Conteo de Diagnósticos DSM-IV(sólo diagnósticos)/Count of DSM-IV Diagnostics(only diagnoses)",
+
+condicion_ocupacional_corr= 'Condición Ocupacional Criterio Corregido(f)/Occupational Status Corrected(f)',
+cat_ocupacional_corr= 'Categoría Ocupacional Criterio Corregido(f)/Occupational Category Corrected(f)'
 )
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
