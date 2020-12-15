@@ -1642,7 +1642,8 @@ if(muestra==0) {
 
 invisible(c("a- no son mujeres, con identidad de género distinta a femenino y tienen un tipo de programa mujeres."))
 
-problema_plan_sexo_analisis <- readxl::read_excel("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/problema_plan_sexo analisis.xlsx",skip = 1)
+library(readxl)
+problema_plan_sexo_analisis <- read_excel("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/problema_plan_sexo analisis.xlsx",skip = 1)
 #sexo_CAMBIOS SEXO (ID EMBARAZO NOMBE CENTRO Y OTRAS VARIABLES USER-INVARIANT DEBIESE SER POR HASH)
 #tipo_de_plan_CAMBIOS PLAN (ID EMBARAZO NOMBE CENTRO Y OTRAS VARIABLES USER-INVARIANT DEBIESE SER POR HASH)
 #tipo_de_programa_CAMBIOS PROGRAMA (ID EMBARAZO NOMBE CENTRO Y OTRAS VARIABLES USER-INVARIANT DEBIESE SER POR HASH)
@@ -1894,7 +1895,7 @@ CONS_C1_df_dup_JUL_2020_cons14 %>%
 
 ### Cases with more than 1095  days of treatment
 
-Finally, we focused on treatment days in some of the cases, due to the collapse of treatments may sum additional days to a treatment, resulting in extensive treatments (>1095 days) that would not be considered as valid treatments to SENDAs professionals. We distinguished between cases that corresponded to users that had more than one treatment, and cases that did not have an availbable date of dischargefa
+Finally, we focused on treatment days in some of the cases, due to the collapse of treatments may sum additional days to a treatment, resulting in extensive treatments (>1095 days) that would not be considered as valid treatments to SENDAs professionals. We distinguished between cases that corresponded to users that had more than one treatment, and cases that did not have an available date of discharge.
 
 <br>
 
@@ -2083,9 +2084,66 @@ CONS_C1_df_dup_JUL_2020_cons14b%>%
 
 <br>
 
+### Consistencies in Age of Onset of Drug Use, Age of Onset of Drug Use in the Primary Substance at Admission, and Age at Admission
+
+As a result of collapsing treatments and the imputation of ages of onset (`edad_ini_cons` or `edad_ini_sus_prin`), some ages shown inconsistencies due to a greater Age of Onset of Drug Use posterior to the first date of admission by user (n=`r CONS_C1_df_dup_JUL_2020_cons15 %>% dplyr::group_by(hash_key) %>% dplyr::mutate(min_edad_al_ing=min(edad_al_ing,na.rm=T)) %>% dplyr::ungroup() %>%  dplyr::filter(edad_ini_cons>min_edad_al_ing, !is.na(edad_ini_sus_prin),!is.na(edad_ini_cons)) %>% nrow %>%  format(big.mark=",")`).
+
+<br>
+
+Also, there are many cases with an Age of Onset of Drug Use in the Primary Substance lower to the Age of Onset of Drug Use, or greater to the first age at admission for each user in each specific primary substance at admission (n= `r CONS_C1_df_dup_JUL_2020_cons15 %>% dplyr::group_by(hash_key) %>% dplyr::mutate(min_edad_al_ing=min(edad_al_ing,na.rm=T)) %>% dplyr::ungroup() %>%  dplyr::mutate(edad_ini_cons=dplyr::case_when(edad_ini_cons>min_edad_al_ing~NA_integer_,TRUE~edad_ini_cons)) %>%  dplyr::group_by(hash_key,sus_principal_mod) %>% dplyr::mutate(min_edad_al_ing=min(edad_al_ing,na.rm=T)) %>% dplyr::ungroup() %>% dplyr::filter(edad_ini_sus_prin>min_edad_al_ing|edad_ini_cons>edad_ini_sus_prin) %>% nrow %>%  format(big.mark=",")`).
+
+<br>
+
+We decided that both values should be declared as missing values. Must take note that there may still be inconsistencies within each user in terms of the age of onset of drug use in the primary substance. For this particular variable, we faced with a great mount of missing values, in part due to inconsistencies with the other ages reported. This is why we treated them as missing values, despite the efforts to generate a more reliable value.
+
+<br>
+
+```{r std15a_edad_ini_cons_sus_prin_edad_ini_cons_edad_al_ing, echo=T, paged.print=TRUE,eval=T}
+paste0("Number of users with more than age of onset of drug use: ",CONS_C1_df_dup_JUL_2020_cons15 %>% dplyr::group_by(hash_key) %>% dplyr::mutate(n_edad_ini_cons=n_distinct(edad_ini_cons)) %>% dplyr::ungroup() %>%  dplyr::filter(n_edad_ini_cons>1) %>% nrow())
+paste0("Number of users with more than age of onset of drug use of the primary substance at admission: ",CONS_C1_df_dup_JUL_2020_cons15 %>% dplyr::group_by(hash_key,sus_principal_mod) %>% dplyr::mutate(n_edad_ini_cons=n_distinct(edad_ini_sus_prin)) %>% dplyr::ungroup() %>%  dplyr::filter(n_edad_ini_cons>1) %>% nrow()) #704
+#Ver los casos con más de un valor en la edad de inicio de la sustancia principal.
+
+#CONS_C1_df_dup_JUL_2020_cons15 %>% dplyr::group_by(hash_key,sus_principal_mod) %>% dplyr::mutate(n_edad_ini_cons=n_distinct(edad_ini_sus_prin)) %>% dplyr::ungroup() %>%  dplyr::filter(n_edad_ini_cons>1) %>% dplyr::select(hash_key, sus_principal_mod, edad_ini_sus_prin, edad_ini_cons) %>% View()
+
+#Ver los casos que por validación correspondería conservar.
+
+#CONS_C1_df_dup_JUL_2020_cons15 %>% 
+#    dplyr::group_by(hash_key,sus_principal_mod) %>% 
+#    dplyr::mutate(n_edad_ini_cons=n_distinct(edad_ini_sus_prin)) %>% 
+#    dplyr::mutate(min_edad_al_ing=min(edad_al_ing,na.rm=T)) %>% 
+#    dplyr::ungroup() %>%  
+#    dplyr::filter(n_edad_ini_cons>1) %>% 
+#    dplyr::select(hash_key, sus_principal_mod, edad_ini_sus_prin, edad_ini_cons,min_edad_al_ing) %>% #
+#    dplyr::filter(edad_ini_sus_prin>=edad_ini_cons,edad_ini_sus_prin<min_edad_al_ing) %>% 
+#    nrow()
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+CONS_C1_df_dup_JUL_2020_cons15 %>% 
+  dplyr::group_by(hash_key) %>% 
+  dplyr::mutate(min_edad_al_ing=min(edad_al_ing,na.rm=T),min_edad_al_ing=ifelse(is.infinite(min_edad_al_ing), NA, min_edad_al_ing)) %>% 
+  dplyr::ungroup() %>%  
+  dplyr::mutate(edad_ini_cons=dplyr::case_when(edad_ini_cons>min_edad_al_ing~NA_integer_,TRUE~edad_ini_cons)) %>%
+  dplyr::group_by(hash_key,sus_principal_mod) %>%
+  dplyr::mutate(min_edad_al_ing=min(edad_al_ing,na.rm=T),min_edad_al_ing=ifelse(is.infinite(min_edad_al_ing), NA, min_edad_al_ing)) %>% 
+  dplyr::ungroup() %>%
+  dplyr::mutate(edad_ini_sus_prin=dplyr::case_when(is.na(edad_ini_cons)~NA_integer_,TRUE~edad_ini_sus_prin)) %>% 
+  dplyr::mutate(edad_ini_sus_prin=dplyr::case_when((edad_ini_sus_prin>min_edad_al_ing)|(edad_ini_cons>edad_ini_sus_prin)~NA_integer_,TRUE~edad_ini_sus_prin)) %>% 
+  dplyr::group_by(hash_key,sus_principal_mod) %>% dplyr::mutate(n_edad_ini_sus_prin=n_distinct(edad_ini_sus_prin)) %>% 
+  dplyr::ungroup() %>%  
+  dplyr::mutate(edad_ini_sus_prin=ifelse(n_edad_ini_sus_prin>1,NA_integer_,edad_ini_sus_prin)) %>% 
+  #edad_ini_sus_prin>min_edad_al_ing|edad_ini_cons>edad_ini_sus_prin
+  #dplyr::filter(edad_ini_sus_prin>min_edad_al_ing) %>% 
+  #dplyr::filter(edad_ini_cons>edad_ini_sus_prin) %>% 
+  dplyr::select(-n_edad_ini_sus_prin,-min_edad_al_ing) %>% 
+  assign("CONS_C1_df_dup_JUL_2020_cons15a",., envir = .GlobalEnv)
+```
+
+<br>
+
 ### Information on Diagnoses
 
-We ordered the ICD-10 and DSM-IV diagnostics of any given case, depending on how many different diagnoses each case may had. First we started recoding the sub categories. Once we had every distinct sub-cateogry, we looked for cases with no available sub-categories. If they had only a diagnose "In study" (*"En estudio"*), we conserved this general diagnose (category). It was not possible to work with subcategories, because an important part of the more general diagnostics did not have any diagnose on the subcategory. For example, in the first column of DSM-IV, a `r CONS_C1_df_dup_JUL_2020_cons15%>% dplyr::mutate(dg_trs_psiq_sub_dsm_iv_or=!is.na(dg_trs_psiq_sub_dsm_iv_or))%>% janitor::tabyl(dg_trs_psiq_dsm_iv_or,dg_trs_psiq_sub_dsm_iv_or)%>% adorn_percentages()%>% data.frame()%>%dplyr::filter(dg_trs_psiq_dsm_iv_or!="Sin trastorno")%>%select(FALSE.)%>% summarise(not_empty=paste0(round(mean(FALSE.,na.rm=T),2)*100,"%"))` had a general diagnose but did not have a sub-category related. Same with ICD-10  (`r CONS_C1_df_dup_JUL_2020_cons15%>% dplyr::mutate(x2_dg_trs_psiq_sub_cie_10_or=!is.na(x2_dg_trs_psiq_sub_cie_10_or))%>% janitor::tabyl(x2_dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_sub_cie_10_or)%>% adorn_percentages()%>% data.frame()%>%dplyr::filter(x2_dg_trs_psiq_cie_10_or!="Sin trastorno")%>%select(FALSE.)%>% summarise(not_empty=paste0(round(mean(FALSE.,na.rm=T),2)*100,"%"))`). **This lead us to conclude that diagnostic categories were not related to sub-categories, once these processes are done, in order to avoid to loose information. DSM-IV and ICD-10 Diagnoses and sub-categories are presented as a separated list of unique values by treatment, independently of one another**.
+We ordered the ICD-10 and DSM-IV diagnostics of any given case, depending on how many different diagnoses each case may had. First we started recoding the sub categories. Once we had every distinct sub-cateogry, we looked for cases with no available sub-categories. If they had only a diagnose "In study" (*"En estudio"*), we conserved this general diagnose (category). It was not possible to work with subcategories, because an important part of the more general diagnostics did not have any diagnose on the subcategory. For example, in the first column of DSM-IV, a `r CONS_C1_df_dup_JUL_2020_cons15a%>% dplyr::mutate(dg_trs_psiq_sub_dsm_iv_or=!is.na(dg_trs_psiq_sub_dsm_iv_or))%>% janitor::tabyl(dg_trs_psiq_dsm_iv_or,dg_trs_psiq_sub_dsm_iv_or)%>% adorn_percentages()%>% data.frame()%>%dplyr::filter(dg_trs_psiq_dsm_iv_or!="Sin trastorno")%>%select(FALSE.)%>% summarise(not_empty=paste0(round(mean(FALSE.,na.rm=T),2)*100,"%"))` had a general diagnose but did not have a sub-category related. Same with ICD-10  (`r CONS_C1_df_dup_JUL_2020_cons15a%>% dplyr::mutate(x2_dg_trs_psiq_sub_cie_10_or=!is.na(x2_dg_trs_psiq_sub_cie_10_or))%>% janitor::tabyl(x2_dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_sub_cie_10_or)%>% adorn_percentages()%>% data.frame()%>%dplyr::filter(x2_dg_trs_psiq_cie_10_or!="Sin trastorno")%>%select(FALSE.)%>% summarise(not_empty=paste0(round(mean(FALSE.,na.rm=T),2)*100,"%"))`). **This lead us to conclude that diagnostic categories were not related to sub-categories, once these processes are done, in order to avoid to loose information. DSM-IV and ICD-10 Diagnoses and sub-categories are presented as a separated list of unique values by treatment, independently of one another**.
 
 <br>
 
@@ -2095,13 +2153,13 @@ Additionally, we generated a category to detect whether a user had at least one 
 
 ```{r std17_stand_dgs, echo=T, paged.print=TRUE,eval=T}
 
-dg_trs_psiq_sub_dsm_iv_or_cat<-CONS_C1_df_dup_JUL_2020_cons15%>% 
+dg_trs_psiq_sub_dsm_iv_or_cat<-CONS_C1_df_dup_JUL_2020_cons15a%>% 
   dplyr::mutate(dg_trs_psiq_sub_dsm_iv_or=stringr::str_trim(as.character(dg_trs_psiq_sub_dsm_iv_or)))%>% 
   janitor::tabyl(dg_trs_psiq_sub_dsm_iv_or)%>% data.frame()%>% 
   dplyr::select(dg_trs_psiq_sub_dsm_iv_or)%>% 
   dplyr::filter(!dg_trs_psiq_sub_dsm_iv_or %in% c(NA))%>% unlist()%>% as.character() 
-
-sub_dsm_iv_to_cie_10_comp_table <- readxl::read_excel("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/sub_dsm_iv_to_cie_10_comp_table.xlsx", col_names = c("original","mod"))
+library(readxl)
+sub_dsm_iv_to_cie_10_comp_table <- read_excel("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/sub_dsm_iv_to_cie_10_comp_table.xlsx", col_names = c("original","mod"))
 #PARA DEJAR LAS CATEGORIAS GENERALES ACTUALIZADAS:  
 cat_dsm_iv_desde_sub_dsm_iv<-
   CONS_C1_df_dup_JUN_2020%>%
@@ -2129,13 +2187,13 @@ sub_dsm_iv_to_cie_10_comp_table <-
   dplyr::left_join(sub_dsm_iv_to_cie_10_comp_table,by=c("dg_trs_psiq_sub_dsm_iv_or"="original"))
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
-dg_trs_psiq_sub_cie_10_or_cat<-CONS_C1_df_dup_JUL_2020_cons15%>% 
+dg_trs_psiq_sub_cie_10_or_cat<-CONS_C1_df_dup_JUL_2020_cons15a%>% 
   dplyr::mutate(dg_trs_psiq_sub_cie_10_or=stringr::str_trim(as.character(dg_trs_psiq_sub_cie_10_or)))%>% 
   janitor::tabyl(dg_trs_psiq_sub_cie_10_or)%>% data.frame()%>% 
   select(dg_trs_psiq_sub_cie_10_or)%>% 
   dplyr::filter(!dg_trs_psiq_sub_cie_10_or %in% c(NA))%>% unlist()%>% as.character() 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-CONS_C1_df_dup_JUL_2020_cons15%>%
+CONS_C1_df_dup_JUL_2020_cons15a%>%
   dplyr::mutate(across(c(contains("psiq_sub_dsm_iv"),contains("psiq_sub_cie_10"),
                          diagnostico_trs_fisico,otros_probl_at_sm_or),~stringr::str_trim(as.character(.))))%>%
   #PARA CONVERTIR LOS DSM EN HOMOLOGACIONES A CIE 10 IN BRACKETS

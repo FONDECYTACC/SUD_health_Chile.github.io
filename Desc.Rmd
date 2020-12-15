@@ -1909,6 +1909,14 @@ dplyr::mutate(escolaridad_rec=factor(escolaridad_rec,labels=c('1-More than high 
   dplyr::mutate(edad_al_ing=replace(edad_al_ing, is.na(edad), NA)) %>%
 
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #Edad Inicio Sus Principal  
+   dplyr::mutate(edad_ini_sus_prin_grupos=ifelse(edad_ini_sus_prin>=25,">=25",
+                                                ifelse(edad_ini_sus_prin>18,"19-24",
+                                                ifelse(edad_ini_sus_prin>15,"16-18",
+                                                ifelse(edad_ini_sus_prin>0,"<=15",
+                                                NA_character_)))))%>% 
+    dplyr::mutate(edad_ini_sus_prin_grupos=as.factor(edad_ini_sus_prin_grupos)) %>%
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #sus principal  
   dplyr::mutate(sus_principal= dplyr::recode(sustancia_principal,
                                              "Hipnóticos "= "Tranquilizantes e Hipnóticos",
@@ -2148,7 +2156,7 @@ dplyr::group_by(hash_key) %>%
     #DSM-IV -CORREGIDO
 dplyr::mutate(across(c(dg_trs_psiq_dsm_iv_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or,x4_dg_trs_psiq_dsm_iv_or),~dplyr::case_when(grepl("En estudio",as.character(.))~1,grepl("Sin trastorno",as.character(.))~0,is.na(.)~0,TRUE~0),.names = "{col}_mod1b"))%>%
   dplyr::mutate(total_dsm_iv_en_est = base::rowSums(dplyr::select(.,ends_with("_mod1b"))))%>%  
-dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or,x4_dg_trs_psiq_dsm_iv_or),~dplyr::case_when(grepl("En estudio",as.character(.),ignore.case = T)~0,grepl("Sin trastorno",as.character(.),ignore.case = T)~0,is.na(.)~0,TRUE~1),.names = "{col}_mod2b"))%>%
+dplyr::mutate(across(c(dg_trs_psiq_dsm_iv_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_psiq_dsm_iv_or,x4_dg_trs_psiq_dsm_iv_or),~dplyr::case_when(grepl("En estudio",as.character(.),ignore.case = T)~0,grepl("Sin trastorno",as.character(.),ignore.case = T)~0,is.na(.)~0,TRUE~1),.names = "{col}_mod2b"))%>%
   dplyr::mutate(dg_total_dsm_iv = base::rowSums(dplyr::select(.,ends_with("_mod2b"))))%>%  #total_dsm_iv_dg
   
   dplyr::mutate(dg_dsm_iv_rec=dplyr::case_when(dg_total_dsm_iv>0 ~"With psychiatric comorbidity",
@@ -2282,9 +2290,9 @@ dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_
                                                                         "With children only",
                                                                         "With couple only"))) %>%    
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
-  #age of onset of drug use
-  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #physical diagnose
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #
   dplyr::mutate(dg_fis_anemia= ifelse(grepl("Anemia",diagnostico_trs_fisico),1,0))%>%
   dplyr::mutate(dg_fis_card= ifelse(grepl("Cardiopat",diagnostico_trs_fisico),1,0))%>%
   dplyr::mutate(dg_fis_in_study= ifelse(grepl("En estudio",diagnostico_trs_fisico),1,0))%>%
@@ -2341,6 +2349,14 @@ dplyr::mutate(across(c(dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_
                                                            as.character(compromiso_biopsicosocial)=="3-Severo"~'3-Severe',
                                                            TRUE~NA_character_)) %>% 
   dplyr::mutate(compromiso_biopsicosocial=factor(compromiso_biopsicosocial)) %>% 
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+#Corrección Edad Inicio Sus Principal  
+dplyr::mutate(edad_ini_sus_prin_grupos=ifelse(edad_ini_sus_prin>=25,">=25",
+                                            ifelse(edad_ini_sus_prin>18,"19-24",
+                                            ifelse(edad_ini_sus_prin>15,"16-18",
+                                            ifelse(edad_ini_sus_prin>0,"<=15",
+                                            NA_character_)))))%>% 
+dplyr::mutate(edad_ini_sus_prin_grupos=as.factor(edad_ini_sus_prin_grupos)) %>%
 #_#_#_#_#_#_#_#_#_#_#_
   #corrección tenencia de la vivienda.
 #_#_#_#_#_#_#_#_#_#_#_
@@ -3070,8 +3086,8 @@ centro_muj= 'ID de centro que alude a un centro específico para mujeres/Center 
 dsm_iv= 'Diagnóstico DSM-IV (1 o más)/Psychiatric Diagnoses (DSM-IV)(one or more)',
 cie_10= 'Diagnóstico CIE-10 (1 o más)/Psychiatric Diagnoses (ICD-10)(one or more)',
 abandono_temprano= 'Abandono temprano(<3 meses)/ Early Drop-out(<3 months)',
-cnt_mod_dsm_iv_or= 'Recuento de Diagnóstico DSM-IV/Count of Psychiatric Diagnoses (DSM-IV)',
-cnt_mod_cie_10_or= 'Recuento de Diagnóstico CIE-10/Count of Psychiatric Diagnoses (ICD-10)',
+cnt_mod_dsm_iv_or= 'Recuento de Valores en Diagnóstico DSM-IV (Excluye en Estudio si hay más de uno)/Count of Values in Psychiatric Diagnoses (DSM-IV)',
+cnt_mod_cie_10_or= 'Recuento de Valores en Diagnóstico CIE-10 (Excluye en Estudio si hay más de uno)/Count of Values in Psychiatric Diagnoses (ICD-10)',
 cnt_diagnostico_trs_fisico= 'Recuento de Diagnóstico de Trastorno Físico/Count of Physical Disorder',
 cnt_otros_probl_at_sm_or= 'Recuento de Otros Problemas de Atención Vinculados a Salud Mental/Count of Other problems linked to Mental Health',
 cum_dias_trat_sin_na= 'Suma acumulada de Días de Tratamiento por Usuario/Cumulative Days of Treatment by User',
