@@ -189,6 +189,7 @@ library(MatchIt)
 library(sensitivity2x2xk)
 library(sensitivityfull)
 library(cobalt)
+library(eha)
 
 #devtools::install_github('ChristopherLucas/MatchingFrontier')
 
@@ -201,6 +202,63 @@ if(!require(radiant.update)){install.packages("radiant.update", repos = "https:/
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+try_with_time_limit <- function(expr, cpu = Inf, elapsed = Inf)
+{
+  y <- try({setTimeLimit(cpu, elapsed); expr}, silent = TRUE) 
+  if(inherits(y, "try-error")) NULL else y 
+}
+eval_fork <- function(..., timeout=60){
+
+  #this limit must always be higher than the timeout on the fork!
+  setTimeLimit(timeout+5);      
+
+  #dispatch based on method
+  ##NOTE!!!!! Due to a bug in mcparallel, we cannot use silent=TRUE for now.
+  myfork <- parallel::mcparallel({
+    eval(...)
+  }, silent=FALSE);
+
+  #wait max n seconds for a result.
+  myresult <- parallel::mccollect(myfork, wait=FALSE, timeout=timeout);
+
+  #try to avoid bug/race condition where mccollect returns null without waiting full timeout.
+  #see https://github.com/jeroenooms/opencpu/issues/131
+  #waits for max another 2 seconds if proc looks dead 
+  while(is.null(myresult) && totaltime < timeout && totaltime < 2) {
+     Sys.sleep(.1)
+     enddtime <- Sys.time();
+     totaltime <- as.numeric(enddtime - starttime, units="secs")
+     myresult <- parallel::mccollect(myfork, wait = FALSE, timeout = timeout);
+  }
+
+  #kill fork after collect has returned
+  tools::pskill(myfork$pid, tools::SIGKILL);    
+  tools::pskill(-1 * myfork$pid, tools::SIGKILL);  
+
+  #clean up:
+  parallel::mccollect(myfork, wait=FALSE);
+
+  #timeout?
+  if(is.null(myresult)){
+    stop("R call did not return within ", timeout, " seconds. Terminating process.", call.=FALSE);      
+  }
+
+  #move this to distinguish between timeout and NULL returns
+  myresult <- myresult[[1]];
+
+  #reset timer
+  setTimeLimit();     
+
+  #forks don't throw errors themselves
+  if(inherits(myresult,"try-error")){
+    #stop(myresult, call.=FALSE);
+    stop(attr(myresult, "condition"));
+  }
+
+  #send the buffered response
+  return(myresult);  
+}
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 
@@ -635,6 +693,8 @@ missing.values %>%
 
 <br>
 
+<br>
+
 From the figure above, we could see that the starting substance (`sus_ini_mvv`), the onset of drug use (`edad_ini_cons`) and the evaluation of the therapeutic process (`evaluacindelprocesoteraputico`) had around 6% of missing data. These values should be imputed. We first focused on the age of onset of drug use. It is important to consider that the evaluation of the therapeutic process could be distorted due to censoring (many users did not finish their treatment, and did not have this evaluation in the study period).
 
 <br>
@@ -646,7 +706,7 @@ From the figure above, we could see that the starting substance (`sus_ini_mvv`),
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 
-match.on_tot2 <- c("row", "hash_key","sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","edad_ini_cons","freq_cons_sus_prin","origen_ingreso_mod","dg_cie_10_rec","nombre_region","tipo_centro_pub","sexo_2","edad_al_ing","fech_ing_num","abandono_temprano_rec","tipo_de_plan_res","duplicates_filtered","edad_ini_sus_prin","via_adm_sus_prin_act","dg_trs_cons_sus_or","dup","evaluacindelprocesoteraputico")
+match.on_tot2 <- c("row", "hash_key","sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","edad_ini_cons","freq_cons_sus_prin","origen_ingreso_mod","dg_cie_10_rec","nombre_region","tipo_centro_pub","sexo_2","edad_al_ing","fech_ing_num","abandono_temprano_rec","tipo_de_plan_res","duplicates_filtered","edad_ini_sus_prin","via_adm_sus_prin_act","dg_trs_cons_sus_or","dup","evaluacindelprocesoteraputico", "motivodeegreso_mod_imp")
 
   #HACER BASE ESPECIAL QUE CONTENGA UNA VARIABLE DE EDAD DE INICIO DE CONSUMO DE SUSTANCIA PRINCIPAL PARA EQUIPARAR
 CONS_C1_df_dup_SEP_2020_match_miss<-
@@ -681,6 +741,17 @@ CONS_C1_df_dup_SEP_2020 %>%
   #:#:#:#:#:#:#:#:#:#:#:
     dplyr::select_(.dots = match.on_tot2) %>% 
     dplyr::mutate(more_one_treat=factor(ifelse(duplicates_filtered>1,1,0))) %>% 
+    #dplyr::mutate(motivodeegreso_mod_imp=as.character(motivodeegreso_mod_imp)) %>% 
+    #dplyr::mutate(tr_completion=factor(dplyr::case_when(
+    #motivodeegreso_mod_imp=="Therapeutic discharge" ~1,
+    #motivodeegreso_mod_imp=="Ongoing treatment" ~0,
+    #TRUE~2),labels=c("Ongoing treatment", "Treatment completion","Treatment non-completion"))) %>% 
+    #dplyr::mutate(n_hash=as.numeric(factor(hash_key, levels=unique(hash_key)))) %>% 
+    dplyr::mutate(motivodeegreso_mod_imp=factor(dplyr::case_when(
+    grepl("Drop-out",motivodeegreso_mod_imp)~"Drop-out",
+    motivodeegreso_mod_imp=="Ongoing treatment" ~NA_character_,
+    TRUE~as.character(motivodeegreso_mod_imp)))) %>% 
+    dplyr::mutate(n_hash=as.numeric(factor(hash_key, levels=unique(hash_key)))) %>% 
     data.table::data.table()
   
 #CONS_C1_df_dup_SEP_2020 %>% janitor::tabyl(evaluacindelprocesoteraputico) 
@@ -691,13 +762,14 @@ CONS_C1_df_dup_SEP_2020 %>%
 
 library(Amelia)
 
-amelia_fit <- amelia(CONS_C1_df_dup_SEP_2020_match_miss[,-c("condicion_ocupacional_corr", "abandono_temprano_rec", "more_one_treat","rn")], 
+amelia_fit <- amelia(CONS_C1_df_dup_SEP_2020_match_miss[,-c("abandono_temprano_rec", "more_one_treat")], 
                      m=30, parallel = "multicore", #noms = "row",
                      idvars="row",#"hash_key","rn"
-                     noms= c("estado_conyugal_2", "via_adm_sus_prin_act",  "origen_ingreso_mod",  "nombre_region", "sexo_2","dg_trs_cons_sus_or","sus_ini_mod_mvv","dg_cie_10_rec", "tipo_centro_pub","tipo_de_plan_res"),
+                     noms= c("estado_conyugal_2", "via_adm_sus_prin_act",  "origen_ingreso_mod",  "nombre_region", "sexo_2","dg_trs_cons_sus_or","sus_ini_mod_mvv","dg_cie_10_rec", "tipo_centro_pub","tipo_de_plan_res","motivodeegreso_mod_imp"),
                      ords= c("escolaridad_rec", "freq_cons_sus_prin","evaluacindelprocesoteraputico"),
                      cs = "hash_key",
-                     ts = "dup")
+                     ts = "dup",
+                     incheck = TRUE)
 
 #amelia_fit$imputations$imp1
 #CONS_C1_df_dup_SEP_2020_match[!complete.cases(CONS_C1_df_dup_SEP_2020_match[,..match.on_tot])]
@@ -723,7 +795,7 @@ As seen in the Figure above, distributions seem to differ. However, considering 
 ```{r mice1_age_at_admission, warning=F,message=F, error=T, eval=T}
 #On this graph, a y = x line indicates the line of perfect agreement; that is, if the imputation model was a perfect predictor of the true value, all the imputations would fall on this line
 no_mostrar=0
-if(no_mostrar==1){
+if(no_mostrar==1){w
   res <- { 
     setTimeLimit(nn_K*500)
     ovr_imp_edad_ini_cons<-overimpute(amelia_fit, var = "edad_al_ing")
@@ -999,6 +1071,8 @@ paste0("Number of users that had different age of onset of drug use after replac
     dplyr::filter(n_dis>1) %>% 
       nrow())
 ```
+
+<br>
 
 <br>
 
@@ -1643,7 +1717,7 @@ paste("Check inconsistencies with posterior educational attainments (0= No incon
 
 <br>
 
-We ended having `r CONS_C1_df_dup_SEP_2020_match_miss4 %>%  dplyr::filter(is.na(escolaridad_rec)) %>%  nrow()` missing values in educational attainment (users=`r CONS_C1_df_dup_SEP_2020_match_miss4 %>%  dplyr::filter(is.na(escolaridad_rec)) %>% dplyr::distinct(hash_key) %>% nrow()`) , because the imputed values did not fulfilled the requirements of a progression of the educational attainment (eg., a user could not respond to have completed secondary school, but then answer that he had completed primary school only), for example, due to ties in the imputed values or no imputed values.
+We ended having `r CONS_C1_df_dup_SEP_2020_match_miss4 %>%  dplyr::filter(is.na(escolaridad_rec)) %>%  nrow()` missing values in educational attainment (users=`r CONS_C1_df_dup_SEP_2020_match_miss4 %>%  dplyr::filter(is.na(escolaridad_rec)) %>% dplyr::distinct(hash_key) %>% nrow()`), because the imputed values did not fulfilled the requirements of a progression of the educational attainment (eg., a user could not respond to have completed secondary school, but then answer that he had completed primary school only), for example, due to ties in the imputed values or no imputed values.
 
 <br>
 
@@ -2009,13 +2083,119 @@ CONS_C1_df_dup_SEP_2020_match_miss6 %>%
 
 <br>
 
-### Evaluation of the Therapeutic Process
+### Cause of Discharge
 
-Another variable that is worth imputing is the Evalution of the Therapeutic Process at Dishcarge (n= `r CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::filter(is.na(evaluacindelprocesoteraputico)) %>% nrow() %>% format(big.mark=",")`). In case of ties, we selected the imputed values with the value with the minimum evaluation. Must consider that most of the null values could be explained by censoring or not completition of the treatment at the period of the study (`r CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(hash_key %in% unlist(unique(CONS_C1_df_dup_SEP_2020_match$hash_key))) %>% dplyr::filter(motivodeegreso_mod_imp=="Ongoing treatment", is.na(evaluacindelprocesoteraputico)) %>% nrow() %>% format(big.mark=",")`).
+We looked over possible imputations to the truly missing values, discarding missing values due to censorship (n=`r CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::filter(is.na(motivodeegreso_mod_imp)) %>% dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,fech_egres_imp),by="row") %>% dplyr::filter(!is.na(fech_egres_imp))%>%  nrow()`).
+<!--- son casos que no tienen motivo de egreso, pero sí finalizó su tratamiento. Aunque no en el caso de todes. Ver change_dates_out_of_study.R--->
+<br>
+
+```{r mice8_caus_disch,eval=T, echo=T, paged.print=TRUE}
+motivo_de_egreso_a_imputar<-
+CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::filter(is.na(motivodeegreso_mod_imp)) %>% dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,fech_egres_imp)) %>% dplyr::filter(!is.na(fech_egres_imp))%>%dplyr::select(row)
+
+motivodeegreso_mod_imp_imputed<-
+ cbind.data.frame(amelia_fit$imputations$imp1$row,
+       amelia_fit$imputations$imp1$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp2$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp3$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp4$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp5$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp6$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp7$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp8$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp9$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp10$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp11$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp12$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp13$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp14$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp15$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp16$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp17$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp18$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp19$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp20$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp21$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp22$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp23$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp24$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp25$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp26$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp27$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp28$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp29$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp30$motivodeegreso_mod_imp
+       ) %>% 
+  melt(id.vars="amelia_fit$imputations$imp1$row") %>% 
+  janitor::clean_names() %>% 
+  dplyr::arrange(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::filter(amelia_fit_imputations_imp1_row %in% unlist(motivo_de_egreso_a_imputar$row)) %>% 
+  #FILTRAR CASOS QUE SON ILÓGICOS: MUERTES CON TRATAMIENTOS POSTERIORES (1)
+  dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,motivodeegreso_mod_imp, fech_egres_imp,dup, duplicates_filtered,evaluacindelprocesoteraputico),by=c("amelia_fit_imputations_imp1_row"="row")) %>% 
+  dplyr::mutate(value_death=dplyr::case_when(value=="Death"& duplicates_filtered>dup~1,TRUE~0)) %>% 
+  dplyr::filter(value_death!=1) %>%  
+  #:#:#:#:#:
+  dplyr::count(amelia_fit_imputations_imp1_row,value) %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::slice_min(n, n = 1) %>% 
+  dplyr::summarise(adm_dis=sum(value == "Administrative discharge",na.rm=T),
+                    death=sum(value == "Death",na.rm=T),
+                    referral=sum(value == "Referral to another treatment",na.rm=T),
+                    ter_dis=sum(value == "Therapeutic discharge",na.rm=T),
+                    dropout=sum(value =="Drop-out",na.rm=T)) %>% 
+  rowwise() %>% 
+  dplyr::mutate(ties=sum(c_across(adm_dis:dropout)),ties=ifelse(ties>1,1,0)) %>% 
+  #dplyr::filter(ties==1) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,motivodeegreso_mod_imp, fech_egres_imp,fech_egres_num,dup, duplicates_filtered,evaluacindelprocesoteraputico,tipo_centro_derivacion),by=c("amelia_fit_imputations_imp1_row"="row")) %>% 
+  dplyr::mutate(motivodeegreso_mod_imp_imputation= dplyr::case_when(
+    ties==0 & adm_dis==1 & fech_egres_imp<"2019-11-13"~"Administrative discharge",
+    #its an absorving state. should not have posterior treatments
+    ties==0 & death==1 & fech_egres_imp<"2019-11-13" & dup==duplicates_filtered~"Death",
+    ties==0 & referral==1 & fech_egres_imp<"2019-11-13"~"Referral to another treatment",
+    ties==0 & ter_dis==1 & fech_egres_imp<"2019-11-13"~"Therapeutic discharge",
+    ties==0 & dropout==1 & fech_egres_imp<"2019-11-13"~"Drop-out",
+    #si no hay fecha de egreso, está en la fecha de censura, sólo puede ser tratamiento en curso
+    fech_egres_imp>="2019-11-13"~NA_character_,
+    TRUE~NA_character_)) %>% 
+    #si tiene evaluacindelprocesoteraputico, es porque no es un tratamiento en curso
+  dplyr::rename("motivodeegreso_mod_imp_original"="motivodeegreso_mod_imp")
+
+#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:
+CONS_C1_df_dup_SEP_2020_match_miss8<-
+CONS_C1_df_dup_SEP_2020_match_miss7 %>% 
+   dplyr::left_join(motivodeegreso_mod_imp_imputed[,c("amelia_fit_imputations_imp1_row","motivodeegreso_mod_imp_original","fech_egres_imp","fech_egres_num","motivodeegreso_mod_imp_imputation")], by=c("row"="amelia_fit_imputations_imp1_row")) %>%
+  #dplyr::filter(is.na(motivodeegreso_mod_imp)) %>% dplyr::select(row,hash_key,motivodeegreso_mod_imp_original, motivodeegreso_mod_imp_imputation,motivodeegreso_mod_imp,fech_egres_num,fech_egres_imp)
+      dplyr::mutate(motivodeegreso_mod_imp=factor(dplyr::case_when(is.na(motivodeegreso_mod_imp)~motivodeegreso_mod_imp_imputation,
+                                                                   motivodeegreso_mod_imp_original=="Ongoing treatment"~NA_character_, TRUE~as.character(motivodeegreso_mod_imp)))) %>% 
+  dplyr::select(-motivodeegreso_mod_imp_imputation,-fech_egres_imp,-fech_egres_num,-motivodeegreso_mod_imp_original) %>% 
+  #dplyr::rename_all( list(~paste0(., ".left"))) %>% 
+  dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,motivodeegreso_mod_imp) %>% 
+                     dplyr::rename("motivodeegreso_mod_imp_original"="motivodeegreso_mod_imp"),by="row") %>%
+  data.table()
+
+# CONS_C1_df_dup_SEP_2020_match_miss8 %>% janitor::tabyl(motivodeegreso_mod_imp,motivodeegreso_mod_imp_original)
+#CONS_C1_df_dup_SEP_2020_match_miss8 %>% janitor::tabyl(motivodeegreso_mod_imp_original)
+
+#
+if(
+CONS_C1_df_dup_SEP_2020_match_miss8 %>% dplyr::filter(motivodeegreso_mod_imp_original!="Ongoing treatment",is.na(motivodeegreso_mod_imp)) %>% nrow()>0){"There are missing values on the cause of discharge"}
+
+```
+<br>
+
+A total of `r CONS_C1_df_dup_SEP_2020_match_miss8 %>% dplyr::filter(is.na(motivodeegreso_mod_imp),is.na(motivodeegreso_mod_imp_original)) %>% dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,fech_egres_imp),by="row") %>% dplyr::filter(fech_egres_imp<"2019-11-13") %>% nrow()` cases were not imputed due to ties in the imputed values.
 
 <br>
 
-```{r mice8_evaluacindelprocesoteraputico,eval=T, echo=T, paged.print=TRUE}
+### Evaluation of the Therapeutic Process
+
+Another variable that is worth imputing is the Evaluation of the Therapeutic Process at Discharge (n= `r CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::filter(is.na(evaluacindelprocesoteraputico)) %>% nrow() %>% format(big.mark=",")`). In case of ties, we selected the imputed values with the value with the minimum evaluation. Must consider that most of the null values could be explained by censoring or not completion of the treatment at the period of the study (n= `r CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(hash_key %in% unlist(unique(CONS_C1_df_dup_SEP_2020_match$hash_key))) %>% dplyr::filter(motivodeegreso_mod_imp=="Ongoing treatment", is.na(evaluacindelprocesoteraputico)) %>% nrow() %>% format(big.mark=",")`).
+
+<br>
+
+```{r mice9_evaluacindelprocesoteraputico,eval=T, echo=T, paged.print=TRUE}
 # Ver distintos valores propuestos para sustancia de inciio
 evaluacindelprocesoteraputico_imputed<-
  cbind.data.frame(amelia_fit$imputations$imp1$row,
@@ -2059,7 +2239,6 @@ evaluacindelprocesoteraputico_imputed<-
                    med_ach_2=sum(value == "2-Medium Achievement",na.rm=T),
                   min_ach_3=sum(value =="3-Minimum Achievement",na.rm=T)) %>% 
   dplyr::ungroup() %>% 
-    dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,motivodeegreso_mod_imp),by=c("amelia_fit_imputations_imp1_row"="row")) %>% 
   dplyr::mutate(evaluacindelprocesoteraputico_imputation= dplyr::case_when(
       (high_ach_1 >med_ach_2) & (med_ach_2 >min_ach_3)~"1-High Achievement",
       (med_ach_2>high_ach_1) & (med_ach_2 >min_ach_3)~"2-Medium Achievement",
@@ -2069,15 +2248,17 @@ evaluacindelprocesoteraputico_imputed<-
 ##
 #CONS_C1_df_dup_SEP_2020 %>% janitor::tabyl(motivodeegreso_mod_imp,evaluacindelprocesoteraputico)
 
-CONS_C1_df_dup_SEP_2020_match_miss8<-
-CONS_C1_df_dup_SEP_2020_match_miss7 %>% 
-   dplyr::left_join(evaluacindelprocesoteraputico_imputed[,c("amelia_fit_imputations_imp1_row","motivodeegreso_mod_imp","evaluacindelprocesoteraputico_imputation")], by=c("row"="amelia_fit_imputations_imp1_row")) %>%
-    dplyr::mutate(evaluacindelprocesoteraputico=factor(dplyr::case_when(is.na(evaluacindelprocesoteraputico) & motivodeegreso_mod_imp %in% c("Late Drop-out","Early Drop-out","Administrative discharge","Therapeutic discharge","Referral to another treatment")~evaluacindelprocesoteraputico_imputation,motivodeegreso_mod_imp=="Ongoing treatment"~NA_character_, TRUE~as.character(evaluacindelprocesoteraputico)))) %>% 
-   dplyr::mutate(evaluacindelprocesoteraputico=parse_factor(as.character(evaluacindelprocesoteraputico),levels=c('1-High Achievement', '2-Medium Achievement','3-Minimum Achievement'), ordered =T,trim_ws=T,include_na =F, locale=locale(encoding = "UTF-8"))) %>% 
+CONS_C1_df_dup_SEP_2020_match_miss9<-
+CONS_C1_df_dup_SEP_2020_match_miss8 %>% 
+   dplyr::left_join(evaluacindelprocesoteraputico_imputed[,c("amelia_fit_imputations_imp1_row","evaluacindelprocesoteraputico_imputation")], by=c("row"="amelia_fit_imputations_imp1_row")) %>%
+    dplyr::mutate(evaluacindelprocesoteraputico=factor(dplyr::case_when(is.na(evaluacindelprocesoteraputico) & motivodeegreso_mod_imp %in% c("Drop-out","Administrative discharge","Therapeutic discharge","Referral to another treatment")~evaluacindelprocesoteraputico_imputation,
+                                                                        is.na(motivodeegreso_mod_imp)~NA_character_,
+                                                                        TRUE~as.character(evaluacindelprocesoteraputico)))) %>% 
+     dplyr::mutate(evaluacindelprocesoteraputico=parse_factor(as.character(evaluacindelprocesoteraputico),levels=c('1-High Achievement', '2-Medium Achievement','3-Minimum Achievement'), ordered =T,trim_ws=T,include_na =F, locale=locale(encoding = "UTF-8"))) %>% 
   dplyr::select(-evaluacindelprocesoteraputico_imputation) %>% 
   data.table()
 
-CONS_C1_df_dup_SEP_2020_match_miss8 %>% janitor::tabyl(motivodeegreso_mod_imp,evaluacindelprocesoteraputico) %>% 
+CONS_C1_df_dup_SEP_2020_match_miss9 %>% janitor::tabyl(motivodeegreso_mod_imp,evaluacindelprocesoteraputico) %>% 
     knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption = paste0("Table 2. Cause of Discharge vs. Evaluation of the Therapeutic Procress"),
                col.names = c("Cause of Discharge","1-High Achievement", "2- Medium Achievement","3- Minimum Achievement","Null Values"),
@@ -2092,13 +2273,13 @@ As seen in the table above, ongoing treatments did not have an evaluation proces
 
 <br>
 
-### Treatment Modality (Residential)
+### Treatment Setting (Residential)
 
-We looked over possible imputations to region of the center (n=`r CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::filter(is.na(tipo_de_plan_res)) %>% nrow()`).
+We looked over possible imputations to the treatment setting (n=`r CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::filter(is.na(tipo_de_plan_res)) %>% nrow()`).
 
 <br>
 
-```{r mice8_residential_treat,eval=T, echo=T, paged.print=TRUE}
+```{r mice9_residential_treat,eval=T, echo=T, paged.print=TRUE}
 # Ver distintos valores propuestos para estado conyugal
 #evaluacindelprocesoteraputico nombre_region tipo_centro_pub
 
@@ -2142,8 +2323,8 @@ tipo_de_plan_res_imputed<-
 
 #:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:
 
-CONS_C1_df_dup_SEP_2020_match_miss9<-
-CONS_C1_df_dup_SEP_2020_match_miss8 %>% 
+CONS_C1_df_dup_SEP_2020_match_miss10<-
+CONS_C1_df_dup_SEP_2020_match_miss9 %>% 
     dplyr::left_join(dplyr::select(tipo_de_plan_res_imputed,amelia_fit_imputations_imp1_row,n_res,n_amb), by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
   dplyr::mutate(tipo_de_plan_res=factor(dplyr::case_when(is.na(tipo_de_plan_res)& (n_res>n_amb)~"1",is.na(tipo_de_plan_res)& (n_res<n_amb)~"0",TRUE~as.character(tipo_de_plan_res)))) %>%
   dplyr::select(-n_res,-n_amb) %>% 
@@ -2165,13 +2346,13 @@ We checked the characteristics of the sample depending on type of treatment (Res
 
 ```{r bal0,eval=T, echo=T, paged.print=TRUE}                                 
 #prop.table(table(CONS_C1_df_dup_SEP_2020_match$abandono_temprano_rec,CONS_C1_df_dup_SEP_2020_match$tipo_de_plan_res),2)
-match.on_tot <- c("row", "hash_key","sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","edad_ini_cons","freq_cons_sus_prin","origen_ingreso_mod","dg_cie_10_rec","nombre_region","tipo_centro_pub","abandono_temprano_rec","evaluacindelprocesoteraputico","dg_trs_cons_sus_or","tipo_de_plan_res","sexo_2","edad_al_ing","fech_ing_num")
-
+match.on_tot <- c("row", "hash_key","sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","edad_ini_cons","freq_cons_sus_prin","origen_ingreso_mod","dg_cie_10_rec","nombre_region","tipo_centro_pub","abandono_temprano_rec","evaluacindelprocesoteraputico","motivodeegreso_mod_imp","dg_trs_cons_sus_or","tipo_de_plan_res","sexo_2","edad_al_ing","fech_ing_num")
+#$109,756
 #añado los imputados
 CONS_C1_df_dup_SEP_2020_match_miss_after_imp<-
 CONS_C1_df_dup_SEP_2020_match_miss %>% 
-  dplyr::select(-sus_ini_mod_mvv,-estado_conyugal_2,-escolaridad_rec,-freq_cons_sus_prin,-via_adm_sus_prin_act,-edad_ini_cons,-nombre_region,-tipo_centro_pub,-dg_trs_cons_sus_or,-evaluacindelprocesoteraputico,-tipo_de_plan_res) %>% 
-  dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020_match_miss9,
+  dplyr::select(-sus_ini_mod_mvv,-estado_conyugal_2,-escolaridad_rec,-freq_cons_sus_prin,-nombre_region,-tipo_centro_pub,-evaluacindelprocesoteraputico,-motivodeegreso_mod_imp,-dg_trs_cons_sus_or,-tipo_de_plan_res,-edad_ini_cons,-via_adm_sus_prin_act) %>% #
+  dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020_match_miss10,
                                  row,
                                  sus_ini_mod_mvv,
                                  estado_conyugal_2,
@@ -2180,13 +2361,25 @@ CONS_C1_df_dup_SEP_2020_match_miss %>%
                                  nombre_region,
                                  tipo_centro_pub,
                                  evaluacindelprocesoteraputico,
+                                 motivodeegreso_mod_imp,
                                  dg_trs_cons_sus_or,
                                  tipo_de_plan_res,
                                  edad_ini_cons,rn),by="row") %>% 
   dplyr::arrange(tipo_de_plan_res,hash_key,rn) %>% 
   #elimino esta variable porque es accesoria
   dplyr::select(-edad_ini_sus_prin) %>% 
-  dplyr::mutate(sum_miss = base::rowSums(is.na(dplyr::select(.,c("origen_ingreso_mod","dg_cie_10_rec","sexo_2","edad_al_ing","fech_ing_num","sus_ini_mod_mvv","tipo_centro_pub","estado_conyugal_2","escolaridad_rec","freq_cons_sus_prin","nombre_region","dg_trs_cons_sus_or","edad_ini_cons","tipo_de_plan_res"))))) %>% 
+  #para transformar el motivo de egreso
+  dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,fech_egres_num,dias_treat_imp_sin_na),by="row") %>%
+  #dplyr::filter(fech_egres_num==18213,!is.na(motivodeegreso_mod_imp)) %>% 
+  dplyr::mutate(motivodeegreso_mod_imp=dplyr::case_when(dias_treat_imp_sin_na>=90 & motivodeegreso_mod_imp=="Drop-out"~ "Late Drop-out",
+                                                        dias_treat_imp_sin_na<90 & motivodeegreso_mod_imp=="Drop-out"~ "Early Drop-out",
+                                                        fech_egres_num==18213 & is.na(motivodeegreso_mod_imp)~"Ongoing treatment",
+                                                        TRUE~as.character(motivodeegreso_mod_imp)
+                                                        )) %>% #janitor::tabyl(motivodeegreso_mod_imp)
+  dplyr::mutate(evaluacindelprocesoteraputico2=dplyr::case_when(fech_egres_num==18213 & is.na(evaluacindelprocesoteraputico)~"Ongoing treatment",
+                                                        TRUE~as.character(evaluacindelprocesoteraputico)
+  )) %>% 
+  dplyr::mutate(sum_miss = base::rowSums(is.na(dplyr::select(.,c("sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","freq_cons_sus_prin","nombre_region","tipo_centro_pub","evaluacindelprocesoteraputico2","motivodeegreso_mod_imp","dg_trs_cons_sus_or","tipo_de_plan_res","edad_ini_cons","sexo_2","edad_al_ing","fech_ing_num"))))) %>% 
   dplyr::group_by(hash_key) %>% 
   dplyr::mutate(sum_miss=sum(sum_miss)) %>% 
   dplyr::ungroup() 
@@ -2199,7 +2392,8 @@ CONS_C1_df_dup_SEP_2020_match_miss_after_imp_conservados <-
   CONS_C1_df_dup_SEP_2020_match_miss_after_imp %>% 
   dplyr::filter(sum_miss==0) %>% 
   dplyr::select(-sum_miss) %>% 
-  dplyr::left_join(CONS_C1_df_dup_SEP_2020[c("row","condicion_ocupacional_corr")], by="row")
+  dplyr::left_join(CONS_C1_df_dup_SEP_2020[c("row","condicion_ocupacional_corr")], by="row") %>% 
+  dplyr::select(-evaluacindelprocesoteraputico2)
 
 #  CONS_C1_df_dup_SEP_2020_match_miss_after_imp_conservados[complete.cases(CONS_C1_df_dup_SEP_2020_match_miss_after_imp_conservados[,..match.on_tot]),..match.on_tot] 
 ```
@@ -2237,7 +2431,7 @@ paste0("Inconsistencies in dup vs. rn: ",CONS_C1_df_dup_SEP_2020_match_miss_afte
 CONS_C1_df_dup_SEP_2020_match_not_miss2 <-
   CONS_C1_df_dup_SEP_2020_match_miss_after_imp_conservados %>% 
   dplyr::filter(dup==1) %>% 
-  dplyr::select(-rn)
+  dplyr::select(-rn,-dias_treat_imp_sin_na,-fech_egres_num)
 
 attr(CONS_C1_df_dup_SEP_2020_match_not_miss2$sus_ini_mod_mvv,"label")<-"Starting Substance"
 attr(CONS_C1_df_dup_SEP_2020_match_not_miss2$estado_conyugal_2,"label")<-"Marital Status"
@@ -2559,6 +2753,8 @@ fine_covs = cbind(CONS_SEP_match$origen_ingreso_mod,
 )
 fine = list(covs = fine_covs)
 
+# 11,448; No. of controls: 11,448"
+# 11,452; No. of controls: 11,452"
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #MATCH
 start.time <- Sys.time()
@@ -2593,8 +2789,9 @@ d_match = CONS_SEP_match[c(t_id_1, c_id_1), ]
 paste0("Number of duplicated rows: ",d_match %>%  dplyr::group_by(row) %>%  dplyr::mutate(n_row=n()) %>% dplyr::ungroup() %>% dplyr::filter(n_row>1) %>% nrow())
 
 #cuidado, el anterior me encontró más del mismo control para un tratado
-#por eso ocuparé el de más abajo
-d_match_no_duplicates = CONS_SEP_match[which(CONS_SEP_match$row %in% c(t_id_1, c_id_1)), ]
+#por eso ocuparé el de más abajo.
+#EL DE A CONTINUACIÓN ES ERRÓNEO PORQUE ES POR POSICIÓN, NO POR COINCIDENCIA DEL NÚMERO CON LA FILA
+#d_match_no_duplicates = CONS_SEP_match[which(CONS_SEP_match$row %in% c(t_id_1, c_id_1)), ]
 ```
 
 <br>
@@ -2648,8 +2845,8 @@ loveplot(X_mat=X_mat, t_id=t_id_1, c_id=c_id_1, v_line=vline, legend_position = 
 
 ```{r  tab3_match1, warning=FALSE, fig.align = "center", message=F, fig.height=10, cache=T, eval=T}
 options(knitr.kable.NA = '')
-covs0_unmatch <- subset(CONS_SEP_match, select = -c(row, hash_key, evaluacindelprocesoteraputico, abandono_temprano_rec))#subset=,
-covs0_match <- subset(d_match, select = -c(row, hash_key, evaluacindelprocesoteraputico, abandono_temprano_rec))#subset=,
+covs0_unmatch <- subset(CONS_SEP_match, select = -c(row, hash_key, evaluacindelprocesoteraputico, abandono_temprano_rec,n_hash,dup,motivodeegreso_mod_imp))#subset=,
+covs0_match <- subset(d_match, select = -c(row, hash_key, evaluacindelprocesoteraputico, abandono_temprano_rec,n_hash,dup,motivodeegreso_mod_imp))#subset=,
 #_#_#_#_#_#_generar pareamientos prepost#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 library(cobalt)
@@ -2674,63 +2871,63 @@ bal1_match$Balance[,4]<-round(bal1_match$Balance[,4],2)
 bal1_match$Balance[,6]<-round(bal1_match$Balance[,6],2)
 
 var_names<- 
-    list("origen_ingreso_mod_Spontaneous"="Motive Admission-Spontaneous",
-         "origen_ingreso_mod_Assisted Referral"= "Motive Admission-Assisted Referral",
-         "origen_ingreso_mod_Other"="Motive Admission-Other",
-         "origen_ingreso_mod_Justice Sector"= "Motive Admission-Justice Sector",
-         "origen_ingreso_mod_Health Sector"="Motive Admission-Health Sector",
-         "dg_cie_10_rec_Without psychiatric comorbidity"="ICD-10-Wo/Psych Comorbidity",
-         "dg_cie_10_rec_Diagnosis unknown (under study)"="ICD-10-Dg. Unknown/under study",
-         "dg_cie_10_rec_With psychiatric comorbidity"="ICD-10-W/Psych Comorbidity",
-         "sexo_2_Women"="Sex-Women",
-         "edad_al_ing"="Age at Admission",
-         "fech_ing_num"="Date of Admission",
-         "duplicates_filtered"="Treatments (#)",
-         "more_one_treat"=">1 treatment",
-         "sus_ini_mod_mvv_Alcohol"= "Starting Substance-Alcohol",
-         "sus_ini_mod_mvv_Cocaine hydrochloride"= "Starting Substance-Cocaine hydrochloride",
-         "sus_ini_mod_mvv_Cocaine paste"="Starting Substance-Cocaine paste",
-         "sus_ini_mod_mvv_Marijuana"="Starting Substance-Marijuana",
-         "sus_ini_mod_mvv_Other"="Starting Substance-Other",
-         "estado_conyugal_2_Married/Shared living arrangements"="Marital Status-Married/Shared liv. arr.",
-         "condicion_ocupacional_corr_Employed"="Occ.Status-Employed",
-         "condicion_ocupacional_corr_Inactive"="Occ.Status-Inactive",
-         "condicion_ocupacional_corr_Looking for a job for the first time"="Occ.Status-Looking 1st job",
-         "condicion_ocupacional_corr_No activity"="Occ.Status- No activity",
-         "condicion_ocupacional_corr_Not seeking for work"="Occ.Status- Not seeking work",
-         "condicion_ocupacional_corr_Unemployed"="Occ.Status- Unemployed",
-         "estado_conyugal_2_Separated/Divorced"="Marital Status-Separated/Divorced",
-         "estado_conyugal_2_Single"= "Marital Status-Single",
-         "estado_conyugal_2_Widower"="Marital Status-Widower",
-         "escolaridad_rec_3-Completed primary school or less"="Educational Attainment-PS or less",
-         "escolaridad_rec_2-Completed high school or less"="Educational Attainment-HS or less",
-         "escolaridad_rec_1-More than high school"="Educational Attainment-More than HS",
-         "freq_cons_sus_prin_1 day a week or more"="Freq Drug Cons-1d/wk or more",
-         "freq_cons_sus_prin_2 to 3 days a week"="Freq Drug Cons-2-3d/wk",
-         "freq_cons_sus_prin_4 to 6 days a week"="Freq Drug Cons-4-6d/wk",
-         "freq_cons_sus_prin_Daily"="Freq Drug Cons-Daily",
-         "freq_cons_sus_prin_Did not use"="Freq Drug Cons-Did not use",
-         "freq_cons_sus_prin_Less than 1 day a week"="Freq Drug Cons-Less 1d/wk",
-         "nombre_region_Antofagasta (02)"="Region-Antofagasta(02)",
-         "nombre_region_Araucanía (09)"="Region-Araucanía(09)",
-         "nombre_region_Arica (15)"="Region-Arica(15)",
-         "nombre_region_Atacama (03)"="Region-Atacama(03)",
-         "nombre_region_Aysén (11)"="Region-Aysén(11)",
-         "nombre_region_Biobío (08)"="Region- Biobío(08)",
-         "nombre_region_Coquimbo (04)"="Region-Coquimbo(04)",
-         "nombre_region_Los Lagos (10)"="Region-Los Lagos(10)",
-         "nombre_region_Los Ríos (14)"="Region-Los Ríos(14)",
-         "nombre_region_Magallanes (12)"="Region-Magallanes(12)",
-         "nombre_region_Maule (07)"="Region-Maule(07)",
-         "nombre_region_Metropolitana (13)"="Region-Metropolitana(13)",
-         "nombre_region_Ñuble (16)"="Region-Ñuble(16)",
-         "nombre_region_O'Higgins (06)"="Region-O'Higgins(06)",
-         "nombre_region_Tarapacá (01)"="Region-Tarapacá(01)",
-         "nombre_region_Valparaíso (05)"="Region-Valparaíso(05)",
-         "tipo_centro_pub"="Public Center",
-         "dg_trs_cons_sus_or"= "Drug Dependence",
-         "edad_ini_cons"="Age of Onset of Drug Use",
-         "rn"="Treatment")
+  list("origen_ingreso_mod_Spontaneous"="Motive Admission-Spontaneous",
+    "origen_ingreso_mod_Assisted Referral"= "Motive Admission-Assisted Referral",
+    "origen_ingreso_mod_Other"="Motive Admission-Other",
+    "origen_ingreso_mod_Justice Sector"= "Motive Admission-Justice Sector",
+    "origen_ingreso_mod_Health Sector"="Motive Admission-Health Sector",
+    "dg_cie_10_rec_Without psychiatric comorbidity"="ICD-10-Wo/Psych Comorbidity",
+    "dg_cie_10_rec_Diagnosis unknown (under study)"="ICD-10-Dg. Unknown/under study",
+    "dg_cie_10_rec_With psychiatric comorbidity"="ICD-10-W/Psych Comorbidity",
+    "sexo_2_Women"="Sex-Women",
+    "edad_al_ing"="Age at Admission",
+    "fech_ing_num"="Date of Admission",
+    "duplicates_filtered"="Treatments (#)",
+    "more_one_treat"=">1 treatment",
+    "sus_ini_mod_mvv_Alcohol"= "Starting Substance-Alcohol",
+    "sus_ini_mod_mvv_Cocaine hydrochloride"= "Starting Substance-Cocaine hydrochloride",
+    "sus_ini_mod_mvv_Cocaine paste"="Starting Substance-Cocaine paste",
+    "sus_ini_mod_mvv_Marijuana"="Starting Substance-Marijuana",
+    "sus_ini_mod_mvv_Other"="Starting Substance-Other",
+    "estado_conyugal_2_Married/Shared living arrangements"="Marital Status-Married/Shared liv. arr.",
+    "estado_conyugal_2_Separated/Divorced"="Marital Status-Separated/Divorced",
+    "estado_conyugal_2_Single"= "Marital Status-Single",
+    "estado_conyugal_2_Widower"="Marital Status-Widower",
+    "escolaridad_rec_3-Completed primary school or less"="Educational Attainment-PS or less",
+    "escolaridad_rec_2-Completed high school or less"="Educational Attainment-HS or less",
+    "escolaridad_rec_1-More than high school"="Educational Attainment-More than HS", 
+    "freq_cons_sus_prin_1 day a week or more"="Freq Drug Cons-1d/wk or more",
+    "freq_cons_sus_prin_2 to 3 days a week"="Freq Drug Cons-2-3d/wk",
+    "freq_cons_sus_prin_4 to 6 days a week"="Freq Drug Cons-4-6d/wk",
+    "freq_cons_sus_prin_Daily"="Freq Drug Cons-Daily",
+    "freq_cons_sus_prin_Did not use"="Freq Drug Cons-Did not use",
+    "freq_cons_sus_prin_Less than 1 day a week"="Freq Drug Cons-Less 1d/wk",
+    "nombre_region_Antofagasta (02)"="Region-Antofagasta(02)",
+    "nombre_region_Araucanía (09)"="Region-Araucanía(09)",
+    "nombre_region_Arica (15)"="Region-Arica(15)",
+    "nombre_region_Atacama (03)"="Region-Atacama(03)",
+    "nombre_region_Aysén (11)"="Region-Aysén(11)",
+    "nombre_region_Biobío (08)"="Region- Biobío(08)",
+    "nombre_region_Coquimbo (04)"="Region-Coquimbo(04)",
+    "nombre_region_Los Lagos (10)"="Region-Los Lagos(10)",
+    "nombre_region_Los Ríos (14)"="Region-Los Ríos(14)",
+    "nombre_region_Magallanes (12)"="Region-Magallanes(12)",
+    "nombre_region_Maule (07)"="Region-Maule(07)",
+    "nombre_region_Metropolitana (13)"="Region-Metropolitana(13)",
+    "nombre_region_Ñuble (16)"="Region-Ñuble(16)",
+    "nombre_region_O'Higgins (06)"="Region-O'Higgins(06)",
+    "nombre_region_Tarapacá (01)"="Region-Tarapacá(01)",
+    "nombre_region_Valparaíso (05)"="Region-Valparaíso(05)",
+    "tipo_centro_pub"="Public Center",
+    "dg_trs_cons_sus_or"= "Drug Dependence",
+    "edad_ini_cons"="Age of Onset of Drug Use",
+    "condicion_ocupacional_corr_Employed"="Occ.Status-Employed",
+    "condicion_ocupacional_corr_Inactive"="Occ.Status-Inactive",
+    "condicion_ocupacional_corr_Looking for a job for the first time"="Occ.Status-Looking 1st job",
+    "condicion_ocupacional_corr_No activity"="Occ.Status- No activity",
+    "condicion_ocupacional_corr_Not seeking for work"="Occ.Status- Not seeking work",
+    "condicion_ocupacional_corr_Unemployed"="Occ.Status- Unemployed",
+    "rn"="Treatment")
 
 var.names<-data.table(data.frame(unlist(var_names)),keep.rownames = T) %>% janitor::clean_names()
 
@@ -2760,8 +2957,9 @@ pre_matched_matched%>%
 
 ```{r  smds_comp, warning=FALSE, fig.align = "center", results='hide', message=F, fig.height=10, cache=T, eval=T}
 #covs0_match_disc<-data.table::data.table(covs0_match_disc)
-covs_dum_unmatch <- subset(CONS_SEP_match_dum,select= -c(row, hash_key, evaluacindelprocesoteraputico, abandono_temprano_rec,dup,duplicates_filtered,more_one_treat))#subset=,
-covs_dum_match <- subset(CONS_SEP_match_dum[c(t_id_1, c_id_1)],select= -c(row, hash_key, evaluacindelprocesoteraputico, abandono_temprano_rec,dup,duplicates_filtered,more_one_treat))#subset=,
+covs_dum_unmatch <- subset(CONS_SEP_match_dum,select= -c(row, hash_key, evaluacindelprocesoteraputico, abandono_temprano_rec,dup,duplicates_filtered,more_one_treat,n_hash,motivodeegreso_mod_imp))#subset=,
+covs_dum_match <- subset(CONS_SEP_match_dum[c(t_id_1, c_id_1)],select= -c(row, hash_key, evaluacindelprocesoteraputico, abandono_temprano_rec,dup,n_hash,motivodeegreso_mod_imp,duplicates_filtered,more_one_treat))#subset=,
+
 catVars<-
 c("origen_ingreso_mod","dg_cie_10_rec","sexo_2","sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","freq_cons_sus_prin","nombre_region","tipo_centro_pub","dg_trs_cons_sus_or","tipo_de_plan_res","condicion_ocupacional_corr")
 
@@ -2840,7 +3038,6 @@ We allowed to tolerate `r smd_df2[order(smd_df2$smd, decreasing = TRUE), ][[1]][
 
 # Survival Setting
 
-
 ## Bivariate
 
 ```{r irrs_health_conditions,eval=T, echo=T, paged.print=TRUE}                                 
@@ -2870,24 +3067,45 @@ return(
 #  dplyr::filter(hash_key %in% unlist(unique(d_match$hash_key))) %>% 
 #  janitor::tabyl(condicion_ocupacional_corr)
 
+# d_match %>% 
+    #dplyr::group_by(row) %>% dplyr::mutate(rn_row=row_number()) %>% janitor::tabyl(rn_row)
+#22,914
+
 #
 #d_match_surv %>% janitor::tabyl(duplicates_filtered,event)
-#
+#nrow(ids_matched)/2 =11,457
+
+#CONS_SEP_match %>% dplyr::group_by(hash_key) %>% dplyr::mutate(rn_hash=row_number()) %>% dplyr::ungroup() %>% janitor::tabyl(rn_hash)
+
+ids_matched_filter<-
+ids_matched %>% 
+    dplyr::group_by(t_id_1) %>% 
+    dplyr::mutate(rn_id=row_number()) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(rn_id==1)
+
+ids_matched_rows<-cbind.data.frame("row_t"=CONS_SEP_match[c(t_id_1),"row"],
+                        t_id_1,
+                        "row_c"=CONS_SEP_match[c(c_id_1),"row"],
+                        c_id_1) %>% 
+  janitor::clean_names() %>% 
+  dplyr::left_join(subset(ids_matched_filter,select=-c_id_1),by="t_id_1")
 
 CONS_C1_df_dup_SEP_2020_irrs_health<-  
 d_match %>% 
-  dplyr::left_join(CONS_C1_df_dup_SEP_2020[c("row","dias_treat_imp_sin_na", "event", "person_days", "person_years","diff_bet_treat","motivodeegreso_mod_imp")],by="row") %>%
-  dplyr::left_join(ids_matched, by=c("row"="t_id_1")) %>% 
+  dplyr::left_join(CONS_C1_df_dup_SEP_2020[c("row","dias_treat_imp_sin_na", "event", "person_days", "person_years","diff_bet_treat")],by="row") %>%
+  dplyr::left_join(ids_matched_rows, by=c("row")) %>% 
   dplyr::mutate(group_match=ifelse(!is.na(group),group,NA)) %>% 
-  dplyr::select(-c_id_1,-group) %>% 
-  dplyr::left_join(ids_matched, by=c("row"="c_id_1")) %>% 
-  dplyr::mutate(group_match=ifelse(is.na(group_match),group,group_match)) %>% 
-  #dplyr::filter(!is.na(group_match))
-  dplyr::select(-t_id_1,-group) %>% 
-  dplyr::filter(dup==1) %>% #nrow() 85,048, QUEDARME SÓLO CON LOS CASOS QUE SON IS.NA
-    #dplyr::mutate(event=factor(event,labels=c("W/o Readmissions","W/Readmissions"))) %>% 
-  #%>% janitor::tabyl(event)
+  dplyr::select(-rn_id,-group) %>% #glimpse()
+  dplyr::rename("row_c"="row_2") %>% 
+  dplyr::left_join(ids_matched_rows, by=c("row"="row_2")) %>% 
+  dplyr::mutate(t_id_1=ifelse(!is.na(t_id_1.x),t_id_1.x,t_id_1.y)) %>% 
+  dplyr::mutate(c_id_1=ifelse(!is.na(c_id_1.x),c_id_1.x,c_id_1.y)) %>% 
+  dplyr::mutate(row_c=ifelse(!is.na(row_c),row_c,row.y)) %>% 
+  dplyr::mutate(group_match=ifelse(!is.na(group),group,group_match)) %>% 
 
+  dplyr::select(-t_id_1.x,-c_id_1.x,-t_id_1.y,-c_id_1.y,-group,-row.y,-rn_id) %>% #glimpse()
+  
   dplyr::mutate(res_drop_out=dplyr::case_when(
   tipo_de_plan_res==1 & abandono_temprano_rec==TRUE ~1,
   TRUE~0)) %>% 
@@ -2903,6 +3121,16 @@ d_match %>%
 # CONS_C1_df_dup_SEP_2020_irrs_health%>% janitor::tabyl(cnt_diagnostico_trs_fisico_irr)
 #label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_anemia) <- "Physical Dg. Anemia"
 #   cnt_mod_cie_10_or cnt_otros_probl_at_sm_or
+
+#22,914
+#d_match %>% dplyr::group_by(hash_key) %>% dplyr::mutate(rn_hash=row_number()) %>% dplyr::ungroup() %>% nrow()
+
+#27 Y ALGO
+#CONS_C1_df_dup_SEP_2020_irrs_health %>% dplyr::group_by(hash_key) %>% dplyr::mutate(rn_hash=row_number()) %>% dplyr::ungroup() %>% nrow()
+
+# HAY UN SEGUNDO TRATAMIENTO PARA 4,565 CASOS
+#PARA VER SI HAY MAS DE UN CASO POR USUARIO
+#CONS_C1_df_dup_SEP_2020_irrs_health %>% dplyr::group_by(hash_key) %>% dplyr::mutate(rn_hash=row_number()) %>% dplyr::ungroup() %>% janitor::tabyl(rn_hash)
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
@@ -3117,15 +3345,76 @@ ggsurvplot_fit_fit_min_ach
 ## Multivariate
 
 <br>
+ 
+Inference for the regression coefficients is based on a within-pair treatment effect. 
 
+<br> 
 
 ```{r cox_simple_strata,eval=T, echo=T, paged.print=TRUE}                                 
-m1 <- coxph(Surv(diff_bet_treat,event) ~ tipo_de_plan_res*strata(group_match), data = CONS_C1_df_dup_SEP_2020_irrs_health)
+
+#The stratified Cox model can be used to perform Cox regression on matched designs by using stratification but it can also be done by modeling with frailties
+
+#Some believe that accounting for the matching isn't necessary at all, since it doesn't affect beta coefficients materially and the variables which you have matched on can simply be adjusted for as covariates in the model; this is sufficient in most cases.
+
+#A matched cohort study involves pairs (or clusters in case several untreated subjects are matched with each of the treated individuals) formed to include individuals who differ with respect to treatment but may be matched on certain baseline characteristics.
+
+# Two common methods for analyzing paired/clustered survival data involve a stratified and a marginal Cox model, which represent 2 different approaches of accounting for potential correlation between paired outcomes (for discussion see Glidden and Vittinghoff [5]).
+
+#A regression model is often a more powerful tool in detecting treatment effect than a matched study.
+
+#Choices in study design are regression modeling or matched-pairs study.
+
+#Brazauskas, R., & Logan, B. R. (2016). Observational Studies: Matching or Regression? Biology of Blood and Marrow Transplantation, 22(3), 557–563. doi:10.1016/j.bbmt.2015.12.005 
+
+
+
+#simple expression of the common HR estimator would be a useful summary of exposure effect
+
+#Shinozaki, T., Mansournia, M. A., & Matsuyama, Y. (2017). On hazard ratio estimators by proportional hazards models in matched-pair cohort studies. Emerging themes in epidemiology, 14, 6. https://doi.org/10.1186/s12982-017-0060-8
+
+# "The covariate effects are so odd that we'll never model them correctly, so treat each combination as unique."The data set two needs to have each treated subject + their controls in a separate stratum - Terry Therneau
+
+#Stratified approach
+#For each pair, there is an unspecified baseline hazard function. The partial likelihood idea is readily adapted by multiplying the partial likelihoods specific to each stratum.
+##Pros: Lack of structure. Cons: It does not provide any information about heterogeneity between pairs; Pairs in which both members shared the same covariate information or which provide only censoring observations do not contribute to the likelihood; this is because no between-pair comparisons are attempted. Heterogeneity is not described by a single parameter as frailty;
+
+# Austin PC. A critical appraisal of propensity-score matching in the medical literature between 1996 and 2003. STATISTICS IN MEDICINE. Statist. Med. 2008; 27:2037–2049
+
+#https://www.duo.uio.no/bitstream/handle/10852/10289/stat-res-11-97.pdf?sequence=1&isAllowed=y
+
+memory.limit(size = 20000)
+
+
+#Classical stratified tests
+
+#This statistics reduces to the difference in the number of events in the 2 samples which occurr while both patients in the pair are at risk given the appropiate weight. 
+
+#Klein, J. & Moeschberger, M. (2003) Survival Analysis: Statistical Methods for Censored and Truncated Data. 2nd Edition. Springer-Verlag. 
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+m1 <- coxph(Surv(diff_bet_treat,event) ~ strata(group_match) + tipo_de_plan_res, data = CONS_C1_df_dup_SEP_2020_irrs_health)
 
 summary(m1)
 
 cox.zph(m1)#Possibly, a log-normal or log-logistic AFT model would fit better than Cox.
+```
 
+```{r cox_simple_strata2,eval=F, echo=T, paged.print=TRUE}                
+m1b <- try_with_time_limit(
+            survreg(Surv(diff_bet_treat+1,event)~ strata(group_match)+ tipo_de_plan_res,data=CONS_C1_df_dup_SEP_2020_irrs_health, dist="weibull"),
+        elapsed = 60)
+        
+#The survreg function in R does not allow time = 0. This is because for several of the distributions, including the lognormal distribution, having events occur at time = 0 will result in an undefined estimator.
+(m1b)
+
+m2 <- eval_fork(
+        coxph(Surv(diff_bet_treat,event) ~ frailty(group_match, 
+          distribution = "gaussian", sparse = FALSE, method = "reml") + tipo_de_plan_res, 
+          data = CONS_C1_df_dup_SEP_2020_irrs_health),
+      timeout = 60)
+summary(m2)
+
+cox.zph(m2)
 #CONS_C1_df_dup_SEP_2020$condicion_ocupacional_corr CONS_C1_df_dup_SEP_2020$cnt_diagnostico_trs_fisico CONS_C1_df_dup_SEP_2020$tenencia_de_la_vivienda_mod
 
 ##COx Diagnostics
@@ -3138,6 +3427,12 @@ cox.zph(m1)#Possibly, a log-normal or log-logistic AFT model would fit better th
 #Positive values correspond to individuals that “died too soon” compared to expected survival times.
 #Negative values correspond to individual that “lived too long”.
 #Very large or small values are outliers, which are poorly predicted by the model.
+
+#grid.arrange(
+#  ggforest(m1, data=CONS_C1_df_dup_SEP_2020_irrs_health),
+#  ggforest(m2, data=CONS_C1_df_dup_SEP_2020_irrs_health),
+#  ncol=2
+#)
 ```
 
 <br>
@@ -3150,36 +3445,138 @@ There was evidence of proportional hazards. Users in residential treatments expe
 
 <br>
 
+```{r fig1, image-ref-for-in-text, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 16.Summary of Process of Data Cleaning and Standardization, Imputation & Matching", fig.height=10, error=T, eval=T}
+
+#  dplyr::filter(motivodeegreso_mod_imp!="En curso")%>% #Sacar los tratamientos que estén en curso 
+
+
+tab1_lab<- paste0('Original C1 Dataset \n(n = ', formatC(nrow(CONS_C1), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1%>% dplyr::distinct(HASH_KEY)%>% nrow(), format='f', big.mark=',', digits=0),')')
+tab2_lab<- paste0('C1 Dataset \n(n = ', formatC(nrow(CONS_C1_df_dup_SEP_2020), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1_df_dup_SEP_2020%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+tab1_5_lab<- paste0('&#8226; Duplicated entries\\l &#8226; Overlapping treatments of users\\l &#8226; Intermediate events of treatment (continuous referrals)')
+tab4_lab<- paste0('Imputed C1 Dataset \n(n = ', formatC(nrow(CONS_C1_df_dup_SEP_2020_match_miss_after_imp_conservados), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1_df_dup_SEP_2020_match_miss_after_imp_conservados%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+tab3_5_lab<- paste0('C1 Dataset \n(n = ', formatC(nrow(CONS_C1_df_dup_SEP_2020_match_miss_after_imp_descartados), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1_df_dup_SEP_2020_match_miss_after_imp_descartados%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+tab6_lab<- paste0('C1 Matched Sample\nin Treatment Setting \n(n = ', formatC(CONS_C1_df_dup_SEP_2020_match_miss_after_imp_conservados %>% 
+  dplyr::filter(hash_key %in% unlist(unique(d_match$hash_key))) %>% nrow(), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1_df_dup_SEP_2020_match_miss_after_imp_conservados %>% 
+  dplyr::filter(hash_key %in% unlist(unique(d_match$hash_key))) %>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+
+lab_tab<- paste0("  Result of the matching on treatment setting\nNo. of treatments: ",table(table(t_id_1)) %>% formatC(big.mark = ","),"; No. of controls: ",table(table(c_id_1))%>% formatC(big.mark = ","))
+
+#https://stackoverflow.com/questions/46750364/diagrammer-and-graphviz
+#https://mikeyharper.uk/flowcharts-in-r-using-diagrammer/
+#http://blog.nguyenvq.com/blog/2012/05/29/better-decision-tree-graphics-for-rpart-via-party-and-partykit/
+#http://blog.nguyenvq.com/blog/2014/01/17/skeleton-to-create-fast-automatic-tree-diagrams-using-r-and-graphviz/
+#https://cran.r-project.org/web/packages/DiagrammeR/vignettes/graphviz-mermaid.html
+#https://stackoverflow.com/questions/39133058/how-to-use-graphviz-graphs-in-diagrammer-for-r
+#https://subscription.packtpub.com/book/big_data_and_business_intelligence/9781789802566/1/ch01lvl1sec21/creating-diagrams-via-the-diagrammer-package
+#https://justlegal.be/2019/05/using-flowcharts-to-display-legal-procedures/
+# paste0("No. of treatments: ",table(table(t_id_1)) %>% formatC(big.mark = ","),"; No. of controls: ",table(table(c_id_1))%>% formatC(big.mark = ","))
+#
+library(DiagrammeR) #⋉
+grViz("digraph flowchart {
+      # node definitions with substituted label text
+      node [fontname = Times, shape = rectangle,fontsize = 9]        
+      tab1 [label = '@@1']
+      tab2 [label = '@@2']
+      tab3 [label = '&#8226;Duplicated entries\\l&#8226;Intermediate events of treatment (continuous referrals)\\l',fontsize = 7]
+      tab4 [label = '@@4']
+      blank [label = '', width = 0.0001, height = 0.0001]
+      blank2 [label = '', width = 0.0001, height = 0.0001]
+      blank3 [label = '', width = 0.0001, height = 0.0001]
+      tab5 [label = '&#8226;Logically Inconsistent candidates for imputation\\l&#8226;Ties in candidates for imputation\\l',fontsize = 7]
+      tab6 [label= '@@6']
+      tab7 [label = '&#8226;Mathing pairs based on balance of covariates at basline,\\l&#8226;Pairs 1:1\\l',fontsize = 7]
+      
+      
+      # edge definitions with the node IDs
+      tab1 -> blank [arrowhead = none,label='  Data wrangling and normalization process',fontsize = 8];
+      blank -> tab3
+      blank -> tab2
+      tab2 -> blank2 [arrowhead = none];
+      blank2 -> tab5 
+      blank2 -> tab4 [label='  Result of the imputation of missing values',fontsize = 8];
+      tab4 -> blank3 [arrowhead= none];
+      blank3-> tab7
+      blank3 -> tab6 [label='@@7',fontsize = 8];
+            subgraph {
+              rank = same; tab3; blank;
+            }
+            subgraph {
+              rank = same; tab5; blank2;
+            }
+            subgraph {
+              rank = same; tab7; blank3;
+            }
+      }
+
+      [1]:  tab1_lab
+      [2]:  tab2_lab
+      [3]:  tab1_5_lab
+      [4]:  tab4_lab
+      [5]:  ''
+      [6]:  tab6_lab
+      [7]:  lab_tab
+      ")
+#      {rank=same; 'tab2'' -> tab3 [label='',fontsize = 11]}; #⋉
+#CONS_C1_df_dup_SEP_2020_irrs_health
+```
+
+
 ```{r surv_tab_total, warning=FALSE}
 d_match_surv<-
 CONS_C1_df_dup_SEP_2020_match_miss_after_imp_conservados %>% 
-  dplyr::filter(hash_key %in% unlist(unique(d_match$hash_key))) %>% 
-  dplyr::left_join(CONS_C1_df_dup_SEP_2020[c("row","dias_treat_imp_sin_na", "event", "person_days", "person_years","diff_bet_treat","motivodeegreso_mod_imp","fech_egres_num")],by="row") %>% 
+  dplyr::filter(hash_key %in% unlist(CONS_C1_df_dup_SEP_2020_irrs_health[,"hash_key"])) %>% 
+  dplyr::left_join(CONS_C1_df_dup_SEP_2020[c("row","event","person_days","person_years","diff_bet_treat")],by="row") %>% 
 #browse hash_key duplicates_filtered2 cum_diff_bet_treat dup2_real diff_bet_treat if hash_key=="0737aacbb7efdd418f7a37ce3386ce5e"|hash_key=="07668f2d3e4f6beb7975e43ee96eac80"
   dplyr::mutate(res_drop_out=dplyr::case_when(
   tipo_de_plan_res==1 & abandono_temprano_rec==TRUE ~1,
   TRUE~0)) %>% 
-  dplyr::mutate(min_ach=dplyr::case_when(
-  evaluacindelprocesoteraputico=="3-Minimum Achievement" ~1,
-  TRUE~0)) %>% 
   dplyr::mutate(res_drop_out=factor(res_drop_out)) %>% 
-    dplyr::mutate(min_ach=factor(min_ach)) %>% 
   dplyr::mutate(status_censorship=dplyr::case_when(
-  motivodeegreso_mod_imp=="Ongoing treatmentt" ~1,
+  motivodeegreso_mod_imp=="Ongoing treatment" ~1,
   TRUE~0)) %>% 
+  dplyr::mutate(tr_completion=factor(dplyr::case_when(
+  motivodeegreso_mod_imp=="Therapeutic discharge" ~1,
+  motivodeegreso_mod_imp=="Ongoing treatment" ~0,
+  TRUE~2),labels=c("Ongoing treatment", "Completion","Non-completion"))) %>% 
+  dplyr::mutate(n_hash=as.numeric(factor(hash_key, levels=unique(hash_key)))) %>% 
+  dplyr::mutate(min_achievement=factor(dplyr::case_when(
+  evaluacindelprocesoteraputico=="3-Minimum Achievement" ~1,
+  is.na(evaluacindelprocesoteraputico) ~0,
+  TRUE~2),labels=c("Ongoing treatment", "Minimum achievement","High/Medium achievement"))) %>% 
   dplyr::mutate(n_hash=as.numeric(factor(hash_key, levels=unique(hash_key)))) %>% 
   dplyr::arrange(hash_key, fech_ing_num) %>% 
   dplyr::select(n_hash,hash_key,everything()) %>% 
-  dplyr::left_join(ids_matched, by=c("row"="t_id_1")) %>% 
-  dplyr::mutate(group_match=ifelse(!is.na(group),group,NA)) %>% 
-  dplyr::select(-c_id_1,-group) %>% 
-  dplyr::left_join(ids_matched, by=c("row"="c_id_1")) %>% 
-  dplyr::mutate(group_match=ifelse(is.na(group_match),group,group_match)) %>% 
-  #dplyr::filter(!is.na(group_match))
-  dplyr::select(-t_id_1,-group)
   
-attr(d_match_surv$res_drop_out,"label") <- "Early Drop-out & Residential Plan"
-attr(d_match_surv$min_ach,"label") <- "Minimum achievement of therapeutic goals"
+#ids_matched_filter
+  dplyr::left_join(ids_matched_rows, by=c("row")) %>% 
+  dplyr::mutate(group_match=ifelse(!is.na(group),group,NA)) %>% 
+  dplyr::select(-rn_id,-group) %>% #glimpse()
+  dplyr::rename("row_c"="row_2") %>% 
+  dplyr::left_join(ids_matched_rows, by=c("row"="row_2")) %>% 
+  dplyr::mutate(t_id_1=ifelse(!is.na(t_id_1.x),t_id_1.x,t_id_1.y)) %>% 
+  dplyr::mutate(c_id_1=ifelse(!is.na(c_id_1.x),c_id_1.x,c_id_1.y)) %>% 
+  dplyr::mutate(row_c=ifelse(!is.na(row_c),row_c,row.y)) %>% 
+  dplyr::mutate(group_match=ifelse(!is.na(group),group,group_match)) %>% 
+  
+  dplyr::select(-t_id_1.x,-c_id_1.x,-t_id_1.y,-c_id_1.y,-group,-row.y,-rn_id) 
+
+#%>% #glimpse() ids_matched_rows ids_matched_filter 
+#dplyr::left_join(ids_matched, by=c("row"="t_id_1")) %>% 
+#dplyr::mutate(group_match=ifelse(!is.na(group),group,NA)) %>% 
+#dplyr::select(-c_id_1,-group) %>% 
+#dplyr::left_join(ids_matched, by=c("row"="c_id_1")) %>% 
+#dplyr::mutate(group_match=ifelse(is.na(group_match),group,group_match)) %>% 
+#dplyr::filter(!is.na(group_match))
+#dplyr::select(-t_id_1,-group)
+
+if (
+d_match_surv %>% 
+    dplyr::group_by(row) %>% 
+    dplyr::mutate(n_row=n()) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(n_row>1) %>% nrow()>1){"hay filas duplicadas"}
+  
+attr(d_match_surv$res_drop_out,"label") <- "Early Drop-out & Residential Plan (=1)"
 attr(d_match_surv$status_censorship,"label") <- "Ongoing treatment"
 attr(d_match_surv$origen_ingreso_mod,"label") <- "Motive of Admission to Treatment (First Entry)"
 attr(d_match_surv$edad_al_ing,"label") <-"Age at Admission to Treatment"
@@ -3193,21 +3590,23 @@ attr(d_match_surv$freq_cons_sus_prin,"label")<-"Frequency of use of primary drug
 attr(d_match_surv$nombre_region,"label")<-"Region of the Center"
 attr(d_match_surv$dg_cie_10_rec,"label")<-"Psychiatric Comorbidity"
 attr(d_match_surv$dg_trs_cons_sus_or,"label")<-"Drug Dependence"
-attr(d_match_surv$evaluacindelprocesoteraputico,"label")<-"Evaluation of the Therapeutic Process"
+attr(d_match_surv$min_achievement,"label")<-"Minimum Achievement in the Therapeutic Process"
 attr(d_match_surv$abandono_temprano_rec,"label")<-"Treatment Length (>90)"
 attr(d_match_surv$dias_treat_imp_sin_na,"label")<-"Days of Treatment (missing dates of discharge were replaced with difference from 2019-11-13)"
 attr(d_match_surv$tipo_de_plan_res,"label")<-"Residential"
 attr(d_match_surv$tipo_centro_pub,"label")<-"Public Center"
 attr(d_match_surv$condicion_ocupacional_corr,"label")<-"Occupational Status"
-attr(d_match_surv$event,"label")<-"Users with Posterior Treatments (1=Readmission)"
+attr(d_match_surv$event,"label")<-"Users with Posterior Treatments (=1)"
 attr(d_match_surv$person_days,"label")<-"User's Days available in the system for the study"
 attr(d_match_surv$person_years,"label")<-"User's Years available in the system for the study"
 attr(d_match_surv$motivodeegreso_mod_imp,"label")<-"Cause of Discharge"
 attr(d_match_surv$diff_bet_treat,"label")<-"Days of difference between the Next Treatment"
 attr(d_match_surv$group_match,"label")<-"Match Paired"
+attr(d_match_surv$tr_completion,"label")<-"Treatment Successful Completion"
+
 
 library(compareGroups)
-table_surv <- compareGroups::compareGroups(tipo_de_plan_res ~ origen_ingreso_mod+ dg_cie_10_rec+ sexo_2+ edad_al_ing+ abandono_temprano_rec+ duplicates_filtered+ more_one_treat+ sus_ini_mod_mvv+ estado_conyugal_2+ escolaridad_rec+ freq_cons_sus_prin+ nombre_region+ tipo_centro_pub+ evaluacindelprocesoteraputico+ dg_trs_cons_sus_or+ edad_ini_cons+ condicion_ocupacional_corr+ dias_treat_imp_sin_na+ event+ person_days+ person_years+ diff_bet_treat+ motivodeegreso_mod_imp+ res_drop_out+ min_ach,
+table_surv <- compareGroups::compareGroups(tipo_de_plan_res ~ origen_ingreso_mod+ dg_cie_10_rec+ sexo_2+ edad_al_ing+ abandono_temprano_rec+ duplicates_filtered+ more_one_treat+ sus_ini_mod_mvv+ estado_conyugal_2+ escolaridad_rec+ freq_cons_sus_prin+ nombre_region+ tipo_centro_pub+ min_achievement+ dg_trs_cons_sus_or+ edad_ini_cons+ condicion_ocupacional_corr+ dias_treat_imp_sin_na+ event+ person_days+ person_years+ diff_bet_treat+ tr_completion+ res_drop_out+motivodeegreso_mod_imp,
                                        method= c(origen_ingreso_mod=3,
                                                  dg_cie_10_rec=3,
                                                  sexo_2=3,
@@ -3222,7 +3621,7 @@ table_surv <- compareGroups::compareGroups(tipo_de_plan_res ~ origen_ingreso_mod
                                                  freq_cons_sus_prin=3,
                                                  nombre_region=3,
                                                  tipo_centro_pub=3,
-                                                 evaluacindelprocesoteraputico=3,
+                                                 min_achievement=3,
                                                  dg_trs_cons_sus_or=3,
                                                  edad_ini_cons=2,
                                                  condicion_ocupacional_corr=3,
@@ -3231,9 +3630,9 @@ table_surv <- compareGroups::compareGroups(tipo_de_plan_res ~ origen_ingreso_mod
                                                  person_days=2,
                                                  person_years= 2,
                                                  diff_bet_treat= 2, 
-                                                 motivodeegreso_mod_imp= 3,
+                                                 tr_completion= 3,
                                                  res_drop_out=3,
-                                                 min_ach=3
+                                                 motivodeegreso_mod_imp=3
                                                  ),
                                        data = d_match_surv,
                                        include.miss = T,
@@ -3278,8 +3677,10 @@ memory.limit(size = 20000)
 #frailty_1<-
 #fitfrail(Surv(dias_treat_imp_sin_na,event)~ tipo_de_plan_res+ cluster(hash_key),d_match_surv,frailty="gamma")
 
-m3 <- coxph(Surv(dias_treat_imp_sin_na,event) ~ tipo_de_plan_res + frailty(hash_key, 
-    distribution = "gaussian", sparse = FALSE, method = "reml"), data = d_match_surv_sub_sample)
+m3 <-  R.utils::withTimeout(
+  coxph(Surv(dias_treat_imp_sin_na,event) ~ tipo_de_plan_res + frailty(hash_key, 
+    distribution = "gaussian", sparse = FALSE, method = "reml"), data = d_match_surv),
+   timeout = 6000)
 summary(m3)
 
 #cox.zph(m3)#Possibly, a log-normal or log-logistic AFT model would fit better than Cox.
@@ -3295,14 +3696,258 @@ Epi::Lexis(entry=0, exit=fech_egres_num, duration=dias_treat_imp_sin_na, entry.s
 ```
 
 
-```{r surv_mstate,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+```{r surv_mstate_msm1,eval=T, echo=T, paged.print=TRUE, error=T}                                 
 library("mstate")
-d_match_surv %>% 
-  tidyr::pivot_wider(names_from=dup,values_from=c("motivodeegreso_mod_imp","diff_bet_treat","dias_treat_imp_sin_na","evaluacindelprocesoteraputico","abandono_temprano_rec"))
-#.s-variables are the corresponding status variables (1 for an event,
+vector_surv_msm<- c("tr_completion","diff_bet_treat","dias_treat_imp_sin_na","min_achievement","abandono_temprano_rec","tipo_de_plan_res")
+# dias_treat_imp_sin_na 
 
- tmat <- transMat(x = list(c(2, 3, 5, 6), c(4, 5, 6), c(4, 5, 6), c(5, 6),
-c(), c()), names = c("Tx", "Rec", "AE", "Rec+AE", "Rel", "Death"))
+#NECESITO CREAR UNA BASE DE DATOS CON LA ENTRADA A UN TRATAMIENTO COMO UN EVENTO INDEPENDIENTE, EN UNA FILA SEPARADA DEL TÉRMINO DE TRATAMIENTO EN LONG.
+
+d_match_surv %>% 
+    dplyr::select(c("hash_key","dup","fech_ing_num",vector_surv_msm)) %>% 
+    dplyr::arrange(hash_key,fech_ing_num) %>% #glimpse()
+    dplyr::group_by(hash_key) %>% 
+    #genero los años en el estudio para cada tratamiento
+    dplyr::mutate(years_1=(fech_ing_num-min(fech_ing_num))/365.25) %>% 
+    #genero un segundo valor con el de los años en estudio
+    dplyr::mutate(years_2=dias_treat_imp_sin_na/365.25+years_1) %>% 
+    dplyr::ungroup() %>% #glimpse()
+    tidyr::pivot_longer(
+     cols = starts_with("years_"),
+     names_to = "events_within_tr",
+     names_prefix = "years_",
+     values_to = "years_in_study",
+     values_drop_na = TRUE
+    ) %>% 
+  dplyr::select(-fech_ing_num,-diff_bet_treat) %>% 
+  #Eventos entre tratamientos
+  dplyr::mutate(events_within_tr=as.numeric(events_within_tr)) %>% 
+  dplyr::group_by(hash_key) %>% 
+  dplyr::mutate(event_num=row_number()) %>% 
+  dplyr::ungroup() %>%
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  dplyr::mutate(state=dplyr::case_when(
+    #1)entrar a tratamiento residencial -Enter to a Residential Treatment (transient)
+    events_within_tr==1 & tipo_de_plan_res==1~1,
+    #2)completar tratamiento residencial -Complete a Residential Treatment (transient)
+    tr_completion=="Completion" & events_within_tr==2 & tipo_de_plan_res==1~2,
+    #3)no completar tratamiento residencial -Not Complete a Residential Treatment (transient)
+    tr_completion=="Non-completion" & events_within_tr==2 & tipo_de_plan_res==1~3,
+    #4)entrar a tratamiento ambulatorio -Enter to an Outpatient Treatment (transient)
+    events_within_tr==1 & tipo_de_plan_res==0~4,
+    #5)completar tratamiento ambulatorio -Complete an Outpatient Treatment (transient)
+    tr_completion=="Completion" & events_within_tr==2 & tipo_de_plan_res==0~5,
+    #6)no-completar tratamiento ambulatorio -Not Complete an Outpatient Treatment (transient)
+    tr_completion=="Non-completion" & events_within_tr==2 & tipo_de_plan_res==0~6,
+    #7)Censored Residential
+    grepl("Ongoing",tr_completion) & tipo_de_plan_res==1 & events_within_tr==2~7,
+    #7)Censored Outpatient
+    grepl("Ongoing",tr_completion) & tipo_de_plan_res==0 & events_within_tr==2~8
+    #tr_completion=="Ongoing treatment" & events_within_tr==2 & tipo_de_plan_res==0~9,
+    #tr_completion=="Ongoing treatment" & events_within_tr==2 & tipo_de_plan_res==1~10
+    )) %>% 
+    dplyr::rename("PTNUM"="hash_key") %>% 
+  #filtrar los que no han terminado su tratmaiento- no debería filtrarlos, porque quito el tiempo absorvido
+  #dplyr::mutate(censored=dplyr::case_when(tr_completion=="Ongoing treatment" & events_within_tr==2~1,TRUE~0)) %>% 
+  #dplyr::filter(censored==0) %>% 
+  #janitor::tabyl(min_achievement,tr_completion)
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #interval censoring. Continuous events should be differenced with the previous year in study with the minimum (0.001)
+  #check if ordered
+  dplyr::group_by(PTNUM) %>% 
+  dplyr::mutate(diff_bet_events=years_in_study-lag(years_in_study)) %>% 
+  dplyr::ungroup() %>% 
+  #there are some values that were generated that still have minimum and arbitrary differences between events. We converted into 0.
+  dplyr::mutate(diff_bet_events=dplyr::case_when(diff_bet_events<=.00001~0,
+                                                 TRUE~diff_bet_events),
+                years_in_study_corr=dplyr::case_when(diff_bet_events<=0~years_in_study+.00001,
+                                                     TRUE~years_in_study)) %>% 
+  dplyr::mutate(diff_bet_events=dplyr::case_when(diff_bet_events==0~.00001,
+                                                 TRUE~diff_bet_events)) %>% 
+  assign("d_match_surv_msm",.,envir=.GlobalEnv)
+
+
+attr(d_match_surv_msm$years_in_study,"label") <- "Years in study"
+attr(d_match_surv_msm$years_in_study_corr,"label") <- "Years in study (corrected for interval censored events)"
+attr(d_match_surv_msm$events_within_tr,"label") <- "Years in study"
+attr(d_match_surv_msm$event_num,"label") <- "Order of events (includes events at admission and at discharge, separately)"
+attr(d_match_surv_msm$state,"label") <- "State (1 to 7)"
+
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  # 284 cases that changed once imputed the null differences with the posterior event in time
+paste0(d_match_surv_msm %>% 
+    dplyr::filter(years_in_study!=years_in_study_corr) %>% nrow()," cases that changed once imputed the null differences with the posterior event in time (were corrected)")
+  # 0 cases with negative differences with the posterior event in time (not possible)
+paste0(d_match_surv_msm %>% 
+    dplyr::filter(diff_bet_events<0) %>% nrow()," cases with negative differences with the posterior event in time (not possible)")
+
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  # Export wide format
+d_match_surv_msm %>% 
+  dplyr::select(PTNUM,event_num,state,years_in_study_corr,min_achievement) %>% 
+  dplyr::mutate_at(vars(c("state","min_achievement","years_in_study_corr")),~as.character(.)) %>% 
+    tidyr::pivot_longer(
+     cols = -c("PTNUM","event_num"),
+     names_to = "varswide",
+     values_drop_na = F
+    ) %>% 
+    tidyr::pivot_wider(
+                       names_from=c(varswide,event_num),
+                       names_glue ="{varswide}_{event_num}",
+                       values_from=value
+                       ) %>% 
+  dplyr::mutate_at(vars(starts_with("state_")),~as.numeric(.)) %>% 
+  dplyr::mutate_at(vars(starts_with("years_in_study_corr_")),~as.numeric(.)) %>% 
+assign("d_match_surv_msm_wide",.,envir=.GlobalEnv)
+
+for (i in c(1:16)){  
+    attr(d_match_surv_msm_wide[,paste0("state_",i)],"label") <-paste0("State (1 to 7) at s=",i)
+    
+        attr(d_match_surv_msm_wide[,paste0("years_in_study_corr_",i)],"label") <-paste0("Years in study (corrected for interval censored events) at s=",i)
+    
+    attr(d_match_surv_msm_wide[,paste0("min_achievement_",i)],"label") <-paste0("Achievement in the Therapeutic Process at s=",i)
+
+}
+
+rio::export(d_match_surv_msm_wide,"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/d_match_surv_msm_wide.dta")
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#Q matrix
+#_#_#_#_#_#_
+#_#_#_#_#_#_
+library(msm)
+#If an instantaneous transition is not allowed from state  to state , then Q should have  entry 0, otherwise it should be non-zero. The diagonal entries are ignored.
+#entries define transition/movement probabilities of subjects through states
+#probability of being in state j at time t + s, conditional on being in state i at time s
+# in time homogeneous intensities the dependence of P on time will be omitted ---> no debiese ser mi caso
+# each row must sum to one for an example row 1 summation equals to 1
+# transition intensity matrix Q
+ qmatrix<-matrix(statetable.msm(state, PTNUM, data = d_match_surv_msm),nrow=6,ncol=8)
+ 
+msm::statetable.msm(state, PTNUM, data = d_match_surv_msm) %>% 
+    data.table::data.table() %>% 
+    dplyr::filter(N>0) %>% 
+    dplyr::arrange(desc(N)) %>% 
+    dplyr::mutate("%"=scales::percent(round(N/sum(N),1))) %>% 
+    dplyr::mutate(from=dplyr::case_when(from==1~"Enter to a Residential Treatment(1)",
+                                      from==2~"Complete a Residential Treatment(2)",
+                                      from==3~"Not Complete a Residential Treatment(3)",
+                                      from==4~"Enter to an Outpatient Treatment(4)",
+                                      from==5~"Complete an Outpatient Treatment(5)",
+                                      from==6~"Not Complete an Outpatient Treatment(6)",
+                                      from==7~"Ongoing treatment (Residential)(Censored)(7)",
+                                      from==8~"Ongoing treatment (Outpatient)(Censored)(8)")) %>% 
+    dplyr::mutate(to=dplyr::case_when(to==1~"Enter to a Residential Treatment(1)",
+                                      to==2~"Complete a Residential Treatment(2)",
+                                      to==3~"Not Complete a Residential Treatment(3)",
+                                      to==4~"Enter to an Outpatient Treatment(4)",
+                                      to==5~"Complete an Outpatient Treatment(5)",
+                                      to==6~"Not Complete an Outpatient Treatment(6)",
+                                      to==7~"Ongoing treatment(Residential)(Censored)(7)",
+                                      to==8~"Ongoing treatment(Outpatient)(Censored)(8)")) %>%   
+  knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption="Table 7. State Transition Matrix",
+               align= c("c",rep('c', 5)))%>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 8) %>% 
+  kableExtra::add_footnote("Note= Excluded transitions that were not found")
+```
+
+<br>
+
+We restricted the transitions following several criteria: cannot enter/complete/non-complete treatment two sequential times (e.g. 1 -> 4), or enter to a residential/outpatient treatment and complete an outpatient/residential (e.g. 4->2).
+
+<br>
+
+
+```{r surv_mstate2_msm2,eval=T, echo=T, paged.print=TRUE, error=T}                                  
+#msm2Surv(d_match_surv_msm, "PTNUM", "years_in_study_corr", "state", "min_achievement", Q=qmatrix)
+ #Error in rowSums(Qf) : 'x' must be an array of at least two dimensions
+
+#
+#All other off-diagonal positions contain an initial value for the corresponding transition intensity.
+##this matrix should usually only allow transitions between adjacent states
+msm_mat_cens_allowed <- matrix(c(
+                          0,1,1,0,0,0,
+                          1,0,0,1,0,0,
+                          1,0,0,1,0,0,
+                          0,0,0,0,1,1,
+                          1,0,0,1,0,0,
+                          1,0,0,1,0,0
+                          ), nrow=6, ncol=6,
+                          byrow=TRUE,
+                          dimnames=list(from=1:6,to=1:6))
+# If exacttimes is set to TRUE, then the observation times are assumed to represent the exact times of transition of the process. 
+# numerical overflow in calculating likelihood --> this was corrected with "control argument" #https://github.com/chjackson/msm/issues/5
+
+#If using gen.inits=TRUE then the non-zero entries in the qmatrix can be anything you like (conventionally 1).
+#obstype= A vector specifying the observation scheme for each row of the data
+msm_model_cens<- msm(state ~ years_in_study_corr, subject = PTNUM, data = d_match_surv_msm, qmatrix = msm_mat_cens_allowed, gen.inits=T,control=list(fnscale=4000,reltol = 1e-16),censor = c(7,8),censor.states = list(c(2,3),c(5,6)),obstype=1)
+#si pongo obstype=2, Error in if (any(q2 < 0)) stop("off-diagonal entries of qmatrix should not be negative") : 
+
+
+print(msm_model_cens)
+summary(msm_model_cens)
+
+# If censor is a vector with more than one element, this should be a list, with each element a vector corresponding to the equivalent element of censor.
+#1: In msm.form.cmodel(censor, censor.states, qmatrix) : some censoring indicators are the same as actual states
+#2: In msm.form.cmodel(censor, censor.states, qmatrix) : some censoring indicators are the same as actual states
+
+
+#CÓMO SETTEAR LA BASE DE DATOS PARA PONER COMO CENSURA EL ONGOING TREATMENT, Y LA COMPLETACIÓN DEL TRATAMIENTO COMO ALGO IMPORTANTE.
+```
+
+```{r surv_mstate3_mstate, eval=F, echo=T, paged.print=TRUE, error=T}                                  
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#MSTATEs
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#See data structure:
+#View(ebmt4)
+
+invisible(c("tengo 2 problemas con esta aplicación: si veo ebmt, tiene formateado los casos en que cada columns es un tiempo a un determinado estado. Si llego a ese estado, entonces es un tiempo menor al person time y viene con un 0"))
+ #file:///G:/Mi%20unidad/Alvacast/Srv%20Analysis/(Use%20R!)%20Frans%20Willekens%20-%20Multistate%20Analysis%20of%20Life%20Histories%20with%20R-Springer%20(2014).pdf
+#In other words, the package requires one record for each potential transition. 
+
+library("mstate")
+#https://rdrr.io/cran/mstate/f/inst/doc/Tutorial.pdf 
+
+#The first step in a multi-state model analysis is to set up the transition matrix. The transition
+#matrix specifies which direct transitions are possible (those with NA are impossible) and assigns
+#numbers to the transitions for future reference.
+mstate_mat_cens_allowed <- matrix(c(
+                          NA,1,1,NA,NA,NA,
+                          1,NA,NA,1,NA,NA,
+                          1,NA,NA,1,NA,NA,
+                          NA,NA,NA,NA,1,1,
+                          1,NA,NA,1,NA,NA,
+                          1,NA,NA,1,NA,NA
+                          ), nrow=6, ncol=6,
+                          byrow=TRUE,
+                          dimnames=list(from=1:6,to=1:6))
+library("mstate")
+tmat <- mstate::transMat(x = list(c(2, 3), 
+                         c(1,4), 
+                         c(1,4), 
+                         c(5,6),
+                         c(1,4),
+                         c(1,4)),
+                       names = c("Enter R", "Comp R", "N-Comp R", "Enter O", 
+                                 "Comp O", "N-Comp O"))
+print(tmat)
+#1~"Enter to a Residential Treatment(1)",
+#from==2~"Complete a Residential Treatment(2)",
+#from==3~"Not Complete a Residential Treatment(3)",
+#from==4~"Enter to an Outpatient Treatment(4)",
+#from==5~"Complete an Outpatient Treatment(5)",
+#from==6~"Not Complete an Outpatient Treatment(6)",
+#from==7~"Ongoing treatment (Residential)(Censored)(7)",
+#from==8~"Ongoing treatment (Outpatient)(Censored)(8)"
+
+#https://www.rdocumentation.org/packages/msm/versions/1.6.8/topics/msm2Surv
+msm2Surv(d_match_surv_msm[c("PTNUM","years_in_study_corr","state","min_achievement")],"PTNUM", "years_in_study_corr", "state", "min_achievement", data.frame(msm_mat_cens_allowed))
+
 ```
 
 
@@ -3311,5 +3956,7 @@ c(), c()), names = c("Tx", "Rec", "AE", "Rec+AE", "Rel", "Death"))
 ```{r session_info, echo=T, paged.print=TRUE}
 Sys.getenv("R_LIBS_USER")
 rstudioapi::getSourceEditorContext()
+save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state.RData")
+
 sessionInfo()
 ```

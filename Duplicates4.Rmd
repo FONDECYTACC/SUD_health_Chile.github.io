@@ -2333,9 +2333,21 @@ assign("CONS_C1_df_dup_JUL_2020_cons17",., envir = .GlobalEnv)
 #CONS_C1_df_dup_JUL_2020_cons17 %>%  janitor::tabyl(cie_10)
 #CONS_C1_df_dup_JUL_2020_cons17 %>%  janitor::tabyl(cnt_mod_cie_10_or)
 ```  
+
+### Dates of treatments and continuity of their characteristics
+  
+We corrected the dates of discharge of those treatment dates that were imputed into values larger than the study period (2020-11-13). Subsequently, we generated the numeric value of these dates for compatibility with other statistical software, and created variables of the treatment that follows, if any, and values relative to the difference between them.
+  
+<br>  
   
 ```{r std18_stand_foll_treat, echo=T, paged.print=TRUE,eval=T}
 CONS_C1_df_dup_JUL_2020_cons17%>%
+  dplyr::mutate(fech_egres_imp=dplyr::case_when(as.Date(fech_egres_imp)>as.Date("2019-11-13")~as.Date("2019-11-13"),TRUE~as.Date(fech_egres_imp))) %>%
+  dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing)))%>%
+  dplyr::mutate(fech_egres_num=as.numeric(as.Date(fech_egres_imp)))%>%
+  dplyr::mutate(fech_egres_num=ifelse(is.na(fech_egres_imp),18213,fech_egres_num))%>%
+  dplyr::mutate(dias_treat_imp_sin_na=fech_egres_num-fech_ing_num)%>%
+  
   dplyr::group_by(hash_key)%>%
   dplyr::mutate(fech_ing_next_treat=dplyr::lag(fech_ing_num))%>%
   dplyr::mutate(diff_bet_treat=fech_ing_next_treat-fech_egres_num)%>%
@@ -2363,6 +2375,9 @@ CONS_C1_df_dup_JUL_2020_cons17%>%
   dplyr::mutate(obs_cambios_ninguno= recode(as.character(obs_cambios_ninguno),"0"="At least 1 Change w/ the Next Entry","1"="No Changes w/ the Next Entry"))%>%
   dplyr::mutate_at(c('menor_45_dias_diff','menor_60_dias_diff','obs_cambios_ninguno','obs_cambios_fac'),~as.factor(.))%>%  
   assign("CONS_C1_df_dup_JUL_2020_cons18",., envir = .GlobalEnv)
+
+if(CONS_C1_df_dup_JUL_2020_cons18%>%
+    dplyr::filter(fech_egres_imp>"2019-11-13") %>% nrow()>0){"there are still values over the date of retrieval of the data"}
 ```
 
 ### Normalize Progression of Educational Attainment by Users

@@ -1877,8 +1877,11 @@ The average cumulative days in treatment tended to remain stable, independently 
 
 # Consolidating a Database for Access
 
+We first translated relevant categories, restricted some imputed dates that trespassed the study period (over 2019-11-13), standardized ICD-10 and DSM-IV sum of categories, corrected labels such as owning status of housing conditions, and generated a dummyfied version of every physical diagnostic and other mental health related problems into ones and zeros for each category, as well as the most vulnerable substance of the starting substances (if the user indicated more than one) (`sus_ini_mod_mvv`, "Paste Base">"Cocaine hydrochloride">"Marijuana">"Alcohol">"Other").
+ 
+<br>
 
-```{r c1_std_no_ocupar,echo=T, paged.print=TRUE, eval=F}
+```{r c1_std_no_ocupar_BASE_DE_DATOS_ORIGINAL,echo=T, paged.print=TRUE, eval=F}
 CONS_C1_df_SEP_2020<-
 clean_names(CONS_C1_df) %>% 
     dplyr::filter(!row %in% unlist(CONS_C1_df_dup_JUL_2020$row)) %>% 
@@ -1933,14 +1936,6 @@ dplyr::mutate(escolaridad_rec=factor(escolaridad_rec,labels=c('1-More than high 
                                              "Metadona"="Opioides",
                                              "Otros Opioides Analgésicos: morfina, codeína, meperidina,  demerol, tramadol, tramal."="Opioides","Inhalables: neopren, GHB, óxido nitroso (gas hilarante), \"poppers\", solventes, gasolina, diluyente"="Inhalables","Esteroides Anabólicos"="Otros")) %>%
       dplyr::mutate(sus_principal_mod= dplyr::case_when(sus_principal!="Alcohol"&sus_principal!="Cocaína"&sus_principal!="Marihuana"&sus_principal!="Pasta Base"~"Otros",TRUE~as.character(sus_principal)))%>%
-  
-  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
-  #motivo de egreso
-      dplyr::mutate(dias_trat_alta_temprana=ifelse(dias_trat>=90,0,1)) %>%
-      dplyr::mutate(dias_trat_alta_temprana=as.factor(dias_trat_alta_temprana)) %>%
-      dplyr::mutate(dias_trat_alta_temprana= dplyr::recode(dias_trat_alta_temprana, "1"="Menos de 90 días", "0"="Mayor o igual a 90 días")) %>%
-      dplyr::mutate(motivodeegreso_mod= ifelse(dias_trat_alta_temprana=="Menos de 90 días" & motivodeegreso=="Abandono", "Abandono Temprano",as.character(motivodeegreso))) %>% 
-      dplyr::mutate(motivodeegreso_mod= ifelse(dias_trat_alta_temprana=="Mayor o igual a 90 días" & motivodeegreso=="Abandono", "Abandono Tardio",as.character(motivodeegreso_mod))) %>% 
 
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #dias_trat
@@ -1948,7 +1943,15 @@ dplyr::mutate(escolaridad_rec=factor(escolaridad_rec,labels=c('1-More than high 
       dplyr::mutate(fech_egres_num=as.numeric(as.Date(fech_egres)))%>%
       dplyr::mutate(fech_egres_num=ifelse(is.na(fech_egres),18213,fech_egres_num))%>% #equivalente a 2019-11-13
       dplyr::mutate(dias_treat_imp_sin_na=fech_egres_num-fech_ing_num)%>%
-      
+  
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #dias tratamiento
+      dplyr::mutate(dias_trat_alta_temprana=ifelse(dias_trat>=90,0,1)) %>%
+      dplyr::mutate(dias_trat_alta_temprana=as.factor(dias_trat_alta_temprana)) %>%
+      dplyr::mutate(dias_trat_alta_temprana= dplyr::recode(dias_trat_alta_temprana, "1"="Menos de 90 días", "0"="Mayor o igual a 90 días")) %>%
+      dplyr::mutate(motivodeegreso_mod= ifelse(dias_trat_alta_temprana=="Menos de 90 días" & motivodeegreso=="Abandono", "Abandono Temprano",as.character(motivodeegreso))) %>% 
+      dplyr::mutate(motivodeegreso_mod= ifelse(dias_trat_alta_temprana=="Mayor o igual a 90 días" & motivodeegreso=="Abandono", "Abandono Tardio",as.character(motivodeegreso_mod))) %>% 
+  
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #motivodeegreso_mod_imp
       dplyr::mutate(motivodeegreso_mod_imp=ifelse(dias_treat_imp_sin_na<1095 & is.na(fech_egres),"En curso",as.character(motivodeegreso_mod))) %>% 
@@ -2121,22 +2124,53 @@ dplyr::mutate(escolaridad_rec=factor(escolaridad_rec,labels=c('1-More than high 
                                                   TRUE~NA_character_)) 
 ```
 
-```{r cons1_sep,echo=T, paged.print=TRUE, eval=T}
+```{r cons1_sep_MODIFICACION_FINAL,echo=T, paged.print=TRUE, eval=T}
+#CONS_C1_df_dup_SEP_2020 %>% summarise(mean=mean(dias_treat_imp_sin_na),mdn=median(dias_treat_imp_sin_na),p25=quantile(dias_treat_imp_sin_na,.25),p75=quantile(dias_treat_imp_sin_na,.75))
+#   mean   mdn   p25   p75
+#  <dbl> <dbl> <dbl> <dbl>
+##  215.   164    90   290
 CONS_C1_df_dup_JUL_2020 %>% 
   dplyr::arrange(hash_key,fech_ing) %>% 
-dplyr::group_by(hash_key) %>% 
+  dplyr::group_by(hash_key) %>% 
   dplyr::mutate(dup=row_number()) %>%
   #*La ventaja de duplicates_filtered es que considera los perdidos
   dplyr::mutate(duplicates_filtered= n()) %>% 
   #*obtener la última fecha en que registra la observación
-  dplyr::mutate(startdate= dplyr::first(fech_ing_num), enddate= dplyr::last(fech_egres_num), 
-                person_days=enddate-startdate) %>% 
   dplyr::ungroup() %>% 
   dplyr::mutate(a_botar=ifelse(dup==1,1,NA_real_)) %>% 
+  
+  #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+  #date of discharge: correction  (más detalle en change_dates_out_of_study.R)
+  dplyr::mutate(fech_egres_imp=dplyr::case_when(fech_egres_imp>"2019-11-13"~as.Date("2019-11-13"),TRUE~fech_egres_imp)) %>%
+      #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+      #dias_trat
+      dplyr::mutate(fech_ing_num=as.numeric(as.Date(fech_ing)))%>%
+      dplyr::mutate(fech_egres_num=as.numeric(as.Date(fech_egres_imp)))%>%
+      dplyr::mutate(fech_egres_num=ifelse(is.na(fech_egres_imp),18213,fech_egres_num))%>%
+    #equivalente a 2019-11-13
+      dplyr::mutate(dias_treat_imp_sin_na=fech_egres_num-fech_ing_num)%>%
+      
+      #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+      #dias tratamiento
+      dplyr::mutate(dias_trat_alta_temprana=ifelse(dias_treat_imp_sin_na>=90,0,1)) %>%
+      dplyr::mutate(dias_trat_alta_temprana=as.factor(dias_trat_alta_temprana)) %>%
+      dplyr::mutate(dias_trat_alta_temprana= dplyr::recode(dias_trat_alta_temprana, "1"="Menos de 90 días", "0"="Mayor o igual a 90 días")) %>%
+      dplyr::mutate(motivodeegreso_mod_imp= ifelse(dias_trat_alta_temprana=="Menos de 90 días" & grepl("Abandono",motivodeegreso_mod_imp), "Abandono Temprano",as.character(motivodeegreso_mod_imp))) %>% 
+      dplyr::mutate(motivodeegreso_mod_imp= ifelse(dias_trat_alta_temprana=="Mayor o igual a 90 días" & grepl("Abandono",motivodeegreso_mod_imp), "Abandono Tardio",as.character(motivodeegreso_mod_imp))) %>% 
+      
+      #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
+      #motivodeegreso_mod_imp
+      dplyr::mutate(motivodeegreso_mod_imp=ifelse(dias_treat_imp_sin_na<1095 & 
+                                                    is.na(fech_egres_imp),"En curso",
+                                                  as.character(motivodeegreso_mod_imp))) %>% 
+                    
   dplyr::mutate(event=ifelse(duplicates_filtered>1,1,0)) %>% 
   #dplyr::select(hash_key,fech_ing,dup, startdate, enddate,person_days,a_botar,event)
-
+  dplyr::group_by(hash_key) %>% 
+  dplyr::mutate(startdate= dplyr::first(fech_ing_num), enddate= dplyr::last(fech_egres_num), 
+              person_days=enddate-startdate) %>% 
   dplyr::mutate(person_years=person_days/365.25)%>% 
+  dplyr::ungroup() %>% 
   #dplyr::mutate(treat= ifelse(row %in% unlist(CONS_C1_df_dup_JUL_2020_match_top_sel$row),1,0))%>%
   dplyr::mutate(origen_ingreso_mod= dplyr::case_when(grepl("Otro Centro Tratamiento",as.character(origen_ingreso_mod))~"Derivación Asistida", TRUE~as.character(origen_ingreso_mod)))%>%  
   dplyr::mutate(origen_ingreso_mod=factor(origen_ingreso_mod,labels=c('Spontaneous','Assisted Referral','Other','Justice Sector','Health Sector')))  %>% 
@@ -2283,12 +2317,12 @@ dplyr::mutate(across(c(dg_trs_psiq_dsm_iv_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #Cohabitation Status
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
-    dplyr::mutate(con_quien_vive_rec=factor(con_quien_vive_rec,labels=c("With relatives",
-                                                                        "With couple and children",
-                                                                        "Other",
-                                                                        "Alone",
-                                                                        "With children only",
-                                                                        "With couple only"))) %>%    
+  dplyr::mutate(con_quien_vive_rec=factor(con_quien_vive_rec,labels=c("With relatives",
+                                                                      "With couple and children",
+                                                                      "Other",
+                                                                      "Alone",
+                                                                      "With children only",
+                                                                      "With couple only"))) %>%    
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
   #physical diagnose
   #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:  
@@ -2336,7 +2370,7 @@ dplyr::mutate(across(c(dg_trs_psiq_dsm_iv_or,x2_dg_trs_psiq_dsm_iv_or,x3_dg_trs_
     dplyr::mutate(cnt_mod_cie_10_or= dplyr::case_when(as.character(cie_10)=="Diagnosticado/a (uno en estudio)"~cnt_mod_cie_10_or-1, is.na(dg_trs_psiq_cie_10_or)~0, TRUE~cnt_mod_cie_10_or)) %>% 
       dplyr::mutate(cnt_mod_dsm_iv_or= dplyr::case_when(as.character(dsm_iv)=="Diagnosticado/a (uno en estudio)"~cnt_mod_dsm_iv_or-1, is.na(dg_trs_psiq_dsm_iv_or)~0, TRUE~cnt_mod_dsm_iv_or)) %>% 
     #_#_#_#_#_#_#_#_#_#_#_
-  #sumrows de los diagnósticos, excalesism1actevv
+  #sumrows de los diagnósticos, 
 #otros_pr_sm_abu_sex, otros_pr_sm_exp_com_sex, otros_pr_sm_otros, otros_pr_sm_vif
       dplyr::mutate(across(c(dg_fis_anemia, dg_fis_card,  dg_fis_enf_som, dg_fis_ets, dg_fis_hep_alc, dg_fis_hep_b, dg_fis_hep_cro, dg_fis_inf, dg_fis_otr_cond_fis_ries_vit, dg_fis_otr_cond_fis, dg_fis_pat_buc, dg_fis_pat_ges_intrau, dg_fis_trau_sec),~as.numeric(.)-1, .names="num_dg_fis_{col}"))%>%
       dplyr::mutate(cnt_diagnostico_trs_fisico= base::rowSums(dplyr::select(., num_dg_fis_dg_fis_anemia,  num_dg_fis_dg_fis_card,  num_dg_fis_dg_fis_enf_som, num_dg_fis_dg_fis_ets, num_dg_fis_dg_fis_hep_alc, num_dg_fis_dg_fis_hep_b, num_dg_fis_dg_fis_hep_cro, num_dg_fis_dg_fis_inf, num_dg_fis_dg_fis_otr_cond_fis_ries_vit, num_dg_fis_dg_fis_otr_cond_fis, num_dg_fis_dg_fis_pat_buc, num_dg_fis_dg_fis_pat_ges_intrau, num_dg_fis_dg_fis_trau_sec)))%>% 

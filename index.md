@@ -20,9 +20,11 @@ This page is composed by the following main topics:
     
     1.6. [Presentation of Preliminary Processes and Descriptive Data to Institutions](Presentación2)
     
-    1.7. [Descriptive Statistics](Desc)
+    1.7. [Descriptive Glimpse of the Database](Desc)
     
-    1.8. [Codebook of C1](codebook)
+    1.8. [Matching and Multistate Model](Matching_Process_NOV)
+    
+    1.9. [Codebook of C1](codebook)
   
 2. [Data preparation and Standardization of TOP or Profile of Treatment Results](Data_prep_TOP)
 
