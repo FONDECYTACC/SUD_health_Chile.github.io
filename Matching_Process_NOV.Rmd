@@ -3883,7 +3883,7 @@ msm_mat_cens_allowed <- matrix(c(
 
 #If using gen.inits=TRUE then the non-zero entries in the qmatrix can be anything you like (conventionally 1).
 #obstype= A vector specifying the observation scheme for each row of the data
-msm_model_cens<- msm(state ~ years_in_study_corr, subject = PTNUM, data = d_match_surv_msm, qmatrix = msm_mat_cens_allowed, gen.inits=T,control=list(fnscale=4000,reltol = 1e-16),censor = c(7,8),censor.states = list(c(2,3),c(5,6)),obstype=1)
+msm_model_cens<- msm(state ~ years_in_study_corr, subject = PTNUM, data = d_match_surv_msm, qmatrix = msm_mat_cens_allowed, gen.inits=T,control=list(fnscale=4000,reltol = 1e-16),censor = c(7,8),censor.states = list(c(3,4),c(5,6)),obstype=1)
 #si pongo obstype=2, Error in if (any(q2 < 0)) stop("off-diagonal entries of qmatrix should not be negative") : 
 
 
@@ -3896,6 +3896,100 @@ summary(msm_model_cens)
 
 
 #CÓMO SETTEAR LA BASE DE DATOS PARA PONER COMO CENSURA EL ONGOING TREATMENT, Y LA COMPLETACIÓN DEL TRATAMIENTO COMO ALGO IMPORTANTE.
+```
+
+<br>
+
+Since users with more than 2 readmissions covered around  `r scales::percent(d_match_surv %>% dplyr::filter(dup>3) %>% nrow()/nrow(d_match_surv))` of the matched sample at baseline, we decided to restrict our analysis to the possibility to experience a second readmission, as shown in the figure below.
+
+<br>
+
+```{r fig2_dec_tree_disc_dup_birthdate, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center", message=F,fig.cap="Figure 17. Diagram of possible pathways of a user (up to 3 treatments)"}
+#plot(CONS_C1_df_dup_ENE_2020_prev2$ano_nac, CONS_C1_df_dup_ENE_2020_prev2$Edad, ylab="Age", xlab="Year of Birth")
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/Esquema estudio.png")
+```
+
+<br>
+
+```{r surv_mstate2_msm3,eval=T, echo=T, paged.print=TRUE, error=T}                                  
+d_match_surv_msm %>% 
+    dplyr::filter(event_num<=6) %>% 
+    dplyr::mutate(state_up3=dplyr::case_when(
+      events_within_tr==1 & tipo_de_plan_res==1 & dup==1~1,
+      tr_completion=="Completion" & events_within_tr==2 & tipo_de_plan_res==1 & dup==1~2,
+      tr_completion=="Non-completion" & events_within_tr==2 & tipo_de_plan_res==1 & dup==1~3,
+      events_within_tr==1 & tipo_de_plan_res==0 & dup==1~4,
+      tr_completion=="Completion" & events_within_tr==2 & tipo_de_plan_res==0 & dup==1~5,
+      tr_completion=="Non-completion" & events_within_tr==2 & tipo_de_plan_res==0 & dup==1~6,
+      grepl("Ongoing",tr_completion) & tipo_de_plan_res==1 & events_within_tr==2 & dup==1~91,
+      grepl("Ongoing",tr_completion) & tipo_de_plan_res==0 & events_within_tr==2 & dup==1~92,
+      
+      events_within_tr==1 & tipo_de_plan_res==1 & dup==2~7,
+      tr_completion=="Completion" & events_within_tr==2 & tipo_de_plan_res==1 & dup==2~8,
+      tr_completion=="Non-completion" & events_within_tr==2 & tipo_de_plan_res==1 & dup==2~9,
+      events_within_tr==1 & tipo_de_plan_res==0 & dup==2~10,
+      tr_completion=="Completion" & events_within_tr==2 & tipo_de_plan_res==0 & dup==2~11,
+      tr_completion=="Non-completion" & events_within_tr==2 & tipo_de_plan_res==0 & dup==2~12,
+      grepl("Ongoing",tr_completion) & tipo_de_plan_res==1 & events_within_tr==2 & dup==2~93,
+      grepl("Ongoing",tr_completion) & tipo_de_plan_res==0 & events_within_tr==2 & dup==2~94,
+      
+      events_within_tr==1 & tipo_de_plan_res==1 & dup==3~13,
+      tr_completion=="Completion" & events_within_tr==2 & tipo_de_plan_res==1 & dup==3~14,
+      tr_completion=="Non-completion" & events_within_tr==2 & tipo_de_plan_res==1 & dup==3~15,
+      events_within_tr==1 & tipo_de_plan_res==0 & dup==3~16,
+      tr_completion=="Completion" & events_within_tr==2 & tipo_de_plan_res==0 & dup==3~17,
+      tr_completion=="Non-completion" & events_within_tr==2 & tipo_de_plan_res==0 & dup==3~18,
+      grepl("Ongoing",tr_completion) & tipo_de_plan_res==1 & events_within_tr==2 & dup==3~95,
+      grepl("Ongoing",tr_completion) & tipo_de_plan_res==0 & events_within_tr==2 & dup==3~96)) %>%
+  assign("d_match_surv_msm_up_3",.,envir=.GlobalEnv)
+
+d_match_surv_msm_up_3 %>% 
+  dplyr::select(PTNUM,event_num,state_up3,years_in_study_corr,min_achievement) %>% 
+  dplyr::mutate_at(vars(c("state_up3","min_achievement","years_in_study_corr")),~as.character(.)) %>% 
+    tidyr::pivot_longer(
+     cols = -c("PTNUM","event_num"),
+     names_to = "varswide",
+     values_drop_na = F
+    ) %>% 
+    tidyr::pivot_wider(
+                       names_from=c(varswide,event_num),
+                       names_glue ="{varswide}_{event_num}",
+                       values_from=value
+                       ) %>% 
+  dplyr::mutate_at(vars(starts_with("state_")),~as.numeric(.)) %>% 
+  dplyr::mutate_at(vars(starts_with("years_in_study_corr_")),~as.numeric(.)) %>% 
+assign("d_match_surv_msm_up_3_wide",.,envir=.GlobalEnv)
+
+rio::export(d_match_surv_msm_up_3_wide,"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/d_match_surv_msm_up_3_wide.dta")
+
+msm_mat_cens_allowed_up_3 <- matrix(c(
+                            0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                            0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,
+                            0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,
+                            0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,
+                            0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,
+                            0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,
+                            0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,
+                            0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,
+                            0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,
+                            0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,
+                            0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,
+                            0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,
+                            0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,
+                            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,
+                            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+                          ), nrow=18, ncol=18,
+                          byrow=TRUE,
+                          dimnames=list(from=1:18,to=1:18))
+
+
+msm_model_cens_up3<- msm(state_up3 ~ years_in_study_corr, subject = PTNUM, data = d_match_surv_msm_up_3, qmatrix = msm_mat_cens_allowed_up_3, gen.inits=T,control=list(fnscale=4000,reltol = 1e-16),censor = c(91,92,93,94,95,96),censor.states = list(c(2,3),c(5,6),c(8,9),c(11,12),c(14,15),c(17,18)),obstype=1)
+
+print(msm_model_cens_up3)
+summary(msm_model_cens_up3)
 ```
 
 ```{r surv_mstate3_mstate, eval=F, echo=T, paged.print=TRUE, error=T}                                  
