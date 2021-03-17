@@ -4,9 +4,9 @@ Welcome to the repositories of the construction of the treatment information sys
 
 This page is composed by the following main topics:
 
-0. [Encription of RUTs and generation of HASHs](Encript.html)
+0. [Encryption of RUTs and generation of HASHs](Encript.html)
 
-1. [Data preparation and Standardization of C1](Data_prep_C1) 
+1. [Data Preparation and Standardization of C1](Data_prep_C1) 
 
     1.1. [Preliminary Results for SER 2020](SER_Stata.html)
     
@@ -22,13 +22,18 @@ This page is composed by the following main topics:
     
     1.7. [Descriptive Glimpse of the Database](Desc)
     
-    1.8. [Matching and Multistate Model](Matching_Process_NOV)
-    
-    1.9. [Codebook of C1](codebook)
-  
-2. [Data preparation and Standardization of TOP or Profile of Treatment Results](Data_prep_TOP)
+    1.8. [Codebook of C1](codebook)
 
-    2.1. [Codebook of TOP](codebook_TOP)
+2. Associations & Analytic Exercises
+    
+    2.1. [Matching and Multistate Model of Treatment Setting](Matching_Process_NOV)
+    
+    3.1. [Type of Program, Completion & Readmission in Women](Proyecto_Carla2)
+    
+  
+3. [Data Preparation and Standardization of TOP or Profile of Treatment Results](Data_prep_TOP)
+
+    3.1. [Codebook of TOP](codebook_TOP)
 
 
 <br>

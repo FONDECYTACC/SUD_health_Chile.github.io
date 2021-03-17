@@ -50,22 +50,6 @@ rm(list=ls());gc()
 load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
 rm(list=setdiff(ls(), c("CONS_C1_df_dup_SEP_2020_match","CONS_C1_df_dup_SEP_2020","CONS_C1")))
 unlink('G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Matching_Process_cache', recursive = TRUE)
-if(isTRUE(getOption('knitr.in.progress'))==T){
-    nn_size= 1:5 # size= 1:5
-    nn_seq=seq(0, 1, .5)
-    nn_K= 10
-} else {
-  input <- readline('¿Are you gonna run the results seriously? (Si/No): ')
-  if(input=="Si"){
-    nn_size= 1:5 # size= 1:5
-    nn_seq=seq(0, 1, .5)
-    nn_K= 10
-  } else {
-    nn_size= 1 # size= 1:5
-    nn_seq=1
-    nn_K= 1
-  }
-}
 ```
 
 ```{r setup, include = FALSE, cache=T}
@@ -2132,8 +2116,8 @@ motivodeegreso_mod_imp_imputed<-
   dplyr::ungroup() %>% 
   dplyr::filter(amelia_fit_imputations_imp1_row %in% unlist(motivo_de_egreso_a_imputar$row)) %>% 
   #FILTRAR CASOS QUE SON ILÓGICOS: MUERTES CON TRATAMIENTOS POSTERIORES (1)
-  dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,motivodeegreso_mod_imp, fech_egres_imp,dup, duplicates_filtered,evaluacindelprocesoteraputico),by=c("amelia_fit_imputations_imp1_row"="row")) %>% 
-  dplyr::mutate(value_death=dplyr::case_when(value=="Death"& duplicates_filtered>dup~1,TRUE~0)) %>% 
+  dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,motivodeegreso_mod_imp, fech_egres_imp,dup, duplicates_filtered,evaluacindelprocesoteraputico,fech_ing_next_treat),by=c("amelia_fit_imputations_imp1_row"="row")) %>% 
+  dplyr::mutate(value_death=dplyr::case_when(value=="Death"& !is.na(fech_ing_next_treat)~1,TRUE~0)) %>% 
   dplyr::filter(value_death!=1) %>%  
   #:#:#:#:#:
   dplyr::count(amelia_fit_imputations_imp1_row,value) %>% 
@@ -2708,7 +2692,7 @@ t_max = 60*6
 solver = "gurobi" #cplex, glpk, gurobi and symphony
 solver = list(name = solver, 
   t_max = t_max, #t_max is a scalar with the maximum time limit for finding the matches.within this time limit, a partial, suboptimal solution is given
-  approximate = 1,#. If approximate = 1 (the default), an approximate solution is found via a relaxation of the original integer program
+  approximate = 1,#. If approximate = 1 (the default), an approximate solution is found via a relaxation of the original integer program. #FEB2021: I dont want to violate some balancing constraints to some extent. Change to 0.
   round_cplex = 0, 
   trace = 1#turns the optimizer output on
   )
@@ -2727,7 +2711,7 @@ t_ind= ifelse(CONS_SEP_match$tipo_de_plan_res=="1",1,0)
 mom_covs = cbind(CONS_SEP_match$edad_al_ing,
                  CONS_SEP_match$fech_ing_num,
                  CONS_SEP_match$edad_ini_cons)
-mom_tols = absstddif(mom_covs, t_ind, .0999)# original, 0.05, ahora probaré con 0.7
+mom_tols = absstddif(mom_covs, t_ind, .15)# original, 0.05, ahora probaré con 0.7
 mom = list(covs = mom_covs, tols = mom_tols, targets = NULL)
 
 # Mean balance
@@ -2755,6 +2739,7 @@ fine = list(covs = fine_covs)
 
 # 11,448; No. of controls: 11,448"
 # 11,452; No. of controls: 11,452"
+# 11,459; No. of controls: 11,459" #when I changed tolerance from .0999 to .1999
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #MATCH
 start.time <- Sys.time()
@@ -2763,6 +2748,7 @@ out = cardmatch(t_ind, #ES NECESARIO QUE LOS TRATAMIENTOS ESTEN ORDENADOS Y LOS 
                 mom = mom,# ya los definí list(covs = mom_covs, tols = mom_tols, targets = mom_targets), 
           fine = fine, 
           solver = solver)
+#FEB2021= If I change to bmatch, error can't allocate vector size 3.4gb
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 # Fine balance (note here we are getting an approximate solution)
@@ -2788,6 +2774,10 @@ d_match = CONS_SEP_match[c(t_id_1, c_id_1), ]
 
 paste0("Number of duplicated rows: ",d_match %>%  dplyr::group_by(row) %>%  dplyr::mutate(n_row=n()) %>% dplyr::ungroup() %>% dplyr::filter(n_row>1) %>% nrow())
 
+paste0("Percentage of the selected treatments: ",scales::percent(length(t_id_1)/CONS_SEP_match %>% dplyr::filter(tipo_de_plan_res==1) %>% nrow()))
+paste0("Percentage of the selected controls: ",
+       scales::percent(length(c_id_1)/CONS_SEP_match %>% dplyr::filter(tipo_de_plan_res==0) %>% nrow()))
+
 #cuidado, el anterior me encontró más del mismo control para un tratado
 #por eso ocuparé el de más abajo.
 #EL DE A CONTINUACIÓN ES ERRÓNEO PORQUE ES POR POSICIÓN, NO POR COINCIDENCIA DEL NÚMERO CON LA FILA
@@ -2797,6 +2787,7 @@ paste0("Number of duplicated rows: ",d_match %>%  dplyr::group_by(row) %>%  dply
 <br>
 
 ## Explore Results of the Matching{.tabset .tabset-fade}
+
 
 <br>
 
@@ -3019,7 +3010,7 @@ smd_df_prev_match_after_match<-
 # Generate plot
 loveplot_bal3 = ggplot(data = smd_df_prev_match_after_match, mapping = aes(x = reorder(vars, value), y = value,
                                                     group = variable, color = variable)) +
-  geom_hline(yintercept = 0.1, color = "black", size = 0.2, linetype="dashed") +
+  geom_hline(yintercept = 0.2, color = "black", size = 0.2, linetype="dashed") +
   coord_flip() +
   theme_bw() + 
   theme(legend.key = element_blank()) +
@@ -3437,7 +3428,7 @@ cox.zph(m2)
 
 <br>
 
-There was evidence of proportional hazards. Users in residential treatments experience `r scales::percent(exp(m1$coeff)-1)` within the study period than users in outpatient treatments (95% CI: `r scales::percent(exp(confint(m1))[1]-1)` - `r scales::percent(exp(confint(m1))[2]-1)`; p=`r round(tidy(m1)$p.value,4)`).
+There was evidence of unproportional hazards. Users in residential treatments experience `r scales::percent(exp(m1$coeff)-1)` within the study period than users in outpatient treatments (95% CI: `r scales::percent(exp(confint(m1))[1]-1)` - `r scales::percent(exp(confint(m1))[2]-1)`; p=`r round(tidy(m1)$p.value,4)`).
 
 <br>
 
@@ -3484,8 +3475,7 @@ grViz("digraph flowchart {
       blank3 [label = '', width = 0.0001, height = 0.0001]
       tab5 [label = '&#8226;Logically Inconsistent candidates for imputation\\l&#8226;Ties in candidates for imputation\\l',fontsize = 7]
       tab6 [label= '@@6']
-      tab7 [label = '&#8226;Mathing pairs based on balance of covariates at basline,\\l&#8226;Pairs 1:1\\l',fontsize = 7]
-      
+      tab7 [label = '&#8226;Matching pairs based on balance of covariates at basline,\\l&#8226;Pairs 1:1\\l',fontsize = 7]
       
       # edge definitions with the node IDs
       tab1 -> blank [arrowhead = none,label='  Data wrangling and normalization process',fontsize = 8];
@@ -3642,7 +3632,7 @@ table_surv <- compareGroups::compareGroups(tipo_de_plan_res ~ origen_ingreso_mod
 pvals <- getResults(table_surv)
 #p.adjust(pvals, method = "BH")
 restab_surv <- createTable(table_surv,show.p.overall = T)
-compareGroups::export2md(restab_surv, size=9, first.strip=T, hide.no="no", position="center",#col.names=c("Variables","Ambulatory","Residential"),
+compareGroups::export2md(restab_surv, size=9, first.strip=T, hide.no="no", position="center",col.names=c("Variables","Ambulatory","Residential", "Sig."),
                          format="html",caption= "Table 6. Summary descriptives table")%>%
   kableExtra::add_footnote(c("Note. Variables of C1 dataset had to be standardized before comparison;", "Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
   kableExtra::scroll_box(width = "100%", height = "600px")
@@ -3687,13 +3677,6 @@ summary(m3)
 ```
 
 <br>
-
-
-```{r surv_Epi,eval=F, echo=T, paged.print=TRUE, error=T}                            
-#https://rdrr.io/rforge/Epi/man/Lexis.html
-
-Epi::Lexis(entry=0, exit=fech_egres_num, duration=dias_treat_imp_sin_na, entry.status = 0, exit.status = 0, id=hash_key, data=d_match_surv, merge=TRUE, states, notes=TRUE, tol=.Machine$double.eps^0.5, keep.dropped=FALSE )
-```
 
 
 ```{r surv_mstate_msm1,eval=T, echo=T, paged.print=TRUE, error=T}                                 
@@ -3825,8 +3808,10 @@ library(msm)
 # each row must sum to one for an example row 1 summation equals to 1
 # transition intensity matrix Q
  qmatrix<-matrix(statetable.msm(state, PTNUM, data = d_match_surv_msm),nrow=6,ncol=8)
- 
-msm::statetable.msm(state, PTNUM, data = d_match_surv_msm) %>% 
+
+ model1<- 
+msm::statetable.msm(state, PTNUM, data = d_match_surv_msm)
+model1%>% 
     data.table::data.table() %>% 
     dplyr::filter(N>0) %>% 
     dplyr::arrange(desc(N)) %>% 
@@ -3850,7 +3835,7 @@ msm::statetable.msm(state, PTNUM, data = d_match_surv_msm) %>%
   knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
                caption="Table 7. State Transition Matrix",
                align= c("c",rep('c', 5)))%>%
-  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 8) %>% 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 11) %>% 
   kableExtra::add_footnote("Note= Excluded transitions that were not found")
 ```
 
@@ -3860,6 +3845,12 @@ We restricted the transitions following several criteria: cannot enter/complete/
 
 <br>
 
+```{r fig18_dec_tree_disc_dup_birthdate, warning=FALSE, fig.align = "center", message=F,fig.cap="Figure 18. Markov Influence Diagram of possible pathways of a user "}
+#plot(CONS_C1_df_dup_ENE_2020_prev2$ano_nac, CONS_C1_df_dup_ENE_2020_prev2$Edad, ylab="Age", xlab="Year of Birth")
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/multistate_scheme.svg")
+```
+
+<br>
 
 ```{r surv_mstate2_msm2,eval=T, echo=T, paged.print=TRUE, error=T}                                  
 #msm2Surv(d_match_surv_msm, "PTNUM", "years_in_study_corr", "state", "min_achievement", Q=qmatrix)
@@ -3904,9 +3895,9 @@ Since users with more than 2 readmissions covered around  `r scales::percent(d_m
 
 <br>
 
-```{r fig2_dec_tree_disc_dup_birthdate, fig.height=4, fig.width=8, warning=FALSE, fig.align = "center", message=F,fig.cap="Figure 17. Diagram of possible pathways of a user (up to 3 treatments)"}
+```{r fig18_dec_tree_disc_dup_birthdate2, warning=FALSE, fig.align = "center", message=F,fig.cap="Figure 19. Markov Influence Diagram of possible pathways of a user (up to 3 treatments)"}
 #plot(CONS_C1_df_dup_ENE_2020_prev2$ano_nac, CONS_C1_df_dup_ENE_2020_prev2$Edad, ylab="Age", xlab="Year of Birth")
-knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/Esquema estudio.png")
+knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/multistate_scheme.svg")
 ```
 
 <br>
@@ -3990,6 +3981,10 @@ msm_model_cens_up3<- msm(state_up3 ~ years_in_study_corr, subject = PTNUM, data 
 
 print(msm_model_cens_up3)
 summary(msm_model_cens_up3)
+invisible(c("Me apareció el siguiente mensaje"))
+#Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite.
+#Optimisation probably not converged to the maximum likelihood.
+#optim() reported convergence but estimated Hessian not positive-definite.
 ```
 
 ```{r surv_mstate3_mstate, eval=F, echo=T, paged.print=TRUE, error=T}                                  

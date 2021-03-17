@@ -1,0 +1,2405 @@
+---
+title: "Proyecto Carla"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: hide  
+    toc: true # table of content true
+    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_float: true
+---
+
+<style type="text/css">
+.tablelines table, .tablelines td, .tablelines th {
+        border: 1px solid black;
+        }
+.centrado {
+    text-align: center;
+}
+.table.center {
+    margin-left:auto; 
+    margin-right:auto;
+  }
+.table_wrapper{
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+code.r{
+  font-size: 8px;
+}
+body{ /* Normal  */
+      text-align: justify;
+  }
+.superbigimage{
+    overflow-y:scroll;
+    white-space: nowrap;
+}
+.superbigimage img{
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+</style>
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
+</style>
+
+```{r prev_setup, include = FALSE, cache=T}
+rm(list=ls());gc()
+load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+rm(list=setdiff(ls(), c("CONS_C1_df_dup_SEP_2020_match","CONS_C1_df_dup_SEP_2020","CONS_C1")))
+unlink('G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Matching_Process_cache', recursive = TRUE)
+```
+
+```{r setup, include = FALSE, cache=T}
+#Libraries used in the routine. Dont change the order
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
+  if(class(ungroup(x))[1]=="tbl_df"){
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)    
+        }
+  } else {
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)       
+  }
+ }
+}  
+#packageVersion("codebook")
+#https://github.com/RevolutionAnalytics/checkpoint
+#if(!require(checkpoint)){install.packages("checkpoint")}
+#if(!require(here)){install.packages("here")}
+#checkpoint::checkpoint("2020-02-19",project=here::here(),checkpointLocation=paste0(here::here(),"/dedup"), use.lock=F, use.knitr=T, auto.install.knitr = T,scan.rnw.with.knitr=T, forceInstall=T,scanForPackages = TRUE)
+#checkpointArchives(tempdir(), full.names = TRUE)
+
+#if(!require(tidyr)){install.packages("tidyr")}
+#if(!require(DataExplorer)){install.packages("DataExplorer")}
+#if(!require(stringi)){install.packages("stringi")}
+#if(!require(stringr)){install.packages("stringr")}
+#if(!require(ggplot2)){install.packages("ggplot2")}
+#if(!require(Hmisc)){install.packages("Hmisc")}
+#if(!require(kableExtra)){install.packages("kableExtra")}
+#if(!require(plotly)){install.packages("plotly")}
+#if(!require(rbokeh)){install.packages("rbokeh")}
+#if(!require(altair)){install.packages("altair")}
+#if(!require(zoo)){install.packages("zoo")}
+#if(!require(codebook)){install.packages("codebook")}
+#if(!require(broom)){install.packages("broom")}
+#if(!require(sqldf)){install.packages("sqldf")} 
+#if(!require(devtools)){install.packages("devtools")}
+#if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
+#if(!require(data.table)){install.packages("data.table")}
+#if(!require(dplyr)){install.packages("dplyr")}
+
+#if(!require(boot)){install.packages("boot")}
+#if(!require(plyr)){install.packages("plyr")}
+#if(!require(matrixStats)){install.packages("matrixStats")}
+#if(!require(radiant)){install.packages("radiant", repos = "https://radiant-rstats.github.io/minicran/")}
+
+try(library(boot))
+library(matrixStats)
+library(knitr)
+library(tidyr)
+library(stringi)
+library(stringr)
+library(ggplot2)
+library(Hmisc)
+library(kableExtra)
+library(plotly)
+library(janitor)
+library(rbokeh)
+library(altair)
+library(zoo)
+library(broom)
+library(sqldf)
+library(devtools)
+library(codebook)
+library(data.table)
+library(dplyr)
+library(panelr)
+library(RColorBrewer)
+library(choroplethr)
+library(choroplethrMaps)
+library(choroplethrAdmin1)
+library(lsmeans)
+library(finalfit)
+library(chilemapas)
+suppressPackageStartupMessages(library(ggiraph))
+suppressPackageStartupMessages(library(sf))
+library(treemapify)
+library(dplyr)
+library(choroplethr)
+library(choroplethrMaps)
+library(choroplethrAdmin1)
+library(tidyverse)
+library(epiR)
+library(survminer)
+library(rateratio.test)  
+library(ggfortify)
+library(survMisc)
+
+library(designmatch)
+library(glpkAPI) #
+library(foreign)
+library(Hmisc)
+library(gridExtra)
+library(exactRankTests)
+library(ggplot2)
+library(reshape2)
+library(stargazer)
+library(Rglpk)
+library(tableone)
+library(MatchIt)
+library(sensitivity2x2xk)
+library(sensitivityfull)
+library(cobalt)
+library(eha)
+
+#devtools::install_github('ChristopherLucas/MatchingFrontier')
+
+if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
+#install.packages( repos = "https://radiant-rstats.github.io/minicran/")
+#install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")
+
+#tryCatch(source("https://raw.githubusercontent.com/radiant-rstats/minicran/gh-pages/update.R"), error = function(e) print("updated package, radiant"))
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+try_with_time_limit <- function(expr, cpu = Inf, elapsed = Inf)
+{
+  y <- try({setTimeLimit(cpu, elapsed); expr}, silent = TRUE) 
+  if(inherits(y, "try-error")) NULL else y 
+}
+eval_fork <- function(..., timeout=60){
+
+  #this limit must always be higher than the timeout on the fork!
+  setTimeLimit(timeout+5);      
+
+  #dispatch based on method
+  ##NOTE!!!!! Due to a bug in mcparallel, we cannot use silent=TRUE for now.
+  myfork <- parallel::mcparallel({
+    eval(...)
+  }, silent=FALSE);
+
+  #wait max n seconds for a result.
+  myresult <- parallel::mccollect(myfork, wait=FALSE, timeout=timeout);
+
+  #try to avoid bug/race condition where mccollect returns null without waiting full timeout.
+  #see https://github.com/jeroenooms/opencpu/issues/131
+  #waits for max another 2 seconds if proc looks dead 
+  while(is.null(myresult) && totaltime < timeout && totaltime < 2) {
+     Sys.sleep(.1)
+     enddtime <- Sys.time();
+     totaltime <- as.numeric(enddtime - starttime, units="secs")
+     myresult <- parallel::mccollect(myfork, wait = FALSE, timeout = timeout);
+  }
+
+  #kill fork after collect has returned
+  tools::pskill(myfork$pid, tools::SIGKILL);    
+  tools::pskill(-1 * myfork$pid, tools::SIGKILL);  
+
+  #clean up:
+  parallel::mccollect(myfork, wait=FALSE);
+
+  #timeout?
+  if(is.null(myresult)){
+    stop("R call did not return within ", timeout, " seconds. Terminating process.", call.=FALSE);      
+  }
+
+  #move this to distinguish between timeout and NULL returns
+  myresult <- myresult[[1]];
+
+  #reset timer
+  setTimeLimit();     
+
+  #forks don't throw errors themselves
+  if(inherits(myresult,"try-error")){
+    #stop(myresult, call.=FALSE);
+    stop(attr(myresult, "condition"));
+  }
+
+  #send the buffered response
+  return(myresult);  
+}
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#GET LOCAL
+#dir.create(paste0(getwd(),"/renv_local"))
+#Sys.setenv(RENV_PATHS_LOCAL = paste0(getwd(),"/renv_local"))
+#install.packages(paste0(getwd(),"/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+#install.packages(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+library(gurobi)
+#"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)"
+#Sys.getenv("R_LIBS_USER")
+```
+
+# First
+
+## Database consolidation
+
+<br>
+
+```{r proc1}
+
+prueba<-
+  CONS_C1_df_dup_SEP_2020 %>%
+  dplyr::filter(as.character(sexo_2)=="Women") %>% 
+  dplyr::filter(dup==1)
+	
+library(compareGroups)
+table2 <- compareGroups::compareGroups(tipo_de_programa_2 ~ edad_al_ing_grupos+ escolaridad_rec+ estado_conyugal_2+ numero_de_hijos_mod+ hijos_trat_res+ embarazo+ sus_principal_mod+  otras_sus1_mod+ edad_ini_sus_prin_grupos+  freq_cons_sus_prin+  dg_cie_10_rec+  compromiso_biopsicosocial+ tipo_de_plan_2+  tipo_centro+ tenencia_de_la_vivienda_mod,
+                        method= c(edad_al_ing_grupos=3,
+                                  escolaridad_rec=3,
+                                  estado_conyugal_2=3,
+                                  numero_de_hijos_mod=2,
+                                  hijos_trat_res=3,
+                                  embarazo=3,
+                                  sus_principal_mod=3,
+                                  otras_sus1_mod=3,
+                                  edad_ini_sus_prin_grupos=3,
+                                  freq_cons_sus_prin=3,
+                                  dg_cie_10_rec=3,
+                                  compromiso_biopsicosocial=3,
+                                  tipo_de_plan_2=3,
+                                  tipo_centro=3,
+                                  tenencia_de_la_vivienda_mod=3),
+                        data = prueba,
+                        include.miss = T,
+                        var.equal=T
+)#cie_10
+
+
+pvals <- getResults(table2)
+#p.adjust(pvals, method = "BH")
+restab2 <- createTable(table2, show.p.overall = T)
+compareGroups::export2md(restab2, size=10, first.strip=T, hide.no="no", position="center",
+          format="html",caption= "Table 1. Summary descriptives at baseline in Women, Between the Different Programs",
+          col.names=c("Variables","General population", "Women Specific", "P-value"))%>%
+  kableExtra::add_footnote(c("Note. Variables of C1 dataset had to be standardized before comparison;", "Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+```{r pressure, echo=FALSE}
+toString2<-
+function (x, width = NULL, ...) 
+        {
+            string <- paste(x, collapse = "; ")
+            if (missing(width) || is.null(width) || width == 0) 
+                return(string)
+            if (width < 0) 
+                stop("'width' must be positive")
+            if (nchar(string, type = "w") > width) {
+                width <- max(6, width)
+                string <- paste0(strtrim(string, width - 4), "....")
+            }
+            string
+        }
+
+CONS_C1_df_dup_SEP_2020_women<-
+  CONS_C1_df_dup_SEP_2020 %>%
+  #FILTRO A MUJERES
+  dplyr::filter(as.character(sexo_2)=="Women") %>% 
+  #TRATAMIENTOS RESIDENCIALES
+  dplyr::mutate(tipo_de_plan_res=dplyr::case_when(grepl("PR",as.character(tipo_de_plan_2))~"Residential",
+                                                  grepl("PAI",as.character(tipo_de_plan_2))~"Outpatient",
+                                                  grepl("PAB",as.character(tipo_de_plan_2))~"Outpatient",
+                                                  TRUE~NA_character_)) %>% 
+  dplyr::mutate(tipo_de_plan_res=factor(tipo_de_plan_res)) %>% 
+  #
+  dplyr::mutate(embarazo=factor(if_else(as.character(embarazo)=="Si",TRUE,FALSE,NA))) %>% 
+  dplyr::mutate(tenencia_de_la_vivienda_mod=
+                  factor(dplyr::case_when(tenencia_de_la_vivienda_mod=="Allegado"~"Stays temporarily with a relative",
+                                 tenencia_de_la_vivienda_mod=="Arrienda"~"Renting",
+                                 tenencia_de_la_vivienda_mod=="Cedida"~"Transferred dwellings",
+                                 tenencia_de_la_vivienda_mod=="Ocupación Irregular"~"Illegal Settlement",
+                                 tenencia_de_la_vivienda_mod=="Otros"~"Others",
+                                 tenencia_de_la_vivienda_mod=="Paga dividendo"~"Pays Dividends",
+                                 tenencia_de_la_vivienda_mod=="Propia"~"Owner",
+                                 T~NA_character_))) %>% 
+  tidyr::separate(servicio_de_salud, into=paste0("servicio_sal",1:9),sep="; ") %>% 
+  dplyr::mutate(servicio_sal1=factor(servicio_sal1)) %>% 
+  dplyr::mutate(ssalud = pmap_chr(dplyr::select(.,servicio_sal1:servicio_sal9), ~toString2(unique(na.omit(c(...)))))) %>% 
+  dplyr::select(-ssalud,-servicio_sal2,-servicio_sal3, -servicio_sal4, -servicio_sal5, -servicio_sal6, -servicio_sal7, -servicio_sal8, -servicio_sal9) %>% 
+  data.table::data.table()
+
+#Allegado, Arrienda, Cedida, Ocupación Irregular, Otros, Paga dividendo, Propia
+#vive transitoriamente en casa ajena
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+attr(CONS_C1_df_dup_SEP_2020_women$tipo_de_programa_2,"label") <- 'Type of program'
+attr(CONS_C1_df_dup_SEP_2020_women$edad_al_ing_grupos,"label") <- 'Age at admission to treatment, grouped.'
+attr(CONS_C1_df_dup_SEP_2020_women$estado_conyugal_2,"label") <- 'Marital status'
+attr(CONS_C1_df_dup_SEP_2020_women$numero_de_hijos_mod,"label") <- 'Number of children (max. Value)'
+attr(CONS_C1_df_dup_SEP_2020_women$num_hijos_trat_res_mod,"label") <- 'Number of children into a residential treatment'
+attr(CONS_C1_df_dup_SEP_2020_women$embarazo,"label") <- 'Pregnant at admission'
+attr(CONS_C1_df_dup_SEP_2020_women$sus_principal_mod,"label") <- 'Primary or main substance'
+attr(CONS_C1_df_dup_SEP_2020_women$otras_sus1_mod,"label") <- 'Other frequent substances'
+attr(CONS_C1_df_dup_SEP_2020_women$freq_cons_sus_prin,"label") <- 'Consumption frequency of primary or main substance'
+attr(CONS_C1_df_dup_SEP_2020_women$compromiso_biopsicosocial,"label") <- 'Biopsychosocial involvement'
+attr(CONS_C1_df_dup_SEP_2020_women$tipo_centro,"label") <- 'Type of center of the last entry'
+attr(CONS_C1_df_dup_SEP_2020_women$servicio_sal1,"label") <- 'Health service at entry'
+attr(CONS_C1_df_dup_SEP_2020_women$tipo_de_plan_res,"label") <- 'Setting of Treatment'
+attr(CONS_C1_df_dup_SEP_2020_women$edad_ini_sus_prin_grupos,"label") <- 'Age at first use of principal substance, grouped'
+attr(CONS_C1_df_dup_SEP_2020_women$tenencia_de_la_vivienda_mod,"label") <- 'Tenure status of households'
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+library(compareGroups)
+table22 <- compareGroups::compareGroups(tipo_de_programa_2 ~ edad_al_ing_grupos+ estado_conyugal_2+ numero_de_hijos_mod+ num_hijos_trat_res_mod+ embarazo+ sus_principal_mod+  otras_sus1_mod+ freq_cons_sus_prin+ compromiso_biopsicosocial+ tipo_centro+  servicio_sal1+  tipo_de_plan_res+ edad_ini_sus_prin_grupos+ tenencia_de_la_vivienda_mod,
+                                       method= c(edad_al_ing_grupos=3,
+                                                 estado_conyugal_2=3,
+                                                 numero_de_hijos_mod=2,
+                                                 num_hijos_trat_res_mod=2,
+                                                 embarazo=3,
+                                                 sus_principal_mod=3,
+                                                 otras_sus1_mod=3,
+                                                 freq_cons_sus_prin=3,
+                                                 compromiso_biopsicosocial=3,
+                                                 tipo_centro=3,
+                                                 servicio_sal1=3,
+                                                 tipo_de_plan_res=3,
+                                                 edad_ini_sus_prin_grupos=3,
+                                                 tenencia_de_la_vivienda_mod=3),
+                                       data = CONS_C1_df_dup_SEP_2020_women,
+                                       include.miss = T,
+                                       var.equal=T
+)
+
+pvals2 <- getResults(table2)
+#p.adjust(pvals, method = "BH")
+restab22 <- createTable(table22, show.p.overall = T)
+compareGroups::export2md(restab22, size=10, first.strip=T, hide.no="no", position="center",
+                         format="html",caption= "Table 2. Summary descriptives in Women, Between the Different Programs",
+                         col.names=c("Variables","General population", "Women Specific", "P-value"))%>%
+  kableExtra::add_footnote(c("Note. Variables of C1 dataset had to be standardized before comparison;", "Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+## Initial Sample
+
+<br>
+
+We selected the following variables of interest:
+
+- 'Type of program'(`tipo_de_programa_2`)
+- 'Age at admission to treatment, grouped.'(`edad_al_ing_grupos`)
+- 'Marital status'(`estado_conyugal_2`)
+- 'Number of children (max. Value)'(`numero_de_hijos_mod`)
+- 'Number of children into a residential treatment' (`num_hijos_trat_res_mod`)
+- 'Pregnant at admission'(`embarazo`)
+- 'Primary or main substance'(`sus_principal_mod`)
+- 'Other frequent substances'(`otras_sus1_mod`)
+- 'Consumption frequency of primary or main substance'(`freq_cons_sus_prin`)
+- 'Biopsychosocial involvement'(`compromiso_biopsicosocial`)
+- 'Type of center of the last entry'(`tipo_centro`)
+- 'Health service at entry'(`servicio_sal1`)
+- 'Treatment Setting'(`tipo_de_plan_res`)
+- 'Age at first use of principal substance, grouped'(`edad_ini_sus_prin_grupos`)
+- 'Tenure status of households'(`tenencia_de_la_vivienda_mod`)
+
+<!--- EN EXCEL:  ="- '"&L8&"'"&"("&"`"&K8&"`"&")" 
+tipo_de_programa_2, edad_al_ing_grupos,  estado_conyugal_2, numero_de_hijos_mod, embarazo, sus_principal_mod, otras_sus1_mod, freq_cons_sus_prin, compromiso_biopsicosocial, tipo_centro, servicio_de_salud, tipo_de_plan_2, edad_ini_sus_prin_grupos, tenencia_de_la_vivienda_mod
+ME FALTA TENENCIA DE LA VIVIENDA, EDAD INICIO SUSTANCIA PRINCIPAL, TIPO DE PLAN Y TIPO DE PROGRAMA, SERVICIO DE SALUD, COMPROMISO BIOPSICOSOCIAL, SUSTANCIA PRINCIPAL MOD Y OTRAS SUSTANCIAS, EMBARAZO, NUMERO DE HIJOS A TRATAMIENTO RESIDENCIAL Y NUMERO DE HIJOS.
+--->
+
+<br>
+
+## Imputation
+
+<br>
+
+We generated a plot to see all the missing values in the sample.
+
+<br>
+
+```{r miss_plot_perc_var, warning=F,message=F,fig.align='center', fig.cap="Figure 3. Bar plot of Percentage of Missing Values per Variables at Basline", error=T, height=600}
+#<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:400px; overflow-x: scroll; width:100%">
+library(dplyr)
+library(ggplot2)
+
+vector_variables<-
+c("row", "hash_key", "edad_al_ing_grupos", "estado_conyugal_2", "numero_de_hijos_mod", "num_hijos_trat_res_mod", "embarazo", "sus_principal_mod",  "otras_sus1_mod", "freq_cons_sus_prin", "compromiso_biopsicosocial", "tipo_centro",  "servicio_sal1",  "tipo_de_plan_res", "edad_ini_sus_prin_grupos", "tenencia_de_la_vivienda_mod", "tipo_de_programa_2", "motivodeegreso_mod_imp", "dias_treat_imp_sin_na", "motivodeegreso_mod_imp", "dup","duplicates_filtered")
+
+missing.values<-
+CONS_C1_df_dup_SEP_2020_women %>%
+  rowwise %>%
+  dplyr::mutate_at(.vars = vars(vector_variables),
+                   .funs = ~ifelse(is.na(.), 1, 0)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::summarise_at(vars(vector_variables),~sum(.))
+#t(missing.values)
+
+plot_miss<-
+missing.values %>%
+  data.table::melt() %>%  #condicion_ocupacional_corr
+  dplyr::filter(!variable %in% c("row", "hash_key", "dias_treat_imp_sin_na", "dup")) %>% 
+  dplyr::mutate(perc= value/sum(nrow(CONS_C1_df_dup_SEP_2020_women))) %>% 
+  dplyr::mutate(label_text= paste0("Variable= ",variable,"<br>n= ",value,"<br>",scales::percent(round(perc,3)))) %>%
+  dplyr::mutate(perc=perc*100) %>% 
+  ggplot() +
+  geom_bar(aes(x=factor(variable), y=perc,label= label_text), stat = 'identity') +
+  sjPlot::theme_sjplot()+
+#  scale_y_continuous(limits=c(0,1), labels=percent)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size=9))+
+  labs(x=NULL, y="% of Missing Values", caption=paste0("Nota. Percentage of missing values (n= ",sum(nrow(CONS_C1_df_dup_SEP_2020_women)),")"))
+
+  ggplotly(plot_miss, tooltip = c("label_text"))%>% layout(xaxis= list(showticklabels = T), height = 600, width=800) %>%   layout(yaxis = list(tickformat='%',  range = c(0, 30)))
+  #</div>
+```
+
+<br>
+
+<br>
+
+<br>
+
+<br>
+
+<br>
+
+From the figure above, we could see that the Other frequent substances (`otras_sus1_mod`), the Number of children into a residential treatment (`num_hijos_trat_res_mod`), the Age at first use of principal substance, grouped (`edad_ini_sus_prin_grupos`), and the evaluation of the therapeutic process (`evaluacindelprocesoteraputico`) had more than 10% of missing data. These values should be imputed.
+
+<br>
+
+```{r mice1_miss_values_and_gen_imputations, error=F, fig.align='center', fig.cap="Figure 4. Bar plot of Porcentaje of Missing Values per Variables", message=FALSE, warning=FALSE, results='hide'}
+
+#origen_ingreso #dg_global_nec_int_soc_or_1 "Diagnóstico global de necesidades de integración social" #evaluacindelprocesoteraputico "Evaluación del proceso terapéutico" #escolaridad_rec "macrozona"
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+  #HACER BASE ESPECIAL QUE CONTENGA UNA VARIABLE DE EDAD DE INICIO DE CONSUMO DE SUSTANCIA PRINCIPAL PARA EQUIPARAR
+CONS_C1_df_dup_SEP_2020_women_miss<-
+CONS_C1_df_dup_SEP_2020_women %>% 
+    #dplyr::group_by(hash_key) %>% 
+    #dplyr::mutate(rn=row_number()) %>% 
+    #dplyr::ungroup() %>% 
+  
+  #:#:#:#:#:#:#:#:#:#:#:
+  # ORDINALIZAR LAS VARIABLES ORDINALES: 
+
+  #dplyr::mutate(escolaridad_rec=parse_factor(as.character(escolaridad_rec),levels=c('3-Completed primary school or less', '2-Completed high school or less', '1-More than high school'), ordered =T,trim_ws=T,include_na =F, locale=locale(encoding = "Latin1"))) %>%   
+  dplyr::mutate(edad_al_ing_grupos=parse_factor(as.character(edad_al_ing_grupos),levels=c('<18', '18-29', '30-39', '40-49', '50+'), ordered =T,trim_ws=F,include_na =F)) %>% #, locale=locale(encoding = "Latin1")
+  dplyr::mutate(edad_ini_sus_prin_grupos=parse_factor(as.character(edad_ini_sus_prin_grupos),levels=c('<=15', '16-18', '19-24', '>=25'), ordered =T,trim_ws=F,include_na =F)) %>% #, locale=locale(encoding = "Latin1")
+  dplyr::mutate(freq_cons_sus_prin=parse_factor(as.character(freq_cons_sus_prin),levels=c('Did not use', 'Less than 1 day a week','2 to 3 days a week','4 to 6 days a week','1 day a week or more','Daily'), ordered =T,trim_ws=F,include_na =F)) %>% #, locale=locale(encoding = "Latin1")
+  dplyr::mutate(compromiso_biopsicosocial=parse_factor(as.character(compromiso_biopsicosocial),levels=c('1-Mild', '2-Moderate','3-Severe'), ordered =T,trim_ws=F,include_na =F)) %>% #, locale=locale(encoding = "Latin1")
+  dplyr::select_(.dots = vector_variables) %>% 
+    data.table::data.table()
+  
+#CONS_C1_df_dup_SEP_2020 %>% janitor::tabyl(evaluacindelprocesoteraputico) 
+#CONS_C1_df_dup_SEP_2020 %>% janitor::tabyl(nombre_region)
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+library(Amelia)
+
+amelia_fit <- amelia(CONS_C1_df_dup_SEP_2020_women_miss[,-c("duplicates_filtered")], 
+#Warning message:
+#In amcheck(x = x, m = m, idvars = numopts$idvars, priors = priors,  : 
+#The number of categories in one of the variables marked nominal has greater than 10 categories. Check nominal specification.
+                     m=61, 
+                     parallel = "multicore",
+                     idvars="row",
+                     noms= c("estado_conyugal_2", "embarazo", "sus_principal_mod", "otras_sus1_mod", "tipo_centro",   "tipo_de_plan_res", "tenencia_de_la_vivienda_mod","tipo_de_programa_2","motivodeegreso_mod_imp", "servicio_sal1"),
+                     ords= c("edad_al_ing_grupos", "freq_cons_sus_prin","compromiso_biopsicosocial", "edad_ini_sus_prin_grupos"),
+                     cs = "hash_key",
+                     ts = "dup",
+                     incheck = TRUE)
+# Se sacó el servicio de salud porque tiene mucha información: The number of categories in one of the variables marked nominal has greater than 10 categories. Check nominal specification.
+
+#Error in yy %*% unique(na.omit(x.orig[, i])) :  non-conformable arguments.
+```
+
+<br>
+
+### Age at Admission to Treatment (in groups)
+
+We started looking over the missing values in the age at admission (n`r missing.values %>% dplyr::select(edad_al_ing_grupos) %>% as.numeric()`). Since `r ifelse(CONS_C1_df_dup_SEP_2020_women_miss %>% dplyr::group_by(hash_key) %>%  dplyr::mutate(miss_edad_al_ing_grupos=ifelse(is.na(edad_al_ing_grupos),1,0),sum_miss_edad_al_ing_grupos=sum(miss_edad_al_ing_grupos,na.rm=T)) %>% dplyr::ungroup() %>% dplyr::filter(sum_miss_edad_al_ing_grupos>0, duplicates_filtered>1) %>% nrow()==0," there were not cases with more than one treatment that had not an age of admission, we did not have to impute taking into account serial dependencies in the dates of treatment.","**there were some users that had more than one treatment, it is necessary to analyse serial dependencies into the dates that were candidates to imputation**.")`
+
+<br>
+
+```{r mice1_age_at_admission_groups, warning=F,message=F, error=T, eval=T}
+#On this graph, a y = x line indicates the line of perfect agreement; that is, if the imputation model was a perfect predictor of the true value, all the imputations would fall on this line
+no_mostrar=0
+if(no_mostrar==1){
+  res <- { 
+    setTimeLimit(nn_K*500)
+    ovr_imp_edad_ini_cons<-overimpute(amelia_fit, var = "edad_al_ing_grupos")
+  }
+}
+
+paste0("Users that had more than one treatment with no date of admission: ",CONS_C1_df_dup_SEP_2020_women_miss %>% 
+    dplyr::group_by(hash_key) %>% 
+    dplyr::mutate(na_edad_ing=sum(is.na(edad_al_ing_grupos))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(na_edad_ing>0) %>% 
+    dplyr::group_by(hash_key) %>% 
+    dplyr::summarise(n=n()) %>% dplyr::filter(n>1) %>% nrow())
+
+#Hay poca relación en las imputaciones.
+#table(is.na(CONS_C1_df_dup_SEP_2020_women_not_miss$edad_al_ing),exclude=NULL)
+
+edad_al_ing_grupos_imputed<-
+  cbind.data.frame(amelia_fit$imputations$imp1$row,
+       amelia_fit$imputations$imp1$edad_al_ing_grupos,
+       amelia_fit$imputations$imp2$edad_al_ing_grupos,
+       amelia_fit$imputations$imp3$edad_al_ing_grupos,
+       amelia_fit$imputations$imp4$edad_al_ing_grupos,
+       amelia_fit$imputations$imp5$edad_al_ing_grupos,
+       amelia_fit$imputations$imp6$edad_al_ing_grupos,
+       amelia_fit$imputations$imp7$edad_al_ing_grupos,
+       amelia_fit$imputations$imp8$edad_al_ing_grupos,
+       amelia_fit$imputations$imp9$edad_al_ing_grupos,
+       amelia_fit$imputations$imp10$edad_al_ing_grupos,
+       amelia_fit$imputations$imp11$edad_al_ing_grupos,
+       amelia_fit$imputations$imp12$edad_al_ing_grupos,
+       amelia_fit$imputations$imp13$edad_al_ing_grupos,
+       amelia_fit$imputations$imp14$edad_al_ing_grupos,
+       amelia_fit$imputations$imp15$edad_al_ing_grupos,
+       amelia_fit$imputations$imp16$edad_al_ing_grupos,
+       amelia_fit$imputations$imp17$edad_al_ing_grupos,
+       amelia_fit$imputations$imp18$edad_al_ing_grupos,
+       amelia_fit$imputations$imp19$edad_al_ing_grupos,
+       amelia_fit$imputations$imp20$edad_al_ing_grupos,
+       amelia_fit$imputations$imp21$edad_al_ing_grupos,
+       amelia_fit$imputations$imp22$edad_al_ing_grupos,
+       amelia_fit$imputations$imp23$edad_al_ing_grupos,
+       amelia_fit$imputations$imp24$edad_al_ing_grupos,
+       amelia_fit$imputations$imp25$edad_al_ing_grupos,
+       amelia_fit$imputations$imp26$edad_al_ing_grupos,
+       amelia_fit$imputations$imp27$edad_al_ing_grupos,
+       amelia_fit$imputations$imp28$edad_al_ing_grupos,
+       amelia_fit$imputations$imp29$edad_al_ing_grupos,
+       amelia_fit$imputations$imp30$edad_al_ing_grupos,
+       amelia_fit$imputations$imp31$edad_al_ing_grupos,
+       amelia_fit$imputations$imp32$edad_al_ing_grupos,
+       amelia_fit$imputations$imp33$edad_al_ing_grupos,
+       amelia_fit$imputations$imp34$edad_al_ing_grupos,
+       amelia_fit$imputations$imp35$edad_al_ing_grupos,
+       amelia_fit$imputations$imp36$edad_al_ing_grupos,
+       amelia_fit$imputations$imp37$edad_al_ing_grupos,
+       amelia_fit$imputations$imp38$edad_al_ing_grupos,
+       amelia_fit$imputations$imp39$edad_al_ing_grupos,
+       amelia_fit$imputations$imp40$edad_al_ing_grupos,
+       amelia_fit$imputations$imp41$edad_al_ing_grupos,
+       amelia_fit$imputations$imp42$edad_al_ing_grupos,
+       amelia_fit$imputations$imp43$edad_al_ing_grupos,
+       amelia_fit$imputations$imp44$edad_al_ing_grupos,
+       amelia_fit$imputations$imp45$edad_al_ing_grupos,
+       amelia_fit$imputations$imp46$edad_al_ing_grupos,
+       amelia_fit$imputations$imp47$edad_al_ing_grupos,
+       amelia_fit$imputations$imp48$edad_al_ing_grupos,
+       amelia_fit$imputations$imp49$edad_al_ing_grupos,
+       amelia_fit$imputations$imp50$edad_al_ing_grupos,
+       amelia_fit$imputations$imp51$edad_al_ing_grupos,
+       amelia_fit$imputations$imp52$edad_al_ing_grupos,
+       amelia_fit$imputations$imp53$edad_al_ing_grupos,
+       amelia_fit$imputations$imp54$edad_al_ing_grupos,
+       amelia_fit$imputations$imp55$edad_al_ing_grupos,
+       amelia_fit$imputations$imp56$edad_al_ing_grupos,
+       amelia_fit$imputations$imp57$edad_al_ing_grupos,
+       amelia_fit$imputations$imp58$edad_al_ing_grupos,
+       amelia_fit$imputations$imp59$edad_al_ing_grupos,
+       amelia_fit$imputations$imp60$edad_al_ing_grupos,
+       amelia_fit$imputations$imp61$edad_al_ing_grupos
+        ) %>% 
+  melt(id.vars="amelia_fit$imputations$imp1$row") %>% 
+  #18-29 30-39 40-49 50+
+  janitor::clean_names() %>% 
+  dplyr::arrange(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row) %>%
+  dplyr::summarise(edad_18_29=sum(value == "18-29",na.rm=T),
+                   edad_30_39=sum(value == "30-39",na.rm=T),
+                   edad_40_49=sum(value == "40-49",na.rm=T),
+                  edad_50mas=sum(value =="50+",na.rm=T)) %>% 
+  dplyr::ungroup() %>% 
+  #dplyr::mutate(edad_suma = base::rowSums(dplyr::select(is.na(.),starts_with("edad"))))
+  dplyr::mutate(ties= base::rowSums(dplyr::select(.,starts_with("edad"))>0)) %>% 
+  dplyr::mutate(edad_al_ing_grupos_imp= dplyr::case_when(
+      (edad_18_29> edad_30_39) & (edad_18_29> edad_40_49) & (edad_18_29> edad_50mas)~"18-29",
+      (edad_30_39> edad_18_29) & (edad_30_39> edad_40_49) & (edad_30_39> edad_50mas)~"30-39",
+      (edad_40_49> edad_18_29) & (edad_40_49> edad_30_39) & (edad_40_49> edad_50mas)~"40-49",
+      (edad_50mas> edad_18_29) & (edad_50mas> edad_30_39) & (edad_50mas> edad_40_49)~"50+"
+      )) 
+
+#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:
+##
+
+# Reemplazo los valores perdidos:
+CONS_C1_df_dup_SEP_2020_women_miss0<-
+CONS_C1_df_dup_SEP_2020_women_miss %>% 
+  dplyr::left_join(edad_al_ing_grupos_imputed,by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
+  #si la edad al ingreso no existe, el valor promedio imutado es
+  dplyr::mutate(edad_al_ing_grupos=dplyr::case_when(is.na(edad_al_ing_grupos)~edad_al_ing_grupos_imp,
+                                                    T~as.character(edad_al_ing_grupos))) %>% 
+  dplyr::select(-edad_18_29, -edad_30_39, -edad_40_49, -edad_50mas, -ties, -edad_al_ing_grupos_imp)
+```
+
+<br>
+
+`r ifelse(anyNA(CONS_C1_df_dup_SEP_2020_women_miss0$edad_al_ing_grupos),paste0("There are still ",CONS_C1_df_dup_SEP_2020_women_miss0%>% dplyr::filter(is.na(edad_al_ing_grupos)) %>% nrow()," missing cases."),"After the imputation, there were no missing cases left.")`
+
+<br>
+
+### Primary or main substance
+
+Then we imputed the primary/main substance at admission (n= `r missing.values %>% dplyr::select(sus_principal_mod) %>% as.numeric() %>%  format(big.mark=",")`).
+
+<br>
+
+```{r mice2_main_subs,eval=T, echo=T, paged.print=TRUE}
+# Ver distintos valores propuestos para sustancia de inciio
+sus_principal_mod_imputed<-
+ cbind.data.frame(amelia_fit$imputations$imp1$row,
+       amelia_fit$imputations$imp1$sus_principal_mod,
+       amelia_fit$imputations$imp2$sus_principal_mod,
+       amelia_fit$imputations$imp3$sus_principal_mod,
+       amelia_fit$imputations$imp4$sus_principal_mod,
+       amelia_fit$imputations$imp5$sus_principal_mod,
+       amelia_fit$imputations$imp6$sus_principal_mod,
+       amelia_fit$imputations$imp7$sus_principal_mod,
+       amelia_fit$imputations$imp8$sus_principal_mod,
+       amelia_fit$imputations$imp9$sus_principal_mod,
+       amelia_fit$imputations$imp10$sus_principal_mod,
+       amelia_fit$imputations$imp11$sus_principal_mod,
+       amelia_fit$imputations$imp12$sus_principal_mod,
+       amelia_fit$imputations$imp13$sus_principal_mod,
+       amelia_fit$imputations$imp14$sus_principal_mod,
+       amelia_fit$imputations$imp15$sus_principal_mod,
+       amelia_fit$imputations$imp16$sus_principal_mod,
+       amelia_fit$imputations$imp17$sus_principal_mod,
+       amelia_fit$imputations$imp18$sus_principal_mod,
+       amelia_fit$imputations$imp19$sus_principal_mod,
+       amelia_fit$imputations$imp20$sus_principal_mod,
+       amelia_fit$imputations$imp21$sus_principal_mod,
+       amelia_fit$imputations$imp22$sus_principal_mod,
+       amelia_fit$imputations$imp23$sus_principal_mod,
+       amelia_fit$imputations$imp24$sus_principal_mod,
+       amelia_fit$imputations$imp25$sus_principal_mod,
+       amelia_fit$imputations$imp26$sus_principal_mod,
+       amelia_fit$imputations$imp27$sus_principal_mod,
+       amelia_fit$imputations$imp28$sus_principal_mod,
+       amelia_fit$imputations$imp29$sus_principal_mod,
+       amelia_fit$imputations$imp30$sus_principal_mod,
+       amelia_fit$imputations$imp31$sus_principal_mod,
+       amelia_fit$imputations$imp32$sus_principal_mod,
+       amelia_fit$imputations$imp33$sus_principal_mod,
+       amelia_fit$imputations$imp34$sus_principal_mod,
+       amelia_fit$imputations$imp35$sus_principal_mod,
+       amelia_fit$imputations$imp36$sus_principal_mod,
+       amelia_fit$imputations$imp37$sus_principal_mod,
+       amelia_fit$imputations$imp38$sus_principal_mod,
+       amelia_fit$imputations$imp39$sus_principal_mod,
+       amelia_fit$imputations$imp40$sus_principal_mod,
+       amelia_fit$imputations$imp41$sus_principal_mod,
+       amelia_fit$imputations$imp42$sus_principal_mod,
+       amelia_fit$imputations$imp43$sus_principal_mod,
+       amelia_fit$imputations$imp44$sus_principal_mod,
+       amelia_fit$imputations$imp45$sus_principal_mod,
+       amelia_fit$imputations$imp46$sus_principal_mod,
+       amelia_fit$imputations$imp47$sus_principal_mod,
+       amelia_fit$imputations$imp48$sus_principal_mod,
+       amelia_fit$imputations$imp49$sus_principal_mod,
+       amelia_fit$imputations$imp50$sus_principal_mod,
+       amelia_fit$imputations$imp51$sus_principal_mod,
+       amelia_fit$imputations$imp52$sus_principal_mod,
+       amelia_fit$imputations$imp53$sus_principal_mod,
+       amelia_fit$imputations$imp54$sus_principal_mod,
+       amelia_fit$imputations$imp55$sus_principal_mod,
+       amelia_fit$imputations$imp56$sus_principal_mod,
+       amelia_fit$imputations$imp57$sus_principal_mod,
+       amelia_fit$imputations$imp58$sus_principal_mod,
+       amelia_fit$imputations$imp59$sus_principal_mod,
+       amelia_fit$imputations$imp60$sus_principal_mod,
+       amelia_fit$imputations$imp61$sus_principal_mod
+       )  %>% 
+  melt(id.vars="amelia_fit$imputations$imp1$row") %>% 
+  #18-29 30-39 40-49 50+
+  janitor::clean_names() %>% 
+  dplyr::arrange(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row) %>%
+  dplyr::summarise(sus_prin_mar=sum(value == "Marijuana",na.rm=T),
+                   sus_prin_oh=sum(value == "Alcohol",na.rm=T),
+                   sus_prin_pb=sum(value == "Cocaine paste",na.rm=T),
+                  sus_prin_coc=sum(value =="Cocaine hydrochloride",na.rm=T),
+                  sus_prin_other=sum(value =="Other",na.rm=T)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::mutate(ties= base::rowSums(dplyr::select(.,starts_with("sus_prin_"))>0)) %>% 
+  dplyr::mutate(sus_principal_mod_imp= dplyr::case_when(
+  (sus_prin_mar> sus_prin_oh)& (sus_prin_mar> sus_prin_pb)& (sus_prin_mar> sus_prin_coc)& (sus_prin_mar> sus_prin_other)~"Marijuana",
+  (sus_prin_oh> sus_prin_mar)& (sus_prin_oh> sus_prin_pb)& (sus_prin_oh> sus_prin_coc)& (sus_prin_oh> sus_prin_other)~"Alcohol",
+  (sus_prin_pb> sus_prin_mar)& (sus_prin_pb> sus_prin_oh)& (sus_prin_pb> sus_prin_coc)& (sus_prin_pb> sus_prin_other)~"Cocaine paste",
+  (sus_prin_coc> sus_prin_mar)& (sus_prin_coc> sus_prin_oh)& (sus_prin_coc> sus_prin_pb)& (sus_prin_coc> sus_prin_other)~"Cocaine hydrochloride",
+  (sus_prin_other> sus_prin_mar)& (sus_prin_other> sus_prin_oh)& (sus_prin_other> sus_prin_pb)& (sus_prin_other> sus_prin_coc)~"Cocaine hydrochloride"
+  )) 
+
+#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:
+CONS_C1_df_dup_SEP_2020_women_miss1<-
+CONS_C1_df_dup_SEP_2020_women_miss0 %>% 
+   dplyr::left_join(sus_principal_mod_imputed, by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
+    dplyr::mutate(sus_principal_mod=factor(dplyr::case_when(is.na(sus_principal_mod)~as.character(sus_principal_mod_imp),
+                                 TRUE~as.character(sus_principal_mod)))) %>% 
+  dplyr::select(-c(sus_prin_mar, sus_prin_oh, sus_prin_pb, sus_prin_coc, sus_prin_other, ties, sus_principal_mod_imp)) %>% 
+  data.table()
+#_#_#_#_#_#_#__#_##_#_#_#_#_#_#_#_#_#_#_#_#__#_##_#_#_#_#_##_#_#_#_#_#_#__#_##_#_#_#_#_#_#_#_#_#_#_#_#__#_##_#_#_#_#_#
+#_#_#_#_#_#_#__#_##_#_#_#_#_#_#_#_#_#_#_#_#__#_##_#_#_#_#_##_#_#_#_#_#_#__#_##_#_#_#_#_#_#_#_#_#_#_#_#__#_##_#_#_#_#_#
+```
+
+As a result of the imputations, `r ifelse(CONS_C1_df_dup_SEP_2020_women_miss1 %>% dplyr::filter(is.na(sus_principal_mod)) %>% nrow()==0,paste0(" there were no missing values once imputed."),paste0(" some values were not possible to impute (n=",CONS_C1_df_dup_SEP_2020_women_miss1 %>% dplyr::filter(is.na(sus_principal_mod)) %>% nrow(),")."))`
+
+<br>
+
+### Age at first use of primary substance (in groups)
+
+Another variable worth imputing is the Age at first use of principal substance (n= `r missing.values %>% dplyr::select(edad_ini_sus_prin_grupos) %>% as.numeric() %>%  format(big.mark=",")`).
+
+Based on the figure above, the Age at first use of principal substance was similar between the imputed values and the observed. However, we followed the rules stated in `Duplicates4` process ([link](https://fondecytacc.github.io/SUD_health_Chile.github.io/Duplicates4)). There was a logical condition to fulfill in order to replace adequately these values in the database: the age of onset of drug use in the primary substance at admission may not be greater than the age of admission to treatment. Then, we selected the minimum value of age of onset of drug use among the imputed, because one user could not have more than one age of onset of drug use. 
+
+<br>
+
+```{r mice3_age_onset_drug_use, warning=F,message=F,fig.align='center', fig.cap="Figure 7. Bar plot of Percentage of Incorrect Imputed Values per Imputation Sample", error=F, height=600}
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+edad_ini_sus_prin_grupos_imputed<-
+  cbind.data.frame(amelia_fit$imputations$imp1$row,
+       amelia_fit$imputations$imp1$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp2$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp3$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp4$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp5$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp6$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp7$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp8$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp9$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp10$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp11$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp12$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp13$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp14$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp15$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp16$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp17$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp18$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp19$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp20$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp21$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp22$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp23$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp24$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp25$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp26$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp27$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp28$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp29$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp30$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp31$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp32$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp33$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp34$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp35$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp36$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp37$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp38$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp39$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp40$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp41$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp42$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp43$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp44$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp45$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp46$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp47$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp48$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp49$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp50$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp51$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp52$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp53$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp54$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp55$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp56$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp57$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp58$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp59$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp60$edad_ini_sus_prin_grupos,
+       amelia_fit$imputations$imp61$edad_ini_sus_prin_grupos
+       ) %>% 
+  melt(id.vars="amelia_fit$imputations$imp1$row") %>% 
+  #<=15 16-18 19-24 >=25
+  janitor::clean_names() %>% 
+  dplyr::arrange(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row) %>%
+  dplyr::summarise(eipm_menor_igual_15=sum(value == "<=15",na.rm=T),
+                   eipm_16_18=sum(value == "16-18",na.rm=T),
+                   eipm_19_24=sum(value == "19-24",na.rm=T),
+                    eipm_mas_igual_25=sum(value ==">=25",na.rm=T)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::left_join(CONS_C1_df_dup_SEP_2020_women_miss1[,c("row","hash_key","edad_al_ing_grupos", "sus_principal_mod")],
+                   by=c("amelia_fit_imputations_imp1_row"="row")) %>% 
+#1) Los candidatos a imputar no pueden ser válidos si son en categorías de edad de consumo más altas que la edad de ingreso
+  dplyr::mutate(eipm_mas_igual_25= dplyr::case_when(edad_al_ing_grupos=="<18"~0,T~as.numeric(eipm_mas_igual_25))) %>% 
+  dplyr::mutate(eipm_19_24= dplyr::case_when(edad_al_ing_grupos=="<18"~0,T~as.numeric(eipm_19_24))) %>% 
+#1.2) ¿Qué pasa si por grupo de usuario y sustancia principal hay valores mínimos incompatibles e términos de la edad de ingreso?
+  dplyr::mutate(edad_ing_num=dplyr:::case_when(edad_al_ing_grupos=="<18"~1,
+                                           edad_al_ing_grupos=="18-29"~2,
+                                           edad_al_ing_grupos=="30-39"~3,
+                                           edad_al_ing_grupos=="40-49"~4,
+                                           edad_al_ing_grupos=="50+"~5)) %>% 
+  dplyr::mutate(hash_sus_prin_mod=paste0(hash_key,"_",sus_principal_mod)) %>% 
+  dplyr::select(-c(sus_principal_mod)) %>% 
+  dplyr::group_by(hash_sus_prin_mod) %>% 
+  dplyr::mutate(edad_ing_num_min=min(edad_ing_num)) %>%   
+  dplyr::ungroup() %>% 
+  dplyr::mutate(eipm_mas_igual_25= dplyr::case_when(edad_ing_num_min==1~0,T~as.numeric(eipm_mas_igual_25))) %>% 
+  dplyr::mutate(eipm_19_24= dplyr::case_when(edad_ing_num_min==1~0,T~as.numeric(eipm_19_24))) %>% 
+# 2) generamos un resumen de los valores siendo consistentes según misma sustancia principal y mismo usuario
+  dplyr::group_by(hash_sus_prin_mod) %>%   
+  dplyr::mutate(sum_eipm_menor_igual_15=sum(eipm_menor_igual_15), 
+                sum_eipm_16_18=sum(eipm_16_18), 
+                sum_eipm_19_24=sum(eipm_19_24),
+                sum_eipm_mas_igual_25=sum(eipm_mas_igual_25)) %>% 
+  dplyr::ungroup() %>% 
+# Hacer la variable imputada
+  dplyr::mutate(ties= base::rowSums(dplyr::select(.,starts_with("edad_ini_sus_prin_"))>0)) %>% 
+  dplyr::mutate(edad_ini_sus_prin_grupos_imp= dplyr::case_when(
+      (sum_eipm_menor_igual_15>sum_eipm_16_18)&(sum_eipm_menor_igual_15>sum_eipm_19_24)&(sum_eipm_menor_igual_15>sum_eipm_mas_igual_25)~"<=15",
+      (sum_eipm_16_18>sum_eipm_menor_igual_15)&(sum_eipm_16_18>sum_eipm_19_24)&(sum_eipm_16_18>sum_eipm_mas_igual_25)~"16-18",
+      (sum_eipm_19_24>sum_eipm_menor_igual_15)&(sum_eipm_19_24>sum_eipm_16_18)&(sum_eipm_19_24>sum_eipm_mas_igual_25)~"19-24",
+      (sum_eipm_mas_igual_25>sum_eipm_menor_igual_15)&(sum_eipm_mas_igual_25>sum_eipm_16_18)&(sum_eipm_mas_igual_25>sum_eipm_19_24)~">=25"))  %>% 
+# 3) Another step if there are ties, choose the most vulnerable value
+  dplyr::mutate(ties2=ifelse(is.na(edad_ini_sus_prin_grupos_imp),1,0))
+  
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+CONS_C1_df_dup_SEP_2020_women_miss2<-
+  CONS_C1_df_dup_SEP_2020_women_miss1 %>% 
+  dplyr::left_join(edad_ini_sus_prin_grupos_imputed[,c("amelia_fit_imputations_imp1_row","edad_ini_sus_prin_grupos_imp")],
+                   by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
+  #si la edad al ingreso no existe, el valor promedio imutado es
+  dplyr::mutate(edad_ini_sus_prin_grupos= 
+                  dplyr::case_when(is.na(edad_ini_sus_prin_grupos)~edad_ini_sus_prin_grupos_imp,
+                                  T~as.character(edad_ini_sus_prin_grupos))) %>% 
+  dplyr::select(-edad_ini_sus_prin_grupos_imp)
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+
+#is.na(edad_ini_cons) & is.na(edad_ini_sus_prin) & is.na(min_edad_al_ing)~as.numeric(avg),
+#table(is.na(CONS_C1_df_dup_SEP_2020_women_miss1$edad_ini_cons))
+paste0("Number of rows with values that did not fulfilled the conditions: ",CONS_C1_df_dup_SEP_2020_women_miss2 %>%  dplyr::filter(is.na(edad_ini_sus_prin_grupos)) %>% 
+    dplyr::select(hash_key, edad_al_ing_grupos,edad_ini_sus_prin_grupos) %>% nrow())
+
+#Lo importante es tener en cuenta que las imputaciones se hicieron por filas; no, en cambio, ahora debemos reemplazar aquellos casos que tienen perdidos (no cumplieron con las condiciones) con el valor mínimo
+
+```
+
+As a result of the imputations, there were `r CONS_C1_df_dup_SEP_2020_women_miss2 %>% dplyr::filter(is.na(edad_ini_sus_prin_grupos)) %>% nrow()` cases of ages of onset of drug use of the primary substance that did not fulfilled the conditions necessary to replace the missing values with the imputed ones, possibly due to ties in the candidate values.
+
+<br>
+
+### Frequency of Use of the Primary Substance at Admission
+
+Another variable that is worth imputing is the Frequency of use of primary drug at admission (n= `r CONS_C1_df_dup_SEP_2020_women_miss2 %>% dplyr::filter(is.na(freq_cons_sus_prin)) %>% nrow()`). In case of ties, we selected the imputed values with the value with the most frequent drug use. 
+
+<br>
+
+```{r mice4_frequency_drug_use,eval=T, echo=T, paged.print=TRUE}
+# Ver distintos valores propuestos para sustancia de inciio
+freq_cons_sus_prin_imputed<-
+ cbind.data.frame(amelia_fit$imputations$imp1$row,
+       amelia_fit$imputations$imp1$freq_cons_sus_prin,
+       amelia_fit$imputations$imp2$freq_cons_sus_prin,
+       amelia_fit$imputations$imp3$freq_cons_sus_prin,
+       amelia_fit$imputations$imp4$freq_cons_sus_prin,
+       amelia_fit$imputations$imp5$freq_cons_sus_prin,
+       amelia_fit$imputations$imp6$freq_cons_sus_prin,
+       amelia_fit$imputations$imp7$freq_cons_sus_prin,
+       amelia_fit$imputations$imp8$freq_cons_sus_prin,
+       amelia_fit$imputations$imp9$freq_cons_sus_prin,
+       amelia_fit$imputations$imp10$freq_cons_sus_prin,
+       amelia_fit$imputations$imp11$freq_cons_sus_prin,
+       amelia_fit$imputations$imp12$freq_cons_sus_prin,
+       amelia_fit$imputations$imp13$freq_cons_sus_prin,
+       amelia_fit$imputations$imp14$freq_cons_sus_prin,
+       amelia_fit$imputations$imp15$freq_cons_sus_prin,
+       amelia_fit$imputations$imp16$freq_cons_sus_prin,
+       amelia_fit$imputations$imp17$freq_cons_sus_prin,
+       amelia_fit$imputations$imp18$freq_cons_sus_prin,
+       amelia_fit$imputations$imp19$freq_cons_sus_prin,
+       amelia_fit$imputations$imp20$freq_cons_sus_prin,
+       amelia_fit$imputations$imp21$freq_cons_sus_prin,
+       amelia_fit$imputations$imp22$freq_cons_sus_prin,
+       amelia_fit$imputations$imp23$freq_cons_sus_prin,
+       amelia_fit$imputations$imp24$freq_cons_sus_prin,
+       amelia_fit$imputations$imp25$freq_cons_sus_prin,
+       amelia_fit$imputations$imp26$freq_cons_sus_prin,
+       amelia_fit$imputations$imp27$freq_cons_sus_prin,
+       amelia_fit$imputations$imp28$freq_cons_sus_prin,
+       amelia_fit$imputations$imp29$freq_cons_sus_prin,
+       amelia_fit$imputations$imp30$freq_cons_sus_prin,
+       amelia_fit$imputations$imp31$freq_cons_sus_prin,
+       amelia_fit$imputations$imp32$freq_cons_sus_prin,
+       amelia_fit$imputations$imp33$freq_cons_sus_prin,
+       amelia_fit$imputations$imp34$freq_cons_sus_prin,
+       amelia_fit$imputations$imp35$freq_cons_sus_prin,
+       amelia_fit$imputations$imp36$freq_cons_sus_prin,
+       amelia_fit$imputations$imp37$freq_cons_sus_prin,
+       amelia_fit$imputations$imp38$freq_cons_sus_prin,
+       amelia_fit$imputations$imp39$freq_cons_sus_prin,
+       amelia_fit$imputations$imp40$freq_cons_sus_prin,
+       amelia_fit$imputations$imp41$freq_cons_sus_prin,
+       amelia_fit$imputations$imp42$freq_cons_sus_prin,
+       amelia_fit$imputations$imp43$freq_cons_sus_prin,
+       amelia_fit$imputations$imp44$freq_cons_sus_prin,
+       amelia_fit$imputations$imp45$freq_cons_sus_prin,
+       amelia_fit$imputations$imp46$freq_cons_sus_prin,
+       amelia_fit$imputations$imp47$freq_cons_sus_prin,
+       amelia_fit$imputations$imp48$freq_cons_sus_prin,
+       amelia_fit$imputations$imp49$freq_cons_sus_prin,
+       amelia_fit$imputations$imp50$freq_cons_sus_prin,
+       amelia_fit$imputations$imp51$freq_cons_sus_prin,
+       amelia_fit$imputations$imp52$freq_cons_sus_prin,
+       amelia_fit$imputations$imp53$freq_cons_sus_prin,
+       amelia_fit$imputations$imp54$freq_cons_sus_prin,
+       amelia_fit$imputations$imp55$freq_cons_sus_prin,
+       amelia_fit$imputations$imp56$freq_cons_sus_prin,
+       amelia_fit$imputations$imp57$freq_cons_sus_prin,
+       amelia_fit$imputations$imp58$freq_cons_sus_prin,
+       amelia_fit$imputations$imp59$freq_cons_sus_prin,
+       amelia_fit$imputations$imp60$freq_cons_sus_prin,
+       amelia_fit$imputations$imp61$freq_cons_sus_prin
+       ) 
+
+freq_cons_sus_prin_imputed<-
+freq_cons_sus_prin_imputed %>% 
+  data.frame() %>% 
+dplyr::mutate(across(c(amelia_fit.imputations.imp1.freq_cons_sus_prin:amelia_fit.imputations.imp30.freq_cons_sus_prin),~dplyr::case_when(grepl("1 day a week or more",as.character(.))~1,TRUE~0), .names="1_day_{col}"))%>%
+dplyr::mutate(across(c(amelia_fit.imputations.imp1.freq_cons_sus_prin:amelia_fit.imputations.imp30.freq_cons_sus_prin),~dplyr::case_when(grepl("2 to 3 days a week",as.character(.))~1,TRUE~0), .names="2_3_{col}"))%>%
+dplyr::mutate(across(c(amelia_fit.imputations.imp1.freq_cons_sus_prin:amelia_fit.imputations.imp30.freq_cons_sus_prin),~dplyr::case_when(grepl("4 to 6 days a week",as.character(.))~1,TRUE~0), .names="4_6_{col}"))%>%
+  dplyr::mutate(across(c(amelia_fit.imputations.imp1.freq_cons_sus_prin:amelia_fit.imputations.imp30.freq_cons_sus_prin),~dplyr::case_when(grepl("Less than 1 day a week",as.character(.))~1,TRUE~0), .names="less_1_{col}"))%>%
+  dplyr::mutate(across(c(amelia_fit.imputations.imp1.freq_cons_sus_prin:amelia_fit.imputations.imp30.freq_cons_sus_prin),~dplyr::case_when(grepl("Did not use",as.character(.))~1,TRUE~0), .names="did_not_{col}"))%>%
+    dplyr::mutate(across(c(amelia_fit.imputations.imp1.freq_cons_sus_prin:amelia_fit.imputations.imp30.freq_cons_sus_prin),~dplyr::case_when(grepl("Daily",as.character(.))~1,TRUE~0), .names="daily_{col}"))%>%
+  dplyr::mutate(freq_cons_sus_prin_daily = base::rowSums(dplyr::select(., starts_with("daily_")))) %>% 
+  dplyr::mutate(freq_cons_sus_prin_4_6 = base::rowSums(dplyr::select(., starts_with("4_6_"))))%>%
+  dplyr::mutate(freq_cons_sus_prin_2_3 = base::rowSums(dplyr::select(., starts_with("2_3_"))))%>%
+  dplyr::mutate(freq_cons_sus_prin_1_day = base::rowSums(dplyr::select(., starts_with("1_day_"))))%>%
+  dplyr::mutate(freq_cons_sus_prin_less_1 = base::rowSums(dplyr::select(., starts_with("less_1_"))))%>%
+  dplyr::mutate(freq_cons_sus_prin_did_not = base::rowSums(dplyr::select(., starts_with("did_not_")))) %>% 
+  #dplyr::summarise(min_mar=max(sus_ini_mod_mvv_mar[sus_ini_mod_mvv_mar<30]),min_oh=max(sus_ini_mod_mvv_oh[sus_ini_mod_mvv_oh<30]),min_pb=max(sus_ini_mod_mvv_pb[sus_ini_mod_mvv_pb<30]),min_coc=max(sus_ini_mod_mvv_coc[sus_ini_mod_mvv_coc<30]),min_otr=max(sus_ini_mod_mvv_otr[sus_ini_mod_mvv_otr<30]))
+  dplyr::mutate(freq_cons_sus_prin_tot=dplyr::case_when(freq_cons_sus_prin_1_day>0~1,TRUE~0)) %>% 
+  dplyr::mutate(freq_cons_sus_prin_tot=dplyr::case_when(freq_cons_sus_prin_2_3>0~freq_cons_sus_prin_tot+1,TRUE~freq_cons_sus_prin_tot)) %>% 
+  dplyr::mutate(freq_cons_sus_prin_tot=dplyr::case_when(freq_cons_sus_prin_4_6>0~freq_cons_sus_prin_tot+1,TRUE~freq_cons_sus_prin_tot)) %>% 
+  dplyr::mutate(freq_cons_sus_prin_tot=dplyr::case_when(freq_cons_sus_prin_less_1>0~freq_cons_sus_prin_tot+1,TRUE~freq_cons_sus_prin_tot)) %>% 
+  dplyr::mutate(freq_cons_sus_prin_tot=dplyr::case_when(freq_cons_sus_prin_did_not>0~freq_cons_sus_prin_tot+1,TRUE~freq_cons_sus_prin_tot)) %>% 
+  dplyr::mutate(freq_cons_sus_prin_tot=dplyr::case_when(freq_cons_sus_prin_daily>0~freq_cons_sus_prin_tot+1,TRUE~freq_cons_sus_prin_tot)) %>% 
+  #hierarchy
+  dplyr::mutate(freq_cons_sus_prin_to_imputation=
+                  dplyr::case_when(freq_cons_sus_prin_tot==1 & freq_cons_sus_prin_daily>0~"Daily",
+                                     freq_cons_sus_prin_tot==1 & freq_cons_sus_prin_4_6>0~"4 to 6 days a week",freq_cons_sus_prin_tot==1 & freq_cons_sus_prin_2_3>0~"2 to 3 days a week",freq_cons_sus_prin_tot==1 & freq_cons_sus_prin_1_day>0~"1 day a week or more",freq_cons_sus_prin_tot==1 & freq_cons_sus_prin_less_1>0~"Less than 1 day a week",freq_cons_sus_prin_tot==1 & freq_cons_sus_prin_did_not>0~"Did not use",freq_cons_sus_prin_tot>1 & freq_cons_sus_prin_daily>0~"Daily",freq_cons_sus_prin_tot>1 & freq_cons_sus_prin_4_6>0~"4 to 6 days a week",freq_cons_sus_prin_tot>1 & freq_cons_sus_prin_2_3>0~"2 to 3 days a week",freq_cons_sus_prin_tot>1 & freq_cons_sus_prin_1_day>0~"1 day a week or more",freq_cons_sus_prin_tot>1 & freq_cons_sus_prin_less_1>0~"Less than 1 day a week",freq_cons_sus_prin_tot>1 & freq_cons_sus_prin_did_not>0~"Did not use")) %>% 
+  janitor::clean_names()
+
+freq_cons_sus_prin_imputed<-
+dplyr::select(freq_cons_sus_prin_imputed,amelia_fit_imputations_imp1_row,freq_cons_sus_prin_to_imputation)
+
+#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:
+
+CONS_C1_df_dup_SEP_2020_women_miss3<-
+CONS_C1_df_dup_SEP_2020_women_miss2 %>% 
+   dplyr::left_join(freq_cons_sus_prin_imputed, by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
+    dplyr::mutate(freq_cons_sus_prin=factor(dplyr::case_when(is.na(freq_cons_sus_prin)~as.character(freq_cons_sus_prin_to_imputation), TRUE~as.character(freq_cons_sus_prin)))) %>% 
+  dplyr::select(-freq_cons_sus_prin_to_imputation) %>% 
+  data.table()
+```
+
+As a result of the imputations, `r ifelse(CONS_C1_df_dup_SEP_2020_women_miss3 %>% dplyr::filter(is.na(freq_cons_sus_prin)) %>% nrow()==0,paste0(" there were no missing values once imputed."),paste0(" some values were not possible to impute (n=",CONS_C1_df_dup_SEP_2020_women_miss3 %>% dplyr::filter(is.na(freq_cons_sus_prin)) %>% nrow(),")."))`
+
+<br>
+
+### Health service
+
+Another variable that is worth imputing is the Health service (n= `r CONS_C1_df_dup_SEP_2020_women_miss %>% dplyr::filter(is.na(servicio_sal1)) %>% nrow()`). Considering there were a lot of candidates, given the high number of services (since, the possible categories), we selected the health service relative to the commune of residence to impute the health service. In case of an observation that lived in the commune of Santiago, we left the nearest health service among the candidates (Metropolitano Norte)
+
+<br>
+
+```{r mice5_health_svc,eval=T, echo=T, paged.print=TRUE}
+# 
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#::#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#::#:#:#:
+
+servicio_sal1_imputed<-
+ cbind.data.frame(amelia_fit$imputations$imp1$row,
+       amelia_fit$imputations$imp1$servicio_sal1,
+       amelia_fit$imputations$imp2$servicio_sal1,
+       amelia_fit$imputations$imp3$servicio_sal1,
+       amelia_fit$imputations$imp4$servicio_sal1,
+       amelia_fit$imputations$imp5$servicio_sal1,
+       amelia_fit$imputations$imp6$servicio_sal1,
+       amelia_fit$imputations$imp7$servicio_sal1,
+       amelia_fit$imputations$imp8$servicio_sal1,
+       amelia_fit$imputations$imp9$servicio_sal1,
+       amelia_fit$imputations$imp10$servicio_sal1,
+       amelia_fit$imputations$imp11$servicio_sal1,
+       amelia_fit$imputations$imp12$servicio_sal1,
+       amelia_fit$imputations$imp13$servicio_sal1,
+       amelia_fit$imputations$imp14$servicio_sal1,
+       amelia_fit$imputations$imp15$servicio_sal1,
+       amelia_fit$imputations$imp16$servicio_sal1,
+       amelia_fit$imputations$imp17$servicio_sal1,
+       amelia_fit$imputations$imp18$servicio_sal1,
+       amelia_fit$imputations$imp19$servicio_sal1,
+       amelia_fit$imputations$imp20$servicio_sal1,
+       amelia_fit$imputations$imp21$servicio_sal1,
+       amelia_fit$imputations$imp22$servicio_sal1,
+       amelia_fit$imputations$imp23$servicio_sal1,
+       amelia_fit$imputations$imp24$servicio_sal1,
+       amelia_fit$imputations$imp25$servicio_sal1,
+       amelia_fit$imputations$imp26$servicio_sal1,
+       amelia_fit$imputations$imp27$servicio_sal1,
+       amelia_fit$imputations$imp28$servicio_sal1,
+       amelia_fit$imputations$imp29$servicio_sal1,
+       amelia_fit$imputations$imp30$servicio_sal1,
+       amelia_fit$imputations$imp31$servicio_sal1,
+       amelia_fit$imputations$imp32$servicio_sal1,
+       amelia_fit$imputations$imp33$servicio_sal1,
+       amelia_fit$imputations$imp34$servicio_sal1,
+       amelia_fit$imputations$imp35$servicio_sal1,
+       amelia_fit$imputations$imp36$servicio_sal1,
+       amelia_fit$imputations$imp37$servicio_sal1,
+       amelia_fit$imputations$imp38$servicio_sal1,
+       amelia_fit$imputations$imp39$servicio_sal1,
+       amelia_fit$imputations$imp40$servicio_sal1,
+       amelia_fit$imputations$imp41$servicio_sal1,
+       amelia_fit$imputations$imp42$servicio_sal1,
+       amelia_fit$imputations$imp43$servicio_sal1,
+       amelia_fit$imputations$imp44$servicio_sal1,
+       amelia_fit$imputations$imp45$servicio_sal1,
+       amelia_fit$imputations$imp46$servicio_sal1,
+       amelia_fit$imputations$imp47$servicio_sal1,
+       amelia_fit$imputations$imp48$servicio_sal1,
+       amelia_fit$imputations$imp49$servicio_sal1,
+       amelia_fit$imputations$imp50$servicio_sal1,
+       amelia_fit$imputations$imp51$servicio_sal1,
+       amelia_fit$imputations$imp52$servicio_sal1,
+       amelia_fit$imputations$imp53$servicio_sal1,
+       amelia_fit$imputations$imp54$servicio_sal1,
+       amelia_fit$imputations$imp55$servicio_sal1,
+       amelia_fit$imputations$imp56$servicio_sal1,
+       amelia_fit$imputations$imp57$servicio_sal1,
+       amelia_fit$imputations$imp58$servicio_sal1,
+       amelia_fit$imputations$imp59$servicio_sal1,
+       amelia_fit$imputations$imp60$servicio_sal1,
+       amelia_fit$imputations$imp61$servicio_sal1
+       ) %>% 
+    melt(id.vars="amelia_fit$imputations$imp1$row") %>% 
+  #<=15 16-18 19-24 >=25
+  janitor::clean_names() %>% 
+  dplyr::arrange(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row, value) %>% 
+    tally() %>% 
+  pivot_wider(id_cols="amelia_fit_imputations_imp1_row",names_from="value", values_from="n", values_fill=0) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("row", "comuna_residencia_cod", "servicio_de_salud")], by=c("amelia_fit_imputations_imp1_row"="row")) %>% 
+  dplyr::filter(is.na(servicio_de_salud)) %>% 
+  dplyr::select(-servicio_de_salud) %>% 
+    melt(id.vars=c("amelia_fit_imputations_imp1_row","comuna_residencia_cod")) %>% 
+  dplyr::arrange(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::mutate(value=dplyr::case_when(grepl("ARICA",comuna_residencia_cod) & variable=="Arica"~value*100,
+                                                   grepl("SANT",comuna_residencia_cod) & grepl("Metrop",variable) & grepl("Norte",variable)~value*100,
+                                                   grepl("NOGAL",comuna_residencia_cod) & grepl("Quillota",variable)~value*100,
+                                                   grepl("PUYE",comuna_residencia_cod) & grepl("Osorno",variable)~value*100,
+                T~as.numeric(value))) %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+  slice_max(value)
+
+#para ver si la imputación s ehizo bien para cada fila (quedando con una observacion solamente)
+ifelse(servicio_sal1_imputed %>% 
+    dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+    dplyr::mutate(n=n()) %>% 
+    dplyr::filter(n>1) %>% nrow()>0,"problems with imputation", "")
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#::#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#::#:#:#:
+
+#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:
+
+CONS_C1_df_dup_SEP_2020_women_miss4<-
+CONS_C1_df_dup_SEP_2020_women_miss3 %>% 
+   dplyr::left_join(servicio_sal1_imputed[c("amelia_fit_imputations_imp1_row","value")], by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
+    dplyr::mutate(servicio_sal1=factor(dplyr::case_when(is.na(servicio_sal1)~as.character(value), T~as.character(servicio_sal1)))) %>% 
+  dplyr::select(-value) %>% 
+  data.table()
+```
+
+<br>
+
+We ended having `r CONS_C1_df_dup_SEP_2020_women_miss4 %>%  dplyr::filter(is.na(servicio_sal1)) %>%  nrow()` missing values in health service.
+
+<br>
+
+### Marital status
+
+Additionally, we replaced missing values of the marital status (n=`r CONS_C1_df_dup_SEP_2020_women_miss %>% dplyr::filter(is.na(estado_conyugal_2)) %>% nrow()`). Since different marital status were not clearly more vulnerable between each other, we selected the most frequent imputed value among the different imputed databases. Only in case of ties in the candidate values, we resolved them by discarding "married" status, which could be somehow less vulnerable than other categories.
+
+<br>
+
+```{r mice5_marital_status,eval=T, echo=T, paged.print=TRUE}
+# Ver distintos valores propuestos para estado conyugal
+estado_conyugal_2_imputed<-
+ cbind.data.frame(amelia_fit$imputations$imp1$row,
+       amelia_fit$imputations$imp1$estado_conyugal_2,
+       amelia_fit$imputations$imp2$estado_conyugal_2,
+       amelia_fit$imputations$imp3$estado_conyugal_2,
+       amelia_fit$imputations$imp4$estado_conyugal_2,
+       amelia_fit$imputations$imp5$estado_conyugal_2,
+       amelia_fit$imputations$imp6$estado_conyugal_2,
+       amelia_fit$imputations$imp7$estado_conyugal_2,
+       amelia_fit$imputations$imp8$estado_conyugal_2,
+       amelia_fit$imputations$imp9$estado_conyugal_2,
+       amelia_fit$imputations$imp10$estado_conyugal_2,
+       amelia_fit$imputations$imp11$estado_conyugal_2,
+       amelia_fit$imputations$imp12$estado_conyugal_2,
+       amelia_fit$imputations$imp13$estado_conyugal_2,
+       amelia_fit$imputations$imp14$estado_conyugal_2,
+       amelia_fit$imputations$imp15$estado_conyugal_2,
+       amelia_fit$imputations$imp16$estado_conyugal_2,
+       amelia_fit$imputations$imp17$estado_conyugal_2,
+       amelia_fit$imputations$imp18$estado_conyugal_2,
+       amelia_fit$imputations$imp19$estado_conyugal_2,
+       amelia_fit$imputations$imp20$estado_conyugal_2,
+       amelia_fit$imputations$imp21$estado_conyugal_2,
+       amelia_fit$imputations$imp22$estado_conyugal_2,
+       amelia_fit$imputations$imp23$estado_conyugal_2,
+       amelia_fit$imputations$imp24$estado_conyugal_2,
+       amelia_fit$imputations$imp25$estado_conyugal_2,
+       amelia_fit$imputations$imp26$estado_conyugal_2,
+       amelia_fit$imputations$imp27$estado_conyugal_2,
+       amelia_fit$imputations$imp28$estado_conyugal_2,
+       amelia_fit$imputations$imp29$estado_conyugal_2,
+       amelia_fit$imputations$imp30$estado_conyugal_2,
+       amelia_fit$imputations$imp31$estado_conyugal_2,
+       amelia_fit$imputations$imp32$estado_conyugal_2,
+       amelia_fit$imputations$imp33$estado_conyugal_2,
+       amelia_fit$imputations$imp34$estado_conyugal_2,
+       amelia_fit$imputations$imp35$estado_conyugal_2,
+       amelia_fit$imputations$imp36$estado_conyugal_2,
+       amelia_fit$imputations$imp37$estado_conyugal_2,
+       amelia_fit$imputations$imp38$estado_conyugal_2,
+       amelia_fit$imputations$imp39$estado_conyugal_2,
+       amelia_fit$imputations$imp40$estado_conyugal_2,
+       amelia_fit$imputations$imp41$estado_conyugal_2,
+       amelia_fit$imputations$imp42$estado_conyugal_2,
+       amelia_fit$imputations$imp43$estado_conyugal_2,
+       amelia_fit$imputations$imp44$estado_conyugal_2,
+       amelia_fit$imputations$imp45$estado_conyugal_2,
+       amelia_fit$imputations$imp46$estado_conyugal_2,
+       amelia_fit$imputations$imp47$estado_conyugal_2,
+       amelia_fit$imputations$imp48$estado_conyugal_2,
+       amelia_fit$imputations$imp49$estado_conyugal_2,
+       amelia_fit$imputations$imp50$estado_conyugal_2,
+       amelia_fit$imputations$imp51$estado_conyugal_2,
+       amelia_fit$imputations$imp52$estado_conyugal_2,
+       amelia_fit$imputations$imp53$estado_conyugal_2,
+       amelia_fit$imputations$imp54$estado_conyugal_2,
+       amelia_fit$imputations$imp55$estado_conyugal_2,
+       amelia_fit$imputations$imp56$estado_conyugal_2,
+       amelia_fit$imputations$imp57$estado_conyugal_2,
+       amelia_fit$imputations$imp58$estado_conyugal_2,
+       amelia_fit$imputations$imp59$estado_conyugal_2,
+       amelia_fit$imputations$imp60$estado_conyugal_2,
+       amelia_fit$imputations$imp61$estado_conyugal_2
+       ) 
+
+estado_conyugal_2_imputed<-
+estado_conyugal_2_imputed %>% 
+  data.frame() %>% 
+dplyr::mutate(across(c(amelia_fit.imputations.imp1.estado_conyugal_2:amelia_fit.imputations.imp30.estado_conyugal_2),~dplyr::case_when(grepl("Married/Shared living arrangements",as.character(.))~1,TRUE~0), .names="married_{col}"))%>%
+dplyr::mutate(across(c(amelia_fit.imputations.imp1.estado_conyugal_2:amelia_fit.imputations.imp30.estado_conyugal_2),~dplyr::case_when(grepl("Separated/Divorced",as.character(.))~1,TRUE~0), .names="sep_div_{col}"))%>%
+dplyr::mutate(across(c(amelia_fit.imputations.imp1.estado_conyugal_2:amelia_fit.imputations.imp30.estado_conyugal_2),~dplyr::case_when(grepl("Single",as.character(.))~1,TRUE~0), .names="singl_{col}"))%>%
+  dplyr::mutate(across(c(amelia_fit.imputations.imp1.estado_conyugal_2:amelia_fit.imputations.imp30.estado_conyugal_2),~dplyr::case_when(grepl("Widower",as.character(.))~1,TRUE~0), .names="widow_{col}"))%>%
+ 
+  dplyr::mutate(estado_conyugal_2_married = base::rowSums(dplyr::select(., starts_with("married_"))))%>%
+  dplyr::mutate(estado_conyugal_2_sep_div = base::rowSums(dplyr::select(., starts_with("sep_div_"))))%>%
+  dplyr::mutate(estado_conyugal_2_singl = base::rowSums(dplyr::select(., starts_with("singl_"))))%>%
+  dplyr::mutate(estado_conyugal_2_wid = base::rowSums(dplyr::select(., starts_with("widow_"))))%>%
+  #dplyr::summarise(min_mar=max(sus_ini_mod_mvv_mar[sus_ini_mod_mvv_mar<30]),min_oh=max(sus_ini_mod_mvv_oh[sus_ini_mod_mvv_oh<30]),min_pb=max(sus_ini_mod_mvv_pb[sus_ini_mod_mvv_pb<30]),min_coc=max(sus_ini_mod_mvv_coc[sus_ini_mod_mvv_coc<30]),min_otr=max(sus_ini_mod_mvv_otr[sus_ini_mod_mvv_otr<30]))
+  dplyr::mutate(estado_conyugal_2_tot=dplyr::case_when(estado_conyugal_2_married>0~1,TRUE~0)) %>% 
+  dplyr::mutate(estado_conyugal_2_tot=dplyr::case_when(estado_conyugal_2_sep_div>0~estado_conyugal_2_tot+1,TRUE~estado_conyugal_2_tot)) %>% 
+  dplyr::mutate(estado_conyugal_2_tot=dplyr::case_when(estado_conyugal_2_singl>0~estado_conyugal_2_tot+1,TRUE~estado_conyugal_2_tot)) %>% 
+  dplyr::mutate(estado_conyugal_2_tot=dplyr::case_when(estado_conyugal_2_wid>0~estado_conyugal_2_tot+1,TRUE~estado_conyugal_2_tot)) %>% 
+  janitor::clean_names()
+  
+estado_conyugal_2_imputed_cat_est_cony<-  
+    estado_conyugal_2_imputed %>%
+        tidyr::pivot_longer(c(estado_conyugal_2_married, estado_conyugal_2_sep_div, estado_conyugal_2_singl, estado_conyugal_2_wid), names_to = "cat_est_conyugal", values_to = "count") %>%
+        dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+        dplyr::mutate(estado_conyugal_2_imputed_max=max(count,na.rm=T)) %>% 
+        dplyr::ungroup() %>% 
+        dplyr::filter(estado_conyugal_2_imputed_max==count) %>% 
+        dplyr::select(amelia_fit_imputations_imp1_row,cat_est_conyugal,count) %>% 
+        dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+        dplyr::mutate(n_row=n()) %>% 
+        dplyr::ungroup() %>% 
+        dplyr::mutate(cat_est_conyugal=dplyr::case_when(n_row>1~NA_character_,
+                                                        TRUE~cat_est_conyugal)) %>% 
+        dplyr::distinct(amelia_fit_imputations_imp1_row,.keep_all = T)
+  
+estado_conyugal_2_imputed<-
+  estado_conyugal_2_imputed %>% 
+    dplyr::left_join(estado_conyugal_2_imputed_cat_est_cony, by="amelia_fit_imputations_imp1_row") %>%
+    dplyr::mutate(cat_est_conyugal=dplyr::case_when(cat_est_conyugal=="estado_conyugal_2_married"~"Married/Shared living arrangements",cat_est_conyugal=="estado_conyugal_2_sep_div"~"Separated/Divorced",cat_est_conyugal=="estado_conyugal_2_singl"~"Single",cat_est_conyugal=="estado_conyugal_2_wid"~"Widower"
+    ))%>% 
+  janitor::clean_names()
+
+#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:
+
+CONS_C1_df_dup_SEP_2020_women_miss5_prev<-
+CONS_C1_df_dup_SEP_2020_women_miss4 %>% 
+   dplyr::left_join(dplyr::select(estado_conyugal_2_imputed,amelia_fit_imputations_imp1_row,cat_est_conyugal), by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
+    dplyr::mutate(estado_conyugal_2=factor(dplyr::case_when(is.na(estado_conyugal_2)~as.character(cat_est_conyugal),TRUE~as.character(estado_conyugal_2)))) %>% 
+  dplyr::select(-cat_est_conyugal) %>% 
+  data.table()
+
+# casos problemáticos de matrimonio c(59664, 17582, 161721, 36520)
+
+no_calzaron_estado_cony<-
+CONS_C1_df_dup_SEP_2020_women_miss5_prev %>% dplyr::filter(is.na(estado_conyugal_2)) %>% dplyr::distinct(row) %>% unlist()
+
+
+estado_conyugal_2_imputed2<-
+estado_conyugal_2_imputed %>% 
+     dplyr::filter(amelia_fit_imputations_imp1_row %in%  no_calzaron_estado_cony) %>% 
+  dplyr::select(amelia_fit_imputations_imp1_row, estado_conyugal_2_married, estado_conyugal_2_sep_div,estado_conyugal_2_singl, estado_conyugal_2_wid, estado_conyugal_2_tot, cat_est_conyugal) %>% 
+  melt(id.vars="amelia_fit_imputations_imp1_row") %>% 
+  dplyr::mutate(value=as.numeric(value)) %>% 
+  dplyr::arrange(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::filter(value!="cat_est_conyugal") %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+  slice_max(value, with_ties = T) %>% 
+  dplyr::filter(variable!="estado_conyugal_2_married")
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#2nd round of imputation for ties
+
+CONS_C1_df_dup_SEP_2020_women_miss5<-
+CONS_C1_df_dup_SEP_2020_women_miss5_prev %>% 
+   dplyr::left_join(dplyr::select(estado_conyugal_2_imputed2,amelia_fit_imputations_imp1_row,value), by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
+    dplyr::mutate(estado_conyugal_2=factor(dplyr::case_when(is.na(estado_conyugal_2)~as.character(value),TRUE~as.character(estado_conyugal_2)))) %>% 
+  dplyr::select(-value) %>% 
+  data.table()
+
+#CONS_C1_df_dup_SEP_2020_women_miss5 %>% 
+#dplyr::filter(hash_key %in% CONS_C1_df_dup_SEP_2020_women_miss5 %>% dplyr::filter(is.na(estado_conyugal_2)) %>% dplyr::distinct(hash_key) %>% unlist())
+```
+
+<br>
+
+We could not resolve Marital status in  `r CONS_C1_df_dup_SEP_2020_women_miss5 %>% dplyr::filter(is.na(estado_conyugal_2)) %>% nrow()` cases due to ties in the most frequent values. 
+
+<br>
+
+### Type of Center
+
+We looked over possible imputations to the type of the center (public or private) (n=`r CONS_C1_df_dup_SEP_2020_women_miss %>% dplyr::filter(is.na(tipo_centro)) %>% nrow()`).
+
+<br>
+
+```{r mice6_region,eval=T, echo=T, paged.print=TRUE}
+tipo_centro_imputed<-
+ cbind.data.frame(amelia_fit$imputations$imp1$row,
+       amelia_fit$imputations$imp1$tipo_centro,
+       amelia_fit$imputations$imp2$tipo_centro,
+       amelia_fit$imputations$imp3$tipo_centro,
+       amelia_fit$imputations$imp4$tipo_centro,
+       amelia_fit$imputations$imp5$tipo_centro,
+       amelia_fit$imputations$imp6$tipo_centro,
+       amelia_fit$imputations$imp7$tipo_centro,
+       amelia_fit$imputations$imp8$tipo_centro,
+       amelia_fit$imputations$imp9$tipo_centro,
+       amelia_fit$imputations$imp10$tipo_centro,
+       amelia_fit$imputations$imp11$tipo_centro,
+       amelia_fit$imputations$imp12$tipo_centro,
+       amelia_fit$imputations$imp13$tipo_centro,
+       amelia_fit$imputations$imp14$tipo_centro,
+       amelia_fit$imputations$imp15$tipo_centro,
+       amelia_fit$imputations$imp16$tipo_centro,
+       amelia_fit$imputations$imp17$tipo_centro,
+       amelia_fit$imputations$imp18$tipo_centro,
+       amelia_fit$imputations$imp19$tipo_centro,
+       amelia_fit$imputations$imp20$tipo_centro,
+       amelia_fit$imputations$imp21$tipo_centro,
+       amelia_fit$imputations$imp22$tipo_centro,
+       amelia_fit$imputations$imp23$tipo_centro,
+       amelia_fit$imputations$imp24$tipo_centro,
+       amelia_fit$imputations$imp25$tipo_centro,
+       amelia_fit$imputations$imp26$tipo_centro,
+       amelia_fit$imputations$imp27$tipo_centro,
+       amelia_fit$imputations$imp28$tipo_centro,
+       amelia_fit$imputations$imp29$tipo_centro,
+       amelia_fit$imputations$imp30$tipo_centro,
+       amelia_fit$imputations$imp31$tipo_centro,
+       amelia_fit$imputations$imp32$tipo_centro,
+       amelia_fit$imputations$imp33$tipo_centro,
+       amelia_fit$imputations$imp34$tipo_centro,
+       amelia_fit$imputations$imp35$tipo_centro,
+       amelia_fit$imputations$imp36$tipo_centro,
+       amelia_fit$imputations$imp37$tipo_centro,
+       amelia_fit$imputations$imp38$tipo_centro,
+       amelia_fit$imputations$imp39$tipo_centro,
+       amelia_fit$imputations$imp40$tipo_centro,
+       amelia_fit$imputations$imp41$tipo_centro,
+       amelia_fit$imputations$imp42$tipo_centro,
+       amelia_fit$imputations$imp43$tipo_centro,
+       amelia_fit$imputations$imp44$tipo_centro,
+       amelia_fit$imputations$imp45$tipo_centro,
+       amelia_fit$imputations$imp46$tipo_centro,
+       amelia_fit$imputations$imp47$tipo_centro,
+       amelia_fit$imputations$imp48$tipo_centro,
+       amelia_fit$imputations$imp49$tipo_centro,
+       amelia_fit$imputations$imp50$tipo_centro,
+       amelia_fit$imputations$imp51$tipo_centro,
+       amelia_fit$imputations$imp52$tipo_centro,
+       amelia_fit$imputations$imp53$tipo_centro,
+       amelia_fit$imputations$imp54$tipo_centro,
+       amelia_fit$imputations$imp55$tipo_centro,
+       amelia_fit$imputations$imp56$tipo_centro,
+       amelia_fit$imputations$imp57$tipo_centro,
+       amelia_fit$imputations$imp58$tipo_centro,
+       amelia_fit$imputations$imp59$tipo_centro,
+       amelia_fit$imputations$imp60$tipo_centro,
+       amelia_fit$imputations$imp61$tipo_centro
+       ) %>% 
+  melt(id.vars="amelia_fit$imputations$imp1$row") %>% 
+  janitor::clean_names() %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::summarise(public= sum(value=="Public"),
+                   private=sum(value=="Private")) %>% 
+  dplyr::mutate(tipo_centro_imp=dplyr::case_when(public>=31~"Public",
+                                                    private>=31~"Private")) 
+  #dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+  #  dplyr::mutate(n=n()) %>% 
+  #  dplyr::ungroup() %>% 
+  #  dplyr::filter(n>1)
+  
+
+#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:
+
+CONS_C1_df_dup_SEP_2020_women_miss6<-
+CONS_C1_df_dup_SEP_2020_women_miss5 %>% 
+  dplyr::left_join(dplyr::select(tipo_centro_imputed,amelia_fit_imputations_imp1_row,tipo_centro_imp), by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
+  dplyr::mutate(tipo_centro=factor(dplyr::case_when(is.na(tipo_centro)~tipo_centro_imp,T~as.character(tipo_centro)))) %>%
+  dplyr::select(-c(tipo_centro_imp)) %>% 
+  data.table()
+```
+
+<br>
+
+As a result of the imputations, `r ifelse(CONS_C1_df_dup_SEP_2020_women_miss6 %>% dplyr::filter(is.na(tipo_centro)) %>% nrow()==0,paste0(" there were no missing values once imputed."),paste0(" some values were not possible to impute (n=",CONS_C1_df_dup_SEP_2020_women_miss6 %>% dplyr::filter(is.na(tipo_centro)) %>% nrow(),")."))`
+
+<br>
+
+### Pregnant at admission
+
+We looked over possible imputations to the condition of pregnancy at admission (n=`r CONS_C1_df_dup_SEP_2020_women_miss %>% dplyr::filter(is.na(embarazo)) %>% nrow()`).
+
+<br>
+
+```{r mice7_pregnany,eval=T, echo=T, paged.print=TRUE}
+embarazo_imputed<-
+ cbind.data.frame(amelia_fit$imputations$imp1$row,
+       amelia_fit$imputations$imp1$embarazo,
+       amelia_fit$imputations$imp2$embarazo,
+       amelia_fit$imputations$imp3$embarazo,
+       amelia_fit$imputations$imp4$embarazo,
+       amelia_fit$imputations$imp5$embarazo,
+       amelia_fit$imputations$imp6$embarazo,
+       amelia_fit$imputations$imp7$embarazo,
+       amelia_fit$imputations$imp8$embarazo,
+       amelia_fit$imputations$imp9$embarazo,
+       amelia_fit$imputations$imp10$embarazo,
+       amelia_fit$imputations$imp11$embarazo,
+       amelia_fit$imputations$imp12$embarazo,
+       amelia_fit$imputations$imp13$embarazo,
+       amelia_fit$imputations$imp14$embarazo,
+       amelia_fit$imputations$imp15$embarazo,
+       amelia_fit$imputations$imp16$embarazo,
+       amelia_fit$imputations$imp17$embarazo,
+       amelia_fit$imputations$imp18$embarazo,
+       amelia_fit$imputations$imp19$embarazo,
+       amelia_fit$imputations$imp20$embarazo,
+       amelia_fit$imputations$imp21$embarazo,
+       amelia_fit$imputations$imp22$embarazo,
+       amelia_fit$imputations$imp23$embarazo,
+       amelia_fit$imputations$imp24$embarazo,
+       amelia_fit$imputations$imp25$embarazo,
+       amelia_fit$imputations$imp26$embarazo,
+       amelia_fit$imputations$imp27$embarazo,
+       amelia_fit$imputations$imp28$embarazo,
+       amelia_fit$imputations$imp29$embarazo,
+       amelia_fit$imputations$imp30$embarazo,
+       amelia_fit$imputations$imp31$embarazo,
+       amelia_fit$imputations$imp32$embarazo,
+       amelia_fit$imputations$imp33$embarazo,
+       amelia_fit$imputations$imp34$embarazo,
+       amelia_fit$imputations$imp35$embarazo,
+       amelia_fit$imputations$imp36$embarazo,
+       amelia_fit$imputations$imp37$embarazo,
+       amelia_fit$imputations$imp38$embarazo,
+       amelia_fit$imputations$imp39$embarazo,
+       amelia_fit$imputations$imp40$embarazo,
+       amelia_fit$imputations$imp41$embarazo,
+       amelia_fit$imputations$imp42$embarazo,
+       amelia_fit$imputations$imp43$embarazo,
+       amelia_fit$imputations$imp44$embarazo,
+       amelia_fit$imputations$imp45$embarazo,
+       amelia_fit$imputations$imp46$embarazo,
+       amelia_fit$imputations$imp47$embarazo,
+       amelia_fit$imputations$imp48$embarazo,
+       amelia_fit$imputations$imp49$embarazo,
+       amelia_fit$imputations$imp50$embarazo,
+       amelia_fit$imputations$imp51$embarazo,
+       amelia_fit$imputations$imp52$embarazo,
+       amelia_fit$imputations$imp53$embarazo,
+       amelia_fit$imputations$imp54$embarazo,
+       amelia_fit$imputations$imp55$embarazo,
+       amelia_fit$imputations$imp56$embarazo,
+       amelia_fit$imputations$imp57$embarazo,
+       amelia_fit$imputations$imp58$embarazo,
+       amelia_fit$imputations$imp59$embarazo,
+       amelia_fit$imputations$imp60$embarazo,
+       amelia_fit$imputations$imp61$embarazo
+       ) %>% 
+  melt(id.vars="amelia_fit$imputations$imp1$row") %>% 
+  janitor::clean_names() %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::summarise(pregnancy= sum(value=="TRUE"),
+                   not_pregnancy=sum(value=="FALSE")) %>% 
+  dplyr::mutate(embarazo_imp=dplyr::case_when(pregnancy>=31~T,
+                                                    not_pregnancy>=31~F))
+
+#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:
+
+CONS_C1_df_dup_SEP_2020_women_miss7<-
+CONS_C1_df_dup_SEP_2020_women_miss6 %>% 
+    dplyr::left_join(dplyr::select(embarazo_imputed,amelia_fit_imputations_imp1_row,embarazo_imp), by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
+  dplyr::mutate(embarazo=factor(dplyr::case_when(is.na(embarazo)~as.logical(embarazo_imp),T~as.logical(embarazo)))) %>%
+  dplyr::select(-embarazo_imp) %>% 
+  data.table()
+#CONS_C1_df_dup_SEP_2020_women_miss6
+#table(is.na(CONS_C1_df_dup_SEP_2020_women_miss6$tipo_centro_pub))
+#table(is.na(CONS_C1_df_dup_SEP_2020_women_miss6$nombre_region))
+```
+
+As a result of the imputations, `r ifelse(CONS_C1_df_dup_SEP_2020_women_miss7 %>% dplyr::filter(is.na(embarazo)) %>% nrow()==0,paste0(" there were no missing values once imputed."),paste0(" some values were not possible to impute (n=",CONS_C1_df_dup_SEP_2020_women_miss7 %>% dplyr::filter(is.na(embarazo)) %>% nrow(),")."))`
+
+<br>
+
+### Type of Plan
+
+We looked over possible imputations to the type of plan (n=`r CONS_C1_df_dup_SEP_2020_women_miss %>% dplyr::filter(is.na(tipo_de_plan_res)) %>% nrow()`).
+
+<br>
+
+```{r mice8_tipo_plan_res,eval=T, echo=T, paged.print=TRUE}
+tipo_de_plan_res_imputed<-
+ cbind.data.frame(amelia_fit$imputations$imp1$row,
+       amelia_fit$imputations$imp1$tipo_de_plan_res,
+       amelia_fit$imputations$imp2$tipo_de_plan_res,
+       amelia_fit$imputations$imp3$tipo_de_plan_res,
+       amelia_fit$imputations$imp4$tipo_de_plan_res,
+       amelia_fit$imputations$imp5$tipo_de_plan_res,
+       amelia_fit$imputations$imp6$tipo_de_plan_res,
+       amelia_fit$imputations$imp7$tipo_de_plan_res,
+       amelia_fit$imputations$imp8$tipo_de_plan_res,
+       amelia_fit$imputations$imp9$tipo_de_plan_res,
+       amelia_fit$imputations$imp10$tipo_de_plan_res,
+       amelia_fit$imputations$imp11$tipo_de_plan_res,
+       amelia_fit$imputations$imp12$tipo_de_plan_res,
+       amelia_fit$imputations$imp13$tipo_de_plan_res,
+       amelia_fit$imputations$imp14$tipo_de_plan_res,
+       amelia_fit$imputations$imp15$tipo_de_plan_res,
+       amelia_fit$imputations$imp16$tipo_de_plan_res,
+       amelia_fit$imputations$imp17$tipo_de_plan_res,
+       amelia_fit$imputations$imp18$tipo_de_plan_res,
+       amelia_fit$imputations$imp19$tipo_de_plan_res,
+       amelia_fit$imputations$imp20$tipo_de_plan_res,
+       amelia_fit$imputations$imp21$tipo_de_plan_res,
+       amelia_fit$imputations$imp22$tipo_de_plan_res,
+       amelia_fit$imputations$imp23$tipo_de_plan_res,
+       amelia_fit$imputations$imp24$tipo_de_plan_res,
+       amelia_fit$imputations$imp25$tipo_de_plan_res,
+       amelia_fit$imputations$imp26$tipo_de_plan_res,
+       amelia_fit$imputations$imp27$tipo_de_plan_res,
+       amelia_fit$imputations$imp28$tipo_de_plan_res,
+       amelia_fit$imputations$imp29$tipo_de_plan_res,
+       amelia_fit$imputations$imp30$tipo_de_plan_res,
+       amelia_fit$imputations$imp31$tipo_de_plan_res,
+       amelia_fit$imputations$imp32$tipo_de_plan_res,
+       amelia_fit$imputations$imp33$tipo_de_plan_res,
+       amelia_fit$imputations$imp34$tipo_de_plan_res,
+       amelia_fit$imputations$imp35$tipo_de_plan_res,
+       amelia_fit$imputations$imp36$tipo_de_plan_res,
+       amelia_fit$imputations$imp37$tipo_de_plan_res,
+       amelia_fit$imputations$imp38$tipo_de_plan_res,
+       amelia_fit$imputations$imp39$tipo_de_plan_res,
+       amelia_fit$imputations$imp40$tipo_de_plan_res,
+       amelia_fit$imputations$imp41$tipo_de_plan_res,
+       amelia_fit$imputations$imp42$tipo_de_plan_res,
+       amelia_fit$imputations$imp43$tipo_de_plan_res,
+       amelia_fit$imputations$imp44$tipo_de_plan_res,
+       amelia_fit$imputations$imp45$tipo_de_plan_res,
+       amelia_fit$imputations$imp46$tipo_de_plan_res,
+       amelia_fit$imputations$imp47$tipo_de_plan_res,
+       amelia_fit$imputations$imp48$tipo_de_plan_res,
+       amelia_fit$imputations$imp49$tipo_de_plan_res,
+       amelia_fit$imputations$imp50$tipo_de_plan_res,
+       amelia_fit$imputations$imp51$tipo_de_plan_res,
+       amelia_fit$imputations$imp52$tipo_de_plan_res,
+       amelia_fit$imputations$imp53$tipo_de_plan_res,
+       amelia_fit$imputations$imp54$tipo_de_plan_res,
+       amelia_fit$imputations$imp55$tipo_de_plan_res,
+       amelia_fit$imputations$imp56$tipo_de_plan_res,
+       amelia_fit$imputations$imp57$tipo_de_plan_res,
+       amelia_fit$imputations$imp58$tipo_de_plan_res,
+       amelia_fit$imputations$imp59$tipo_de_plan_res,
+       amelia_fit$imputations$imp60$tipo_de_plan_res,
+       amelia_fit$imputations$imp61$tipo_de_plan_res
+       ) %>% 
+  melt(id.vars="amelia_fit$imputations$imp1$row") %>% 
+  janitor::clean_names() %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::summarise(outpatient= sum(value=="Outpatient"),
+                   residential= sum(value=="Residential")) %>% 
+  dplyr::mutate(tipo_de_plan_res_imp=dplyr::case_when(outpatient>=31~"Outpatient",
+                                                    residential>=31~"Residential"))
+
+#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:
+
+CONS_C1_df_dup_SEP_2020_women_miss8<-
+CONS_C1_df_dup_SEP_2020_women_miss7 %>% 
+    dplyr::left_join(dplyr::select(tipo_de_plan_res_imputed,amelia_fit_imputations_imp1_row,tipo_de_plan_res_imp), by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
+  dplyr::mutate(tipo_de_plan_res=factor(dplyr::case_when(is.na(tipo_de_plan_res)~as.character(tipo_de_plan_res_imp),T~as.character(tipo_de_plan_res)))) %>%
+  dplyr::select(-tipo_de_plan_res_imp) %>% 
+  data.table()
+#table(is.na(CONS_C1_df_dup_SEP_2020_women_miss6$tipo_centro_pub))
+#table(is.na(CONS_C1_df_dup_SEP_2020_women_miss6$nombre_region))
+```
+
+As a result of the imputations, `r ifelse(CONS_C1_df_dup_SEP_2020_women_miss8 %>% dplyr::filter(is.na(tipo_de_plan_res)) %>% nrow()==0,paste0(" there were no missing values once imputed."),paste0(" some values were not possible to impute (n=",CONS_C1_df_dup_SEP_2020_women_miss8 %>% dplyr::filter(is.na(tipo_de_plan_res)) %>% nrow(),")."))`
+
+<br>
+
+### Cause of Discharge
+
+We looked over possible imputations to the truly missing values, discarding missing values due to censorship (n=`r CONS_C1_df_dup_SEP_2020_women_miss %>% dplyr::filter(is.na(motivodeegreso_mod_imp)) %>% dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,fech_egres_imp),by="row") %>% dplyr::filter(!is.na(fech_egres_imp))%>%  nrow()`).
+<!--- son casos que no tienen motivo de egreso, pero sí finalizó su tratamiento. Aunque no en el caso de todes. Ver change_dates_out_of_study.R--->
+<br>
+
+```{r mice9_caus_disch,eval=T, echo=T, paged.print=TRUE}
+motivo_de_egreso_a_imputar<-
+CONS_C1_df_dup_SEP_2020_women_miss %>% dplyr::filter(is.na(motivodeegreso_mod_imp)) %>% dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,fech_egres_imp)) %>% dplyr::filter(!is.na(fech_egres_imp))%>%dplyr::select(row)
+
+motivodeegreso_mod_imp_imputed<-
+ cbind.data.frame(amelia_fit$imputations$imp1$row,
+       amelia_fit$imputations$imp1$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp2$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp3$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp4$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp5$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp6$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp7$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp8$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp9$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp10$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp11$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp12$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp13$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp14$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp15$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp16$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp17$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp18$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp19$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp20$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp21$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp22$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp23$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp24$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp25$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp26$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp27$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp28$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp29$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp30$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp31$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp32$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp33$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp34$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp35$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp36$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp37$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp38$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp39$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp40$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp41$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp42$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp43$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp44$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp45$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp46$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp47$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp48$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp49$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp50$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp51$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp52$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp53$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp54$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp55$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp56$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp57$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp58$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp59$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp60$motivodeegreso_mod_imp,
+       amelia_fit$imputations$imp61$motivodeegreso_mod_imp
+       ) %>% 
+  melt(id.vars="amelia_fit$imputations$imp1$row") %>% 
+  janitor::clean_names() %>% 
+  dplyr::arrange(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::filter(amelia_fit_imputations_imp1_row %in% unlist(motivo_de_egreso_a_imputar$row)) %>% 
+  #FILTRAR CASOS QUE SON ILÓGICOS: MUERTES CON TRATAMIENTOS POSTERIORES (1)
+  dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,motivodeegreso_mod_imp, fech_egres_imp,dup, duplicates_filtered,evaluacindelprocesoteraputico),by=c("amelia_fit_imputations_imp1_row"="row")) %>% 
+  dplyr::mutate(value_death=dplyr::case_when(value=="Death"& duplicates_filtered>dup~1,TRUE~0)) %>% 
+  dplyr::filter(value_death!=1) %>%  
+  #:#:#:#:#:
+  dplyr::count(amelia_fit_imputations_imp1_row,value) %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::slice_min(n, n = 1) %>% 
+  dplyr::summarise(adm_dis=sum(value == "Administrative discharge",na.rm=T),
+                    death=sum(value == "Death",na.rm=T),
+                    referral=sum(value == "Referral to another treatment",na.rm=T),
+                    ter_dis=sum(value == "Therapeutic discharge",na.rm=T),
+                    dropout=sum(value =="Drop-out",na.rm=T)) %>% 
+  rowwise() %>% 
+  dplyr::mutate(ties=sum(c_across(adm_dis:dropout)),ties=ifelse(ties>1,1,0)) %>% 
+  #dplyr::filter(ties==1) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,motivodeegreso_mod_imp, fech_egres_imp,fech_egres_num,dup, duplicates_filtered,evaluacindelprocesoteraputico,tipo_centro_derivacion),by=c("amelia_fit_imputations_imp1_row"="row")) %>% 
+  dplyr::mutate(motivodeegreso_mod_imp_imputation= dplyr::case_when(
+    ties==0 & adm_dis==1 & fech_egres_imp<"2019-11-13"~"Administrative discharge",
+    #its an absorving state. should not have posterior treatments
+    ties==0 & death==1 & fech_egres_imp<"2019-11-13" & dup==duplicates_filtered~"Death",
+    ties==0 & referral==1 & fech_egres_imp<"2019-11-13"~"Referral to another treatment",
+    ties==0 & ter_dis==1 & fech_egres_imp<"2019-11-13"~"Therapeutic discharge",
+    ties==0 & dropout==1 & fech_egres_imp<"2019-11-13"~"Drop-out",
+    #si no hay fecha de egreso, está en la fecha de censura, sólo puede ser tratamiento en curso
+    fech_egres_imp>="2019-11-13"~NA_character_,
+    TRUE~NA_character_)) %>% 
+    #si tiene evaluacindelprocesoteraputico, es porque no es un tratamiento en curso
+  dplyr::rename("motivodeegreso_mod_imp_original"="motivodeegreso_mod_imp")
+
+#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:
+CONS_C1_df_dup_SEP_2020_women_miss9<-
+CONS_C1_df_dup_SEP_2020_women_miss8 %>% 
+   dplyr::left_join(motivodeegreso_mod_imp_imputed[,c("amelia_fit_imputations_imp1_row","motivodeegreso_mod_imp_original","fech_egres_imp","fech_egres_num","motivodeegreso_mod_imp_imputation")], by=c("row"="amelia_fit_imputations_imp1_row")) %>%
+  #dplyr::filter(is.na(motivodeegreso_mod_imp)) %>% dplyr::select(row,hash_key,motivodeegreso_mod_imp_original, motivodeegreso_mod_imp_imputation,motivodeegreso_mod_imp,fech_egres_num,fech_egres_imp)
+      dplyr::mutate(motivodeegreso_mod_imp=factor(dplyr::case_when(is.na(motivodeegreso_mod_imp)~motivodeegreso_mod_imp_imputation,
+                                                                   motivodeegreso_mod_imp_original=="Ongoing treatment"~NA_character_, TRUE~as.character(motivodeegreso_mod_imp)))) %>% 
+  dplyr::select(-motivodeegreso_mod_imp_imputation,-fech_egres_imp,-fech_egres_num,-motivodeegreso_mod_imp_original) %>% 
+  #dplyr::rename_all( list(~paste0(., ".left"))) %>% 
+  dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,motivodeegreso_mod_imp) %>% 
+                     dplyr::rename("motivodeegreso_mod_imp_original"="motivodeegreso_mod_imp"),by="row") %>%
+  data.table()
+
+#CONS_C1_df_dup_SEP_2020_women_miss9 %>% janitor::tabyl(motivodeegreso_mod_imp,motivodeegreso_mod_imp_original)
+#CONS_C1_df_dup_SEP_2020_women_miss9 %>% janitor::tabyl(motivodeegreso_mod_imp_original)
+
+CONS_C1_df_dup_SEP_2020_women_miss9 %>% janitor::tabyl(motivodeegreso_mod_imp,motivodeegreso_mod_imp_original) %>% 
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption = paste0("Table 3. Imputed Cause of Discharge vs. Original Cause of Discharge"),
+               #col.names = c("Cause of Discharge","1-High Achievement", "2- Medium Achievement","3- Minimum Achievement","Null Values"),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::add_footnote("Note. NA= Null values", notation="none") %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px") 
+#
+if(
+CONS_C1_df_dup_SEP_2020_women_miss9 %>% dplyr::filter(motivodeegreso_mod_imp_original!="Ongoing treatment",is.na(motivodeegreso_mod_imp)) %>% nrow()>0){"There are missing values on the cause of discharge"}
+```
+<br>
+
+A total of `r CONS_C1_df_dup_SEP_2020_women_miss9 %>% dplyr::filter(is.na(motivodeegreso_mod_imp),is.na(motivodeegreso_mod_imp_original)) %>% dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,fech_egres_imp),by="row") %>% dplyr::filter(fech_egres_imp<"2019-11-13") %>% nrow()` cases were not imputed due to ties in the imputed values.
+<!--- Si no hay motivo de egreso imputado, ver si son verdaderos perdidos--->
+
+<br>
+
+### Biopsychosocial involvement
+
+Another variable that is worth imputing is the Biopsychosocial involvement (n= `r CONS_C1_df_dup_SEP_2020_women_miss %>% dplyr::filter(is.na(compromiso_biopsicosocial)) %>% nrow() %>% format(big.mark=",")`). In case of ties, we selected the imputed values with the value with the minimum involvement. In case of ties, we chose the most vulnerable value.
+
+<br>
+
+```{r mice10_comp_biopsicosoc,eval=T, echo=T, paged.print=TRUE}
+# Ver distintos valores propuestos para sustancia de inciio
+
+#No se ve un patrón de dependencia entre el compromiso biopsicosocial y el estatus de egreso
+#  table(CONS_C1_df_dup_SEP_2020_women_miss$compromiso_biopsicosocial,
+#       CONS_C1_df_dup_SEP_2020_women_miss$motivodeegreso_mod_imp)
+
+comp_biopsisoc_imputed<-
+ cbind.data.frame(amelia_fit$imputations$imp1$row,
+         amelia_fit$imputations$imp1$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp2$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp3$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp4$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp5$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp6$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp7$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp8$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp9$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp10$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp11$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp12$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp13$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp14$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp15$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp16$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp17$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp18$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp19$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp20$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp21$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp22$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp23$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp24$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp25$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp26$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp27$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp28$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp29$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp30$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp31$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp32$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp33$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp34$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp35$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp36$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp37$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp38$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp39$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp40$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp41$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp42$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp43$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp44$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp45$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp46$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp47$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp48$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp49$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp50$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp51$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp52$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp53$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp54$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp55$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp56$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp57$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp58$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp59$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp60$compromiso_biopsicosocial,
+       amelia_fit$imputations$imp61$compromiso_biopsicosocial
+       ) %>% 
+  melt(id.vars="amelia_fit$imputations$imp1$row") %>% 
+  janitor::clean_names() %>% 
+  dplyr::arrange(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row) %>%
+  # 1-Mild 2-Moderate   3-Severe 
+  dplyr::summarise(severe_3=sum(value == "3-Severe",na.rm=T),
+                   mod_2=sum(value == "2-Moderate",na.rm=T),
+                  mild_1=sum(value =="1-Mild",na.rm=T)) %>% 
+  dplyr::ungroup() %>%
+    dplyr::mutate(comp_biopsisoc_imp= dplyr::case_when(
+      (severe_3>mild_1) & (severe_3>mod_2)~"3-Severe",
+      (mod_2>mild_1) & (mod_2>severe_3)~"2-Moderate",
+      (mild_1>mod_2) & (mild_1>severe_3)~"1-Mild"
+      )) %>% 
+#2) Resolve ties    
+  dplyr::mutate(ties= dplyr::case_when(is.na(comp_biopsisoc_imp)~1,T~0)) %>% 
+  dplyr::mutate(comp_biopsisoc_imp= dplyr::case_when(ties==1 & ((mild_1>mod_2)|(mild_1>severe_3))~"1-Mild",
+                                                     ties==1 & ((mod_2>mild_1)|(mod_2>severe_3))~"2-Moderate",
+                T~comp_biopsisoc_imp))
+
+
+#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:
+##
+#CONS_C1_df_dup_SEP_2020 %>% janitor::tabyl(motivodeegreso_mod_imp,evaluacindelprocesoteraputico)
+
+CONS_C1_df_dup_SEP_2020_women_miss10<-
+CONS_C1_df_dup_SEP_2020_women_miss9 %>% 
+   dplyr::left_join(comp_biopsisoc_imputed[,c("amelia_fit_imputations_imp1_row","comp_biopsisoc_imp")], by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
+    dplyr::mutate(compromiso_biopsicosocial=factor(dplyr::case_when(is.na(compromiso_biopsicosocial) ~comp_biopsisoc_imp,
+                                                                        TRUE~as.character(compromiso_biopsicosocial)))) %>% 
+     dplyr::mutate(compromiso_biopsicosocial=parse_factor(as.character(compromiso_biopsicosocial),levels=c('1-Mild', '2-Moderate','3-Severe'), ordered =T,trim_ws=T,include_na =F, locale=locale(encoding = "UTF-8"))) %>% 
+  dplyr::select(-comp_biopsisoc_imp,-motivodeegreso_mod_imp_original) %>% 
+  data.table()
+```
+
+As a result of the imputations, `r ifelse(CONS_C1_df_dup_SEP_2020_women_miss10 %>% dplyr::filter(is.na(compromiso_biopsicosocial)) %>% nrow()==0,paste0(" there were no missing values once imputed."),paste0(" some values were not possible to impute (n=",CONS_C1_df_dup_SEP_2020_women_miss10 %>% dplyr::filter(is.na(compromiso_biopsicosocial)) %>% nrow(),")."))`
+
+<br>
+
+### Tenure status of households
+
+Another variable that is worth imputing is the Tenure status of households (n= `r CONS_C1_df_dup_SEP_2020_women_miss %>% dplyr::filter(is.na(tenencia_de_la_vivienda_mod)) %>% nrow() %>% format(big.mark=",")`). In case of ties, we selected the imputed values with the value with the minimum involvement. In case of ties, we kept what we thought was the most vulnerable value (discarding "Owner" or "Renting" values).
+
+<br>
+
+```{r mice11_tenencia_vivienda, eval=T, echo=T, paged.print=TRUE}
+
+tenencia_de_la_vivienda_mod_imputed<-
+ cbind.data.frame(amelia_fit$imputations$imp1$row,
+         amelia_fit$imputations$imp1$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp2$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp3$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp4$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp5$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp6$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp7$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp8$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp9$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp10$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp11$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp12$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp13$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp14$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp15$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp16$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp17$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp18$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp19$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp20$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp21$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp22$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp23$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp24$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp25$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp26$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp27$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp28$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp29$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp30$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp31$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp32$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp33$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp34$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp35$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp36$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp37$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp38$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp39$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp40$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp41$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp42$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp43$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp44$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp45$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp46$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp47$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp48$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp49$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp50$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp51$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp52$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp53$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp54$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp55$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp56$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp57$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp58$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp59$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp60$tenencia_de_la_vivienda_mod,
+       amelia_fit$imputations$imp61$tenencia_de_la_vivienda_mod
+       ) %>% 
+  melt(id.vars="amelia_fit$imputations$imp1$row") %>% 
+  janitor::clean_names() %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row, value) %>% 
+  tally() %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::top_n(1,n) %>% 
+  dplyr::ungroup()
+
+#tenencia_de_la_vivienda_mod_imputed %>% 
+#  pivot_wider(id_cols="amelia_fit_imputations_imp1_row",names_from="value", values_from="n", values_fill=0) %>% 
+#  dplyr::ungroup()
+
+tenencia_de_la_vivienda_mod_imputed_dup<-
+  tenencia_de_la_vivienda_mod_imputed %>% 
+    dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+    dplyr::mutate(num=n()) %>% 
+    dplyr::filter(num>1) %>% 
+    dplyr::ungroup() %>% 
+  #1) owner, discard if it is in the maximum
+    dplyr::mutate(n=dplyr::case_when(value=="Owner"~0,T~as.numeric(n))) %>% 
+    dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+    dplyr::top_n(1,n) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+  #2) Renting vs. stays temporarily with a relative, keep the second
+    dplyr::mutate(n=dplyr::case_when(value=="Renting"~0,T~as.numeric(n))) %>% 
+    dplyr::top_n(1,n) %>% 
+    dplyr::ungroup()  %>% 
+    dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+  #3) Transferred dwellings vs. stays temporarily with a relative, keep the second
+    dplyr::mutate(n=dplyr::case_when(value=="Transferred dwellings"~0,T~as.numeric(n))) %>% 
+    dplyr::top_n(1,n) %>% 
+    dplyr::ungroup()  
+
+tenencia_de_la_vivienda_mod_imputed_final<-
+tenencia_de_la_vivienda_mod_imputed %>% 
+    dplyr::left_join(tenencia_de_la_vivienda_mod_imputed_dup, by=c("amelia_fit_imputations_imp1_row", "value")) %>% 
+  #si es vacío, y no está en la base, es valor 0 (es difícil que)
+    dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+    dplyr::mutate(sum= suppressWarnings(max(num, na.rm=T))) %>% 
+    dplyr::ungroup() %>% 
+  #descarto los que presentaron más de un valor para una misma fila y aquellos que no fueron seleccionados
+    dplyr::mutate(descartar=dplyr::case_when(sum>1 & is.na(n.y)~1,T~0)) %>% 
+    dplyr::filter(descartar==0)
+
+ifelse(nrow(tenencia_de_la_vivienda_mod_imputed_final)/length(unique(CONS_C1_df_dup_SEP_2020_women_miss10$row))>1,
+       "There are still more than one value in the imputation","")
+                     
+#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:#:#:#::#:#:#:
+#CONS_C1_df_dup_SEP_2020 %>% janitor::tabyl(motivodeegreso_mod_imp,evaluacindelprocesoteraputico)
+
+CONS_C1_df_dup_SEP_2020_women_miss11<-
+CONS_C1_df_dup_SEP_2020_women_miss10 %>% 
+   dplyr::left_join(tenencia_de_la_vivienda_mod_imputed_final[,c("amelia_fit_imputations_imp1_row","value")], by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
+    dplyr::mutate(tenencia_de_la_vivienda_mod=factor(dplyr::case_when(is.na(tenencia_de_la_vivienda_mod) ~value,
+                                                                        TRUE~as.character(tenencia_de_la_vivienda_mod)))) %>% 
+  dplyr::select(-value) %>% 
+  data.table()
+```
+
+As a result of the imputations, `r ifelse(CONS_C1_df_dup_SEP_2020_women_miss11 %>% dplyr::filter(is.na(tenencia_de_la_vivienda_mod)) %>% nrow()==0,paste0(" there were no missing values once imputed."),paste0(" some values were not possible to impute (n=",CONS_C1_df_dup_SEP_2020_women_miss11 %>% dplyr::filter(is.na(tenencia_de_la_vivienda_mod)) %>% nrow(),")."))`
+
+<br>
+
+### Number of children (max. Value)   
+
+A numeric variable that had a great proportion of missing values was this (n= `r CONS_C1_df_dup_SEP_2020_women_miss %>% dplyr::filter(is.na(numero_de_hijos_mod)) %>% nrow() %>% format(big.mark=",")`).
+
+<br>
+
+```{r num_hijos, warning=F,message=F,fig.align='center', fig.cap="Figure 5. Density Estimation of No. of children reported at admission vs. imputed value", error=F}
+compare.density(amelia_fit,var="numero_de_hijos_mod", main=NULL)
+```
+
+As seen in the figure above, most of the imputations were around 1 and 3 children, leaving less space for an imputation of no children or more than 3. We imputed these values, by approximating the mean of the 61 candidate values to a discrete number.
+
+<br>
+
+```{r mice12_no_children, warning=F,message=F, error=T, eval=T}
+#On this graph, a y = x line indicates the line of perfect agreement; that is, if the imputation model was a perfect predictor of the true value, all the imputations would fall on this line
+no_mostrar=0
+if(no_mostrar==1){w
+  res <- { 
+    setTimeLimit(nn_K*500)
+    ovr_imp_edad_ini_cons<-overimpute(amelia_fit, var = "edad_al_ing")
+  }
+}
+
+paste0("Users that had more than one treatment with missing values in the no. of children: ",CONS_C1_df_dup_SEP_2020_women_miss %>%
+    dplyr::group_by(hash_key) %>% 
+    dplyr::mutate(na_numero_de_hijos_mod=sum(is.na(numero_de_hijos_mod))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(na_numero_de_hijos_mod>0) %>% 
+    dplyr::group_by(hash_key) %>% 
+    dplyr::summarise(n=n()) %>% dplyr::filter(n>1) %>% nrow())
+
+numero_de_hijos_mod_imputed<-
+  cbind.data.frame(amelia_fit$imputations$imp1$row,
+         amelia_fit$imputations$imp1$numero_de_hijos_mod,
+       amelia_fit$imputations$imp2$numero_de_hijos_mod,
+       amelia_fit$imputations$imp3$numero_de_hijos_mod,
+       amelia_fit$imputations$imp4$numero_de_hijos_mod,
+       amelia_fit$imputations$imp5$numero_de_hijos_mod,
+       amelia_fit$imputations$imp6$numero_de_hijos_mod,
+       amelia_fit$imputations$imp7$numero_de_hijos_mod,
+       amelia_fit$imputations$imp8$numero_de_hijos_mod,
+       amelia_fit$imputations$imp9$numero_de_hijos_mod,
+       amelia_fit$imputations$imp10$numero_de_hijos_mod,
+       amelia_fit$imputations$imp11$numero_de_hijos_mod,
+       amelia_fit$imputations$imp12$numero_de_hijos_mod,
+       amelia_fit$imputations$imp13$numero_de_hijos_mod,
+       amelia_fit$imputations$imp14$numero_de_hijos_mod,
+       amelia_fit$imputations$imp15$numero_de_hijos_mod,
+       amelia_fit$imputations$imp16$numero_de_hijos_mod,
+       amelia_fit$imputations$imp17$numero_de_hijos_mod,
+       amelia_fit$imputations$imp18$numero_de_hijos_mod,
+       amelia_fit$imputations$imp19$numero_de_hijos_mod,
+       amelia_fit$imputations$imp20$numero_de_hijos_mod,
+       amelia_fit$imputations$imp21$numero_de_hijos_mod,
+       amelia_fit$imputations$imp22$numero_de_hijos_mod,
+       amelia_fit$imputations$imp23$numero_de_hijos_mod,
+       amelia_fit$imputations$imp24$numero_de_hijos_mod,
+       amelia_fit$imputations$imp25$numero_de_hijos_mod,
+       amelia_fit$imputations$imp26$numero_de_hijos_mod,
+       amelia_fit$imputations$imp27$numero_de_hijos_mod,
+       amelia_fit$imputations$imp28$numero_de_hijos_mod,
+       amelia_fit$imputations$imp29$numero_de_hijos_mod,
+       amelia_fit$imputations$imp30$numero_de_hijos_mod,
+       amelia_fit$imputations$imp31$numero_de_hijos_mod,
+       amelia_fit$imputations$imp32$numero_de_hijos_mod,
+       amelia_fit$imputations$imp33$numero_de_hijos_mod,
+       amelia_fit$imputations$imp34$numero_de_hijos_mod,
+       amelia_fit$imputations$imp35$numero_de_hijos_mod,
+       amelia_fit$imputations$imp36$numero_de_hijos_mod,
+       amelia_fit$imputations$imp37$numero_de_hijos_mod,
+       amelia_fit$imputations$imp38$numero_de_hijos_mod,
+       amelia_fit$imputations$imp39$numero_de_hijos_mod,
+       amelia_fit$imputations$imp40$numero_de_hijos_mod,
+       amelia_fit$imputations$imp41$numero_de_hijos_mod,
+       amelia_fit$imputations$imp42$numero_de_hijos_mod,
+       amelia_fit$imputations$imp43$numero_de_hijos_mod,
+       amelia_fit$imputations$imp44$numero_de_hijos_mod,
+       amelia_fit$imputations$imp45$numero_de_hijos_mod,
+       amelia_fit$imputations$imp46$numero_de_hijos_mod,
+       amelia_fit$imputations$imp47$numero_de_hijos_mod,
+       amelia_fit$imputations$imp48$numero_de_hijos_mod,
+       amelia_fit$imputations$imp49$numero_de_hijos_mod,
+       amelia_fit$imputations$imp50$numero_de_hijos_mod,
+       amelia_fit$imputations$imp51$numero_de_hijos_mod,
+       amelia_fit$imputations$imp52$numero_de_hijos_mod,
+       amelia_fit$imputations$imp53$numero_de_hijos_mod,
+       amelia_fit$imputations$imp54$numero_de_hijos_mod,
+       amelia_fit$imputations$imp55$numero_de_hijos_mod,
+       amelia_fit$imputations$imp56$numero_de_hijos_mod,
+       amelia_fit$imputations$imp57$numero_de_hijos_mod,
+       amelia_fit$imputations$imp58$numero_de_hijos_mod,
+       amelia_fit$imputations$imp59$numero_de_hijos_mod,
+       amelia_fit$imputations$imp60$numero_de_hijos_mod,
+       amelia_fit$imputations$imp61$numero_de_hijos_mod
+       ) %>% 
+  melt(id.vars="amelia_fit$imputations$imp1$row") %>% 
+  janitor::clean_names() %>% 
+  #change the orientation of negative values
+  dplyr::mutate(value=abs(value)) %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::summarise(avg_numero_de_hijos_mod_imp= round(mean(value,na.rm=T),0)) %>% 
+  dplyr::ungroup()
+
+# Reemplazo los valores perdidos:
+CONS_C1_df_dup_SEP_2020_women_miss12<-
+CONS_C1_df_dup_SEP_2020_women_miss11 %>% 
+  dplyr::left_join(numero_de_hijos_mod_imputed,by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
+  #si la edad al ingreso no existe, el valor promedio imutado es
+  dplyr::mutate(numero_de_hijos_mod=dplyr::case_when(is.na(numero_de_hijos_mod)~as.numeric(avg_numero_de_hijos_mod_imp),TRUE~as.numeric(numero_de_hijos_mod))) %>% 
+  dplyr::select(-avg_numero_de_hijos_mod_imp)
+
+#table(is.na(CONS_C1_df_dup_SEP_2020_women_miss12$numero_de_hijos_mod))
+```
+
+As a result of the imputations, `r ifelse(CONS_C1_df_dup_SEP_2020_women_miss12 %>% dplyr::filter(is.na(numero_de_hijos_mod)) %>% nrow()==0,paste0(" there were no missing values once imputed."),paste0(" some values were not possible to impute (n=",CONS_C1_df_dup_SEP_2020_women_miss12 %>% dplyr::filter(is.na(numero_de_hijos_mod)) %>% nrow(),")."))`
+
+<br>
+
+### Number of children into a residential treatment
+
+A numeric variable that had a great amount of missing values was this (n= `r CONS_C1_df_dup_SEP_2020_women_miss %>% dplyr::filter(is.na(num_hijos_trat_res_mod)) %>% nrow() %>% format(big.mark=",")`).
+<!--- Los niños pueden morire o no acompañarla porque crecieron, pero lo que sí no puede occurrir es tener más hijos aquí que los imputados arriba en el número de hijos--->
+
+<br>
+
+```{r num_hijos_trat_res, warning=F,message=F,fig.align='center', fig.cap="Figure 6. Density Estimation of No. of children reported at admission to residential treatments vs. imputed value", error=F}
+compare.density(amelia_fit,var="num_hijos_trat_res_mod")
+```
+
+<br>
+
+As seen in the figure above, most of the imputations adopted the value 0, consistent with the distribution of this variable. Not discrete imputations should be approximated once obtained an average value among the 61 candidates for imputation.
+
+<br>
+
+
+```{r mice13_no_children_res_t, warning=F,message=F, error=T, eval=T}
+#On this graph, a y = x line indicates the line of perfect agreement; that is, if the imputation model was a perfect predictor of the true value, all the imputations would fall on this line
+no_mostrar=0
+if(no_mostrar==1){
+  res <- { 
+    setTimeLimit(nn_K*500)
+    ovr_imp_edad_ini_cons<-overimpute(amelia_fit, var = "edad_al_ing")
+  }
+}
+
+paste0("Users that had more than one treatment with missing values in the no. of children in a residential treatment: ",CONS_C1_df_dup_SEP_2020_women_miss %>%
+    dplyr::group_by(hash_key) %>% 
+    dplyr::mutate(na_num_hijos_trat_res_mod=sum(is.na(num_hijos_trat_res_mod))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(na_num_hijos_trat_res_mod>0) %>% 
+    dplyr::group_by(hash_key) %>% 
+    dplyr::summarise(n=n()) %>% dplyr::filter(n>1) %>% nrow())
+
+num_hijos_trat_res_mod_imputed<-
+  cbind.data.frame(amelia_fit$imputations$imp1$row,
+       amelia_fit$imputations$imp1$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp2$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp3$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp4$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp5$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp6$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp7$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp8$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp9$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp10$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp11$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp12$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp13$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp14$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp15$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp16$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp17$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp18$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp19$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp20$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp21$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp22$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp23$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp24$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp25$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp26$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp27$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp28$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp29$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp30$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp31$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp32$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp33$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp34$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp35$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp36$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp37$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp38$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp39$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp40$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp41$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp42$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp43$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp44$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp45$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp46$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp47$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp48$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp49$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp50$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp51$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp52$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp53$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp54$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp55$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp56$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp57$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp58$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp59$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp60$num_hijos_trat_res_mod,
+       amelia_fit$imputations$imp61$num_hijos_trat_res_mod
+       ) %>% 
+  melt(id.vars="amelia_fit$imputations$imp1$row") %>% 
+  janitor::clean_names() %>% #1796511   filas
+  dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020_women_miss12,row,numero_de_hijos_mod), by=c("amelia_fit_imputations_imp1_row"="row")) %>% 
+  #change the orientation of negative values
+  dplyr::mutate(value=abs(value),
+                rounded_value=round(value,0)) %>% 
+  dplyr::mutate(discard=ifelse(numero_de_hijos_mod<rounded_value,1,0)) %>% 
+  dplyr::filter(discard==0) %>% 
+  dplyr::group_by(amelia_fit_imputations_imp1_row) %>% 
+  dplyr::summarise(avg_num_hijos_trat_res_mod_imp= round(mean(value,na.rm=T),0)) %>% 
+  dplyr::ungroup()
+
+# Reemplazo los valores perdidos:
+CONS_C1_df_dup_SEP_2020_women_miss13<-
+CONS_C1_df_dup_SEP_2020_women_miss12 %>% 
+  dplyr::left_join(num_hijos_trat_res_mod_imputed,by=c("row"="amelia_fit_imputations_imp1_row")) %>% 
+  #si la edad al ingreso no existe, el valor promedio imutado es
+  dplyr::mutate(num_hijos_trat_res_mod=dplyr::case_when(is.na(num_hijos_trat_res_mod)~as.numeric(avg_num_hijos_trat_res_mod_imp),TRUE~as.numeric(num_hijos_trat_res_mod))) %>% 
+  dplyr::select(-avg_num_hijos_trat_res_mod_imp)
+
+ifelse(nrow(CONS_C1_df_dup_SEP_2020_women_miss13)==nrow(CONS_C1_df_dup_SEP_2020_women_miss),"We did not add an additional row to the data base")
+
+#table(is.na(CONS_C1_df_dup_SEP_2020_women_miss12$numero_de_hijos_mod))
+```
+
+As a result of the imputations, `r ifelse(CONS_C1_df_dup_SEP_2020_women_miss13 %>% dplyr::filter(is.na(num_hijos_trat_res_mod)) %>% nrow()==0,paste0(" there were no missing values once imputed."),paste0(" some values were not possible to impute (n=",CONS_C1_df_dup_SEP_2020_women_miss13 %>% dplyr::filter(is.na(num_hijos_trat_res_mod)) %>% nrow(),")."))`
+
+<br>
+
+## Sample Characteristics
+
+We checked the characteristics of the sample depending on type of treatment (Residential or Outpatients).
+
+<br>
+
+```{r bal0,eval=T, echo=T, paged.print=TRUE}                                 
+#añado los imputados
+CONS_C1_df_dup_SEP_2020_women_miss_after_imp<-
+CONS_C1_df_dup_SEP_2020_women_miss13 %>% 
+  relocate(otras_sus1_mod, .after = last_col()) %>% 
+  dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020, row, fech_ing, fech_egres_imp, fech_ing_num, fech_egres_num), by="row")%>% 
+  #dplyr::filter(fech_egres_num==18213,!is.na(motivodeegreso_mod_imp)) %>% 
+  dplyr::mutate(motivodeegreso_mod_imp=factor(dplyr::case_when(dias_treat_imp_sin_na>=90 & motivodeegreso_mod_imp=="Drop-out"~ "Late Drop-out",
+                                                        dias_treat_imp_sin_na<90 & motivodeegreso_mod_imp=="Drop-out"~ "Early Drop-out",
+                                                        fech_egres_num==18213 & is.na(motivodeegreso_mod_imp)~"Ongoing treatment",
+                                                        TRUE~as.character(motivodeegreso_mod_imp)
+                                                        ))) %>%
+  dplyr::mutate(sum_miss = base::rowSums(is.na(dplyr::select(.,c(edad_al_ing_grupos:duplicates_filtered))))) %>% 
+  dplyr::group_by(hash_key) %>% 
+  dplyr::mutate(sum_miss=sum(sum_miss)) %>% 
+  dplyr::ungroup() 
+
+CONS_C1_df_dup_SEP_2020_women_miss_after_imp_descartados <-
+  CONS_C1_df_dup_SEP_2020_women_miss_after_imp %>% 
+  dplyr::filter(sum_miss>0)
+
+CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados <-
+  CONS_C1_df_dup_SEP_2020_women_miss_after_imp %>% 
+  dplyr::filter(sum_miss==0) %>% 
+  dplyr::select(-sum_miss) 
+  
+
+#  CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados[complete.cases(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados[,..match.on_tot]),..match.on_tot] 
+```
+
+<br>
+
+Considering that some missing values were not able to imputation (due to ties in the candidate values for imputation or inconsistent values for imputations) (`r dim(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_descartados)[1]`, users=`r length(unique(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_descartados$hash_key))`), we ended  the process having `r nrow(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados) %>%  format(big.mark=",")` complete cases (users=`r length(unique(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados$hash_key))%>%  format(big.mark=",")`).  
+
+<br>
+
+```{r bal1,eval=F, echo=T, paged.print=TRUE}                                 
+kableone <- function(x, ...) {
+  capture.output(x <- print(x,...))
+  knitr::kable(x,format= "html", format.args= list(decimal.mark= ".", big.mark= ","))
+}
+match.on.sel<-c("sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","edad_ini_cons","freq_cons_sus_prin","origen_ingreso_mod","dg_cie_10_rec","nombre_region","dg_trs_cons_sus_or", "tipo_centro_pub","sexo_2","edad_al_ing","fech_ing_num","condicion_ocupacional_corr")
+catVars<-
+c("sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","tipo_centro_pub","freq_cons_sus_prin","origen_ingreso_mod","dg_cie_10_rec","dg_trs_cons_sus_or","nombre_region","tipo_de_plan_res","sexo_2","condicion_ocupacional_corr")
+#length(unique(CONS_C1_df_dup_SEP_2020_match$fech_ing_num))
+#:#:#:#:#: DISMINUIR LA HETEROGENEIDAD DE LA FECHA DE INGRESO
+# FORMAS DE CONSTREÑIR LA VARIABLE:
+#CONS_C1_df_dup_SEP_2020_match$fech_ing_num<-round(CONS_C1_df_dup_SEP_2020_match$fech_ing_num/10,0)
+#CONS_C1_df_dup_SEP_2020_match$fech_ing_num<-cut(CONS_C1_df_dup_SEP_2020_match$fech_ing_num,100)
+#CONS_C1_df_dup_SEP_2020_match$fech_ing_num<-CONS_C1_df_dup_SEP_2020_women_fech_ing_num
+#CONS_C1_df_dup_SEP_2020_women_fech_ing_num<-CONS_C1_df_dup_SEP_2020_match$fech_ing_num
+#length(unique(round(CONS_C1_df_dup_SEP_2020_match$fech_ing_num,0)))
+#length(unique(round(CONS_C1_df_dup_SEP_2020_match$fech_ing_num/10,0)))
+
+#CONS_C1_df_dup_SEP_2020_match$fech_ing_num<-round(CONS_C1_df_dup_SEP_2020_match$fech_ing_num/10,0)
+#:#:#:#:#: 
+
+paste0("Inconsistencies in dup vs. rn: ",CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados%>% 
+         dplyr::filter(dup!=rn) %>% nrow())
+
+CONS_C1_df_dup_SEP_2020_women_not_miss2 <-
+  CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados %>% 
+  dplyr::filter(dup==1) %>% 
+  dplyr::select(-rn,-dias_treat_imp_sin_na,-fech_egres_num)
+
+attr(CONS_C1_df_dup_SEP_2020_women_not_miss2$sus_ini_mod_mvv,"label")<-"Starting Substance"
+attr(CONS_C1_df_dup_SEP_2020_women_not_miss2$estado_conyugal_2,"label")<-"Marital Status"
+attr(CONS_C1_df_dup_SEP_2020_women_not_miss2$escolaridad_rec,"label")<-"Educational Attainment"
+attr(CONS_C1_df_dup_SEP_2020_women_not_miss2$edad_ini_cons,"label")<-"Age of Onset of Drug Use"
+attr(CONS_C1_df_dup_SEP_2020_women_not_miss2$freq_cons_sus_prin,"label")<-"Frequency of use of primary drug"
+attr(CONS_C1_df_dup_SEP_2020_women_not_miss2$nombre_region,"label")<-"Region of the Center"
+attr(CONS_C1_df_dup_SEP_2020_women_not_miss2$dg_cie_10_rec,"label")<-"Psychiatric Comorbidity"
+attr(CONS_C1_df_dup_SEP_2020_women_not_miss2$dg_trs_cons_sus_or,"label")<-"Drug Dependence"
+attr(CONS_C1_df_dup_SEP_2020_women_not_miss2$evaluacindelprocesoteraputico,"label")<-"Evaluation of the Therapeutic Process"
+attr(CONS_C1_df_dup_SEP_2020_women_not_miss2$abandono_temprano_rec,"label")<-"Early Discharge"
+attr(CONS_C1_df_dup_SEP_2020_women_not_miss2$tipo_de_plan_res,"label")<-"Residential"
+attr(CONS_C1_df_dup_SEP_2020_women_not_miss2$tipo_centro_pub,"label")<-"Public Center"
+attr(CONS_C1_df_dup_SEP_2020_women_not_miss2$condicion_ocupacional_corr,"label")<-"Occupational Status"
+
+pre_tab1<-Sys.time()
+tab1<-
+CreateTableOne(vars = match.on.sel, strata = "tipo_de_plan_res", 
+                       data = CONS_C1_df_dup_SEP_2020_women_not_miss2, factorVars = catVars, smd=T)
+post_tab1<-Sys.time()
+diff_time_tab1=post_tab1-pre_tab1
+
+kableone(tab1, 
+         caption = paste0("Table 5. Covariate Balance in the Variables of Interest"),
+         col.names= c("Variables","Ambulatory","Residential", "p-values","test","SMD"),
+         nonnormal= c("edad_ini_cons","edad_al_ing","fech_ing_num"),#"\\hline",
+                       smd=T, test=T, varLabels=T,noSpaces=T, printToggle=T, dropEqual=F) %>% 
+    kableExtra::kable_styling(bootstrap_options = c("striped", "hover","condensed"),font_size= 10) %>%
+  #()
+  row_spec(1, bold = T, italic =T,color ="black",hline_after=T,extra_latex_after="\\arrayrulecolor{white}",font_size= 10) %>%
+  #footnote(general = "Here is a general comments of the table. ",
+  #        number = c("Footnote 1; ", "Footnote 2; "),
+  #         alphabet = c("Footnote A; ", "Footnote B; "),
+  #         symbol = c("Footnote Symbol 1; ", "Footnote Symbol 2")
+  #         )%>%
+  scroll_box(width = "100%", height = "400px") 
+#"tipo_de_plan_ambulatorio",
+#https://cran.r-project.org/web/packages/tableone/vignettes/smd.html
+#http://rstudio-pubs-static.s3.amazonaws.com/405765_2ce448f9bde24148a5f94c535a34b70e.html
+#https://cran.r-project.org/web/packages/tableone/vignettes/introduction.html
+#https://cran.r-project.org/web/packages/tableone/tableone.pdf
+#https://www.rdocumentation.org/packages/tableone/versions/0.12.0/topics/CreateTableOne
+
+## Construct a table 
+#standardized mean differences of greater than 0.1
+```
+
+## Multi-state
+
+### Transition matrix
+
+
+# Session Info
+
+```{r session_info, echo=T, paged.print=TRUE}
+Sys.getenv("R_LIBS_USER")
+rstudioapi::getSourceEditorContext()
+save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+
+CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados%>%
+  dplyr::arrange(hash_key, desc(fech_ing))%>% 
+  rio::export(file = "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.dta")
+
+sessionInfo()
+```
+
