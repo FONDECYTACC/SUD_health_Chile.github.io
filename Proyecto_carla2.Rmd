@@ -2063,9 +2063,12 @@ tab1_lab<- paste0('Original C1 Dataset \n(n = ', formatC(nrow(CONS_C1), format='
 tab2_lab<- paste0('C1 Dataset \n(n = ', formatC(nrow(CONS_C1_df_dup_SEP_2020), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1_df_dup_SEP_2020%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
 tab1_5_lab<- paste0('&#8226; Duplicated entries\\l &#8226; Overlapping treatments of users\\l &#8226; Intermediate events of treatment (continuous referrals)')
 tab22_lab<- paste0('C1 Dataset \n(n = ', formatC(nrow(CONS_C1_df_dup_SEP_2020_women), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1_df_dup_SEP_2020_women%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
-tab4_lab<- paste0('Imputed C1 Dataset \n(n = ', formatC(nrow(CONS_C1_df_dup_SEP_2020_women_miss_after_imp), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1_df_dup_SEP_2020_women_miss_after_imp%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+tab32_lab <- paste0('&#8226;Select women (n= ',formatC(CONS_C1_df_dup_SEP_2020%>% dplyr::filter(sexo_2=="Women") %>% nrow(), format='f', big.mark=',', digits=0), '; users=',formatC(CONS_C1_df_dup_SEP_2020%>% dplyr::filter(sexo_2=="Women") %>% distinct(hash_key) %>% nrow(), format='f', big.mark=',', digits=0),')\\\\l&#8226;Select first treatments (n= ',formatC(CONS_C1_df_dup_SEP_2020%>% dplyr::filter(sexo_2=="Women", dup==1) %>% nrow(), format='f', big.mark=',', digits=0), '; users=',formatC(CONS_C1_df_dup_SEP_2020%>% dplyr::filter(sexo_2=="Women", dup==1) %>% distinct(hash_key) %>% nrow(), format='f', big.mark=',', digits=0),')\\\\l')
 tab3_5_lab<- paste0('C1 Dataset \n(n = ', formatC(nrow(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_descartados), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_descartados%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
 tab_miss <-paste0("  Impute missing values: (n=",CONS_C1_df_dup_SEP_2020_women_miss[,..vector_variables_only_for_imputation] %>% complete.cases() %>% janitor::tabyl() %>% dplyr::filter(.=="FALSE") %>% dplyr::select(n) %>% as.numeric() %>% format(big.mark=","),")")
+tab4_lab<- paste0('Imputed C1 Dataset \n(n = ', formatC(nrow(CONS_C1_df_dup_SEP_2020_women_miss_after_imp), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1_df_dup_SEP_2020_women_miss_after_imp%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+tab_ref_lab <- tab_miss <-paste0("&#8226; Remove Referrals: (n=",CONS_C1_df_dup_SEP_2020_women_miss_after_imp %>% dplyr::filter(motivodeegreso_mod_imp=="Referral to another treatment") %>% nrow() %>% format(big.mark=","),")\\\\l")
+tab_final <- tab_miss <-paste0("  Imputed C1 Dataset w/o Referrals: \n(n=",CONS_C1_df_dup_SEP_2020_women_miss_after_imp %>% dplyr::filter(motivodeegreso_mod_imp!="Referral to another treatment") %>% nrow() %>% format(big.mark=","),'\n users= ',CONS_C1_df_dup_SEP_2020_women_miss_after_imp %>% dplyr::filter(motivodeegreso_mod_imp!="Referral to another treatment") %>% distinct(hash_key) %>%  nrow() %>% format(big.mark=","),")")
 
 #https://stackoverflow.com/questions/46750364/diagrammer-and-graphviz
 #https://mikeyharper.uk/flowcharts-in-r-using-diagrammer/
@@ -2083,14 +2086,17 @@ grViz("digraph flowchart {
       node [fontname = Times, shape = rectangle,fontsize = 9]        
       tab1 [label = '@@1']
       tab2 [label = '@@2']
-      tab32 [label = '&#8226;Select women\\l&#8226;Select first treatments\\l',fontsize = 7]
+      tab32 [label = '@@5',fontsize = 7]
       tab22 [label = '@@6']
       tab3 [label = '&#8226;Duplicated entries\\l&#8226;Intermediate events of treatment (continuous referrals)\\l',fontsize = 7]
       tab4 [label = '@@4']
       blank [label = '', width = 0.0001, height = 0.0001]
       blank1 [label = '', width = 0.0001, height = 0.0001]
       blank2 [label = '', width = 0.0001, height = 0.0001]
-      tab5 [label = '&#8226;Logically Inconsistent candidates for imputation\\l&#8226;Ties in candidates for imputation\\l',fontsize = 7]
+      blank3 [label = '', width = 0.0001, height = 0.0001]
+      tab5 [label = '&#8226;Logically inconsistent candidates for imputation\\l&#8226;Ties in candidates for imputation\\l',fontsize = 7]
+      tab6 [label = '@@8',fontsize = 7,style=dotted]
+      tab7 [label = '@@9',style=dotted]
 
       # edge definitions with the node IDs
       tab1 -> blank [arrowhead = none,label='  Data wrangling and normalization process',fontsize = 8];
@@ -2102,6 +2108,9 @@ grViz("digraph flowchart {
       tab22 -> blank2 [arrowhead = none, label= '@@7', fontsize= 8];
       blank2 -> tab5 
       blank2 -> tab4 [label='  Result of the imputation of missing values',fontsize = 8];
+      tab4 -> blank3 [arrowhead = none,label='  Unkown exact times of discharge',fontsize = 8, style=dotted];
+      blank3 -> tab6 [style=dotted]
+      blank3 -> tab7 [style=dotted]
             subgraph {
               rank = same; tab3; blank;
             }
@@ -2111,15 +2120,20 @@ grViz("digraph flowchart {
             subgraph {
               rank = same; tab5; blank2;
             }
+            subgraph {
+              rank = same; tab6; blank3;
+            }
       }
 
       [1]:  tab1_lab
       [2]:  tab2_lab
       [3]:  tab1_5_lab
       [4]:  tab4_lab
-      [5]:  ''
+      [5]:  tab32_lab
       [6]:  tab22_lab
       [7]:  tab_miss
+      [8]:  tab_ref_lab
+      [9]:  tab_final
       ")
 #      {rank=same; 'tab2'' -> tab3 [label='',fontsize = 11]}; #⋉
 #CONS_C1_df_dup_SEP_2020_irrs_health
@@ -2128,6 +2142,7 @@ grViz("digraph flowchart {
 ### Transition matrix
 
 ```{r fig5 mstate_models, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 5. Tree Structure for the Multistate System", fig.height=8, fig.width=10, error=T, eval=T}
+library(igraph)
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
@@ -2135,56 +2150,70 @@ grViz("digraph flowchart {
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 links<-data.frame(stringsAsFactors=FALSE,
   from = c(rep("Admitted to\nTreatment", 2),"Therapeutic\nDischarge"),
-  to = c(rep(c("Therapeutic\nDischarge"),1), rep("Readmission", 2)))
+  to = c(rep(c("Therapeutic\nDischarge"),1), rep("Readmission", 2)),
+  value = c("1","2","3"))
 
 links2<-data.frame(stringsAsFactors=FALSE,
-   from = c(rep("Admitted to\nTreatment", 2),"Therapeutic\nDischarge","Discharge w/o\nClinical Advice"),
-   to = c(rep(c("Therapeutic\nDischarge","Discharge w/o\nClinical Advice"),1), rep("Readmission", 2)))
+   from = c(rep("Admitted to\nTreatment", 3),"Therapeutic\nDischarge","Discharge w/o\nClinical Advice"),
+   to = c(rep(c("Therapeutic\nDischarge","Discharge w/o\nClinical Advice"),1), rep("Readmission", 3)),
+   value = c("1","2","3","4","5"))
 
-set.seed(1400)
-co <- layout.fruchterman.reingold(graph_from_data_frame(links, directed=TRUE))
+#dev.off()
 #https://www.r-graph-gallery.com/248-igraph-plotting-parameters.html
 #https://rstudio-pubs-static.s3.amazonaws.com/341807_7b9d1a4e787146d492115f90ad75cd2d.html
 par(mfrow=c(1, 2))  
-par(oma=c(2,2,2,2))  
-  plot(graph_from_data_frame(links, directed=TRUE),asp = 0,
-       layout= co,
-     #vertex.label= rev(),
-     vertex.color="white",
-     vertex.size=120,
-      vertex.size2=25,
-     vertex.label.cex=1, 
-     edge.arrow.size=1,
-     edge.color="black",
-     vertex.shape="rectangle",
-     vertex.label.color="black",
-      edge.curved=0,
-      edge.width=1.5,
-     vertex.label.dist=0,
-     vertex.cex = 3)
+#for (i in c(2560:2660)){
+  set.seed(2630) #i #2660 #2646 #2642 #2630 #2650
+  co <- layout.fruchterman.reingold(graph_from_data_frame(links, directed=TRUE))
+  plot(graph_from_data_frame(links, directed=TRUE),
+            asp = 0,
+            layout= co,
+            edge.label=links$value,
+            edge.label.cex=3,
+            edge.label.color="black",
+            #vertex.label= rev(),
+            vertex.color="white",
+            vertex.size=120,
+            vertex.size2=25,
+            vertex.label.cex=1, 
+            edge.arrow.size=1,
+            edge.color="black",
+            vertex.shape="rectangle",
+            vertex.label.color="black",
+            edge.curved=0,
+            edge.width=1.5,
+           #main=paste0(i),
+            outputorder="edgesfirst",  
+            vertex.label.dist=0,
+            vertex.cex = 3)
+#}
 title("a) Three-states Model (Simplest)", sub = "No recurring states; Absorving state: Readmission;\nOther causes of discharge are not  events of interest;\nModdified version of an illness-death model") ## internal titles
 
-set.seed(100)
+set.seed(10990)#i #10990 10921 10898 10835
 co2 <- layout.fruchterman.reingold(graph_from_data_frame(links2, directed=TRUE))
+  plot(graph_from_data_frame(links2, directed=TRUE),
+            asp = 0,
+            layout= co2,
+            edge.label=links2$value,
+            edge.label.cex=2.5,
+            edge.label.color="black",
+            #vertex.label= rev(),
+            vertex.color="white",
+            vertex.size=120,
+            vertex.size2=25,
+            vertex.label.cex=1, 
+            edge.arrow.size=1,
+            edge.color="black",
+            vertex.shape="rectangle",
+            vertex.label.color="black",
+            edge.curved=0,
+            edge.width=1.5,
+            outputorder="edgesfirst",
+            #main=paste0(i),
+            vertex.label.dist=0,
+            vertex.cex = 3)
+  title("b) Four-states Model", sub = "No recurring states; Absorving state: Readmission;\n For now, includes Referrals as a discharge /wo Clinical\n Advice") ## internal titles
 
-  plot(graph_from_data_frame(links2, directed=TRUE),asp = 0,
-       layout= co2,
-     #vertex.label= rev(),
-     vertex.color="white",
-     vertex.size=120,
-      vertex.size2=25,
-     vertex.label.cex=1, 
-     edge.arrow.size=1,
-     edge.color="black",
-     vertex.shape="rectangle",
-     vertex.label.color="black",
-      edge.curved=0,
-      edge.width=1.5,
-     vertex.label.dist=0,
-     vertex.cex = 3)
-title("b) Four-states Model", sub = "No recurring states; Absorving state: Readmission;\n For now, includes Referrals as a discharge /wo Clinical\n Advice") ## internal titles
-
-#dev.off()
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 ## Probando con paquetes estadísticos
@@ -2199,17 +2228,14 @@ Edges <- list("Admitted to\nGP"=list(edges=c("Therapeutic\nDischarge","Discharge
 
 RCLTtree <- new("graphNEL",nodes=Nodes,edgeL=Edges,edgemode="directed")
 plot(RCLTtree)
-library(igraph)
-
 #https://www.rdocumentation.org/packages/msSurv/versions/1.2-2/topics/msSurv
 msSurv(LTRCdata, RCLTtree, cens.type="ind", LT=FALSE, bs=FALSE, B=200)
 }
 ```
 
 
-```{r mstate1,eval=F, echo=T, paged.print=TRUE}                                 
+```{r msprep, eval=T, echo=T, paged.print=TRUE}                                 
 #Data should be in a data frame with column names "id", "stop", "st.stage", and "stage" where "id" is the individual's identification number, "stop" is the transition time from state j to j', "st.stage" is the state the individual is transitioning from (i.e., j), and "stage" is the state the individual is transitioning to (i.e., j') and equals 0 if right censored.
-
 
 ## 80% of sample is LT, rest has start time of 0
 ### AGS: Parten en 0, salvo que estén truncados a la izquierda. 
@@ -2217,6 +2243,125 @@ msSurv(LTRCdata, RCLTtree, cens.type="ind", LT=FALSE, bs=FALSE, B=200)
 ### AGS: Cuando hay un estado seguido no es necesario interval censoring, se dn en tun tiempo continuo
 ### El 0 es censura
 
+library(mstate)
+
+#### MSPREP= 3 STATES 
+#_#_#_#_#_#_#_
+CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep<-
+  CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados %>% 
+  dplyr::mutate(ther_disch=ifelse(motivodeegreso_mod_imp=="Therapeutic discharge",1,0)) %>% 
+  # para problema para intervalos 0 entre un tratamiento nuevo y otro y entre el ingreso a un tratamiento y su término y que comento más abajo
+  dplyr::mutate(cambio_fecha_ing= dplyr::case_when(dias_treat_imp_sin_na==0~1 ,T~0)) %>%
+  dplyr::mutate(fech_ing_num= dplyr::case_when(cambio_fecha_ing==1~fech_ing_num-1,T~fech_ing_num)) %>% 
+  dplyr::mutate(dias_treat_imp_sin_na= dplyr::case_when(cambio_fecha_ing==1~fech_egres_num-fech_ing_num, T~dias_treat_imp_sin_na)) %>% 
+  dplyr::select(-cambio_fecha_ing) %>% 
+  #If status=1, the corresponding transition has been observed. Si no no se ha observado
+  # para efectos de este modelo simple, experimentar el alta terapéutica es el objetivo, por lo que el resto será censura
+  dplyr::mutate(readmission=ifelse(!is.na(fech_ing_next_treat),1,0)) %>% 
+  #time of arrival at the state
+  dplyr::mutate(diff_bet_treat=fech_ing_next_treat-fech_egres_num) %>% 
+  # para problema para intervalos 0 entre un tratamiento nuevo y otro y entre el ingreso a un tratamiento y su término y que comento más abajo. Le añado un día
+  dplyr::mutate(cambio_fecha_ing_nuevo_t= dplyr::case_when(diff_bet_treat==0~1 ,T~0)) %>%
+  dplyr::mutate(fech_ing_next_treat= dplyr::case_when(cambio_fecha_ing_nuevo_t==1~fech_ing_next_treat+1,T~fech_ing_next_treat)) %>% 
+  dplyr::mutate(diff_bet_treat= dplyr::case_when(cambio_fecha_ing_nuevo_t==1~fech_ing_next_treat-fech_egres_num, T~diff_bet_treat)) %>% 
+  dplyr::select(-cambio_fecha_ing_nuevo_t) %>% 
+  #dplyr::filter(diff_bet_treat_corr!=diff_bet_treat)
+  #necesito dejarles un número de días a los casos censurados, por lo que tendré que calcularlo
+  dplyr::mutate(dias_treat_imp_sin_na= dplyr::case_when(ther_disch==0~ as.numeric(as.Date("2019-11-13"))-fech_ing_num,T~dias_treat_imp_sin_na)) %>% 
+  dplyr::mutate(diff_bet_treat= dplyr::case_when(readmission==0~ as.numeric(as.Date("2019-11-13"))-fech_ing_num,T~diff_bet_treat)) %>% 
+  ## EL RESTO DE LOS PACIENTES NO VAN A HABER REGISTRADO EVENTOS EN ESE TIEMPO, POR LO QUE LLEGARÁN AL FINAL DEL SEGUIMIENTO
+  dplyr::select(row, fech_ing_num, dias_treat_imp_sin_na, ther_disch, diff_bet_treat, readmission, tipo_de_programa_2:numero_de_hijos_mod_rec) %>% 
+  as.data.frame() 
+
+#### MSPREP= 4 STATES 
+#_#_#_#_#_#_#_
+CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2<-
+  CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados %>% 
+  dplyr::mutate(ther_disch=ifelse(motivodeegreso_mod_imp=="Therapeutic discharge",1,0)) %>% 
+  # para problema para intervalos 0 entre un tratamiento nuevo y otro y entre el ingreso a un tratamiento y su término y que comento más abajo
+  dplyr::mutate(cambio_fecha_ing= dplyr::case_when(dias_treat_imp_sin_na==0~1 ,T~0)) %>%
+  dplyr::mutate(fech_ing_num= dplyr::case_when(cambio_fecha_ing==1~fech_ing_num-1,T~fech_ing_num)) %>% 
+  dplyr::mutate(dias_treat_imp_sin_na= dplyr::case_when(cambio_fecha_ing==1~fech_egres_num-fech_ing_num, T~dias_treat_imp_sin_na)) %>% 
+  dplyr::select(-cambio_fecha_ing) %>% 
+  #If status=1, the corresponding transition has been observed. Si no no se ha observado
+  dplyr::mutate(disch_wo_clin_adv=ifelse(motivodeegreso_mod_imp %in% c("Early Drop-out","Late Drop-out","Administrative discharge"),1,0)) %>% 
+  # para efectos de este modelo simple, experimentar el alta terapéutica es el objetivo, por lo que el resto será censura
+  dplyr::mutate(readmission=ifelse(!is.na(fech_ing_next_treat),1,0)) %>% 
+  #time of arrival at the state
+  dplyr::mutate(diff_bet_treat=fech_ing_next_treat-fech_egres_num) %>% 
+  # para problema para intervalos 0 entre un tratamiento nuevo y otro y entre el ingreso a un tratamiento y su término y que comento más abajo. Le añado un día
+  dplyr::mutate(cambio_fecha_ing_nuevo_t= dplyr::case_when(diff_bet_treat==0~1 ,T~0)) %>%
+  dplyr::mutate(fech_ing_next_treat= dplyr::case_when(cambio_fecha_ing_nuevo_t==1~fech_ing_next_treat+1,T~fech_ing_next_treat)) %>% 
+  dplyr::mutate(diff_bet_treat= dplyr::case_when(cambio_fecha_ing_nuevo_t==1~fech_ing_next_treat-fech_egres_num, T~diff_bet_treat)) %>% 
+  dplyr::select(-cambio_fecha_ing_nuevo_t) %>% 
+  #dplyr::filter(diff_bet_treat_corr!=diff_bet_treat)
+  #necesito dejarles un número de días a los casos censurados, por lo que tendré que calcularlo
+  dplyr::mutate(days_to_ther_disch= dplyr::case_when(ther_disch==0~ as.numeric(as.Date("2019-11-13"))-fech_ing_num,T~dias_treat_imp_sin_na)) %>% 
+  dplyr::mutate(days_to_disch_wo_clin_adv= dplyr::case_when(disch_wo_clin_adv==0~ as.numeric(as.Date("2019-11-13"))-fech_ing_num,T~dias_treat_imp_sin_na)) %>% 
+  dplyr::mutate(diff_bet_treat= dplyr::case_when(readmission==0~ as.numeric(as.Date("2019-11-13"))-fech_ing_num,T~diff_bet_treat)) %>% 
+  ## EL RESTO DE LOS PACIENTES NO VAN A HABER REGISTRADO EVENTOS EN ESE TIEMPO, POR LO QUE LLEGARÁN AL FINAL DEL SEGUIMIENTO
+  dplyr::select(row, fech_ing_num, days_to_ther_disch, ther_disch, days_to_disch_wo_clin_adv, disch_wo_clin_adv, diff_bet_treat, readmission, tipo_de_programa_2:numero_de_hijos_mod_rec) %>% 
+  as.data.frame() 
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_##_#_#_#_#_#_#_##_#_#_#_#_#_#_#
+#_#_#_#_#_#_#_##_#_#_#_#_#_#_##_#_#_#_#_#_#_##_#_#_#_#_#_#_#
+#_#_#_#_#_#_#_##_#_#_#_#_#_#_##_#_#_#_#_#_#_##_#_#_#_#_#_#_#
+
+#For censored state transitions it can be awkward having to replicate the censoring time for each non-visited state
+#https://github.com/stulacy/multistateutils
+mat_3_states <- trans.illdeath(names=c("Admission","Therapeutic\nDischarge","Readmission"))
+#All possible paths through the multi-state model can be found here:
+#paths(mat_3_states)
+
+#Los números son determinados por posición en cada columna (o eje Y). 
+#Si uno quiere definir para la otra fila, salta al siguiente vector: 
+mat_4_states<- transMat(list(c(2,3,4), 4, 4, c()), 
+                names = c("Admission", "Therapeutic\nDischarge", "Discharge Without\nMedical Advice", "Readmission"))
+
+#illness-death model without recovery
+ms_CONS_C1_SEP_2020_women_imputed <- msprep(time = c(NA, "dias_treat_imp_sin_na", "diff_bet_treat"), 
+                                            status = c(NA, "ther_disch", "readmission"), 
+                                            data = CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep,
+                                            id = "row",
+                                            trans = mat_3_states,
+                                            keep = names(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep)[-c(1:6)])
+#model of 5 states without recovery.
+ms2_CONS_C1_SEP_2020_women_imputed <- msprep(time = c(NA, "days_to_ther_disch", "days_to_disch_wo_clin_adv", "diff_bet_treat"), 
+                                            status = c(NA, "ther_disch", "disch_wo_clin_adv", "readmission"), 
+                                            data = CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2,
+                                            id = "row",
+                                            trans = mat_4_states,
+                                            keep = names(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2)[-c(1:8)])
+
+ms_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")] <- ms_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")]/365.25
+ms2_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")] <- ms2_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")]/365.25
+```
+
+```{r trans_matrix1,eval=T, echo=T, paged.print=TRUE}                                 
+data.frame(events(ms_CONS_C1_SEP_2020_women_imputed)$Frequencies) %>% 
+    dplyr::filter(to!="total entering") %>% 
+    left_join(data.frame(events(ms_CONS_C1_SEP_2020_women_imputed)$Proportions), by=c("from", "to")) %>% 
+    dplyr::rename("Frequencies"="Freq.x", "Proportions"="Freq.y") %>% 
+    dplyr::mutate(Proportions=scales::percent(Proportions)) %>% 
+    knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption="Table 5. Empirical State Transition Matrix, 3 State Model",
+               align= c("c",rep('c', 5)))%>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 11)%>% 
+  kableExtra::add_footnote("Note= Proportions from the initial state")
+```
+
+```{r trans_matrix2,eval=T, echo=T, paged.print=TRUE}                                 
+data.frame(events(ms2_CONS_C1_SEP_2020_women_imputed)$Frequencies) %>% 
+    dplyr::filter(to!="total entering") %>% 
+    left_join(data.frame(events(ms2_CONS_C1_SEP_2020_women_imputed)$Proportions), by=c("from", "to")) %>% 
+    dplyr::rename("Frequencies"="Freq.x", "Proportions"="Freq.y") %>% 
+    dplyr::mutate(Proportions=scales::percent(Proportions)) %>% 
+    knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption="Table 6. Empirical State Transition Matrix, 3 State Model",
+               align= c("c",rep('c', 5)))%>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 11)%>% 
+  kableExtra::add_footnote("Note= Proportions from the initial state")
 ```
 
 
