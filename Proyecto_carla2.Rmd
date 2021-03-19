@@ -2336,6 +2336,9 @@ ms2_CONS_C1_SEP_2020_women_imputed <- msprep(time = c(NA, "days_to_ther_disch", 
 
 ms_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")] <- ms_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")]/365.25
 ms2_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")] <- ms2_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")]/365.25
+
+#Starting from state 1, simultaneous transitions possible for subjects 36666 36586 56465 136847 37595 60609 51706 76376 117544 140210 at times 126 472 32 36 1 203 45 14 5 71; smallest receiving state chosen
+invisible(c("Investigate warning"))
 ```
 
 ```{r trans_matrix1,eval=T, echo=T, paged.print=TRUE}                                 
@@ -2343,12 +2346,17 @@ data.frame(events(ms_CONS_C1_SEP_2020_women_imputed)$Frequencies) %>%
     dplyr::filter(to!="total entering") %>% 
     left_join(data.frame(events(ms_CONS_C1_SEP_2020_women_imputed)$Proportions), by=c("from", "to")) %>% 
     dplyr::rename("Frequencies"="Freq.x", "Proportions"="Freq.y") %>% 
+    dplyr::arrange(from, to) %>% 
+    dplyr::mutate(diff=ifelse(as.character(from)!=as.character(to),0,1)) %>% 
+    dplyr::filter(diff==0) %>%
+    dplyr::select(-diff) %>% 
     dplyr::mutate(Proportions=scales::percent(Proportions)) %>% 
     knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
                caption="Table 5. Empirical State Transition Matrix, 3 State Model",
                align= c("c",rep('c', 5)))%>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 11)%>% 
-  kableExtra::add_footnote("Note= Proportions from the initial state")
+  kableExtra::add_footnote("Note= Proportions from the initial state") %>% 
+  kableExtra::scroll_box(width = "100%", height = "350px")
 ```
 
 ```{r trans_matrix2,eval=T, echo=T, paged.print=TRUE}                                 
@@ -2356,13 +2364,76 @@ data.frame(events(ms2_CONS_C1_SEP_2020_women_imputed)$Frequencies) %>%
     dplyr::filter(to!="total entering") %>% 
     left_join(data.frame(events(ms2_CONS_C1_SEP_2020_women_imputed)$Proportions), by=c("from", "to")) %>% 
     dplyr::rename("Frequencies"="Freq.x", "Proportions"="Freq.y") %>% 
+    dplyr::arrange(from, to) %>% 
+    dplyr::mutate(diff=ifelse(as.character(from)!=as.character(to),0,1)) %>% 
+    dplyr::filter(diff==0) %>%
+    dplyr::select(-diff) %>%
     dplyr::mutate(Proportions=scales::percent(Proportions)) %>% 
     knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
                caption="Table 6. Empirical State Transition Matrix, 3 State Model",
                align= c("c",rep('c', 5)))%>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 11)%>% 
-  kableExtra::add_footnote("Note= Proportions from the initial state")
+  kableExtra::add_footnote("Note= Proportions from the initial state")%>%
+  kableExtra::scroll_box(width = "100%", height = "350px")
 ```
+
+
+#### Consideration of the Appropriateness of the proportional hazards assumption
+
+
+```{r ph1,eval=T, echo=T, paged.print=TRUE, fig.height=13, fig.width=10, fig.cap="Figure 6a. Vissual Assessment of Hazards, Three-states Model (w/o covars)", fig.align="center"}                                 
+#reescribo el tipo de programa para indicar 0 y 1s para tratamiento vs. control
+if(dimnames(table(ms_CONS_C1_SEP_2020_women_imputed$tipo_de_programa_2))[[1]][1]=="General population"){
+ms_CONS_C1_SEP_2020_women_imputed$tipo_de_programa_2<-ifelse(ms_CONS_C1_SEP_2020_women_imputed$tipo_de_programa_2=="Women specific",1,0)
+}
+if(dimnames(table(ms2_CONS_C1_SEP_2020_women_imputed$tipo_de_programa_2))[[1]][1]=="General population"){
+ms2_CONS_C1_SEP_2020_women_imputed$tipo_de_programa_2<-ifelse(ms2_CONS_C1_SEP_2020_women_imputed$tipo_de_programa_2=="Women specific",1,0)
+}
+#podemos reemplazar tiempo por años.
+ms_CONS_C1_SEP_2020_women_imputed$years <- ms_CONS_C1_SEP_2020_women_imputed$time/365.25
+ms2_CONS_C1_SEP_2020_women_imputed$years <- ms2_CONS_C1_SEP_2020_women_imputed$time/365.25
+
+# ’expand.covs()’ permits to define the set of covariates which impacts
+# each transition:
+#NO SE SI CONVIENE TRAER ESTA FUNCION
+#data_mstate <- expand.covs(ms2_CONS_C1_SEP_2020_women_imputed, names(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep)[-c(1:6)], append = TRUE, longnames = FALSE)
+
+plots<- data.frame(title=rep(c("(a) Admission -> Ther. Disch.","(b) Admission -> Readmission","(c) Ther. Disch. -> Readmission"),1),trans=rep(1:3,1))
+
+## SIN COVARIABLES
+par(mfrow=c(3,2))
+for(i in c(1:3)){
+plot(log(survfit(Surv(years,status)~ 1, data=subset(ms_CONS_C1_SEP_2020_women_imputed, trans==plots[i,"trans"] & tipo_de_programa_2==0))$time), 
+     log(-log(survfit(Surv(years,status)~ 1, data=subset(ms_CONS_C1_SEP_2020_women_imputed, trans==plots[i,"trans"] & tipo_de_programa_2==0))$surv)), type="l",
+     xlab="log(time)", ylab="", xaxs="i",yaxs="i",
+     las=1,cex.lab=1.5, cex.axis=1.5)
+lines(log(survfit(Surv(years,status)~ 1, data=subset(ms_CONS_C1_SEP_2020_women_imputed, trans==plots[i,"trans"] & tipo_de_programa_2==1))$time), 
+      log(-log(survfit(Surv(years,status)~ 1, data=subset(ms_CONS_C1_SEP_2020_women_imputed, trans==plots[i,"trans"] & tipo_de_programa_2==1))$surv)), lty=2)
+legend(-6,-4, c("GP", "WE"), bty="n", lty=c(2,1), cex=1.5)
+title(main=paste0("LOG CUMULATIVE HAZARD VS LOG TIME PLOT \n",plots[i,"title"]), cex.main=1.5)
+}
+
+for(i in c(1:3)){
+plot(survfit(Surv(years,status)~ 1, data=subset(ms_CONS_C1_SEP_2020_women_imputed, trans==plots[i,"trans"] & tipo_de_programa_2==0))$time, 
+     -log(survfit(Surv(years,status)~ 1, data=subset(ms_CONS_C1_SEP_2020_women_imputed, trans==plots[i,"trans"] & tipo_de_programa_2==0))$surv), type="l",
+     xlab="time", ylab="", xaxs="i",yaxs="i", 
+     las=1,cex.lab=1.5, cex.axis=1.5, col=1)
+lines(survfit(Surv(years,status)~ 1, data=subset(ms_CONS_C1_SEP_2020_women_imputed, trans==plots[i,"trans"] & tipo_de_programa_2==1))$time, 
+      -log(survfit(Surv(years,status)~ 1, data=subset(ms_CONS_C1_SEP_2020_women_imputed, trans==plots[i,"trans"] & tipo_de_programa_2==1))$surv), lty=2)
+legend(.01,.1, c("GP", "WE"), bty="n", lty=c(2,1), cex=1.5)
+title(main=paste0("CUMULATIVE HAZARD PLOT: -LOG(KM SURVIVAL) \n",plots[i,"title"]), cex.main=1.5)
+}
+```
+
+#### Decision whether to use Markov or Semi-Markov
+
+
+
+#### Assessment of Fit Transitions
+
+
+### Calculations State Occupancy Probabilities
+
 
 
 # Session Info
