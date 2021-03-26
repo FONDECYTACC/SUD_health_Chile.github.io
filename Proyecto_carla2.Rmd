@@ -1,5 +1,5 @@
 ---
-title: "Proyecto Carla"
+title: "Risk among Drug Dependent Women Treated in Women-Only versus Mixed-Gender Programs in Chile*"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
@@ -8,6 +8,27 @@ output:
     toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
     toc_float: true
 ---
+
+
+
+```{css zoom-lib-src, echo = FALSE}
+script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+```
+
+```{js zoom-jquery, echo = FALSE}
+ $(document).ready(function() {
+    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
+    // onClick function for all plots (img's)
+    $('img:not(.zoomImg)').click(function() {
+      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
+      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
+    });
+    // onClick function for zoomImg
+    $('img.zoomImg').click(function() {
+      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
+    });
+  });
+```
 
 <style type="text/css">
 .tablelines table, .tablelines td, .tablelines th {
@@ -2329,7 +2350,7 @@ msSurv(LTRCdata, RCLTtree, cens.type="ind", LT=FALSE, bs=FALSE, B=200)
 
 <br>
 
-Any observation where an event occurs which is not the event of interest for a specific transition is treated as a censored observation (only referrals and also had inexact dates of discharge), that is, in the same way as a patient that was lost to follow-up. If there is a readmission posterior to loss-to follow-up cases, these cases we obtained the length in days between being readmitted posterior and the time of admission, knowing that any intermediate date of discharge was interval-censored (the exact time in which users discharged is unknown, and its treatment outcomes are unknown, so there is no exact time-to-readmission). Covariates are fixed at baseline.
+Any observation where an event occurs which is not the event of interest for a specific transition is treated as a censored at the end of the study (2019, November 13) observation (only referrals and also had inexact dates of discharge), that is, in the same way as a patient that was lost to follow-up. If there is a readmission posterior to loss-to follow-up cases, these cases we obtained the length in days between being readmitted posterior and the time of admission, knowing that any intermediate date of discharge was interval-censored (the exact time in which users discharged is unknown, and its treatment outcomes are unknown, so there is no exact time-to-readmission). Covariates are fixed at baseline.
 
 <!--- 
 End of study: Since calendar time restricts observation to events that occurred in the past, anevent time may be right censored because the individual has not been followed long enoughyet. This is also called administrative censoring.
@@ -2339,7 +2360,7 @@ Competing risk: Another event has occurred, which prevents occurrence of the eve
 
 <br>
 
-```{r msprep, eval=T, echo=T, paged.print=TRUE}                                 
+```{r msprep_1, eval=T, echo=T, paged.print=TRUE}                                 
 #Data should be in a data frame with column names "id", "stop", "st.stage", and "stage" where "id" is the individual's identification number, "stop" is the transition time from state j to j', "st.stage" is the state the individual is transitioning from (i.e., j), and "stage" is the state the individual is transitioning to (i.e., j') and equals 0 if right censored.
 
 ## 80% of sample is LT, rest has start time of 0
@@ -2428,9 +2449,24 @@ CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2<-
   dplyr::select(row, fech_ing_num, date_ther_disch, ther_disch, date_disch_wo_clin_adv, disch_wo_clin_adv, date_post_treat, readmission, tipo_de_programa_2:numero_de_hijos_mod_rec,tipo_de_plan_res) %>% 
   as.data.frame() 
 
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_##_#_#_#_#_#_#_##_#_#_#_#_#_#_#
-#_#_#_#_#_#_#_##_#_#_#_#_#_#_##_#_#_#_#_#_#_##_#_#_#_#_#_#_#
-#_#_#_#_#_#_#_##_#_#_#_#_#_#_##_#_#_#_#_#_#_##_#_#_#_#_#_#_#
+tail(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep) %>% 
+      knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption="Table 5a. Data in Wide, 3-states",
+               align= c("c",rep('c', 5)))%>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 11)%>% 
+  kableExtra::add_footnote("Note= Proportions from the initial state") %>% 
+  kableExtra::scroll_box(width = "100%", height = "350px")
+
+tail(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2) %>% 
+      knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption="Table 5b. Data in Wide, 4-states",
+               align= c("c",rep('c', 5)))%>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 11)%>% 
+  kableExtra::add_footnote("Note= Proportions from the initial state") %>% 
+  kableExtra::scroll_box(width = "100%", height = "350px")
+```
+
+```{r msprep_2, eval=T, echo=T, paged.print=TRUE}                                 
 
 #For censored state transitions it can be awkward having to replicate the censoring time for each non-visited state
 #https://github.com/stulacy/multistateutils
@@ -2493,6 +2529,12 @@ ms_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")] <- ms_CONS_C1_
 ms2_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")] <- ms2_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")]/365.25
 ```
 
+<br>
+
+Now we present the transition with the frequencies and proportoins
+
+<br>
+
 ```{r trans_matrix1,eval=T, echo=T, paged.print=TRUE}                                 
 data.frame(events(ms_CONS_C1_SEP_2020_women_imputed)$Frequencies) %>% 
     dplyr::filter(to!="total entering") %>% 
@@ -2504,7 +2546,7 @@ data.frame(events(ms_CONS_C1_SEP_2020_women_imputed)$Frequencies) %>%
     dplyr::select(-diff) %>% 
     dplyr::mutate(Proportions=scales::percent(Proportions)) %>% 
     knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
-               caption="Table 5. Empirical State Transition Matrix, 3 States Model",
+               caption="Table 6a. Empirical State Transition Matrix, 3 States Model",
                align= c("c",rep('c', 5)))%>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 11)%>% 
   kableExtra::add_footnote("Note= Proportions from the initial state") %>% 
@@ -2522,7 +2564,7 @@ data.frame(events(ms2_CONS_C1_SEP_2020_women_imputed)$Frequencies) %>%
     dplyr::select(-diff) %>%
     dplyr::mutate(Proportions=scales::percent(Proportions)) %>% 
     knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
-               caption="Table 6. Empirical State Transition Matrix, 4 States Model",
+               caption="Table 6b. Empirical State Transition Matrix, 4 States Model",
                align= c("c",rep('c', 5)))%>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 11)%>% 
   kableExtra::add_footnote("Note= Proportions from the initial state")%>%
@@ -2548,7 +2590,7 @@ ms2_CONS_C1_SEP_2020_women_imputed$tipo_de_programa_2<-ifelse(ms2_CONS_C1_SEP_20
 #NO SE SI CONVIENE TRAER ESTA FUNCION
 #data_mstate <- expand.covs(ms2_CONS_C1_SEP_2020_women_imputed, names(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep)[-c(1:6)], append = TRUE, longnames = FALSE)
 
-plots<- data.frame(title=rep(c("(a) Admission -> Ther. Disch.","(b) Admission -> Readmission","(c) Ther. Disch. -> Readmission"),1),trans=rep(1:3,1))
+plots<- data.frame(title=rep(c("(a) Admission → Ther. Disch.","(b) Admission → Readmission","(c) Ther. Disch. → Readmission"),1),trans=rep(1:3,1))
 
 ## SIN COVARIABLES
 layout(matrix(1:6, nc = 2, byrow = F))
@@ -2577,7 +2619,7 @@ title(main=paste0("CUMULATIVE HAZARD PLOT: -LOG(KM SURVIVAL) \n",plots[i,"title"
 
 <br>
 
-As seen n the Figure above, the cumulative hazards does not follow a proportional trend in the transitions of (b) Admission -> Readmission, and (c) Ther. Disch. -> Readmission between General population or Women-specific programs.
+As seen n the Figure above, the cumulative hazards does not follow a proportional trend in the transitions of (b) Admission → Readmission, and (c) Ther. Disch. → Readmission between General population or Women-specific programs.
 
 <br>
 
@@ -2590,7 +2632,7 @@ builds in a proportional hazards assumption.
 --->
 
 ```{r ph2,eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 6b. Vissual Assessment of Hazards, Four-states Model (w/o covars)", fig.align="center"}                                 
-plots2<- data.frame(title=rep(c("(a) Admission -> Ther. Disch.","(b) Admission -> Discharge w/o Med. Adv.","(c) Admission -> Readmission", "(d) Ther. Disch. -> Readmission","(e) Discharge w/o Med. Adv. -> Readmission"),1),trans=1:5)
+plots2<- data.frame(title=rep(c("(a) Admission → Ther. Disch.","(b) Admission → Discharge w/o Med. Adv.","(c) Admission → Readmission", "(d) Ther. Disch. → Readmission","(e) Discharge w/o Med. Adv. → Readmission"),1),trans=1:5)
 
 layout(matrix(1:10, nc = 2, byrow = F))
 for(i in c(1:5)){
@@ -2618,11 +2660,18 @@ title(main=paste0("CUMULATIVE HAZARD PLOT: -LOG(KM SURVIVAL) \n",plots2[i,"title
 
 <br>
 
-As seen in the figures above, the transition (b) Admission -> Discharge w/o Med. Adv., did not show a proportional trajectory in time between women in the General-population and Women-specific programs in the clog-log plot. On the other part, the transitions (c) Admission -> Readmission, (d) Ther. Disch. -> Readmission, (e) Discharge w/o Med. Adv. -> Readmission did not follow proportional cumulative hazards between women in the General-Population and Women-Specific programs.
+As seen in the figures above, the transition (b) Admission → Discharge w/o Med. Adv., did not show a proportional trajectory in time between women in the General-population and Women-specific programs in the clog-log plot. On the other part, the transitions (c) Admission → Readmission, (d) Ther. Disch. → Readmission, (e) Discharge w/o Med. Adv. → Readmission did not follow proportional cumulative hazards between women in the General-Population and Women-Specific programs.
 
 <br>
 
 ```{r info_ph_assumption,eval=F, echo=T, paged.print=TRUE}                                 
+#The Coxproportional hazards model can still be used, but the interpretation of the results is different. Thiswill be outlined in some detail in Section 3
+
+#The effect of covariates on disease progression is most often modelled using the Cox proportionalhazards model. 
+
+#https://onlinelibrary.wiley.com/doi/epdf/10.1002/sim.2712
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
 #If the SR plot for a given variable shows deviation from a straight line while it stays flat for the rest of the variables, then it is something you shouldn't ignore. First thing you can do is to look at the results of the global test. The global test might indicate the overall assumption of PH holds true [or not]. If the global test is fine then switching the reference category of the variable for which the assumption didn't held true, you might be able to achieve PH. The hazards may be proportional when compared to one reference category but not the other. Hence, by switching the reference categories, you might be able to find the category which results in PH assumption being true.
 
 #If the switching doesn't solve your problem, and assuming you have got the right variables in your model, then this indicates that the hazards is not proportional for this particular variable i.e. different hazards at different time points. Hence, you may want to introduce interaction between variable and time in your model.
@@ -2667,7 +2716,7 @@ As seen in the figures above, the transition (b) Admission -> Discharge w/o Med.
 #Miladinovic B, Kumar A, Mhaskar R, Kim S, Schonwetter R, Djulbegovic B (2012) A Flexible Alternative to the Cox Proportional Hazards Model for Assessing the Prognostic Accuracy of Hospice Patient Survival. PLoS ONE 7(10): e47804. https://doi.org/10.1371/journal.pone.0047804
 ```
 
-#### Decision whether to use Markov or Semi-Markov
+### Decision whether to use Markov or Semi-Markov
 
 For the three-states model, we only looked at transition 3 as only transition where different times entering the state. Interested in knowing the risk of readmission in completion of a treatment w/therapeutic discharge (status) from different treatments and different time to progression.
 
@@ -2676,6 +2725,7 @@ In the four-states model, we looked at transition 4 and 5.
 <br>
 
 ```{r markov_semimarkov,eval=T, echo=T, paged.print=TRUE}                                 
+#state arrival extended (semi-)Markov to mean that the i → j transition hazard depends on thetime of arrival at state i. 
 
 #Build a Cox proportional hazard model including treatment and time in previous state as covariates
 CoxMarkov<-coxph(Surv(Tstart,Tstop,status)~factor(tipo_de_programa_2)+Tstart,
@@ -2719,26 +2769,64 @@ rbind.data.frame(as.data.frame(cbind(HR,CI,P)),tab_cox_markov) %>%
 
 <br>
 
-The model considered the transition from intermediate states to our absorbing state (being readmitted) is explained by the time spent in the previous health state. This covariate (time in the previous state) was shown to be statistically significant (p<.001); results indicated a longer duration spent in the first treatment is associated with increased risk of readmission. Therefore, a semi-Markov approach should be undertaken for both models.
+The model considered the transition from intermediate states to our absorbing state (being readmitted) is explained by the time spent in the previous health state. This covariate (time in the previous state) was shown to be statistically significant (p<.001); results indicated a longer duration spent in the first treatment is associated with increased risk of readmission. Therefore, a semi-Markov (called a Markov renewal model) or clock reset approach should be undertaken for both models. They bear the advantage that information from the process history can be included as transition-specific explanatory covariates.
 
 <br>
 
-#### Assessment of Fit Transitions
+```{r semimarkov_add_arrival,eval=T, echo=T, paged.print=TRUE}                                 
 
-<!----
-Six candidate distributions were considered to model transitions from RF→LR and RF→DM, including exponential, Weibull, Gompertz, log-logistic, log-normal, and generalized gamma.Exponential distributions were used for RF→death due to the small number of events
---->
+#Since prtime only makes sense for transition 3 (PR → RelDeath), we need the transition-specific covariate
+#of prtime for transition 3, which is prtime.3. The corresponding model is termed the ”state
+#arrival extended Markov PH” model in the tutorial, and appears on the right of Table III.
 
-```{r fit,eval=F, echo=T, paged.print=TRUE, fig.height=13, fig.width=10, fig.cap="Figure 6a. Vissual Assessment of Hazards, Three-states Model (w/o covars)", fig.align="center"}                                 
+ms_CONS_C1_SEP_2020_women_imputed$arrival<-ms_CONS_C1_SEP_2020_women_imputed$Tstart
+ms2_CONS_C1_SEP_2020_women_imputed$arrival<-ms2_CONS_C1_SEP_2020_women_imputed$Tstart
+
+ms_CONS_C1_SEP_2020_women_imputed_exp <- expand.covs(ms_CONS_C1_SEP_2020_women_imputed, "arrival", append = TRUE, longnames = FALSE)
+ms2_CONS_C1_SEP_2020_women_imputed_exp <- expand.covs(ms2_CONS_C1_SEP_2020_women_imputed, "arrival", append = TRUE, longnames = FALSE)
+```
+
+<br>
+
+### Assessment of Fit of Transitions
+
+Six candidate distributions were considered to model transitions from Adm→Ther.Disch., Adm.→Readm. and Ther.Disch.→Readm., including Weibull (AFT), Gompertz, Log-logistic, Gamma, Generalized gamma, Lognormal, Exponential. 
+
+The following plots  fitted survival curves from each model (coloured lines), with the Kaplan-Meier estimate, in black, obtained from an example of Jackson available (here)[https://cran.r-project.org/web/packages/fic/vignettes/survival.pdf], added to the contributions of Wathers & Cutler available (here)[https://digitalcommons.usu.edu/cgi/viewcontent.cgi?article=1936&context=gradreports].
+
+<br>
+
+```{r fit1,eval=T, echo=T, paged.print=TRUE, fig.height=13, fig.width=10, fig.cap="Figure 7a. Vissual Assessment of Survival Curves, Three-states Model",fig.align="center"}
+
+tiempo_antes_fits<-Sys.time()
+
+#Weathers, Brandon and Cutler, Richard Dr., "Comparision of Survival Curves Between Cox Proportional 
+#Hazards, Random Forests, and Conditional Inference Forests in Survival Analysis" (2017). All Graduate 
+#Plan B and other Reports. 927. 
+#https://digitalcommons.usu.edu/gradreports/927 
+
+#<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">            
+#
 #https://devinincerti.com/2019/01/01/sim-mstate.html
 
-n_trans <- max(mat, na.rm = TRUE)
+n_trans <- max(mat_3_states, na.rm = TRUE)
 fits_wei <- vector(mode = "list", length = n_trans)
-fits_gam <- vector(mode = "list", length = n_trans)
+fits_llogis <- vector(mode = "list", length = n_trans)
 fits_gomp <- vector(mode = "list", length = n_trans)
 fits_logn <- vector(mode = "list", length = n_trans)
 fits_exp <- vector(mode = "list", length = n_trans)
-
+fits_gam <- vector(mode = "list", length = n_trans)
+fits_ggam <- vector(mode = "list", length = n_trans)
+fits_c_wei <- vector(mode = "list", length = n_trans)
+fits_c_llogis <- vector(mode = "list", length = n_trans)
+fits_c_gomp <- vector(mode = "list", length = n_trans)
+fits_c_logn <- vector(mode = "list", length = n_trans)
+fits_c_exp <- vector(mode = "list", length = n_trans)
+fits_c_gam <- vector(mode = "list", length = n_trans)
+fits_c_ggam <- vector(mode = "list", length = n_trans)
+km.lc<-list()
+fits_cox<-list()
+fits_c_cox<-list()
 #"gengamma"	Generalized gamma (stable parameterisation)
 #"gengamma.orig"	Generalized gamma (original parameterisation)
 #"genf"	Generalized F (stable parameterisation)
@@ -2748,51 +2836,396 @@ fits_exp <- vector(mode = "list", length = n_trans)
 #"exp"	Exponential
 #"lnorm"	Log-normal
 #"gompertz"	Gompertz
-for (i in 1:n_trans){
-  fits_wei[[i]] <- flexsurvreg(Surv(years, status) ~ edad_al_ing_grupos+ escolaridad_rec+ sus_principal_mod+ 
-                                 freq_cons_sus_prin+ compromiso_biopsicosocial+ tenencia_de_la_vivienda_mod+ 
-                                 num_otras_sus_mod+ numero_de_hijos_mod_rec+ tipo_de_programa_2,
-                               data = subset(ms_CONS_C1_SEP_2020_women_imputed, trans == i),
+
+library(flexsurv)
+
+#Specify the formula
+fitform <- Surv(time, status) ~ 1
+
+
+for (i in 1:n_trans){  
+  fits_wei[[i]] <- flexsurvreg(formula=fitform,
+                               data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i),
                                dist = "gompertz")
 }
 
 for (i in 1:n_trans){
-  fits_gam[[i]] <- flexsurvreg(Surv(years, status) ~ edad_al_ing_grupos+ escolaridad_rec+ sus_principal_mod+ 
-                                 freq_cons_sus_prin+ compromiso_biopsicosocial+ tenencia_de_la_vivienda_mod+ 
-                                 num_otras_sus_mod+ numero_de_hijos_mod_rec+ tipo_de_programa_2,
-                               data = subset(ms_CONS_C1_SEP_2020_women_imputed, trans == i),
-                               dist = "gamma")
+  fits_llogis[[i]] <- flexsurvreg(formula=fitform,
+                               data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i),
+                               dist = "llogis")
 }
 
 for (i in 1:n_trans){
-  fits_gomp[[i]] <- flexsurvreg(Surv(years, status) ~ edad_al_ing_grupos+ escolaridad_rec+ sus_principal_mod+ 
-                                  freq_cons_sus_prin+ compromiso_biopsicosocial+ tenencia_de_la_vivienda_mod+ 
-                                  num_otras_sus_mod+ numero_de_hijos_mod_rec+ tipo_de_programa_2,
-                                data = subset(ms_CONS_C1_SEP_2020_women_imputed, trans == i),
+  fits_gam[[i]] <- flexsurvreg(formula=fitform,
+                               data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i),
+                               dist = "gamma")
+}
+#LOS ERRORES OCURREN CUANDO NO HAY COVARIABLES
+#In (function (q, shape, rate = 1, scale = 1/rate, lower.tail = TRUE,  ... :   NaNs produced
+#gamma no funcionó: NaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs produced
+for (i in 1:n_trans){
+  fits_ggam[[i]] <- flexsurvreg(formula=fitform,
+                               data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i),
+                               dist = "gengamma")
+}
+
+for (i in 1:n_trans){
+  fits_gomp[[i]] <- flexsurvreg(formula=fitform,
+                                data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i),
                                 dist = "weibull")
 }
 
 
 for (i in 1:n_trans){
-  fits_logn[[i]] <- flexsurvreg(Surv(years, status) ~ edad_al_ing_grupos+ escolaridad_rec+ sus_principal_mod+ 
-                                  freq_cons_sus_prin+ compromiso_biopsicosocial+ tenencia_de_la_vivienda_mod+ 
-                                  num_otras_sus_mod+ numero_de_hijos_mod_rec+ tipo_de_programa_2,
-                                data = subset(ms_CONS_C1_SEP_2020_women_imputed, trans == i),
+  fits_logn[[i]] <- flexsurvreg(formula=fitform,
+                                data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i),
                                 dist = "lnorm")
 }
 
 for (i in 1:n_trans){
-  fits_exp[[i]] <- flexsurvreg(Surv(years, status) ~ edad_al_ing_grupos+ escolaridad_rec+ sus_principal_mod+ 
-                                 freq_cons_sus_prin+ compromiso_biopsicosocial+ tenencia_de_la_vivienda_mod+ 
-                                 num_otras_sus_mod+ numero_de_hijos_mod_rec+ tipo_de_programa_2,
-                               data = subset(ms_CONS_C1_SEP_2020_women_imputed, trans == i),
+  fits_exp[[i]] <- flexsurvreg(formula=fitform,
+                               data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i),
                                dist = "exp")
 }
+
+for (i in 1:n_trans){
+  fits_cox[[i]] <- coxph(fitform, data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i))
+}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_
+#covariates
+
+#Specify the formula
+fitform2 <- Surv(time, status) ~  edad_al_ing_grupos+ escolaridad_rec+ sus_principal_mod+ 
+         freq_cons_sus_prin+ compromiso_biopsicosocial+ tenencia_de_la_vivienda_mod+ 
+         num_otras_sus_mod+ numero_de_hijos_mod_rec+ factor(tipo_de_programa_2)+ tipo_de_plan_res
+
+for (i in 1:n_trans){  
+  fits_c_wei[[i]] <- flexsurvreg(formula=fitform2,
+                               data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i),
+                               dist = "gompertz")
+}
+
+for (i in 1:n_trans){
+  fits_c_llogis[[i]] <- flexsurvreg(formula=fitform,
+                               data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i),
+                               dist = "llogis")
+}
+
+for (i in 1:n_trans){
+  fits_c_gam[[i]] <- flexsurvreg(formula=fitform2,
+                               data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i),
+                               dist = "gamma")
+}
+#LOS ERRORES OCURREN CUANDO NO HAY COVARIABLES
+#In (function (q, shape, rate = 1, scale = 1/rate, lower.tail = TRUE,  ... :   NaNs produced
+#gamma no funcionó: NaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs produced
+for (i in 1:n_trans){
+  fits_c_ggam[[i]] <- flexsurvreg(formula=fitform2,
+                               data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i),
+                               dist = "gengamma")
+}
+
+for (i in 1:n_trans){
+  fits_c_gomp[[i]] <- flexsurvreg(formula=fitform2,
+                                data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i),
+                                dist = "weibull")
+}
+
+
+for (i in 1:n_trans){
+  fits_c_logn[[i]] <- flexsurvreg(formula=fitform2,
+                                data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i),
+                                dist = "lnorm")
+}
+
+for (i in 1:n_trans){
+  fits_c_exp[[i]] <- flexsurvreg(formula=fitform2,
+                               data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i),
+                               dist = "exp")
+}
+
+for (i in 1:n_trans){
+  fits_c_cox[[i]] <- coxph(fitform2, data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i))
+}
+
+for (i in 1:n_trans){
+km.lc[[i]] <- survfit(formula= fitform, data = subset(ms_CONS_C1_SEP_2020_women_imputed_exp, trans == i), conf.type = "log-log")
+}
+transition_label<- c(`1`="Transition 1: Admission to Ther.Discharge",`2`="Transition 2: Admission to Readmission",`3`="Transition 3: Ther.Discharge to Readmission")
+
+layout(matrix(1:6, nc = 2, byrow = F))
+for (i in 1:n_trans){
+plot(km.lc[[i]], col="black", xlim=c(1,12),ylim=c(.4,1)); lines(fits_wei[[i]], col="navyblue");lines(fits_gomp[[i]], col="#B89673");lines(fits_llogis[[i]], col="#A0A36D");lines(fits_gam[[i]], col="#886894");lines(fits_ggam[[i]], col="darkorchid4");lines(fits_logn[[i]], col="#496A72");lines(fits_logn[[i]], col="gray70");lines(fits_exp[[i]],col="#496A72");lines(survfit(fits_cox[[i]], conf.int = T), col = "red")
+
+legend("bottomleft", legend = c("Kaplan-Meier","Weibull (AFT)", "Gompertz", "Log-logistic", "Gamma",
+                "Generalized gamma", "Lognormal", "Exponential","Cox"), col = 
+         c("black","navyblue","#B89673","#A0A36D","#886894",
+           "darkorchid4","#496A72","gray70","#496A72","red"), 
+       title = "Distributions", cex = .95, bty = "n", lty=1)# lty = 1:2, 
+title(main=transition_label[[i]])
+}
+for (i in 1:n_trans){
+plot(km.lc[[i]], col="black", xlim=c(1,12),ylim=c(.4,1),xlab="Years",ylab="Survival"); lines(fits_c_wei[[i]], col="navyblue");lines(fits_c_gomp[[i]], col="#B89673");lines(fits_c_llogis[[i]], col="#A0A36D");lines(fits_c_gam[[i]], col="#886894");lines(fits_c_ggam[[i]], col="darkorchid4");lines(fits_c_logn[[i]], col="#496A72");lines(fits_c_logn[[i]], col="gray70");lines(fits_c_exp[[i]],col="#496A72");lines(survfit(fits_cox[[i]], conf.int = T), col = "red")
+  
+legend("bottomleft", legend = c("Kaplan-Meier","Weibull (AFT)", "Gompertz", "Log-logistic", "Gamma",
+                "Generalized gamma", "Lognormal", "Exponential","Cox"), col = 
+         c("black","navyblue","#B89673","#A0A36D","#886894",
+           "darkorchid4","#496A72","gray70","#496A72","red"), 
+       title = "Distributions", cex = .95, bty = "n", lty=1)# lty = 1:2, 
+title(main=paste0(transition_label[[i]], " (w/ covariates)"))
+}
+#</div>
+tiempo_despues_fits<-Sys.time()
+
+tiempo_fits<-tiempo_despues_fits-tiempo_antes_fits
 ```
 
 <br>
 
-### Calculations State Occupancy Probabilities
+Additionally, we compared the hazards of these distributions with non-parametric techniques, using a smoothed hazard function from right-censored data using kernel-based methods (as Incerti shows in his [blog](https://devinincerti.com/2019/06/18/parametric_survival.html)). The confidence interval around the predicted hazard function is estimated using bootstrapping methods of 30,000 iterations.
+
+<br>
+
+```{r fit2,eval=T, echo=T, paged.print=TRUE, fig.height=13, fig.width=10, fig.cap="Figure 7b. Vissual Assessment of Hazards, Three-states Model (w/o covars)",fig.align="center"}
+tiempo_antes_fits2<-Sys.time()
+
+#```{r fit,eval=T, echo=T, paged.print=TRUE, fig.height=13, fig.width=10, fig.align="center", results = 'asis'}
+kernel_haz_est<-list()
+kernel_haz<-list()
+for (i in 1:n_trans){
+library("muhaz")
+kernel_haz_est[[i]] <- muhaz(ms_CONS_C1_SEP_2020_women_imputed_exp[which(ms_CONS_C1_SEP_2020_women_imputed_exp$trans==i),"time"],
+                        ms_CONS_C1_SEP_2020_women_imputed_exp[which(ms_CONS_C1_SEP_2020_women_imputed_exp$trans==i),"status"])
+kernel_haz[[i]] <- data.table(time = kernel_haz_est[[i]]$est.grid,
+                         est = kernel_haz_est[[i]]$haz.est,
+                         method = "Kernel density")
+}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#create list of survreg for different transitions
+#<- flexsurvreg_list(fit1, fit2, fit3)
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+dists <- cbind.data.frame(
+              formal=c("Weibull (AFT)", "Gompertz", "Log-logistic", "Gamma",
+                "Generalized gamma", "Lognormal", "Exponential"),
+              model=c("wei","gomp","llogis","gam","ggam", "logn","exp"))
+
+#hr.exp <- round(exp(coef(get(paste0("fits_",dists[x,"model"]))[[y]])["groupGood"]),3)
+
+fitted_flexsurvreg<-data.frame()
+fit_flexsurvreg<-data.frame()
+for (y in 1:n_trans){
+  for (x in 1:nrow(dists)){
+  cat(paste0("#### Flexible Survival Model: ",dists[x,"formal"], "; transition: ",y, "\n \n"))
+    #capture.output(print(get(paste0("fits_",x))[[y]]))[10:35]
+    #Return fitted survival, cumulative hazard or hazard at a series of times from a fitted model
+    fitted_flexsurvreg<-rbind.data.frame(fitted_flexsurvreg,
+          cbind.data.frame(dist= rep(paste(dists[x,"formal"],"(",
+                                           round(exp(coef(get(paste0("fits_",dists[x,"model"]))[[y]])["factor(tipo_de_programa_2)1"]),3),")"
+                                           ),), trans=rep(y,),
+          as.data.frame(summary(get(paste0("fits_",dists[x,"model"]))[[y]], B=30000,type = "hazard", tidy=T))))
+    fit_flexsurvreg<-rbind(fit_flexsurvreg,
+                      cbind(dist= dists[x,"formal"], trans=y, 
+                           AIC= get(paste0("fits_",dists[x,"model"]))[[y]]$AIC,
+                           Llik= get(paste0("fits_",dists[x,"model"]))[[y]]$loglik,
+                           npars= get(paste0("fits_",dists[x,"model"]))[[y]]$npars
+                           )
+                      )
+    }
+}
+#http://colorschemedesigner.com/csd-3.5/#
+#https://www.r-graph-gallery.com/42-colors-names.html
+ggplot(fitted_flexsurvreg, aes(time, est, color=dist, fill=dist))+
+    geom_line(size=1)+
+    #geom_ribbon(aes(ymin=lcl, ymax=ucl), alpha=.5, linetype=0) +
+    scale_color_manual(name="Distributions", values = c("navyblue","#B89673","#A0A36D","#886894","darkorchid4","#496A72","gray70","#496A72")) +
+    scale_fill_manual(name="Distributions", values = c("navyblue","#B89673","#A0A36D","#886894","darkorchid4","#496A72","gray70","#496A72")) +
+    #scale_linetype_manual(name = "",values = c(1, rep_len(2:, n_dists)))+
+    facet_wrap(~trans,labeller = labeller(trans = transition_label))+
+    theme_bw()+
+  theme(legend.position="bottom")
+
+## http://www.statistica.it/gianluca/teaching/r-hta-workshop/2019/Bullement.pdf
+tiempo_despues_fits2<-Sys.time()
+
+tiempo_fits<-tiempo_despues_fits2-tiempo_antes_fits2
+```
+
+<br>
+
+### Cumulative Hazard - Non-parametric
+
+```{r msfit,eval=T, echo=T, paged.print=TRUE, fig.height=8, fig.width=12, fig.cap="Figure 8a. Estimate of Cumulative Hazards (Semi-Markov), Stratified by Program", fig.align="center"}
+if(no_mostrar==1){
+  for(i in c(1:3)){
+    print(survdiff(Surv(time,status==1)~tipo_de_programa_2,data=subset(ms_CONS_C1_SEP_2020_women_imputed, trans == i)))
+    }
+  for(i in c(1:5)){
+    print(survdiff(Surv(time,status==1)~tipo_de_programa_2,data=subset(ms2_CONS_C1_SEP_2020_women_imputed, trans == i)))
+  } 
+}
+
+#We consider first the model without any proportionality assumption on the baseline hazards; this is achieved by adding strata(trans) to the formula, which estimates separate baseline hazards for different values of trans (the transitions). 
+
+pr0 <- subset(ms_CONS_C1_SEP_2020_women_imputed, tipo_de_programa_2==0)
+pr1 <- subset(ms_CONS_C1_SEP_2020_women_imputed, tipo_de_programa_2==1)
+attr(pr0, "trans") <- mat_3_states
+attr(pr1, "trans") <- mat_3_states
+
+#Since there are tied event times, we need to specify ties="breslow" in order to obtain the Aalen-Johansen estimator of
+#the transition probability
+#If we only want the cumulative hazard for the relapse → death transition, we can
+#select the rows that refer to transition 3.
+#The stacked format allows to calculate all cumulative hazards via the basic coxph function.
+c0 <- coxph(Surv(time, status) ~ strata(trans), 
+            data = pr0, method = "breslow")
+c1 <- coxph(Surv(time, status) ~ strata(trans), 
+            data = pr1, method = "breslow")
+
+#The value of time is equal to Tstop−Tstart; it is of use in ’clock reset’-models, where the time t refers to the time spent in the current state
+
+#The alternative is to first apply the msfit function, which we also need when computing the transition
+#probabilities
+msf0 <- msfit(object = c0, trans = mat_3_states)
+msf1 <- msfit(object = c1,  trans = mat_3_states)
+#Haz contains the estimated cumulative hazard for each of the transitions for the particular patient
+#specified in newd, while varHaz contains the estimated variances of these cumulative hazards,
+#as well as the covariances for each combination of two transitions. All are evaluated at the
+#time points for which any event in any transition occurs, possibly augmented with the largest
+#(non-event) time point in the data. The summary method for msfit objects is most conveniently
+#used for a summary. If we also would like to have a look at the covariances, we could set the
+#argument variance equal to TRUE.
+
+#This is a list with elements Haz (with the estimated cumulative hazard values at all event
+#times), varHaz (with the covariances of each pair of estimated cumulative hazards at each
+#event time point, i.e., cov( c Abgh(t), Abkl(t))), and trans, in which the transition matrix is stored
+#for further use. The (co)variances of the estimated cumulative hazards may be computed in
+#two different ways: by means of the Aalen estimator or by means of the Greenwood estimator.
+#An advantage of the Greenwood estimator is the fact that it yields exact multinomial standard
+#errors for the transition probabilities when there is no censoring. The two estimators give
+#almost equal results in all practical applications.
+
+par(mfrow = c(1, 2))
+plot(msf0, cols = rep(1, 3), lwd = 2, lty = 1:3, xlab = "Years since in the state",xlim=c(0,12),ylim=c(0,.6),
+ ylab = "Baseline hazards for each transition", legend.pos = c(4, .15), main= "General Population")
+ plot(msf1, cols = rep(1, 3), lwd = 2, lty = 1:3, xlab = "Years after baseline", xlim=c(0,12),ylim=c(0,.6),
+ ylab = "", legend.pos = c(4, .15), main= "Women Especific")
+```
+
+Looking at the instantaneous transition rates, we can observe that women in Women-specific programs had a very similar transition rate from admission to readmission with the rate of those who did not experienced it to readmission. In case of the General-population programs, after 2 years the cumulative hazards of readmission without experiencing therapeutic discharge starts growing much more than the rates of those that experienced a therapeutic discharge. In both programs, the rate of therapeutic discharge stops increasing due to restrictions to the database (treatments longer than 1095 days were not considered as valid). Must take note that we are not seeing the effect of confounders in these progressions.
+
+<br>
+
+### Transition Probabilites
+
+```{r probtrans,eval=T, echo=T, paged.print=TRUE, fig.height=8, fig.width=12, fig.cap="Figure 9a. Non.parametric estimates of stacked transition probabilities inmediately after etering the state", fig.align="center"}
+#. Estimation of transition probabilities The cumulative hazard is one part of the story; it reflects the instantaneous
+#transition rate. But we also want to know the probability to be in each of the three states over time.
+
+#transition probabilities
+
+#By default, probtrans uses forward prediction,
+#which means that s is kept fixed and t > s. The argument predt specifies either s or t. In this
+#case (forward prediction) it specifies s. 
+
+#tem [[i]] contains predictions from state i. Each item of the list is a data frame with time containing all event
+#time points, and pstate1, pstate2, etc the probabilities of being in state 1, 2, etc, and finally
+#se1, se2 etc the standard errors of these estimated probabilities. The item [[3]] contains predictions Pˆ
+#3h(0, t) (we chose s = 0) starting from the RelDeath state, which is absorbing.
+
+#We use the probtrans function to compute the estimates.
+
+# The function probtrans() calculates the estimated transition probabilities, and optionally
+#the standard errors and/or the covariances of the transition probabilities. In the case of
+#non-parametric models, the user can choose between Greenwood or Aalen standard errors
+#in the method argument, in accordance with the choice in msfit(). Just as in the case of
+#the estimates of the hazards, the estimates of the transition probabilities themselves do not
+#depend on this choice.
+# The argument predt gives the starting time for prediction, that is, the starting time for
+#the calculation of the transition probabilities. Two directions of prediction have been implemented, which can be specified by the #direction argument: "forward" (the default) and "fixedhorizon". 
+#Any string starting with "fo" or "fi" is sufficient to distinguish between
+#the two options. The "forward" option means that the prediction is made from predt; in
+#P(s, t), time s remains fixed at the value predt, while time t varies from s to the last (possibly
+#censored) time point in the data. The "fixedhorizon" option means that the prediction is
+#made for predt; in P(s, t), time t remains fixed at the value predt and time s varies from 0
+#to predt. The use of the fixed horizon option will be illustrated in Section 4.1
+
+invisible(c("TOdavía no sé dónde poner el predt. Me pasó algo muy raro cuando lo puse en 0. er cómo interpretarlo"))
+
+pt0 <- probtrans(msf0, predt=0)[[2]]
+pt1 <- probtrans(msf1, predt=0)[[2]]
+
+pt0_ci95 <- probtrans(msf0, predt=0)
+pt1_ci95 <- probtrans(msf1, predt=0)
+#Error in IplusdA[from, from] <- IplusdA[from, from] - Haztt$dhaz[j] : 
+  #NAs no son permitidos en asignaciones subscritas
+# Era porque no existía un estado 1000 (predt=1), el que estaba haciendo alusión al estado y no al tiempo.
+
+#g. If the transition probabilities from
+#a particular starting state are required, the argument from must be added. These results
+#show how the prognosis of a patient depends on his/her starting state and on the moment
+#that is taken as the starting point for prediction.
+
+
+#cumulative hazards. Their incremnenst will be used in the Aalen-Johansen estimator
+par(mfrow=c(1,2))
+plot(pt0$time, pt0$pstate2, type="s", lwd=2, ylim= c(0,1),
+     xlab="Time since randomisation (years)", ylab="Probability")
+lines(pt1$time, pt1$pstate2, type="s", lwd=2, lty=3)
+legend("right", c("GP", "WE"), lwd=2, lty=1:2, bty="n")
+title(main="Aalen-Johansen \nP(Therapeutic Discharge|Admission)")
+plot(pt0$time, pt0$pstate3, type="s", lwd=2, ylim= c(0,1),
+     xlab="Time since randomisation (years)", ylab="Probability")
+lines(pt1$time, pt1$pstate3, type="s", lwd=2, lty=3)
+legend("right", c("GP", "WE"), lwd=2, lty=1:2, bty="n")
+title(main="Aalen-Johansen \nP(Readmission|Admission)")
+
+#LMpt0 <- LMAJ(msdata=pr0, s=1000, from=2)
+#LMpt1 <- LMAJ(msdata=pr1, s=1000, from=2)
+```
+
+<br>
+
+This figure is not quite interpretable since models do not include the effect of covariates.
+
+<br>
+
+```{r probs,eval=F, echo=T, paged.print=TRUE, fig.height=8, fig.width=12, fig.cap="Figure 9a. Non.parametric estimates of stacked transition probabilities inmediately 1 day admitted", fig.align="center"}
+
+```
+
+```{r probtrans_ci95,eval=F, echo=T, paged.print=TRUE, fig.height=13, fig.width=10, fig.cap="Figure 8a. Aalen-Johansen estimator with confidence intervals", fig.align="center"}                                 
+
+if (no_mostrar==1){
+par(mfrow=c(2,2))
+plot(simdatprob[[1]]$time,simdatprob[[1]]$pstate1,type="l",ylim=c(0,1),
+xlab="time",ylab="transition prob")
+lines(simdatprob[[1]]$time,simdatprob[[1]]$pstate1+1.96*simdatprob[[1]])
+lines(simdatprob[[1]]$time,simdatprob[[1]]$pstate1-1.96*simdatprob[[1]])
+title("P(staying healthy), no transition")
+plot(simdatprob[[1]]$time,simdatprob[[1]]$pstate2,type="l",ylim=c(0,1),xlab="time",ylab="transition prob") lines(simdatprob[[1]]$time,simdatprob[[1]]$pstate2+1.96*simdatprob[[1]])
+lines(simdatprob[[1]]$time,simdatprob[[1]]$pstate2-1.96*simdatprob[[1]])
+title("P(having disease), transition 0-1, not 1-2")
+plot(simdatprob[[1]]$time,simdatprob[[1]]$pstate3,type="l",ylim=c(0,1),xlab="time",ylab="transition prob") lines(simdatprob[[1]]$time,simdatprob[[1]]$pstate3+1.96*simdatprob[[1]])
+lines(simdatprob[[1]]$time,simdatprob[[1]]$pstate3-1.96*simdatprob[[1]])
+title("P(Death), transitions 0-2 or 0-1-2")
+plot(simdatprob[[2]]$time,simdatprob[[2]]$pstate3,type="l",ylim=c(0,1),xlab="time",ylab="transition prob") lines(simdatprob[[2]]$time,simdatprob[[2]]$pstate3+1.96*simdatprob[[2]])
+lines(simdatprob[[2]]$time,simdatprob[[2]]$pstate3-1.96*simdatprob[[2]])
+title("P(Death|Sick) - transition 1-2")
+}
+
+plot(pt0_ci95[[1]]$time, pt0_ci95[[1]]$pstate1, type="l",ylim=c(0,1), xlab="Years", ylab="Transition Probabilities")
+lines(pt0_ci95[[1]]$time,pt0_ci95[[1]]$pstate1+1.96*pt0_ci95[[1]]$pstate1)
+lines(pt0_ci95[[1]]$time,pt0_ci95[[1]]$pstate1-1.96*pt0_ci95[[1]]$pstate1)
+title("P(staying healthy), no transition")
+
+
+```
+<br>
+
+### Calculations of State Occupancy Probabilities
 
 
 
