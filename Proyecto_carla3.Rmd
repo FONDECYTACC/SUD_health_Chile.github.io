@@ -223,8 +223,9 @@ library(mstate)
 library(flexsurv)
 library(muhaz)
 library(Metrics)
+#library(mstateutils)
 #remotes::install_github("chjackson/flexsurv-dev", upgrade = "never")
-
+#devtools::install_github("stulacy/multistateutils", build_vignettes=TRUE, upgrade = "never")
 
 if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
 #install.packages( repos = "https://radiant-rstats.github.io/minicran/")
@@ -2295,9 +2296,11 @@ grViz("digraph flowchart {
 
 ### Incidence rate
 
-To describe the incidence rate of SUD treatment readmissions by type of health conditions, we recoded the different variables of interest into pairs of different groups by each variable.
+To describe the incidence rate of SUD treatment readmissions by type of program, we recoded the different variables of interest into pairs of different groups by each variable.
 
-```{r fig5a_survplot_tipo_programa, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 5a. Cum. Hazards to Experience Readmission to SUD Treatment, Stratified by Type of Program", error=T, fig.height=10, fig.width=10}
+<br>
+
+```{r fig5a_survplot_tipo_programa, dpi = 320, warning=F,message=F,fig.align='center', fig.cap="Figure 5a. Cum. Hazards to Experience Readmission to SUD Treatment, Stratified by Type of Program", error=T, fig.height=10, fig.width=10}
 CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr<-
 CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados %>%  
   dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("row","person_years")], by="row") %>% 
@@ -2424,7 +2427,7 @@ The incidence rate of readmission was `r round(as.numeric(irrs_tipo_de_programa_
 
 <br>
 
-```{r fig5b_survplot_tipo_programa, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 5b. Cum. Hazards to Experience Readmission to SUD Treatment, Stratified by Treatment Outcome", error=T,fig.height=8}
+```{r fig5b_survplot_tipo_programa, dpi = 320, warning=F,message=F,fig.align='center', fig.cap="Figure 5b. Cum. Hazards to Experience Readmission to SUD Treatment, Stratified by Treatment Outcome", error=T,fig.height=8}
 library(survminer)
 comp_status_fit<- survfit(Surv(outcome_to_readmission, readmission==1) ~strata(comp_status), 
             data= CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr,
@@ -2512,11 +2515,11 @@ Excluding censored cases, the incidence rate of readmission was not significantl
 
 #### Parametric regression, Interaction of Type of Program and Treatment Outcome on Readmission
 
-To estimate the risk and the time to treatment readmission by type of treatment program (i.e, women-only and mixed-gender treatment programs) conditioned by previous treatment outcome (i.e., administrative discharge, early and late drop-outs, therapeutic discharge), we chose the parametric distribution that resembles most to the Kaplan-meier survival curve among the intercept-only models.
+To estimate the risk and the time to treatment readmission by type of treatment program (i.e, women-only and mixed-gender treatment programs) conditioned by previous treatment outcome (i.e., administrative discharge, early and late drop-outs, therapeutic discharge), we chose the parametric distribution that resembles most to the Kaplan-Meier survival curve among the intercept-only models.
 
 <br>
 
-```{r fit_surv_parametric_simple_model,dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 6. Comparison of parametric models on intercept-only models vs. KM survival curves", error=T,fig.height=8}
+```{r fit_surv_parametric_simple_model,dpi = 320, warning=F,message=F,fig.align='center', fig.cap="Figure 6. Comparison of parametric models on intercept-only models vs. KM survival curves", error=T,fig.height=8}
 #Revisión de los casos
 #print(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr[,c("comp_status", "outcome_to_readmission", "readmission")],10)
 #_#_#_#_#_#_#_#_#_#_#_
@@ -2532,7 +2535,7 @@ fitform0a <- Surv(outcome_to_readmission, readmission==1) ~  1
 
 fitform0b <- Surv(outcome_to_readmission, readmission==1) ~  edad_al_ing_grupos+ escolaridad_rec+ sus_principal_mod+ 
          freq_cons_sus_prin+ compromiso_biopsicosocial+ tenencia_de_la_vivienda_mod+ 
-         num_otras_sus_mod+ numero_de_hijos_mod_rec+ tipo_de_plan_res+ tipo_de_programa_2*comp_status
+         num_otras_sus_mod+ numero_de_hijos_mod_rec+ tipo_de_plan_res+ tipo_de_programa_2*comp_status+time_to_outcome 
 
 #_#_#_#_#_#_#_#_#_#_#
 #_#_#_#_#_#_#_#_#_#_#
@@ -2540,27 +2543,62 @@ fitform0b <- Surv(outcome_to_readmission, readmission==1) ~  edad_al_ing_grupos+
 for (i in 1:nrow(dists_simple_surv)){  
 model<-paste0("mod_surv_simple_",dists_simple_surv[i,"model"])
   flexsurvreg(formula=fitform0a, 
-  # si habían tiempos 0, los cambié por .000001 para que no hayan casos absolutamente continuos
-  # saqué los casos censurados
+  # IF time 0, then its changed by .000001 to avoid having continous transitions
+  # Excluded censored cases at outcomes
               data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr, comp_status != "Censored") %>% dplyr::mutate(outcome_to_readmission=ifelse(outcome_to_readmission==0,.000001,outcome_to_readmission)),
               dist = dists_simple_surv[i,"model"]) %>% 
     assign(model,.,envir=,.GlobalEnv)
-  # crear índices de ajuste
-    fit_flexsurvreg0<-rbind(fit_flexsurvreg0,
+  
+  #Generate databases
+ fitted_flexsurvreg0<-  rbind(fitted_flexsurvreg0,cbind.data.frame(dist=rep(dists_simple_surv[i,"formal"],),
+                                                                   data.table::data.table(summary(get(model), tidy=T)))) 
+  # Generate fit indices
+  fit_flexsurvreg0<-rbind(fit_flexsurvreg0,
      cbind(dist= dists_simple_surv[i,"formal"], 
        AIC= get(model)$AIC,
        Llik= get(model)$loglik,
        npars= get(model)$npars,
        pars= get(model)$AIC/2 + get(model)$loglik,
        BIC= get(model)$loglik+ log(get(model)$npars)* (get(model)$AIC/2 + get(model)$loglik)
+  #the BIC may not be appropriate if none of the candidate models are considered to be close to the ‘true’ model.     
       )
   )
 }
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
+# KAPLAN-MEIER ESTIMATES
 mod_surv_simple_km <-survfit(Surv(outcome_to_readmission, readmission==1)~ 1,
                     data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr, comp_status != "Censored",
                                   conf.type = "log-log") %>% dplyr::mutate(outcome_to_readmission=ifelse(outcome_to_readmission==0,.000001,outcome_to_readmission)))
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+#calculate RMSE
+mod_surv_simple_km_df <- mod_surv_simple_km %>% fortify
+
+#Calculate error
+
+fitted_flexsurvreg0_binned_mix<-
+fitted_flexsurvreg0 %>% 
+  dplyr::left_join(mod_surv_simple_km_df[,c("time","surv")], by="time")
+
+db_for_apply_rmse0<-
+  data.frame(dist=rep(c("Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
+                "Generalized gamma", "Lognormal", "Exponential"),1))
+   
+rmse_comp_fits_0<- data.frame()
+for(i in 1:nrow(db_for_apply_rmse0)){
+rmse<- Metrics::rmse(subset(fitted_flexsurvreg0_binned_mix[complete.cases(fitted_flexsurvreg0_binned_mix),], 
+                     dist==db_for_apply_rmse0[i,"dist"])$est,
+              subset(fitted_flexsurvreg0_binned_mix[complete.cases(fitted_flexsurvreg0_binned_mix),], 
+                     dist==db_for_apply_rmse0[i,"dist"])$surv)
+
+rmse_comp_fits_0<- rbind(rmse_comp_fits_0,cbind(dist=db_for_apply_rmse0[i,"dist"],
+                                                  rmse=rmse))
+}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
 #layout(matrix(1:8, nc = 2, byrow = F))
   plot(mod_surv_simple_km, col="red", xlim=c(1,11),ylim=c(.4,1),conf.int = F)
@@ -2587,34 +2625,46 @@ mod_surv_simple_km <-survfit(Surv(outcome_to_readmission, readmission==1)~ 1,
 tt15<-seq(0,15,1/12)    
 newtime = seq(from=1/24, to= 15, by=1/24)
 
-dist_w_best_fit<-
-fit_flexsurvreg0%>%arrange(AIC)%>%dplyr::left_join(dists_simple_surv, by=c("dist"="formal"))%>%slice(1)%>%dplyr::select(model)%>%as.character()
-
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
 dt_coefs_simple_surv<-
 data.frame(
-real_vars=c("tipo_de_programa_2Women specific", "edad_al_ing_grupos.L", "edad_al_ing_grupos.Q", "edad_al_ing_grupos.C","escolaridad_rec.L", "escolaridad_rec.Q", "sus_principal_modCocaine hydrochloride", "sus_principal_modCocaine paste", "sus_principal_modMarijuana", "sus_principal_modOther",  "freq_cons_sus_prin.L", "freq_cons_sus_prin.Q", "freq_cons_sus_prin.C", "freq_cons_sus_prin^4", "compromiso_biopsicosocial.L", "compromiso_biopsicosocial.Q", "tenencia_de_la_vivienda_modOthers", "tenencia_de_la_vivienda_modOwner/Transferred dwellings/Pays Dividends", "tenencia_de_la_vivienda_modRenting", "tenencia_de_la_vivienda_modStays temporarily with a relative", "num_otras_sus_mod.L", "num_otras_sus_mod.Q", "numero_de_hijos_mod_recYes", "tipo_de_plan_resResidential", "comp_statusDischarge without clinical advice", "tipo_de_programa_2Women specific:comp_statusDischarge without clinical advice"),
- formal_vars= c('Type of program-Women specific', 'Age at admission to treatment, grouped- 30-39', 'Age at admission to treatment, grouped- 40-49', 'Age at admission to treatment, grouped- 50+', 'Ed. Attainment- Completed high school or less', 'Ed. Attainment- More than high school', 'Primary or main substance- Cocaine hydrochloride', 'Primary or main substance- Cocaine paste', 'Primary or main substance- Marijuana', 'Primary or main substance- Other', 'Consumption frequency of primary or main substance- 2 to 3 days a week', 'Consumption frequency of primary or main substance- 4 to 6 days a week', 'Consumption frequency of primary or main substance- 1 day a week or more', 'Consumption frequency of primary or main substance- Daily', 'Biopsychosocial involvement- 2-Moderate', 'Biopsychosocial involvement- 3-Severe', 'Tenure status of households- Others', 'Tenure status of households- Owner/Transferred dwellings/Pays Dividends', 'Tenure status of households- Renting', 'Tenure status of households- Stays temporarily with a relative', 'Co-occurring SUD- One additional substance', 'Co-occurring SUD- More than one additional substance', 'Have children (Dichotomized)- Yes', 'Setting of Treatment- Residential', 'Cause of Discharge- W/o clinical advice', 'Type of Program x Cause of Discharge')#'Educational Attainment', tipo_de_plan_resResidential
+real_vars=c("tipo_de_programa_2Women specific", "edad_al_ing_grupos.L", "edad_al_ing_grupos.Q", "edad_al_ing_grupos.C","escolaridad_rec.L", "escolaridad_rec.Q", "sus_principal_modCocaine hydrochloride", "sus_principal_modCocaine paste", "sus_principal_modMarijuana", "sus_principal_modOther",  "freq_cons_sus_prin.L", "freq_cons_sus_prin.Q", "freq_cons_sus_prin.C", "freq_cons_sus_prin^4", "compromiso_biopsicosocial.L", "compromiso_biopsicosocial.Q", "tenencia_de_la_vivienda_modOthers", "tenencia_de_la_vivienda_modOwner/Transferred dwellings/Pays Dividends", "tenencia_de_la_vivienda_modRenting", "tenencia_de_la_vivienda_modStays temporarily with a relative", "num_otras_sus_mod.L", "num_otras_sus_mod.Q", "numero_de_hijos_mod_recYes", "tipo_de_plan_resResidential", "comp_statusDischarge without clinical advice", "tipo_de_programa_2Women specific:comp_statusDischarge without clinical advice","time_to_outcome"),
+ formal_vars= c('Type of program-Women specific', 'Age at admission to treatment, grouped- 30-39', 'Age at admission to treatment, grouped- 40-49', 'Age at admission to treatment, grouped- 50+', 'Ed. Attainment- Completed high school or less', 'Ed. Attainment- More than high school', 'Primary or main substance- Cocaine hydrochloride', 'Primary or main substance- Cocaine paste', 'Primary or main substance- Marijuana', 'Primary or main substance- Other', 'Consumption frequency of primary or main substance- 2 to 3 days a week', 'Consumption frequency of primary or main substance- 4 to 6 days a week', 'Consumption frequency of primary or main substance- 1 day a week or more', 'Consumption frequency of primary or main substance- Daily', 'Biopsychosocial involvement- 2-Moderate', 'Biopsychosocial involvement- 3-Severe', 'Tenure status of households- Others', 'Tenure status of households- Owner/Transferred dwellings/Pays Dividends', 'Tenure status of households- Renting', 'Tenure status of households- Stays temporarily with a relative', 'Co-occurring SUD- One additional substance', 'Co-occurring SUD- More than one additional substance', 'Have children (Dichotomized)- Yes', 'Setting of Treatment- Residential', 'Cause of Discharge- W/o clinical advice', 'Type of Program x Cause of Discharge', 'Days in baseline treatment')#'Educational Attainment', tipo_de_plan_resResidential
 )
 
-flexsurv_1<-
+flexsurv_1a<-
 flexsurvreg(formula=fitform0b, 
   # si habían tiempos 0, los cambié por .000001 para que no hayan casos absolutamente continuos
   # saqué los casos censurados
               data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr, comp_status != "Censored") %>% dplyr::mutate(outcome_to_readmission=ifelse(outcome_to_readmission==0,.000001,outcome_to_readmission)),
-              dist = dist_w_best_fit
+              dist = "Gompertz"
     ) 
+flexsurv_1b<-
+flexsurvreg(formula=fitform0b, 
+  # si habían tiempos 0, los cambié por .000001 para que no hayan casos absolutamente continuos
+  # saqué los casos censurados
+              data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr, comp_status != "Censored") %>% dplyr::mutate(outcome_to_readmission=ifelse(outcome_to_readmission==0,.000001,outcome_to_readmission)),
+              dist = "weibull"
+    ) 
+
 #effect = "distp") # distp for distribution parameters (name can be changed)
 #tipo_de_programa_2Women specific:comp_statusDischarge without clinical advice
 
-note_flexsurv_1 <-
-  paste0("N= ",format(as.numeric(flexsurv_1$N), big.mark=","),"; Events= ",format(as.numeric(flexsurv_1$events), big.mark=","),"; Censored= ",format(as.numeric(flexsurv_1$N - flexsurv_1$events), big.mark=","),"; Time at risk= ",format(as.numeric(flexsurv_1$trisk), big.mark=","),"; Df= ",format(as.numeric(flexsurv_1$npars), big.mark=","), "; AIC= ",format(as.numeric(flexsurv_1$AIC), big.mark=","))
+note_flexsurv_1a <-
+  paste0("N= ",format(as.numeric(flexsurv_1a$N), big.mark=","),"; Events= ",format(as.numeric(flexsurv_1a$events), big.mark=","),"; Censored= ",format(as.numeric(flexsurv_1a$N - flexsurv_1a$events), big.mark=","),"; Time at risk= ",format(as.numeric(flexsurv_1a$trisk), big.mark=","),"; Df= ",format(as.numeric(flexsurv_1a$npars), big.mark=","), "; AIC= ",format(as.numeric(flexsurv_1a$AIC), big.mark=","))
+note_flexsurv_1b <-
+  paste0("N= ",format(as.numeric(flexsurv_1b$N), big.mark=","),"; Events= ",format(as.numeric(flexsurv_1b$events), big.mark=","),"; Censored= ",format(as.numeric(flexsurv_1b$N - flexsurv_1b$events), big.mark=","),"; Time at risk= ",format(as.numeric(flexsurv_1b$trisk), big.mark=","),"; Df= ",format(as.numeric(flexsurv_1b$npars), big.mark=","), "; AIC= ",format(as.numeric(flexsurv_1b$AIC), big.mark=","))
 ```
+<br>
+
+We ended choosing the Gompertz (AIC= `r fit_flexsurvreg0%>%arrange(AIC) %>% dplyr::filter(dist=="Gompertz") %>% dplyr::select("AIC") %>% as.numeric() %>% format(big.mark=",")`; RMSE= `r rmse_comp_fits_0 %>% dplyr::arrange("rmse") %>% dplyr::filter(dist=="Gompertz") %>% dplyr::select("rmse") %>% as.numeric() %>% round(4) %>% format(big.mark=",")`) & Weibull (AIC= `r fit_flexsurvreg0%>%arrange(AIC) %>% dplyr::filter(dist=="Weibull (PH)") %>% dplyr::select("AIC") %>% as.numeric() %>% format(big.mark=",")`; RMSE= `r rmse_comp_fits_0 %>% dplyr::arrange("rmse") %>% dplyr::filter(dist=="Weibull (PH)") %>% dplyr::select("rmse") %>% as.numeric() %>% round(4) %>% format(big.mark=",")`) distributions, because of its lower errors. The estimated model included covariates of interest, plus the interaction between Type of Program and Cause of Discharge of the baseline treatment and the Days in the baseline treatment.
+
+<br>
 
 ```{r fit_surv_parametric_simple_model2}
 #<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
-
+coefs_1a<-
 data.table::data.table(round(exp(flexsurv_1$res),2)[,1:3],keep.rownames = T) %>% 
    dplyr::left_join(dt_coefs_simple_surv, by=c("rn"="real_vars")) %>% 
   #dplyr::mutate(p.value=ifelse(p.value<.001,"<0.001",as.character(sprintf("%1.3f",p.value)))) %>% 
@@ -2622,20 +2672,34 @@ data.table::data.table(round(exp(flexsurv_1$res),2)[,1:3],keep.rownames = T) %>%
                 conf.high=sprintf("%1.2f",`U95%`),
                 statistic=sprintf("%1.2f",est),
                 `CI 95%`=paste0(conf.low,", ",conf.high)) %>% 
-  dplyr::filter(!rn %in% c("shape","scale")) %>% 
-  dplyr::select(formal_vars, statistic, `CI 95%`) %>% 
+  dplyr::filter(!rn %in% c("shape","scale","rate")) %>% 
+  dplyr::select(formal_vars, statistic, `CI 95%`) 
+
+coefs_1b<-
+data.table::data.table(round(exp(flexsurv_1$res),2)[,1:3],keep.rownames = T) %>% 
+   dplyr::left_join(dt_coefs_simple_surv, by=c("rn"="real_vars")) %>% 
+  #dplyr::mutate(p.value=ifelse(p.value<.001,"<0.001",as.character(sprintf("%1.3f",p.value)))) %>% 
+  dplyr::mutate(conf.low=sprintf("%1.2f",`L95%`),
+                conf.high=sprintf("%1.2f",`U95%`),
+                statistic=sprintf("%1.2f",est),
+                `CI 95%`=paste0(conf.low,", ",conf.high)) %>% 
+  dplyr::filter(!rn %in% c("shape","scale","rate")) %>% 
+  dplyr::select(formal_vars, statistic, `CI 95%`) 
+
+dplyr::left_join(coefs_1a,coefs_1b,by="formal_vars")%>% 
     knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
-               caption=paste0("Table 5. Coefficients, ",fit_flexsurvreg0%>%arrange(AIC)%>%dplyr::left_join(dists_simple_surv, by=c("dist"="formal"))%>%slice(1) %>% dplyr::select(1)," parametric distribution"),
-               col.names = c("Term","Hazard","CI 95%"),
+               caption=paste0("Table 5. Coefficients of selected parametric distributions"),
+               col.names = c("Term","Hazard","CI 95%","Hazard","CI 95%"),
                align= c("l",rep('c', 6)))%>%
-  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size=11)%>%
-  kableExtra::add_footnote(note_flexsurv_1, notation = "none") %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size=12)%>%
+  kableExtra::add_header_above(c(" ", "Gompertz" = 2, "Weibull (AFT)" = 2),bold=T) %>% 
+  kableExtra::add_footnote(c(paste0("Gompertz: ",note_flexsurv_1a),paste0("Weibull (AFT): ",note_flexsurv_1a)), notation = "none") %>%
   kableExtra::scroll_box(width = "100%", height = "350px")
 #</div>
 ```
 
 
-```{r predict_surv_simple_model, eval=F, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 7. Survival curves", error=T,fig.width=8}
+```{r predict_surv_simple_model, eval=F, dpi = 320, warning=F,message=F,fig.align='center', fig.cap="Figure 7. Survival curves", error=T,fig.width=8}
 
 #"baseline.real" which transforms the baseline distribution parameters to the real number line used for estimation.
 #"coefs.exp" which exponentiates the covariate effects.
@@ -2708,7 +2772,7 @@ We estimated the cumulative incidence (risk over time) of each outcome of treatm
 <br>
 
 <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:300px; overflow-x: scroll; width:100%">
-```{r competing_risks, dpi = 96, warning=F, message=F, error=T, fig.show='hide'}
+```{r competing_risks, dpi = 320, warning=F, message=F, error=T, fig.show='hide'}
 time_aft_inc_rate<-Sys.time()
 
 paste0("Time taken in process: ");time_aft_inc_rate-time_bef_inc_rate
@@ -2919,7 +2983,7 @@ timepoints_cuminc_comp_table[,c(1,2,5)] %>%
 
 <br>
 
-```{r competing_risks1.2, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 6. Cum. Incidence of Treatment Outcome, Grouped by Type of Program", error=T, fig.height=10, fig.width= 10}
+```{r competing_risks1.2, dpi = 320, warning=F,message=F,fig.align='center', fig.cap="Figure 6. Cum. Incidence of Treatment Outcome, Grouped by Type of Program", error=T, fig.height=10, fig.width= 10}
 
 plot_incidence_cum<-
 as.data.table(cuminc_comp_status_0$ci) %>% 
@@ -3036,10 +3100,9 @@ data.table::data.table(summary(resCrrRelByDis)$conf.int, keep.rownames = T) %>%
 #</div>
 ```
 
-
 <br>
 
-```{r competing_risks1.3, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 7. Residuals against failure time of the covariates", error=T,fig.width=10, fig.height=10}
+```{r competing_risks1.3, dpi = 320, warning=F,message=F,fig.align='center', fig.cap="Figure 7. Residuals against failure time of the covariates", error=T,fig.width=10, fig.height=10}
 time_aft_cmprsk<-Sys.time()
 
 #https://rpubs.com/kaz_yos/cmprsk2
@@ -3170,6 +3233,8 @@ End of study: Since calendar time restricts observation to events that occurred 
 Loss to follow-up: The person has left the study, e.g. because of migration or study fatigue. Hemay have experienced the event already, but this information is missing.
 Competing risk: Another event has occurred, which prevents occurrence of the event ofinterest.
 --->
+
+The stacked format of the data allows to calculate hazards very simply by each transition defined earlier (`trans`).
 
 <br>
 
@@ -3818,7 +3883,7 @@ options(warn=0)
 
 <br>
 
-Additionally, we compared the hazards of these distributions with non-parametric techniques, using a smoothed hazard function from right-censored data using kernel-based methods (as Incerti shows in his [blog](https://devinincerti.com/2019/06/18/parametric_survival.html)). The confidence interval around the predicted hazard function is estimated using bootstrapping methods of `r n_iter` iterations. Confidence intervals are obtained by sampling randomly from the asymptotic normal distribution of the maximum likelihood estimates and then taking quantiles (see, e.g. Mandel (2013)).
+Additionally, we compared the hazards of these distributions with non-parametric techniques, using a smoothed hazard function from right-censored data using kernel-based methods (as Incerti shows in his [blog](https://devinincerti.com/2019/06/18/parametric_survival.html)). The confidence interval around the predicted hazard function is estimated using bootstrapping methods of `r format(n_iter, big.mark=",")` iterations. Confidence intervals are obtained by sampling randomly from the asymptotic normal distribution of the maximum likelihood estimates and then taking quantiles (see, e.g. Mandel (2013)).
 
 <br>
 
@@ -3904,6 +3969,7 @@ for (y in 1:n_trans){
                            npars= get(mod_flexsurv)[[y]]$npars,
                            pars= get(mod_flexsurv)[[y]]$AIC/2 + get(mod_flexsurv)[[y]]$loglik,
                            BIC= get(mod_flexsurv)[[y]]$loglik+ log(get(mod_flexsurv)[[y]]$N)* (get(mod_flexsurv)[[y]]$AIC/2 + get(mod_flexsurv)[[y]]$loglik)
+  #the BIC may not be appropriate if none of the candidate models are considered to be close to the ‘true’ model.
                            )
                       )
     }
@@ -4037,6 +4103,7 @@ for (y in 1:n_trans){
                            npars= get(mod_flexsurv)[[y]]$npars,
                            pars= get(mod_flexsurv)[[y]]$AIC/2 + get(mod_flexsurv)[[y]]$loglik,
                            BIC= get(mod_flexsurv)[[y]]$loglik+ log(get(mod_flexsurv)[[y]]$N)* (get(mod_flexsurv)[[y]]$AIC/2 + get(mod_flexsurv)[[y]]$loglik)
+  #the BIC may not be appropriate if none of the candidate models are considered to be close to the ‘true’ model.
                            )
                       )
     }
@@ -4155,7 +4222,7 @@ dev.off()
 }
 ```
 
-There was very little to choose between the distributions, but we aimed to choose the distribution that achieve the best balance of a reasonable fit to the observed data and a sensible extrapolation. Additionally, for the first transitions. A Gompertz was chosen for the first transition (Mean RMSE= `r round(subset(rmse_comp_fits_2b, dist=="Gompertz" & trans==1)["mean_rmse"],4)`; AIC= `r round(as.numeric(subset(fit_flexsurvreg2b, dist=="Gompertz" & trans==1)["AIC"]),2)`), despite a Generalized gamma distribution had lower AIC (AIC= `r round(as.numeric(subset(fit_flexsurvreg2b, dist=="Generalized gamma" & trans==1)["AIC"]),2)`). The distribution for the second transition was Generalized gamma (Mean RMSE= `r round(subset(rmse_comp_fits_2b, dist=="Generalized gamma" & trans==2)["mean_rmse"],4)`; AIC= `r round(as.numeric(subset(fit_flexsurvreg2b, dist=="Generalized gamma" & trans==2)["AIC"]),2)`). For the third transition, we decided to choose Generalized gamma because it shows a lower AIC (Mean RMSE= `r round(subset(rmse_comp_fits_2b, dist=="Generalized gamma" & trans==3)["mean_rmse"],4)`; AIC= `r round(as.numeric(subset(fit_flexsurvreg2b, dist=="Generalized gamma" & trans==3)["AIC"]),2)`), despite Log-logistic had lower indices (AIC=  `r round(as.numeric(subset(fit_flexsurvreg2b, dist=="Log-logistic" & trans==1)["AIC"]),2)`).
+There was very little to choose between the distributions, but we aimed to choose the distribution that achieve the best balance of a reasonable fit to the observed data and a sensible extrapolation. Additionally, for the first transitions. A Gompertz was chosen for the first transition (Mean RMSE= `r round(subset(rmse_comp_fits_2b, dist=="Gompertz" & trans==1)["mean_rmse"],4)`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b, dist=="Gompertz" & trans==1)["AIC"]),big.mark=",")`), despite a Generalized gamma distribution had lower AIC (AIC= `r format(as.numeric(subset(fit_flexsurvreg2b, dist=="Generalized gamma" & trans==1)["AIC"]),big.mark=",")`). The distribution for the second transition was Generalized gamma (Mean RMSE= `r round(subset(rmse_comp_fits_2b, dist=="Generalized gamma" & trans==2)["mean_rmse"],4)`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b, dist=="Generalized gamma" & trans==2)["AIC"]),big.mark=",")`). For the third transition, we decided to choose Generalized gamma because it shows a lower AIC (Mean RMSE= `r round(subset(rmse_comp_fits_2b, dist=="Generalized gamma" & trans==3)["mean_rmse"],4)`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b, dist=="Generalized gamma" & trans==3)["AIC"]),big.mark=",")`), despite Log-logistic had lower indices (AIC=  `r format(as.numeric(subset(fit_flexsurvreg2b, dist=="Log-logistic" & trans==1)["AIC"]),big.mark=",")`).
  
 <!---
 fit_flexsurvreg2b %>% group_by(trans) %>% 
@@ -4167,6 +4234,11 @@ rmse_comp_fits_2b %>% arrange(trans, mean_rmse) %>% data.frame() %>% tail(50)
 <br>
 
 ### Cumulative Hazard - Non-parametric vs. Parametric
+
+
+Cumulative baseline hazard can be estimated nonparametrically through Breslow estimator.
+
+<br>
 
 ```{r msfit,eval=T, echo=T, paged.print=TRUE, fig.height=8, fig.width=12, fig.cap="Figure 11a. Estimate of Cumulative Hazards (Semi-Markov), Stratified by Program", fig.align="center"}
 if(no_mostrar==1){
@@ -4199,6 +4271,7 @@ c1 <- coxph(Surv(time, status) ~ strata(trans),
 
 #The alternative is to first apply the msfit function, which we also need when computing the transition
 #probabilities
+# piece-wise constant estimates - because is cox
 msf0 <- msfit(object = c0, trans = mat_3_states)
 msf1 <- msfit(object = c1,  trans = mat_3_states)
 #Haz contains the estimated cumulative hazard for each of the transitions for the particular patient
@@ -4361,6 +4434,10 @@ dev.off()
 
 ### Transition Probabilites
 
+We also want to know the probability to be in each of the three states over time, not only the instantaneous transition rate reflected by the cumulative hazard.
+
+<br>
+
 ```{r probtrans,eval=T, echo=T, paged.print=TRUE, fig.height=8, fig.width=12, fig.cap="Figure 11a. Non.parametric estimates of stacked transition probabilities inmediately after etering the state", fig.align="center"}
 #. Estimation of transition probabilities The cumulative hazard is one part of the story; it reflects the instantaneous
 #transition rate. But we also want to know the probability to be in each of the three states over time.
@@ -4392,6 +4469,11 @@ dev.off()
 #censored) time point in the data. The "fixedhorizon" option means that the prediction is
 #made for predt; in P(s, t), time t remains fixed at the value predt and time s varies from 0
 #to predt. The use of the fixed horizon option will be illustrated in Section 4.1
+
+#https://www.mrc-bsu.cam.ac.uk/wp-content/uploads/2017/10/multistate_enar_webinar.pdf
+#Nonparametric: Aalen-Johansen estimator
+#given fitted hazard increments Q(ti)dt on grid of survival times:
+#probtrans in mstate
 
 invisible(c("TOdavía no sé dónde poner el predt. Me pasó algo muy raro cuando lo puse en 0. er cómo interpretarlo"))
 
@@ -4429,27 +4511,29 @@ title(main="Aalen-Johansen \nP(Readmission|Admission)")
 
 <br>
 
-This figure is not quite interpretable since models do not include the effect of covariates.
+This figure is not quite interpretable since models do not include the effect of covariates. In semi-Markov models, solving the Kolmogorov forward equation numerically is not feasible because the transition is no longer a deterministic function of t, depending on the transition history.
 
 <br>
 
 ```{r probtrans_ci95,eval=F, echo=T, paged.print=TRUE, fig.height=13, fig.width=10, fig.cap="Figure 12a. Aalen-Johansen estimator with confidence intervals", fig.align="center"}                                 
-
 if (no_mostrar==1){
 par(mfrow=c(2,2))
-plot(simdatprob[[1]]$time,simdatprob[[1]]$pstate1,type="l",ylim=c(0,1),
+plot(pt0_ci95[[1]]$time,pt0_ci95[[1]]$pstate1,type="l",ylim=c(0,1),
 xlab="time",ylab="transition prob")
-lines(simdatprob[[1]]$time,simdatprob[[1]]$pstate1+1.96*simdatprob[[1]])
-lines(simdatprob[[1]]$time,simdatprob[[1]]$pstate1-1.96*simdatprob[[1]])
+lines(pt0_ci95[[1]]$time,pt0_ci95[[1]]$pstate1+1.96*pt0_ci95[[1]])
+lines(pt0_ci95[[1]]$time,pt0_ci95[[1]]$pstate1-1.96*pt0_ci95[[1]])
 title("P(staying healthy), no transition")
-plot(simdatprob[[1]]$time,simdatprob[[1]]$pstate2,type="l",ylim=c(0,1),xlab="time",ylab="transition prob") lines(simdatprob[[1]]$time,simdatprob[[1]]$pstate2+1.96*simdatprob[[1]])
-lines(simdatprob[[1]]$time,simdatprob[[1]]$pstate2-1.96*simdatprob[[1]])
+plot(pt0_ci95[[1]]$time,pt0_ci95[[1]]$pstate2,type="l",ylim=c(0,1),xlab="time",ylab="transition prob")
+lines(pt0_ci95[[1]]$time,pt0_ci95[[1]]$pstate2+1.96*pt0_ci95[[1]])
+lines(pt0_ci95[[1]]$time,pt0_ci95[[1]]$pstate2-1.96*pt0_ci95[[1]])
 title("P(having disease), transition 0-1, not 1-2")
-plot(simdatprob[[1]]$time,simdatprob[[1]]$pstate3,type="l",ylim=c(0,1),xlab="time",ylab="transition prob") lines(simdatprob[[1]]$time,simdatprob[[1]]$pstate3+1.96*simdatprob[[1]])
-lines(simdatprob[[1]]$time,simdatprob[[1]]$pstate3-1.96*simdatprob[[1]])
+plot(pt0_ci95[[1]]$time,pt0_ci95[[1]]$pstate3,type="l",ylim=c(0,1),xlab="time",ylab="transition prob")
+lines(pt0_ci95[[1]]$time,pt0_ci95[[1]]$pstate3+1.96*pt0_ci95[[1]])
+lines(pt0_ci95[[1]]$time,pt0_ci95[[1]]$pstate3-1.96*pt0_ci95[[1]])
 title("P(Death), transitions 0-2 or 0-1-2")
-plot(simdatprob[[2]]$time,simdatprob[[2]]$pstate3,type="l",ylim=c(0,1),xlab="time",ylab="transition prob") lines(simdatprob[[2]]$time,simdatprob[[2]]$pstate3+1.96*simdatprob[[2]])
-lines(simdatprob[[2]]$time,simdatprob[[2]]$pstate3-1.96*simdatprob[[2]])
+plot(pt0_ci95[[2]]$time,pt0_ci95[[2]]$pstate3,type="l",ylim=c(0,1),xlab="time",ylab="transition prob")
+lines(pt0_ci95[[2]]$time,pt0_ci95[[2]]$pstate3+1.96*pt0_ci95[[2]])
+lines(pt0_ci95[[2]]$time,pt0_ci95[[2]]$pstate3-1.96*pt0_ci95[[2]])
 title("P(Death|Sick) - transition 1-2")
 }
 
@@ -4457,12 +4541,123 @@ plot(pt0_ci95[[1]]$time, pt0_ci95[[1]]$pstate1, type="l",ylim=c(0,1), xlab="Year
 lines(pt0_ci95[[1]]$time,pt0_ci95[[1]]$pstate1+1.96*pt0_ci95[[1]]$pstate1)
 lines(pt0_ci95[[1]]$time,pt0_ci95[[1]]$pstate1-1.96*pt0_ci95[[1]]$pstate1)
 title("P(staying healthy), no transition")
+
+#_#_#_#_#_#_#_#_#_#_#__#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#__#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_____________________________________________________
+
+#For semi-Markov models, mstate provides the function mssample to produce both simulated
+#trajectories and transition probability matrices from semi-Markov models, given the estimated
+#piecewise-constant cumulative hazards (Fiocco, Putter, and van Houwelingen 2008), produced
+#by msfit or msfit.flexsurvreg, though this is generally less efficient than pmatrix.simfs.
+#PARA SEMI-MARKOV, PODEMOS SIMULAR TRAYECTORIAS Y MATRICES DE PROBABILIDADES DE TRANSICIÓN, 
+#DADOS LOS HAZARDS PIECEWISE-CONSTANT DADOS POR MSFIT, AUNQUE ES MENOS EFICIENTE QUE PMATRIX.SIMFS
+
+# Cox model semi-parametric
+crcox <- coxph(formula3,
+               data = ms2_CONS_C1_SEP_2020_women_imputed)#, method = "breslow") 
+
+#https://www.researchgate.net/publication/303029139_flexsurv_A_Platform_for_Parametric_Survival_Modeling_in_R/fulltext/5735e2f608aea45ee83ca2c0/flexsurv-A-Platform-for-Parametric-Survival-Modeling-in-R.pdf
+#For semi-Markov models, mstate provides the function mssample to produce both simulated
+#trajectories and transition probability matrices from semi-Markov models, given the estimated
+#piecewise-constant cumulative hazards
+
+# piece-wise constant estimates
+mrcox <- mstate::msfit(object = crcox,
+                       trans = mat_3_states)
+
+for(i in seq(0, 12, by = 0.5)){
+mssample(mrcox$Haz, trans = mat_3_states, clock = "reset", M = n_iter,
++ tvec = i)%>% 
+  assign(paste0("pmatrix_cox_t_",i),.,envir=.GlobalEnv)
+}
+
+
+#_#_#_#_#_#_#_#_#_#_#__#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#__#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#Transition probability matrix from a fully-parametric, semi-Markov multi-state model
+#_#_#_#_#_#_#_#_#_#_#__#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+
+# prediction transition probs -----------------------------------------------
+
+#As I understand it, this quantity is the probability that someone has had event k by time t. This is what pmatrix.fs does, but in the more general situation of continuous-time multi-state models. For a competing risks model, this is the transition probability between the "starting state" and "had event k" over a time interval t. It's computed using numerical ODE solver, so perhaps this is overkill for competing risks models if the formula (4) above is all that's needed - this can be taken directly from the hazards and cumulative hazards.
+
+#The transition probability matrix for time-inhomogeneous Markov multi-state models fitted to time-to-event data with flexsurvreg. This has \(r,s\) entry giving the probability that an individual is in state \(s\) at time \(t\), given they are in state \(r\) at time \(0\).
+
+#http://www.crm.umontreal.ca/probindustriels2016/wp-content/uploads/2017/05/ProbInd2016.pdf
+#Event Variables in Client Analytics
+#Project Submitted by The Co-operators
+#Alberto Alinas, Thierry Duchesne, Émilie Lavoie-Charland, Mernoosh Malekiha, James McVittie, Idir Saïdani, Arusharka Sen, Joey Wang, and Meng Zhao
+#Alternatively, once an object of class flexsurvreg has been fitted, careful use of the pmatrix.fs function will also us to compute the above quantity for various values of x as well as other transition probabilities.
+
+#CAUTION: "pmatrix.fs" is only for Markov models. For a time-inhomogeneous Markov model, these are related to the transition intensities via the Kolmogorov forward equation
+
+#Confidence intervals can be obtained by simulation from the asymptotic distribution of the
+#maximum likelihood estimates – see help("pmatrix.fs") for full details
+
+#Transition probability matrix from a fully-parametric, time-inhomogeneous Markov multi-state model
+
+#Predictions can then be made by simulation. The function sim.fmsm simulates trajectories from parametric semi-Markov
+#models by repeatedly generating the time to the next transition until the individual reaches
+#an absorbing state or a specified censoring time.
+
+for(i in seq(0, 12, by = 0.5)){
+  pmatrix.simfs(x = sel_param_fits,
+                        t = i,
+                        ci = T,
+                        B= n_iter,
+                        newdat= newdat3a,
+                        trans = mat_3_states) %>% 
+  assign(paste0("pmatrix_t_",i),.,envir=.GlobalEnv)
+}
+
+
+pmatrix_t_0.5
+
+#LIMITATIONS: ONLY HANDLES A SINGLE INDIVIDUAL AT A TIME, WITH CHARACTERISTICS DEFINED IN NEWDAT3A
+
+ggplot(data = pmatrix,
+       aes(x = .id, y = X1, colour = trans, group = trans)) +
+  geom_step() +
+  ylim(0, 0.05) + ylab("cumulative trans probs")
 ```
+
 <br>
 
 ### Calculations of State Occupancy Probabilities
 
 
+### Length of Stay
+
+
+```{r los_ci95,eval=F, echo=T, paged.print=TRUE, fig.height=13, fig.width=10, fig.cap="Figure 12a. Aalen-Johansen estimator with confidence intervals", fig.align="center"}                                 
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+#Length of stay estimates, as in flexsurv::totlos.simfs
+#Could integrate p0s (t) (probabilidad de transicion en un detemrinado t) to give
+#expected length of time spent
+#in state s (totlos.simfs)
+
+#Standard errors require a second level of simulation (available in flexsurv)
+
+#sojourn.msm for mean sojourn time
+library(dplyr)
+
+for(i in seq(0, 12, by = 0.5)){
+  assign(paste0("pmatrix_t_",i),
+         flexsurv::pmatrix.simfs(x = sel_param_fits,
+                        t = i,
+                        ci = T,
+                        B= n_iter/5000,
+                        newdat= newdat3a,
+                        trans = mat_3_states),
+         envir=.GlobalEnv)
+}
+```
 
 # Session Info
 
