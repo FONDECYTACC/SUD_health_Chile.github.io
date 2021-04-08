@@ -305,6 +305,278 @@ eval_fork <- function(..., timeout=60){
 library(gurobi)
 #"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)"
 #Sys.getenv("R_LIBS_USER")
+
+
+fitstats.flexsurvreg = function(x){
+  ll = x$loglik
+  aic = x$AIC
+  k = length(x$coefficients)
+  n = sum(x$data$m["(weights)"])
+  aicc = aic + ((2 * k) * (k + 1) / (n - k - 1))
+  bic = - 2 * ll + (k * log(n))
+  data.frame(
+   Df = k,
+    "n2ll" = -2 * ll,
+    AIC = aic,
+    AICc = aicc,
+    BIC = bic
+  )
+}
+
+##############################################################################
+# Adds-on functions to crr() function in 'cmprsk' package by Gray, RJ. 
+# Written by Luca Scrucca
+#
+# Reference: 
+# Scrucca L, Santucci A, Aversa F (2009) Regression Modeling of Competing 
+#   Risk Using R: An In Depth Guide for Clinicians. Submitted to Bone Marrow
+#   Transplantation
+##############################################################################
+
+modsel.crr <- function (object, ..., d = log(object$n)) 
+{
+  if(class(object) != "crr") 
+    stop("object is not of class 'crr'")
+  objects <- list(object, ...)
+  nmodels <- length(objects)
+  modnames <- paste("Model ", format(1:nmodels), ": ", 
+                      lapply(objects, function(x) x$call), 
+                      sep = "", collapse = "\n")
+  # add null model
+  mod0 <- object
+  mod0$loglik <- mod0$loglik.null
+  mod0$coef <- mod0$call$cov1 <- mod0$call$cov2 <- NULL
+  objects <- c(list(mod0), objects)
+  nmodels <- nmodels + 1
+  #
+  modnames <- c("Model 0: Null model", modnames)
+  ns <- sapply(objects, function(x) x$n) 
+  dfs <- sapply(objects, function(x) length(x$coef)) 
+  if(any(ns != ns[1]))
+    stop("models were not all fitted to the same dataset")
+  out <- matrix(rep(NA, 5 * nmodels), ncol = 5)
+  loglik <- sapply(objects, function(x) x$loglik)
+  crit <- sapply(objects, function(x) -2*x$loglik + d*length(x$coef))
+  out[,1] <- ns
+  out[,2] <- loglik
+  out[,3] <- dfs
+  out[,4] <- crit
+  out[,5] <- crit - min(crit)
+  if(d==log(object$n)) critname <- "BIC"
+  else if(d == 2) critname <- "AIC"
+  else critname <- "Criterion"
+  colnames(out) <- c("Num.obs", "logLik", "Df.fit", critname, paste(critname, "diff"))
+  rownames(out) <- 0:(nmodels-1)
+  title <- "Model selection table\n"
+  topnote <- modnames
+  structure(as.data.frame(out), heading = c(title, topnote), 
+            class = c("anova", "data.frame"))
+}
+
+#############################################################################
+#                                                                           #
+#                 CUMULATIVE INCIDENCE CURVES IN R                          #
+#                                                                           #
+# Written by Luca Scrucca                                                   #
+#                                                                           #
+# Reference:                                                                #
+# Scrucca L., Santucci A., Aversa F. (2007) Competing risks analysis using  #
+#   R: an easy guide for clinicians. Bone Marrow Transplantation, 40,       #
+#   381--387.                                                               #
+#############################################################################
+# ver. 1.2 Apr 2018
+#  - improved format for p-value
+# ver. 1.1 Feb 2008
+#  - allow group to be missing
+#  - if t is provided both computation and plots use t as time points
+#  - allow col, lwd to be used for curves with confidence bands
+#  - fix some bugs in the legend
+#  - added help on source code
+# ver. 1.0 May 2007
+#  - Version appearing in the BMT paper
+#############################################################################
+#
+# Usage:
+# 
+#   CumIncidence(ftime, fstatus, group, t, strata, rho = 0, cencode = 0,
+#             	 subset, na.action = na.omit, level, 
+#                xlab = "Time", ylab = "Probability", 
+#                col, lty, lwd, digits = 4)
+# 
+# Arguments:
+# 
+# ftime = failure time variable.
+# fstatus = variable with distinct codes for different causes of 
+#           failure and also a distinct code for censored observations.
+# group	= estimates will be calculated within groups given by distinct 
+#         values of this variable. Tests will compare these groups. If 
+#         missing then treated as all one group (no test statistics).
+# t = a vector of time points where the cumulative incidence function 
+#     should be evaluated.
+# strata = stratification variable. Has no effect on estimates. Tests 
+#          will be stratified on this variable. (all data in 1 stratum,
+#          if missing).
+# rho = power of the weight function used in the tests. By default is 
+#       set to 0.
+# cencode = value of fstatus variable which indicates the failure time
+#           is censored.
+# subset = a logical vector specifying a subset of cases to include in 
+#          the analysis.
+# na.action = a function specifying the action to take for any cases 
+#             missing any of ftime, fstatus, group, strata, or subset. 
+#             By default missing cases are omitted.
+# level = a value in the range [0,1] specifying the level for pointwise
+#         confidence bands.
+# xlab = text for the x-axis label.
+# ylab = text for the y-axis label.
+# col = color(s) used for plotting curves (see plot.default).
+# lty = line type(s) used for plotting curves (see plot.default).
+# lwd = line width(s) used for plotting curves (see plot.default).
+# digits = number of significant digits used for printing values. By 
+#          default set at 4.
+# 
+#############################################################################
+
+"CumIncidence" <- function(ftime, fstatus, group, t, strata, rho = 0, 
+	                         cencode = 0, subset, na.action = na.omit, level,
+	                         xlab = "Time", ylab = "Probability", 
+	                         col, lty, lwd, digits = 4)
+{
+  # check for the required package
+  if(!require("cmprsk"))
+    { stop("Package `cmprsk' is required and must be installed.\n 
+           See help(install.packages) or write the following command at prompt
+           and then follow the instructions:\n
+           > install.packages(\"cmprsk\")") } 
+  # collect data
+  mf  <- match.call(expand.dots = FALSE)
+  mf[[1]] <- as.name("list")
+  mf$t <- mf$digits <- mf$col <- mf$lty <- mf$lwd <- mf$level <- 
+  mf$xlab <- mf$ylab <- NULL
+  mf <- eval(mf, parent.frame())
+  g <- max(1, length(unique(mf$group)))
+  s <- length(unique(mf$fstatus))
+  if(missing(t)) 
+    { time <- pretty(c(0, max(mf$ftime)), 6) #length(seq(0,11,.05)) , proportions the same results in terms of p values and ci's
+      ttime <- time <- time[time < max(mf$ftime)] }
+  else { ttime <- time <- t }
+  # fit model and estimates at time points
+  fit   <- do.call("cuminc", mf)
+  tfit <- timepoints(fit, time)
+  # print result
+  cat("\n+", paste(rep("-", 67), collapse=""), "+", sep ="")
+  cat("\n| Cumulative incidence function estimates from competing risks data |")
+  cat("\n+", paste(rep("-", 67), collapse=""), "+\n", sep ="")
+  tests <- NULL
+  if(g > 1)
+  { 
+    tests <- data.frame(fit$Tests[,c(1,3,2)], check.names = FALSE)
+    colnames(tests) <- c("Statistic", "df", "p-value")
+    tests$`p-value` <- format.pval(tests$`p-value`)
+    cat("Test equality across groups:\n")
+    print(tests, digits = digits) 
+  }
+  cat("\nEstimates at time points:\n")
+  print(tfit$est, digits = digits)
+  cat("\nStandard errors:\n")
+  print(sqrt(tfit$var), digits = digits)
+  #
+  if(missing(level))
+    { # plot cumulative incidence functions
+      if(missing(t))
+        { time <- sort(unique(c(ftime, time)))
+          x <- timepoints(fit, time) }
+      else x <- tfit
+      col <- if(missing(col)) rep(1:(s-1), rep(g,(s-1))) else col
+      lty <- if(missing(lty)) rep(1:g, s-1) else lty
+      lwd <- if(missing(lwd)) rep(1, g*(s-1)) else lwd      
+     # matplot(time, base::t(x$est), type="s", ylim = c(0,1), 
+     #         xlab = xlab, ylab = ylab, xaxs="i", yaxs="i", 
+     #         col = col, lty = lty, lwd = lwd)
+     # legend("topleft", legend =  rownames(x$est), x.intersp = 2, 
+     #        bty = "n", xjust = 1, col = col, lty = lty, lwd = lwd)
+      out <- list(test = tests, est = tfit$est, se = sqrt(tfit$var))
+    }
+  else
+    { if(level < 0 | level > 1) 
+        error("level must be a value in the range [0,1]")
+      # compute pointwise confidence intervals
+      oldpar <- par(ask=TRUE)
+      on.exit(par(oldpar))
+      if(missing(t))
+        { time <- sort(unique(c(ftime, time)))
+          x <- timepoints(fit, time) }
+      else x <- tfit
+      z <- qnorm(1-(1-level)/2)
+      lower <- x$est ^ exp(-z*sqrt(x$var)/(x$est*log(x$est)))
+      upper <- x$est ^ exp(z*sqrt(x$var)/(x$est*log(x$est)))
+      col <- if(missing(col)) rep(1:(s-1), rep(g,(s-1))) 
+             else             rep(col, g*(s-1))
+      lwd <- if(missing(lwd)) rep(1, g*(s-1)) 
+             else             rep(lwd, g*(s-1))      
+      # plot pointwise confidence intervals
+     # for(j in 1:nrow(x$est))
+     #    { matplot(time, cbind(x$est[j,], lower[j,], upper[j,]), type="s", 
+     #              xlab = xlab, ylab = ylab, xaxs="i", yaxs="i", 
+     #              ylim = c(0,1), col = col[j], lwd = lwd[j], lty = c(1,3,3))
+     #      legend("topleft", legend =  rownames(x$est)[j], bty = "n", xjust = 1) }
+      # print pointwise confidence intervals
+      i <- match(ttime, time)
+      ci <- array(NA, c(2, length(i), nrow(lower)))
+      ci[1,,] <- base::t(lower[,i])
+      ci[2,,] <- base::t(upper[,i])
+      dimnames(ci) <- list(c("lower", "upper"), ttime, rownames(lower))
+      cat(paste("\n", level*100, "% pointwise confidence intervals:\n\n", sep=""))
+      print(ci, digits = digits)
+      out <- list(test = tests, est = x$est, se = sqrt(tfit$var), ci = ci)
+    }
+  # return results
+  invisible(out)
+}
+
+
+modsel.crr <- function (object, ..., d = log(object$n)) 
+{
+  if(class(object) != "crr") 
+    stop("object is not of class 'crr'")
+  objects <- list(object, ...)
+  nmodels <- length(objects)
+  modnames <- paste("Model ", format(1:nmodels), ": ", 
+                      lapply(objects, function(x) x$call), 
+                      sep = "", collapse = "\n")
+  # add null model
+  mod0 <- object
+  mod0$loglik <- mod0$loglik.null
+  mod0$coef <- mod0$call$cov1 <- mod0$call$cov2 <- NULL
+  objects <- c(list(mod0), objects)
+  nmodels <- nmodels + 1
+  #
+  modnames <- c("Model 0: Null model", modnames)
+  ns <- sapply(objects, function(x) x$n) 
+  dfs <- sapply(objects, function(x) length(x$coef)) 
+  if(any(ns != ns[1]))
+    stop("models were not all fitted to the same dataset")
+  out <- matrix(rep(NA, 5 * nmodels), ncol = 5)
+  loglik <- sapply(objects, function(x) x$loglik)
+  crit <- sapply(objects, function(x) -2*x$loglik + d*length(x$coef))
+  out[,1] <- ns
+  out[,2] <- loglik
+  out[,3] <- dfs
+  out[,4] <- crit
+  out[,5] <- crit - min(crit)
+  if(d==log(object$n)) critname <- "BIC"
+  else if(d == 2) critname <- "AIC"
+  else critname <- "Criterion"
+  colnames(out) <- c("Num.obs", "logLik", "Df.fit", critname, paste(critname, "diff"))
+  rownames(out) <- 0:(nmodels-1)
+  title <- "Model selection table\n"
+  topnote <- modnames
+  structure(as.data.frame(out), heading = c(title, topnote), 
+            class = c("anova", "data.frame"))
+}
+
+
+
 ```
 
 # Steps
@@ -2411,8 +2683,9 @@ return(
       )
     )
 }
+#biostat3::survRate(Surv((day_to_readmission)/1000, readmission==1) ~ tipo_de_programa_2, data=CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk)
 
-irrs_tipo_de_programa_2<-irrs(x="tipo_de_programa_2", z="day_to_readmission", y="as.numeric(readmission)", db="CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr")
+irrs_tipo_de_programa_2<-irrs(x="tipo_de_programa_2", z="day_to_readmission", y="as.numeric(readmission)-1", db="CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr")
 #General population=1     Women specific=2 
 
 if(no_mostrar==1){
@@ -2461,7 +2734,7 @@ ggsurvplot_comp_status_fit<-
            cumevents.height = .11,
            cumevents.fontsize = .5,
            #ylim=c(0,10),
-           legend = c(0.88, 0.15), 
+           legend = c(0.58, 0.15), 
            legend.title="Type of Program",
            xlab= "Time (in years)", 
            #cumevents=T,
@@ -2498,18 +2771,27 @@ return(
     )
 }
 
+survdiff_comp_status<-survdiff(Surv(outcome_to_readmission, readmission==1) ~ comp_status, 
+                          data=CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr)
+
 CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk<-
 CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr[which(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$comp_status!='Censored')]
 
+CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk$outcome_to_readmission<-
+ifelse(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk$outcome_to_readmission==0,.000001,
+       CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk$outcome_to_readmission)
+
+#biostat3::survRate(Surv((outcome_to_readmission)/1000, readmission==1) ~ comp_status, data=CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk)
+#para compararlo
 comp_status_readmission <-
   irrs(x="as.numeric(comp_status)", 
-                              y="as.numeric(readmission)",
+                              y="as.numeric(readmission)-1",# 2021-04-06, 
                               z="outcome_to_readmission", 
                               db="CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk")
 time_bef_inc_rate<-Sys.time()
 ```
 
-Excluding censored cases, the incidence rate of readmission was not significantly higher (`r round(as.numeric(comp_status_readmission$estimate[1]),2)`, 95% IC `r round(comp_status_readmission$conf.int[1],2)`-`r round(comp_status_readmission$conf.int[2],2)`) in users that were admitted in women specific programs, compared with users that were admitted in general-population programs (p`r ifelse(sprintf("%1.3f",comp_status_readmission$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",comp_status_readmission$p.value)))`).
+Excluding censored cases, the incidence rate of readmission was significantly higher (`r round(as.numeric(comp_status_readmission$estimate[1]),2)`, 95% IC `r round(comp_status_readmission$conf.int[1],2)`-`r round(comp_status_readmission$conf.int[2],2)`) in users that had a Discharge without clinical advice, compared with users that had a Therapeutic discharge (p`r ifelse(sprintf("%1.3f",comp_status_readmission$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",comp_status_readmission$p.value)))`).
 
 <br>
 
@@ -2519,7 +2801,7 @@ To estimate the risk and the time to treatment readmission by type of treatment 
 
 <br>
 
-```{r fit_surv_parametric_simple_model,dpi = 320, warning=F,message=F,fig.align='center', fig.cap="Figure 6. Comparison of parametric models on intercept-only models vs. KM survival curves", error=T,fig.height=8}
+```{r fit_surv_parametric_simple_model,dpi = 320, warning=F,message=F,fig.align='center', fig.cap="Figure 5. Comparison of parametric models on intercept-only models vs. Kernel hazard density curves", error=T, fig.height=10, fig.width=8}
 #Revisión de los casos
 #print(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr[,c("comp_status", "outcome_to_readmission", "readmission")],10)
 #_#_#_#_#_#_#_#_#_#_#_
@@ -2535,52 +2817,90 @@ fitform0a <- Surv(outcome_to_readmission, readmission==1) ~  1
 
 fitform0b <- Surv(outcome_to_readmission, readmission==1) ~  edad_al_ing_grupos+ escolaridad_rec+ sus_principal_mod+ 
          freq_cons_sus_prin+ compromiso_biopsicosocial+ tenencia_de_la_vivienda_mod+ 
-         num_otras_sus_mod+ numero_de_hijos_mod_rec+ tipo_de_plan_res+ tipo_de_programa_2*comp_status+time_to_outcome 
+         num_otras_sus_mod+ numero_de_hijos_mod_rec+ tipo_de_plan_res+ tipo_de_programa_2+ time_to_outcome 
+
+fitform0c <- Surv(outcome_to_readmission, readmission==1) ~  tipo_de_programa_2
+
+
+#goes out for 15 years with cycles of one month 
+tt15<-seq(0,15,1/12)    
+newtime0 = seq(from=1/24, to= 15, by=1/24)
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
 #_#_#_#_#_#_#_#_#_#_#
-#_#_#_#_#_#_#_#_#_#_#
-
-for (i in 1:nrow(dists_simple_surv)){  
+#_#_#_#_#_#_#_#_#_#_##comp_status
+for (u in c("Therapeutic discharge","Discharge without clinical advice")){
+for (i in 1:nrow(dists_simple_surv)){  #
 model<-paste0("mod_surv_simple_",dists_simple_surv[i,"model"])
   flexsurvreg(formula=fitform0a, 
   # IF time 0, then its changed by .000001 to avoid having continous transitions
   # Excluded censored cases at outcomes
-              data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr, comp_status != "Censored") %>% dplyr::mutate(outcome_to_readmission=ifelse(outcome_to_readmission==0,.000001,outcome_to_readmission)),
+              #data = CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk,
+              data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk,comp_status==u),
               dist = dists_simple_surv[i,"model"]) %>% 
     assign(model,.,envir=,.GlobalEnv)
   
   #Generate databases
  fitted_flexsurvreg0<-  rbind(fitted_flexsurvreg0,cbind.data.frame(dist=rep(dists_simple_surv[i,"formal"],),
-                                                                   data.table::data.table(summary(get(model), tidy=T)))) 
+                                                                   status=u,
+                        data.table::data.table(summary(get(model), t=newtime0, type = "hazard", tidy=T)))) 
   # Generate fit indices
   fit_flexsurvreg0<-rbind(fit_flexsurvreg0,
-     cbind(dist= dists_simple_surv[i,"formal"], 
-       AIC= get(model)$AIC,
-       Llik= get(model)$loglik,
-       npars= get(model)$npars,
-       pars= get(model)$AIC/2 + get(model)$loglik,
-       BIC= get(model)$loglik+ log(get(model)$npars)* (get(model)$AIC/2 + get(model)$loglik)
+     cbind(dist= dists_simple_surv[i,"formal"],
+           status=u,
+           fitstats.flexsurvreg(get(model))))
   #the BIC may not be appropriate if none of the candidate models are considered to be close to the ‘true’ model.     
-      )
-  )
+  }
 }
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-# KAPLAN-MEIER ESTIMATES
-mod_surv_simple_km <-survfit(Surv(outcome_to_readmission, readmission==1)~ 1,
-                    data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr, comp_status != "Censored",
-                                  conf.type = "log-log") %>% dplyr::mutate(outcome_to_readmission=ifelse(outcome_to_readmission==0,.000001,outcome_to_readmission)))
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
-#calculate RMSE
-mod_surv_simple_km_df <- mod_surv_simple_km %>% fortify
 
 #Calculate error
+library("muhaz")
+kernel_haz_est_simple_td <- muhaz(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk$outcome_to_readmission[which(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk$comp_status=="Therapeutic discharge")],
+                        as.numeric(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk$readmission[which(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk$comp_status=="Therapeutic discharge")])-1)
+
+kernel_haz_est_simple_dwca <- muhaz(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk$outcome_to_readmission[which(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk$comp_status=="Discharge without clinical advice")],
+                        as.numeric(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk$readmission[which(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk$comp_status=="Discharge without clinical advice")])-1)
+
+kernel_haz_simple <- rbind(data.table(time = kernel_haz_est_simple_td$est.grid,
+                         est = kernel_haz_est_simple_td$haz.est,
+                         dist = "Kernel density",
+                         status= "Therapeutic discharge"),
+                         data.table(time = kernel_haz_est_simple_dwca$est.grid,
+                         est = kernel_haz_est_simple_dwca$haz.est,
+                         dist = "Kernel density",
+                         status= "Discharge without clinical advice"))
+                         
+kernel_haz_simple_binned<-
+  kernel_haz_simple %>% 
+  dplyr::mutate(time=ifelse(time<.01,.01,time)) %>% 
+  dplyr::group_by(status) %>% 
+  dplyr::mutate(x_binned = cut(time, 
+          breaks= seq(0,max(kernel_haz_simple$time),.05))) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(status, dist, x_binned) %>% 
+  dplyr::summarise(mean_time=mean(time,na.rm=T),mean_est=mean(est,na.rm=T)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::select(-dist)
+
+fitted_flexsurvreg0_binned<-
+  fitted_flexsurvreg0[,c("status","dist","time","est")] %>% 
+  dplyr::filter(time<=max(kernel_haz_simple$time)) %>%
+  dplyr::mutate(time=ifelse(time<.01,.01,time)) %>% 
+  dplyr::group_by(status, dist) %>%
+  dplyr::mutate(x_binned = cut(time, 
+          breaks= seq(0,max(kernel_haz_simple$time),.05))) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(status, dist, x_binned) %>% 
+  dplyr::summarise(mean_time=mean(time,na.rm=T),mean_est=mean(est,na.rm=T)) %>% 
+  dplyr::ungroup()     
 
 fitted_flexsurvreg0_binned_mix<-
-fitted_flexsurvreg0 %>% 
-  dplyr::left_join(mod_surv_simple_km_df[,c("time","surv")], by="time")
+fitted_flexsurvreg0_binned %>% 
+  dplyr::left_join(kernel_haz_simple_binned[,c("x_binned","mean_est")], by="x_binned",suffix = c("_par","_kernel"))
 
 db_for_apply_rmse0<-
   data.frame(dist=rep(c("Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
@@ -2588,44 +2908,47 @@ db_for_apply_rmse0<-
    
 rmse_comp_fits_0<- data.frame()
 for(i in 1:nrow(db_for_apply_rmse0)){
-rmse<- Metrics::rmse(subset(fitted_flexsurvreg0_binned_mix[complete.cases(fitted_flexsurvreg0_binned_mix),], 
-                     dist==db_for_apply_rmse0[i,"dist"])$est,
+rmse1<- Metrics::rmse(subset(fitted_flexsurvreg0_binned_mix[complete.cases(fitted_flexsurvreg0_binned_mix),], 
+                     dist==db_for_apply_rmse0[i,"dist"] & status=="Discharge without clinical advice")$mean_est_par,
               subset(fitted_flexsurvreg0_binned_mix[complete.cases(fitted_flexsurvreg0_binned_mix),], 
-                     dist==db_for_apply_rmse0[i,"dist"])$surv)
+                     dist==db_for_apply_rmse0[i,"dist"] & status=="Discharge without clinical advice")$mean_est_kernel)
+rmse2<- Metrics::rmse(subset(fitted_flexsurvreg0_binned_mix[complete.cases(fitted_flexsurvreg0_binned_mix),], 
+                     dist==db_for_apply_rmse0[i,"dist"] & status=="Therapeutic discharge")$mean_est_par,
+              subset(fitted_flexsurvreg0_binned_mix[complete.cases(fitted_flexsurvreg0_binned_mix),], 
+                     dist==db_for_apply_rmse0[i,"dist"] & status=="Therapeutic discharge")$mean_est_kernel)
 
 rmse_comp_fits_0<- rbind(rmse_comp_fits_0,cbind(dist=db_for_apply_rmse0[i,"dist"],
-                                                  rmse=rmse))
+                                                  rmse_dwca=round(rmse1,4), rmse_td=round(rmse2,4)))
 }
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+haz0 <- rbind(kernel_haz_simple, fitted_flexsurvreg0[,1:4])
 
-#layout(matrix(1:8, nc = 2, byrow = F))
-  plot(mod_surv_simple_km, col="red", xlim=c(1,11),ylim=c(.4,1),conf.int = F)
-      lines(mod_surv_simple_weibull, col="gray20",ci = F)# navyblue
-      lines(mod_surv_simple_weibullph, col="darkolivegreen",ci = F)##B89673
-      lines(mod_surv_simple_llogis, col="#D3A347",ci = F)##A0A36D
-      lines(mod_surv_simple_gamma, col="#4F3C91",ci = F)##886894
-      lines(mod_surv_simple_gengamma, col="coral4",ci = F)#darkorchid4
-      lines(mod_surv_simple_gompertz, col="#085754",ci = F)##496A72
-      lines(mod_surv_simple_lnorm, col="brown3",ci = F)#gray70
-      lines(mod_surv_simple_exp,col="cornflowerblue",ci = F)#gray15
-      legend("bottomleft", 
-      legend = c("Kaplan-Meier","Weibull (AFT)", "Weibull (PH)", 
-                                "Gompertz", "Log-logistic", "Gamma",
-                                "Generalized gamma", "Lognormal", "Exponential"), col = 
-           c("red","gray20","darkolivegreen","#D3A347","#4F3C91",
-             "coral4","#085754","brown3","cornflowerblue"), 
-         title = "Distributions", cex = .95, bty = "n", lty=1)# lty = 1:2, 
-    
+haz_plot_0_int_only<-
+haz0 %>% 
+  dplyr::mutate(dist=factor(dist,levels=c("Kernel density",dists_simple_surv$formal))) %>% 
+  dplyr::filter(est<1.5) %>% 
+ggplot()+
+    geom_line(aes(time, est, color=dist),size=1)+
+    scale_color_manual(name="Distributions", values = c("black","#f54b96","#00e9b1","#69b763",
+"#166000","#b27ff9","#fa863b","#013eab","#a7aa48","#b34b40"))+
+                         #c("black",brewer.pal(n = 9, name = 'Paired')))+
+                         #c("#112A60","#085754","#D3A347","#4F3C91","red","#112A60","#085754","#8F630D","#251363")) +
+    facet_wrap(~status)+#labeller = labeller(trans = transition_label))+
+    sjPlot::theme_sjplot2()+
+    theme(legend.position="bottom",
+          strip.background = element_rect(fill = "white", colour = "white"))+
+  scale_x_continuous(breaks = seq(0, 15, 2))+
+  #theme(axis.text.x = element_blank(), 
+  #      panel.grid.major = element_blank(), 
+  #      panel.grid.minor = element_blank()) +
+  labs(y="Hazard",x="Time (years)")
+
+haz_plot_0_int_only
+
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
-#goes out for 15 years with cycles of one month 
-tt15<-seq(0,15,1/12)    
-newtime = seq(from=1/24, to= 15, by=1/24)
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
 dt_coefs_simple_surv<-
 data.frame(
@@ -2633,39 +2956,107 @@ real_vars=c("tipo_de_programa_2Women specific", "edad_al_ing_grupos.L", "edad_al
  formal_vars= c('Type of program-Women specific', 'Age at admission to treatment, grouped- 30-39', 'Age at admission to treatment, grouped- 40-49', 'Age at admission to treatment, grouped- 50+', 'Ed. Attainment- Completed high school or less', 'Ed. Attainment- More than high school', 'Primary or main substance- Cocaine hydrochloride', 'Primary or main substance- Cocaine paste', 'Primary or main substance- Marijuana', 'Primary or main substance- Other', 'Consumption frequency of primary or main substance- 2 to 3 days a week', 'Consumption frequency of primary or main substance- 4 to 6 days a week', 'Consumption frequency of primary or main substance- 1 day a week or more', 'Consumption frequency of primary or main substance- Daily', 'Biopsychosocial involvement- 2-Moderate', 'Biopsychosocial involvement- 3-Severe', 'Tenure status of households- Others', 'Tenure status of households- Owner/Transferred dwellings/Pays Dividends', 'Tenure status of households- Renting', 'Tenure status of households- Stays temporarily with a relative', 'Co-occurring SUD- One additional substance', 'Co-occurring SUD- More than one additional substance', 'Have children (Dichotomized)- Yes', 'Setting of Treatment- Residential', 'Cause of Discharge- W/o clinical advice', 'Type of Program x Cause of Discharge', 'Days in baseline treatment')#'Educational Attainment', tipo_de_plan_resResidential
 )
 
-flexsurv_1a<-
-flexsurvreg(formula=fitform0b, 
   # si habían tiempos 0, los cambié por .000001 para que no hayan casos absolutamente continuos
   # saqué los casos censurados
-              data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr, comp_status != "Censored") %>% dplyr::mutate(outcome_to_readmission=ifelse(outcome_to_readmission==0,.000001,outcome_to_readmission)),
+
+flexsurv_1a_td<-
+flexsurvreg(formula=fitform0b, 
+              data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk,grepl("Therapeutic",comp_status)),
               dist = "Gompertz"
     ) 
-flexsurv_1b<-
+flexsurv_1b_td<-
 flexsurvreg(formula=fitform0b, 
-  # si habían tiempos 0, los cambié por .000001 para que no hayan casos absolutamente continuos
-  # saqué los casos censurados
-              data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr, comp_status != "Censored") %>% dplyr::mutate(outcome_to_readmission=ifelse(outcome_to_readmission==0,.000001,outcome_to_readmission)),
-              dist = "weibull"
+              data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk,grepl("Therapeutic",comp_status)),
+              dist = "weibullph"
     ) 
-
+flexsurv_1c_td<-
+flexsurvreg(formula=fitform0c, 
+              data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk,grepl("Therapeutic",comp_status)),
+              dist = "Gompertz"
+    ) 
+flexsurv_1d_td<-
+flexsurvreg(formula=fitform0c, 
+              data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk,grepl("Therapeutic",comp_status)),
+              dist = "weibullph"
+    ) 
+flexsurv_1a_dwca<-
+flexsurvreg(formula=fitform0b, 
+              data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk,grepl("without",comp_status)),
+              dist = "Gompertz"
+    ) 
+flexsurv_1b_dwca<-
+flexsurvreg(formula=fitform0b, 
+              data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk,grepl("without",comp_status)),
+              dist = "Gamma"
+    ) 
+flexsurv_1c_dwca<-
+flexsurvreg(formula=fitform0c, 
+              data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk,grepl("without",comp_status)),
+              dist = "Gompertz"
+    ) 
+flexsurv_1d_dwca<-
+flexsurvreg(formula=fitform0c, 
+              data = subset(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk,grepl("without",comp_status)),
+              dist = "Gamma"
+    ) 
 #effect = "distp") # distp for distribution parameters (name can be changed)
 #tipo_de_programa_2Women specific:comp_statusDischarge without clinical advice
 
-note_flexsurv_1a <-
-  paste0("N= ",format(as.numeric(flexsurv_1a$N), big.mark=","),"; Events= ",format(as.numeric(flexsurv_1a$events), big.mark=","),"; Censored= ",format(as.numeric(flexsurv_1a$N - flexsurv_1a$events), big.mark=","),"; Time at risk= ",format(as.numeric(flexsurv_1a$trisk), big.mark=","),"; Df= ",format(as.numeric(flexsurv_1a$npars), big.mark=","), "; AIC= ",format(as.numeric(flexsurv_1a$AIC), big.mark=","))
-note_flexsurv_1b <-
-  paste0("N= ",format(as.numeric(flexsurv_1b$N), big.mark=","),"; Events= ",format(as.numeric(flexsurv_1b$events), big.mark=","),"; Censored= ",format(as.numeric(flexsurv_1b$N - flexsurv_1b$events), big.mark=","),"; Time at risk= ",format(as.numeric(flexsurv_1b$trisk), big.mark=","),"; Df= ",format(as.numeric(flexsurv_1b$npars), big.mark=","), "; AIC= ",format(as.numeric(flexsurv_1b$AIC), big.mark=","))
+note_flexsurv_1a_td<-
+  paste0("N= ",format(as.numeric(flexsurv_1a_td$N), big.mark=","),"; Events= ",format(as.numeric(flexsurv_1a_td$events), big.mark=","),"; Censored= ",format(as.numeric(flexsurv_1a_td$N - flexsurv_1a_td$events), big.mark=","),"; Time at risk= ",format(as.numeric(flexsurv_1a_td$trisk), big.mark=","),"; Df= ",format(as.numeric(flexsurv_1a_td$npars), big.mark=","), "; AIC= ",format(as.numeric(flexsurv_1a_td$AIC), big.mark=","))
+note_flexsurv_1b_td <-
+  paste0("N= ",format(as.numeric(flexsurv_1b_td$N), big.mark=","),"; Events= ",format(as.numeric(flexsurv_1b_td$events), big.mark=","),"; Censored= ",format(as.numeric(flexsurv_1b_td$N - flexsurv_1b_td$events), big.mark=","),"; Time at risk= ",format(as.numeric(flexsurv_1b_td$trisk), big.mark=","),"; Df= ",format(as.numeric(flexsurv_1b_td$npars), big.mark=","), "; AIC= ",format(as.numeric(flexsurv_1b_td$AIC), big.mark=","))
+note_flexsurv_1c_td<-
+  paste0("N= ",format(as.numeric(flexsurv_1c_td$N), big.mark=","),"; Events= ",format(as.numeric(flexsurv_1c_td$events), big.mark=","),"; Censored= ",format(as.numeric(flexsurv_1c_td$N - flexsurv_1c_td$events), big.mark=","),"; Time at risk= ",format(as.numeric(flexsurv_1c_td$trisk), big.mark=","),"; Df= ",format(as.numeric(flexsurv_1c_td$npars), big.mark=","), "; AIC= ",format(as.numeric(flexsurv_1c_td$AIC), big.mark=","))
+note_flexsurv_1d_td <-
+  paste0("N= ",format(as.numeric(flexsurv_1d_td$N), big.mark=","),"; Events= ",format(as.numeric(flexsurv_1d_td$events), big.mark=","),"; Censored= ",format(as.numeric(flexsurv_1d_td$N - flexsurv_1d_td$events), big.mark=","),"; Time at risk= ",format(as.numeric(flexsurv_1d_td$trisk), big.mark=","),"; Df= ",format(as.numeric(flexsurv_1d_td$npars), big.mark=","), "; AIC= ",format(as.numeric(flexsurv_1d_td$AIC), big.mark=","))
+
+note_flexsurv_1a_dwca<-
+  paste0("N= ",format(as.numeric(flexsurv_1a_dwca$N), big.mark=","),"; Events= ",format(as.numeric(flexsurv_1a_dwca$events), big.mark=","),"; Censored= ",format(as.numeric(flexsurv_1a_dwca$N - flexsurv_1a_dwca$events), big.mark=","),"; Time at risk= ",format(as.numeric(flexsurv_1a_dwca$trisk), big.mark=","),"; Df= ",format(as.numeric(flexsurv_1a_dwca$npars), big.mark=","), "; AIC= ",format(as.numeric(flexsurv_1a_dwca$AIC), big.mark=","))
+note_flexsurv_1b_dwca <-
+  paste0("N= ",format(as.numeric(flexsurv_1b_dwca$N), big.mark=","),"; Events= ",format(as.numeric(flexsurv_1b_dwca$events), big.mark=","),"; Censored= ",format(as.numeric(flexsurv_1b_dwca$N - flexsurv_1b_dwca$events), big.mark=","),"; Time at risk= ",format(as.numeric(flexsurv_1b_dwca$trisk), big.mark=","),"; Df= ",format(as.numeric(flexsurv_1b_dwca$npars), big.mark=","), "; AIC= ",format(as.numeric(flexsurv_1b_dwca$AIC), big.mark=","))
+note_flexsurv_1c_dwca<-
+  paste0("N= ",format(as.numeric(flexsurv_1c_dwca$N), big.mark=","),"; Events= ",format(as.numeric(flexsurv_1c_dwca$events), big.mark=","),"; Censored= ",format(as.numeric(flexsurv_1c_dwca$N - flexsurv_1c_dwca$events), big.mark=","),"; Time at risk= ",format(as.numeric(flexsurv_1c_dwca$trisk), big.mark=","),"; Df= ",format(as.numeric(flexsurv_1c_dwca$npars), big.mark=","), "; AIC= ",format(as.numeric(flexsurv_1c_dwca$AIC), big.mark=","))
+note_flexsurv_1d_dwca <-
+  paste0("N= ",format(as.numeric(flexsurv_1d_dwca$N), big.mark=","),"; Events= ",format(as.numeric(flexsurv_1d_dwca$events), big.mark=","),"; Censored= ",format(as.numeric(flexsurv_1d_dwca$N - flexsurv_1d_dwca$events), big.mark=","),"; Time at risk= ",format(as.numeric(flexsurv_1d_dwca$trisk), big.mark=","),"; Df= ",format(as.numeric(flexsurv_1d_dwca$npars), big.mark=","), "; AIC= ",format(as.numeric(flexsurv_1d_dwca$AIC), big.mark=","))
+
+if(no_mostrar==1){
+jpeg("C:/Users/andre/Desktop/SUD_CL/eso4b.jpg", height=10, width= 8, res= 96, units = "in")
+  haz_plot_0_int_only
+dev.off()
+}
 ```
+
 <br>
 
-We ended choosing the Gompertz (AIC= `r fit_flexsurvreg0%>%arrange(AIC) %>% dplyr::filter(dist=="Gompertz") %>% dplyr::select("AIC") %>% as.numeric() %>% format(big.mark=",")`; RMSE= `r rmse_comp_fits_0 %>% dplyr::arrange("rmse") %>% dplyr::filter(dist=="Gompertz") %>% dplyr::select("rmse") %>% as.numeric() %>% round(4) %>% format(big.mark=",")`) & Weibull (AIC= `r fit_flexsurvreg0%>%arrange(AIC) %>% dplyr::filter(dist=="Weibull (PH)") %>% dplyr::select("AIC") %>% as.numeric() %>% format(big.mark=",")`; RMSE= `r rmse_comp_fits_0 %>% dplyr::arrange("rmse") %>% dplyr::filter(dist=="Weibull (PH)") %>% dplyr::select("rmse") %>% as.numeric() %>% round(4) %>% format(big.mark=",")`) distributions, because of its lower errors. The estimated model included covariates of interest, plus the interaction between Type of Program and Cause of Discharge of the baseline treatment and the Days in the baseline treatment.
+<!---
+rmse_comp_fits_0
+#td= Generalized gamma , Gompertz, Lognormal
+#dwca= Lognormal, Gompertz, Weibull|Gamma
+
+#fit_flexsurvreg0 %>% dplyr::mutate_at(3:6,~scale(.)) %>%  dplyr::mutate(tot=n2
+
+fit_flexsurvreg0 %>% dplyr::arrange(subset, AIC)
+#td= Log-logistic, Gamma, Weibull
+#dwca= Gompertz, weibull, Gamma
+
+#Gompertz weibullph Gompertz Gamma
+--->
+
+We chose the most adequate distribution following visual assessment of the smooth kernel hazards. This was followed by a measure of the error of the data, and considering that the smooth kernel distribution had different time points than the parametric survival distributions presented, we split time into `r length(seq(0,max(kernel_haz_simple$time),.05))`  categories, each one separated .05 years from 0 to the last available time point in the smooth kernel (in this case, `r max(kernel_haz_simple$time)` years). Once we had the same amount of data between the smooth kernel hazards and each distribution and different cause of discharge, we calculated the RMSE by comparing the smooth kernel hazards with each parametric survival distribution and type of discharge.
+
+For individuals tat had a therapeutic discharge, we ended choosing the Gompertz (AIC= `r fit_flexsurvreg0%>% dplyr::filter(dist=="Gompertz"  & status=="Therapeutic discharge") %>% dplyr::select("AIC") %>% as.numeric() %>% format(big.mark=",")`; RMSE= `r rmse_comp_fits_0 %>% dplyr::filter(dist=="Gompertz") %>% dplyr::select("rmse_td") %>% as.numeric() %>% round(4) %>% format(big.mark=",")`) & Weibull (PH) (AIC= `r fit_flexsurvreg0%>% dplyr::filter(dist=="Weibull (PH)" & status=="Therapeutic discharge") %>% dplyr::select("AIC") %>% as.numeric() %>% format(big.mark=",")`; RMSE= `r rmse_comp_fits_0 %>%  dplyr::filter(dist=="Weibull (PH)") %>% dplyr::select("rmse_td") %>% as.numeric() %>% round(4) %>% format(big.mark=",")`) distributions, because of its lower dissimilarities.
+
+For individuals that had a discharge without clinical advice, we ended choosing the Gompertz (AIC= `r fit_flexsurvreg0%>% dplyr::filter(dist=="Gompertz" & grepl("without",status)) %>% dplyr::select("AIC") %>% as.numeric() %>% format(big.mark=",")`; RMSE= `r rmse_comp_fits_0 %>% dplyr::filter(dist=="Gompertz") %>% dplyr::select("rmse_dwca") %>% as.numeric() %>% round(4) %>% format(big.mark=",")`) & Gamma (AIC= `r fit_flexsurvreg0%>% dplyr::filter(dist=="Gamma" & grepl("without",status)) %>% dplyr::select("AIC") %>% as.numeric() %>% format(big.mark=",")`; RMSE= `r rmse_comp_fits_0 %>%  dplyr::filter(dist=="Gamma") %>% dplyr::select("rmse_dwca") %>% as.numeric() %>% round(4) %>% format(big.mark=",")`) distributions, because of its lower dissimilarities.
+
+The estimated model included covariates of interest, stratified by Cause of Discharge of the baseline treatment.
 
 <br>
 
 ```{r fit_surv_parametric_simple_model2}
 #<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
 coefs_1a<-
-data.table::data.table(round(exp(flexsurv_1a$res),2)[,1:3],keep.rownames = T) %>% 
+data.table::data.table(round(exp(flexsurv_1a_td$res),2)[,1:3],keep.rownames = T) %>% 
    dplyr::left_join(dt_coefs_simple_surv, by=c("rn"="real_vars")) %>% 
   #dplyr::mutate(p.value=ifelse(p.value<.001,"<0.001",as.character(sprintf("%1.3f",p.value)))) %>% 
   dplyr::mutate(conf.low=sprintf("%1.2f",`L95%`),
@@ -2676,7 +3067,7 @@ data.table::data.table(round(exp(flexsurv_1a$res),2)[,1:3],keep.rownames = T) %>
   dplyr::select(formal_vars, statistic, `CI 95%`) 
 
 coefs_1b<-
-data.table::data.table(round(exp(flexsurv_1b$res),2)[,1:3],keep.rownames = T) %>% 
+data.table::data.table(round(exp(flexsurv_1b_td$res),2)[,1:3],keep.rownames = T) %>% 
    dplyr::left_join(dt_coefs_simple_surv, by=c("rn"="real_vars")) %>% 
   #dplyr::mutate(p.value=ifelse(p.value<.001,"<0.001",as.character(sprintf("%1.3f",p.value)))) %>% 
   dplyr::mutate(conf.low=sprintf("%1.2f",`L95%`),
@@ -2686,18 +3077,107 @@ data.table::data.table(round(exp(flexsurv_1b$res),2)[,1:3],keep.rownames = T) %>
   dplyr::filter(!rn %in% c("shape","scale","rate")) %>% 
   dplyr::select(formal_vars, statistic, `CI 95%`) 
 
-dplyr::left_join(coefs_1a,coefs_1b,by="formal_vars")%>% 
+coefs_1a2<-
+data.table::data.table(round(exp(flexsurv_1c_td$res),2)[,1:3],keep.rownames = T) %>% 
+   dplyr::left_join(dt_coefs_simple_surv, by=c("rn"="real_vars")) %>% 
+  #dplyr::mutate(p.value=ifelse(p.value<.001,"<0.001",as.character(sprintf("%1.3f",p.value)))) %>% 
+  dplyr::mutate(conf.low=sprintf("%1.2f",`L95%`),
+                conf.high=sprintf("%1.2f",`U95%`),
+                statistic=sprintf("%1.2f",est),
+                `CI 95%`=paste0(conf.low,", ",conf.high)) %>% 
+  dplyr::filter(!rn %in% c("shape","scale","rate")) %>% 
+  dplyr::select(formal_vars, statistic, `CI 95%`) 
+
+coefs_1b2<-
+data.table::data.table(round(exp(flexsurv_1d_td$res),2)[,1:3],keep.rownames = T) %>% 
+   dplyr::left_join(dt_coefs_simple_surv, by=c("rn"="real_vars")) %>% 
+  #dplyr::mutate(p.value=ifelse(p.value<.001,"<0.001",as.character(sprintf("%1.3f",p.value)))) %>% 
+  dplyr::mutate(conf.low=sprintf("%1.2f",`L95%`),
+                conf.high=sprintf("%1.2f",`U95%`),
+                statistic=sprintf("%1.2f",est),
+                `CI 95%`=paste0(conf.low,", ",conf.high)) %>% 
+  dplyr::filter(!rn %in% c("shape","scale","rate")) %>% 
+  dplyr::select(formal_vars, statistic, `CI 95%`) 
+
+
+coefs_1c<-
+data.table::data.table(round(exp(flexsurv_1a_dwca$res),2)[,1:3],keep.rownames = T) %>% 
+   dplyr::left_join(dt_coefs_simple_surv, by=c("rn"="real_vars")) %>% 
+  #dplyr::mutate(p.value=ifelse(p.value<.001,"<0.001",as.character(sprintf("%1.3f",p.value)))) %>% 
+  dplyr::mutate(conf.low=sprintf("%1.2f",`L95%`),
+                conf.high=sprintf("%1.2f",`U95%`),
+                statistic=sprintf("%1.2f",est),
+                `CI 95%`=paste0(conf.low,", ",conf.high)) %>% 
+  dplyr::filter(!rn %in% c("shape","scale","rate")) %>% 
+  dplyr::select(formal_vars, statistic, `CI 95%`) 
+
+coefs_1d<-
+data.table::data.table(round(exp(flexsurv_1b_dwca$res),2)[,1:3],keep.rownames = T) %>% 
+   dplyr::left_join(dt_coefs_simple_surv, by=c("rn"="real_vars")) %>% 
+  #dplyr::mutate(p.value=ifelse(p.value<.001,"<0.001",as.character(sprintf("%1.3f",p.value)))) %>% 
+  dplyr::mutate(conf.low=sprintf("%1.2f",`L95%`),
+                conf.high=sprintf("%1.2f",`U95%`),
+                statistic=sprintf("%1.2f",est),
+                `CI 95%`=paste0(conf.low,", ",conf.high)) %>% 
+  dplyr::filter(!rn %in% c("shape","scale","rate")) %>% 
+  dplyr::select(formal_vars, statistic, `CI 95%`) 
+
+coefs_1c2<-
+data.table::data.table(round(exp(flexsurv_1c_dwca$res),2)[,1:3],keep.rownames = T) %>% 
+   dplyr::left_join(dt_coefs_simple_surv, by=c("rn"="real_vars")) %>% 
+  #dplyr::mutate(p.value=ifelse(p.value<.001,"<0.001",as.character(sprintf("%1.3f",p.value)))) %>% 
+  dplyr::mutate(conf.low=sprintf("%1.2f",`L95%`),
+                conf.high=sprintf("%1.2f",`U95%`),
+                statistic=sprintf("%1.2f",est),
+                `CI 95%`=paste0(conf.low,", ",conf.high)) %>% 
+  dplyr::filter(!rn %in% c("shape","scale","rate")) %>% 
+  dplyr::select(formal_vars, statistic, `CI 95%`) 
+
+coefs_1d2<-
+data.table::data.table(round(exp(flexsurv_1d_dwca$res),2)[,1:3],keep.rownames = T) %>% 
+    dplyr::left_join(dt_coefs_simple_surv, by=c("rn"="real_vars")) %>% 
+    #dplyr::mutate(p.value=ifelse(p.value<.001,"<0.001",as.character(sprintf("%1.3f",p.value)))) %>% 
+    dplyr::mutate(conf.low=sprintf("%1.2f",`L95%`),
+                  conf.high=sprintf("%1.2f",`U95%`),
+                  statistic=sprintf("%1.2f",est),
+                  `CI 95%`=paste0(conf.low,", ",conf.high)) %>% 
+    dplyr::filter(!rn %in% c("shape","scale","rate")) %>% 
+    dplyr::select(formal_vars, statistic, `CI 95%`) 
+
+coefs_surv<-
+dplyr::right_join(coefs_1a2,coefs_1a,by="formal_vars")%>% #
+    dplyr::left_join(coefs_1b2,by="formal_vars")%>% 
+    dplyr::left_join(coefs_1b,by="formal_vars")%>% 
+    dplyr::left_join(coefs_1c2,by="formal_vars")%>%
+    dplyr::left_join(coefs_1c,by="formal_vars")%>%
+    dplyr::left_join(coefs_1d2,by="formal_vars")%>% 
+    dplyr::left_join(coefs_1d,by="formal_vars")
+
+coefs_surv %>%   
     knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
                caption=paste0("Table 5. Coefficients of selected parametric distributions"),
-               col.names = c("Term","Hazard","CI 95%","Hazard","CI 95%"),
-               align= c("l",rep('c', 6)))%>%
-  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size=12)%>%
-  kableExtra::add_header_above(c(" ", "Gompertz" = 2, "Weibull (AFT)" = 2),bold=T) %>% 
-  kableExtra::add_footnote(c(paste0("Gompertz: ",note_flexsurv_1a),paste0("Weibull (AFT): ",note_flexsurv_1a)), notation = "none") %>%
+               col.names = c("Term",rep(c("Haz","CI 95%"),8)),
+               align= c("l",rep('c', 16)))%>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size=10)%>%
+  kableExtra::row_spec(1, bold = TRUE) %>% 
+  kableExtra::add_header_above(c(" ", "Gompertz" = 4, "Weibull (PH)" = 4, "Gompertz" = 4, "Gamma" = 4),bold=T) %>% 
+  kableExtra::add_header_above(c(" ", "Therapeutic discarge" = 8, "Discharge w/o clinical advice" = 8),bold=T) %>% 
+  kableExtra::add_footnote(c("Note. From left to right:",paste0("Gompertz: ",note_flexsurv_1c_td),
+    paste0("Gompertz: ",note_flexsurv_1a_td),
+    paste0("Weibull (PH): ",note_flexsurv_1d_td),
+    paste0("Weibull (PH): ",note_flexsurv_1b_td),
+    paste0("Gompertz: ",note_flexsurv_1c_dwca),
+    paste0("Gompertz: ",note_flexsurv_1a_dwca),
+    paste0("Gamma: ",note_flexsurv_1d_dwca),
+    paste0("Gamma: ",note_flexsurv_1b_dwca)), notation = "none") %>%
   kableExtra::scroll_box(width = "100%", height = "350px")
 #</div>
 ```
 
+
+The table above depicts greater hazards of readmission in women with Therapeutic discharge, compared to women in General population programs `r paste0("(Gompertz HR= ",coefs_surv[1,2]," CI 95% ",coefs_surv[1,3],"); Weibull (PH)= ", coefs_surv[1,6]," CI 95% ",coefs_surv[1,7],")")`. However, when controlling for  covariates, these hazards overlapped with null associations `r paste0("(Gompertz HR= ",coefs_surv[1,4]," CI 95% ",coefs_surv[1,5],"); Weibull (PH)= ", coefs_surv[1,8]," CI 95% ",coefs_surv[1,9],")")`. On the other hand, women with Discharge w/o Clinical Advice had greater hazards of readmission, compared to women in General population programs `r paste0("(Gompertz HR= ",coefs_surv[1,10]," CI 95% ",coefs_surv[1,11],"); Weibull (PH)= ", coefs_surv[1,14]," CI 95% ",coefs_surv[1,15],")")`, even controlling on the rest of the covariates `r paste0("(Gompertz HR= ",coefs_surv[1,12]," CI 95% ",coefs_surv[1,13],"); Weibull (PH)= ", coefs_surv[1,16]," CI 95% ",coefs_surv[1,17],")")`.
+
+<br>
 
 ```{r predict_surv_simple_model, eval=F, dpi = 320, warning=F,message=F,fig.align='center', fig.cap="Figure 7. Survival curves", error=T,fig.width=8}
 
@@ -2767,7 +3247,7 @@ ggiraph(code = {print(plot_haz_covs2)}, tooltip_extra_css = tooltip_css, tooltip
 
 ### Competing risks
 
-We estimated the cumulative incidence (risk over time) of each outcome of treatment  type in the presence of the other event types. 
+We estimated the cumulative incidence (risk over time) of each outcome of treatment type in the presence of the other event types. 
 
 <br>
 
@@ -2776,170 +3256,6 @@ We estimated the cumulative incidence (risk over time) of each outcome of treatm
 time_aft_inc_rate<-Sys.time()
 
 paste0("Time taken in process: ");time_aft_inc_rate-time_bef_inc_rate
-#############################################################################
-#                                                                           #
-#                 CUMULATIVE INCIDENCE CURVES IN R                          #
-#                                                                           #
-# Written by Luca Scrucca                                                   #
-#                                                                           #
-# Reference:                                                                #
-# Scrucca L., Santucci A., Aversa F. (2007) Competing risks analysis using  #
-#   R: an easy guide for clinicians. Bone Marrow Transplantation, 40,       #
-#   381--387.                                                               #
-#############################################################################
-# ver. 1.2 Apr 2018
-#  - improved format for p-value
-# ver. 1.1 Feb 2008
-#  - allow group to be missing
-#  - if t is provided both computation and plots use t as time points
-#  - allow col, lwd to be used for curves with confidence bands
-#  - fix some bugs in the legend
-#  - added help on source code
-# ver. 1.0 May 2007
-#  - Version appearing in the BMT paper
-#############################################################################
-#
-# Usage:
-# 
-#   CumIncidence(ftime, fstatus, group, t, strata, rho = 0, cencode = 0,
-#             	 subset, na.action = na.omit, level, 
-#                xlab = "Time", ylab = "Probability", 
-#                col, lty, lwd, digits = 4)
-# 
-# Arguments:
-# 
-# ftime = failure time variable.
-# fstatus = variable with distinct codes for different causes of 
-#           failure and also a distinct code for censored observations.
-# group	= estimates will be calculated within groups given by distinct 
-#         values of this variable. Tests will compare these groups. If 
-#         missing then treated as all one group (no test statistics).
-# t = a vector of time points where the cumulative incidence function 
-#     should be evaluated.
-# strata = stratification variable. Has no effect on estimates. Tests 
-#          will be stratified on this variable. (all data in 1 stratum,
-#          if missing).
-# rho = power of the weight function used in the tests. By default is 
-#       set to 0.
-# cencode = value of fstatus variable which indicates the failure time
-#           is censored.
-# subset = a logical vector specifying a subset of cases to include in 
-#          the analysis.
-# na.action = a function specifying the action to take for any cases 
-#             missing any of ftime, fstatus, group, strata, or subset. 
-#             By default missing cases are omitted.
-# level = a value in the range [0,1] specifying the level for pointwise
-#         confidence bands.
-# xlab = text for the x-axis label.
-# ylab = text for the y-axis label.
-# col = color(s) used for plotting curves (see plot.default).
-# lty = line type(s) used for plotting curves (see plot.default).
-# lwd = line width(s) used for plotting curves (see plot.default).
-# digits = number of significant digits used for printing values. By 
-#          default set at 4.
-# 
-#############################################################################
-
-"CumIncidence" <- function(ftime, fstatus, group, t, strata, rho = 0, 
-	                         cencode = 0, subset, na.action = na.omit, level,
-	                         xlab = "Time", ylab = "Probability", 
-	                         col, lty, lwd, digits = 4)
-{
-  # check for the required package
-  if(!require("cmprsk"))
-    { stop("Package `cmprsk' is required and must be installed.\n 
-           See help(install.packages) or write the following command at prompt
-           and then follow the instructions:\n
-           > install.packages(\"cmprsk\")") } 
-  # collect data
-  mf  <- match.call(expand.dots = FALSE)
-  mf[[1]] <- as.name("list")
-  mf$t <- mf$digits <- mf$col <- mf$lty <- mf$lwd <- mf$level <- 
-  mf$xlab <- mf$ylab <- NULL
-  mf <- eval(mf, parent.frame())
-  g <- max(1, length(unique(mf$group)))
-  s <- length(unique(mf$fstatus))
-  if(missing(t)) 
-    { time <- pretty(c(0, max(mf$ftime)), 6)
-      ttime <- time <- time[time < max(mf$ftime)] }
-  else { ttime <- time <- t }
-  # fit model and estimates at time points
-  fit   <- do.call("cuminc", mf)
-  tfit <- timepoints(fit, time)
-  # print result
-  cat("\n+", paste(rep("-", 67), collapse=""), "+", sep ="")
-  cat("\n| Cumulative incidence function estimates from competing risks data |")
-  cat("\n+", paste(rep("-", 67), collapse=""), "+\n", sep ="")
-  tests <- NULL
-  if(g > 1)
-  { 
-    tests <- data.frame(fit$Tests[,c(1,3,2)], check.names = FALSE)
-    colnames(tests) <- c("Statistic", "df", "p-value")
-    tests$`p-value` <- format.pval(tests$`p-value`)
-    cat("Test equality across groups:\n")
-    print(tests, digits = digits) 
-  }
-  cat("\nEstimates at time points:\n")
-  print(tfit$est, digits = digits)
-  cat("\nStandard errors:\n")
-  print(sqrt(tfit$var), digits = digits)
-  #
-  if(missing(level))
-    { # plot cumulative incidence functions
-      if(missing(t))
-        { time <- sort(unique(c(ftime, time)))
-          x <- timepoints(fit, time) }
-      else x <- tfit
-      col <- if(missing(col)) rep(1:(s-1), rep(g,(s-1))) else col
-      lty <- if(missing(lty)) rep(1:g, s-1) else lty
-      lwd <- if(missing(lwd)) rep(1, g*(s-1)) else lwd      
-     # matplot(time, base::t(x$est), type="s", ylim = c(0,1), 
-     #         xlab = xlab, ylab = ylab, xaxs="i", yaxs="i", 
-     #         col = col, lty = lty, lwd = lwd)
-     # legend("topleft", legend =  rownames(x$est), x.intersp = 2, 
-     #        bty = "n", xjust = 1, col = col, lty = lty, lwd = lwd)
-      out <- list(test = tests, est = tfit$est, se = sqrt(tfit$var))
-    }
-  else
-    { if(level < 0 | level > 1) 
-        error("level must be a value in the range [0,1]")
-      # compute pointwise confidence intervals
-      oldpar <- par(ask=TRUE)
-      on.exit(par(oldpar))
-      if(missing(t))
-        { time <- sort(unique(c(ftime, time)))
-          x <- timepoints(fit, time) }
-      else x <- tfit
-      z <- qnorm(1-(1-level)/2)
-      lower <- x$est ^ exp(-z*sqrt(x$var)/(x$est*log(x$est)))
-      upper <- x$est ^ exp(z*sqrt(x$var)/(x$est*log(x$est)))
-      col <- if(missing(col)) rep(1:(s-1), rep(g,(s-1))) 
-             else             rep(col, g*(s-1))
-      lwd <- if(missing(lwd)) rep(1, g*(s-1)) 
-             else             rep(lwd, g*(s-1))      
-      # plot pointwise confidence intervals
-     # for(j in 1:nrow(x$est))
-     #    { matplot(time, cbind(x$est[j,], lower[j,], upper[j,]), type="s", 
-     #              xlab = xlab, ylab = ylab, xaxs="i", yaxs="i", 
-     #              ylim = c(0,1), col = col[j], lwd = lwd[j], lty = c(1,3,3))
-     #      legend("topleft", legend =  rownames(x$est)[j], bty = "n", xjust = 1) }
-      # print pointwise confidence intervals
-      i <- match(ttime, time)
-      ci <- array(NA, c(2, length(i), nrow(lower)))
-      ci[1,,] <- base::t(lower[,i])
-      ci[2,,] <- base::t(upper[,i])
-      dimnames(ci) <- list(c("lower", "upper"), ttime, rownames(lower))
-      cat(paste("\n", level*100, "% pointwise confidence intervals:\n\n", sep=""))
-      print(ci, digits = digits)
-      out <- list(test = tests, est = x$est, se = sqrt(tfit$var), ci = ci)
-    }
-  # return results
-  invisible(out)
-}
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
 ## Calculate the grouped cumulative incidence functions (CIF)
 
@@ -2950,6 +3266,15 @@ cuminc_comp_status_0<-
                 cencode = "Censored", 
                 xlab="Time (in years)",
                 level=.95)
+
+cuminc_comp_status_0b<-
+  CumIncidence (CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr[CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$time_to_outcome<3]$time_to_outcome,
+                CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr[CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$time_to_outcome<3]$comp_status,
+                CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr[CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$time_to_outcome<3]$tipo_de_programa_2, 
+                cencode = "Censored", 
+                xlab="Time (in years)",
+                level=.95)
+
 cuminc_comp_status<-  
 cuminc(ftime= CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$time_to_outcome,
     fstatus= CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$comp_status, 
@@ -2957,26 +3282,25 @@ cuminc(ftime= CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$time_
     cencode = "Censored")
 
 ## CIF and the variance of point estimates
-timepoints_cuminc_comp<-timepoints(cuminc_comp_status, times = seq(0,10,2))
+timepoints_cuminc_comp<-cmprsk::timepoints(cuminc_comp_status, times = seq(0,3,.05))
 
-timepoints_cuminc_comp_table<-
-timepoints_cuminc_comp$est %>% 
-    data.table(keep.rownames = T) %>% 
-    dplyr::left_join(data.table(timepoints_cuminc_comp$var,keep.rownames = T), by="rn") %>% 
-    melt() %>% 
-    separate("variable",c("var","est")) %>% 
-    reshape(idvar= c("rn", "var"),timevar="est", direction="wide") %>% 
-    dplyr::mutate(value=paste0(sprintf("%.2f",value.x)," (",sprintf("%.2f",value.y),")"))
+#Estimates
+
+cuminc_comp_table<-
+cbind.data.frame(melt(timepoints_cuminc_comp$est),var=melt(timepoints_cuminc_comp$var)[,3]) %>% 
+    dplyr::mutate(lower= value ^ exp(-qnorm(1-(1-.95)/2)*sqrt(var)/(value*log(value)))) %>% 
+    dplyr::mutate(upper= value ^ exp(qnorm(1-(1-.95)/2)*sqrt(var)/(value*log(value))))  
+    # z <- qnorm(1-(1-.95)/2)
+    #  lower <- x$est ^ exp(-qnorm(1-(1-.95)/2)*sqrt(x$var)/(x$est*log(x$est)))
+    #  upper <- x$est ^ exp(qnorm(1-(1-.95)/2)*sqrt(x$var)/(x$est*log(x$est)))
+    #  col <- if(missing(col)) rep(1:(s-1), rep(g,(s-1))) 
+    #         else             rep(col, g*(s-1))
+    #  lwd <- if(missing(lwd)) rep(1, g*(s-1)) 
+    #         else             rep(lwd, g*(s-1))   
+
 
 #plot(cuminc_comp_status, col = 1:4, lwd = 3, lty = 1, xlab = "Time (in years)")
 
-timepoints_cuminc_comp_table[,c(1,2,5)] %>% 
-  reshape(idvar= c("rn"),timevar="var", direction="wide") %>% 
-    knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
-               caption="Table 6. CIF and variance of point estimates",
-               align= c("l",rep('c', 6)), col.names = c("Group & Outcome","0","2", "4","6","8","10"))%>%
-  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size=11)%>%
-  kableExtra::scroll_box(width= "100%", height = "250x")
 #at year 10, the estimated marginal probability of discharge w/o clinical advice was 59%
 ```
 </div>
@@ -2984,23 +3308,26 @@ timepoints_cuminc_comp_table[,c(1,2,5)] %>%
 <br>
 
 ```{r competing_risks1.2, dpi = 320, warning=F,message=F,fig.align='center', fig.cap="Figure 6. Cum. Incidence of Treatment Outcome, Grouped by Type of Program", error=T, fig.height=10, fig.width= 10}
-
+#https://rpubs.com/oireyescortes/rpubs-supervivencia-riesgos-competitivos
 plot_incidence_cum<-
-as.data.table(cuminc_comp_status_0$ci) %>% 
+cuminc_comp_table %>% 
     data.frame() %>% 
-    reshape(idvar= c("V2", "V3"),timevar="V1", direction="wide") %>% 
-    dplyr::mutate(V2=as.numeric(V2)) %>% 
+    #reshape(idvar= c("V2", "V3"),timevar="V1", direction="wide") %>% 
     ggplot()+
-    geom_ribbon(aes(x=V2, ymin = value.lower, ymax = value.upper, fill=V3),alpha=.4)+
+    geom_line(aes(x=Var2, y=value, fill=Var1))+
+    geom_ribbon(aes(x=Var2, ymin = lower, ymax = upper, fill=Var1),alpha=.4)+
     sjPlot::theme_sjplot()+
     ylim(0,1)+
     guides(fill=guide_legend(ncol=2))+
     scale_y_continuous(breaks = seq(0,.65, .1),
                      labels = scales::percent,
                      limits = c(0, .65)) +
+    scale_x_continuous(breaks=seq(0,3,.25))+
     theme(legend.position="bottom")+
-    scale_fill_manual(name="Type of\nprogram &\nOutcome",values=c("cornflowerblue","brown3","bisque4","darkolivegreen"))+
-    labs(x="Time (in years)",y="Probability")
+    scale_fill_manual(name="Type of\nprogram &\nOutcome",values=c("cornflowerblue","brown3","#461c50","darkolivegreen"))+
+    labs(x="Time (in years)",y="Probability")+
+   # geom_vline(xintercept=1095/365.25, color="darkred", linetype=2)
+  labs(caption= "Note. There are no discharges after 1,095 days from the admission.")
 
 plot_incidence_cum
 
@@ -3010,13 +3337,21 @@ plot_incidence_cum
 dev.off()
 }
 time_bef_cmprsk<-Sys.time()
+
+tests_comp_status_crsk<-
+data.table(cuminc_comp_status$Tests, keep.rownames = T)
 ```
 
-First, the print out shows the results of Gray's test for equality of CIFs across groups. In our example, cumulative incidence curves for types of programs are not statistically different for Therapeutic discharge (`r paste0(round(cuminc_comp_status$Tests[1,1],2),"(",cuminc_comp_status$Tests[1,3],")= ",sprintf("%.3f",cuminc_comp_status$Tests[1,2]))`), but women in WE programs seem to be more likely to be Discharged without clinical advice than women in GP (`r paste0(round(cuminc_comp_status$Tests[2,1],2),"(",cuminc_comp_status$Tests[2,3],")= ",sprintf("%.3f",cuminc_comp_status$Tests[2,2]))`).
+
+The cumulative incidence allow us to estimate different causes of failure (Therapeutic discharge & Discharge without clinical advice) and compare between groups (Women in Women specific and General Population Programs). 
+
+As seen in the Figure above, women in the General population programs show a lower risk of Discharge without clinical advice specifically in the first year, while women in the the General population programs show a sightly lower incidence of Therapeutic discharge, compared to the Women specific program.
+
+First, the print out shows the results of Gray's test for equality of CIFs across groups. In our example, cumulative incidence curves for types of programs are not statistically different for Therapeutic discharge (`r paste0(round(subset(tests_comp_status_crsk,rn=="Therapeutic discharge")[,"stat"],2),"(",subset(tests_comp_status_crsk,rn=="Therapeutic discharge")[,"df"],"), p= ",sprintf("%.3f",subset(tests_comp_status_crsk,rn=="Therapeutic discharge")[,"pv"]))`), but women in Women specific programs seem to be more likely Discharged without clinical advice than women in the General population (`r paste0(round(subset(tests_comp_status_crsk,grepl("without",rn))[,"stat"],2),"(",subset(tests_comp_status_crsk,grepl("without",rn))[,"df"],"), p= ",sprintf("%.3f",subset(tests_comp_status_crsk,grepl("without",rn))[,"pv"]))`).
 
 <br>
 
-```{r competing_risks2, warning=F,message=F, error=T, eval=T}
+```{r competing_risks2_disch_wo_clin_adv, warning=F,message=F, error=T, eval=T}
 #<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
 
 ## Regression (crr can only take a covariate matrix)
@@ -3027,7 +3362,8 @@ First, the print out shows the results of Gray's test for equality of CIFs acros
 
  covars <- model.matrix(~edad_al_ing_grupos+ escolaridad_rec+ sus_principal_mod+ 
                  freq_cons_sus_prin+ compromiso_biopsicosocial+ tenencia_de_la_vivienda_mod+ 
-                 num_otras_sus_mod+ numero_de_hijos_mod_rec+ factor(tipo_de_programa_2)+ tipo_de_plan_res, CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr)[,-1]
+                 num_otras_sus_mod+ numero_de_hijos_mod_rec+ tipo_de_programa_2+ tipo_de_plan_res, CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr)[,-1]
+#The final [,-1] removes the constant term from the output of model.matrix
 
 bmtDisMat <- matrix(
               cbind(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$tipo_de_programa_2,
@@ -3044,7 +3380,16 @@ bmtDisMat <- matrix(
                     ),ncol=11)
 colnames(bmtDisMat) <- c("program","plan","marital status","age at admission","educational attainment","substance","frequency of subs use","biopsychosoc comp", "housing cond", "other subs", "kids")
 
-#"estado_conyugal_2","edad_al_ing_grupos","escolaridad_rec","sus_principal_mod", "freq_cons_sus_prin","compromiso_biopsicosocial","tenencia_de_la_vivienda_mod","num_otras_sus_mod","numero_de_hijos_mod_rec"
+cov_alone<-matrix(as.numeric(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$tipo_de_programa_2=="Women specific"))
+
+dimnames(cov_alone)[[2]] <- c("Type of program-Women specific")
+
+resCrrRelByDis_only <-
+cmprsk::crr(ftime= CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$time_to_outcome, 
+   fstatus= CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$comp_status, 
+   cov1= cov_alone,
+   failcode = "Discharge without clinical advice", 
+   cencode  = "Censored")
 
 resCrrRelByDis <- cmprsk::crr(ftime= CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$time_to_outcome, # vector of failure/censoring times
                       fstatus= CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$comp_status, # vector with a unique code for each failure type and censoring
@@ -3052,7 +3397,7 @@ resCrrRelByDis <- cmprsk::crr(ftime= CONS_C1_df_dup_SEP_2020_women_miss_after_im
                       ## cov2     = , # matrix of covariates that will be multiplied by functions of time
                       ## tf       = , # functions of time
                       ## cengroup = , # vector with different values for each group with a distinct censoring distribution
-                      failcode = "Therapeutic discharge", # code of fstatus that denotes the failure type of interest
+                      failcode = "Discharge without clinical advice", # code of fstatus that denotes the failure type of interest
                       cencode  = "Censored" # code of fstatus that denotes censored observations
                       )
 
@@ -3069,40 +3414,101 @@ resCrrRelByDis <- cmprsk::crr(ftime= CONS_C1_df_dup_SEP_2020_women_miss_after_im
 #of each level with respect to the baseline. An overall Pvalue for Phase (the overall P-value is always required
 #when modeling a factor with more than two levels), can be obtained through the Wald test. 
 # ESTO PERMITE VER SI UNA VRIABLE FACTOR TIENE DIFERENCIAS EN TODOS SUS NIVELES
+ options(knitr.kable.NA = '')
 
 data.table::data.table(summary(resCrrRelByDis)$conf.int, keep.rownames = T) %>% 
   dplyr::left_join(dt_coefs_simple_surv, by=c("rn"="real_vars"))%>% 
-  dplyr::mutate(formal_vars= ifelse(rn=="factor(tipo_de_programa_2)Women specific","Type of Program- Women specific",formal_vars))%>% 
-  dplyr::mutate(conf.low=sprintf("%1.2f",`2.5%`),
-                conf.high=sprintf("%1.2f",`97.5%`),
-                `exp(coef)`=sprintf("%1.2f",`exp(coef)`),
-                `exp(-coef)`=sprintf("%1.2f",`exp(-coef)`),
-                `CI 95%`=paste0(conf.low,", ",conf.high)) %>% 
+  dplyr::mutate(formal_vars= ifelse(rn=="factor(tipo_de_programa_2)Women specific","Type of program-Women specific",formal_vars))%>% 
+  dplyr::left_join(data.table::data.table(summary(resCrrRelByDis_only)$conf.int,keep.rownames=T), by=c("formal_vars"="rn"))%>% 
+  dplyr::mutate(conf.low2=sprintf("%1.2f",`2.5%.y`),
+                conf.high2=sprintf("%1.2f",`97.5%.y`),
+                conf.low1=sprintf("%1.2f",`2.5%.x`),
+                conf.high1=sprintf("%1.2f",`97.5%.x`),
+                `exp(coef)2`=sprintf("%1.2f",`exp(coef).y`),
+                `exp(coef)1`=sprintf("%1.2f",`exp(coef).x`),
+                `exp(-coef)2`=sprintf("%1.2f",`exp(-coef).y`),
+                `exp(-coef)1`=sprintf("%1.2f",`exp(-coef).x`),
+                `CI 95%1`=paste0(conf.low1,", ",conf.high1),
+                `CI 95%2`=paste0(conf.low2,", ",conf.high2)) %>% 
   dplyr::filter(!rn %in% c("shape","scale")) %>% 
-  dplyr::select(formal_vars, `exp(coef)`, `exp(-coef)`, `CI 95%`) %>% 
+  dplyr::select(formal_vars, `exp(coef)2`, `CI 95%2`,
+                `exp(coef)1`,  `CI 95%1`) %>%
+  dplyr::mutate(`CI 95%1`=ifelse(`CI 95%1`=="NA, NA",NA,`CI 95%1`)) %>% 
+  dplyr::mutate(`CI 95%2`=ifelse(`CI 95%2`=="NA, NA",NA,`CI 95%2`)) %>% 
+  dplyr::mutate_at(c(2,4),~as.numeric(.)) %>% 
     knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
-               caption=paste0("Table 7. Competing Risks (Treatment Outcomes, Failure Type of Interest= Therapeutic Discharge) Regression Coefficients"),
-               col.names = c("Term","Hazard", "Inv. Hazard", "CI 95%"),
+               caption=paste0("Table 6. Competing Risks (Treatment Outcomes, Failure Type of Interest= Discharge without clinical advice) Regression Coefficients"),
+               col.names = c("Term","Hazard", "CI 95%", "Hazard", "CI 95%"),
                align= c("l",rep('c', 6)))%>%
+  kableExtra::row_spec(23, bold = TRUE) %>% 
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size=11)%>%
+  kableExtra::add_header_above(c(" ", "Only Type of Program" = 2, "Plus other covariates" = 2),bold=T) %>% 
   kableExtra::add_footnote("Note. ", notation = "none") %>%
   kableExtra::scroll_box(width = "100%", height = "340px")
 #resCrrRelByDis$loglik.null
 #resCrrRelByDis$loglik
 
-#inverse hazard ratio
+#For eGFR as determinant, inverse hazard ratio was determined (1/HR) in order to report risk of ESKD associated with decrease of eGFR
 
-#tidy(resCrrRelByDis)
-
+# Scrucca L, Santucci A, Aversa F (2009) Regression Modeling of Competing 
+#   Risk Using R: An In Depth Guide for Clinicians. Submitted to Bone Marrow Transplantation
 #MODEL SELECTION
-#modsel.crr(mod1, mod2, mod3, mod4, mod5, mod6)
+modsel.crr(resCrrRelByDis_only,resCrrRelByDis)
 #Hacer distintos modelos y compararlos
 #</div>
+
+# To adjust for confounding, three models were constructed: the first model was adjusted for sex and age and the second model was further adjusted for smoking, T2DM, SBP, BMI, non-HDL-cholesterol and exercise (if not a determinant of interest). A third model was constructed with addition of use of glucose-lowering medication, antihypertensive medication and lipid-lowering medication to the second model.
 ```
+
+<!--- 
+#  
+# WS> GP => DWCA -> sig. .003
+# WS> GP => TD -> sig. .06
+#
+# Regresión= WS, 1.06 [1.02 - 1.10] con el modelo sin covars, pero
+# WS .95 [.91 - .99] en modelo con covariables
+#
+# DWCA es inconsistente en WS
+#
+#tests_comp_status_crsk
+#                                  rn     stat          pv df
+#1:             Therapeutic discharge 3.673589 0.055281034  1
+#2: Discharge without clinical advice 9.031602 0.002653518  1
+> 
+--->
+
+Results were not conclusive. Without covariates, Women specific programs had greater hazards of discharge without clinical advice `r paste0("(HR= ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis_only)$conf.int,keep.rownames=T)[,"exp(coef)"]),"; CI 95% ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis_only)$conf.int,keep.rownames=T)[,"2.5%"]),", ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis_only)$conf.int,keep.rownames=T)[,"97.5%"]),")")`. However, Women specific had lower hazards of discharge without clinical advice when controlling for covariates of interest `r paste0("(HR= ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis)$conf.int,keep.rownames=T)[23,"exp(coef)"]),"; CI 95% ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis)$conf.int,keep.rownames=T)[23,"2.5%"]),", ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis)$conf.int,keep.rownames=T)[23,"97.5%"]),")")`.
 
 <br>
 
-```{r competing_risks1.3, dpi = 320, warning=F,message=F,fig.align='center', fig.cap="Figure 7. Residuals against failure time of the covariates", error=T,fig.width=10, fig.height=10}
+```{r competing_risks_pred, warning=F,message=F, error=T, eval=F}
+#Predicted Cumulative Incidence
+#We predict the CIF of death for a justice appointed at age 55 completed years in 1950 and 2000. The code below adds 0.5 to convert to exact ages and mid years.)
+
+df_pred_cmprsk_only<-
+predict(resCrrRelByDis_only, matrix(rbind("Type of program-Women specific"=1,"Type of program-Women specific"=0),nrow=2))
+
+cifd_only <- data.frame(
+   program = factor(rep(c("Women specific", "General population"),each=length(df_pred_cmprsk_only[,1]))),
+   years = c(df_pred_cmprsk_only[,1],df_pred_cmprsk_only[,1]),
+   cif = c(df_pred_cmprsk_only[,2], df_pred_cmprsk_only[,3])
+ )
+ggplot(cifd_only, aes(years, cif, color=program)) + geom_step()
+
+df_pred_cmprsk<-
+predict(resCrrRelByDis, matrix(rbind(c(program=1,bmtDisMat[120,2:11]),c(program=0,bmtDisMat[120,2:11])),nrow=2))
+
+cifd <- data.frame(
+  program = factor(rep(c("Women specific", "General population"),each=length(df_pred_cmprsk[,1]))),
+   years = c(df_pred_cmprsk[,1],df_pred_cmprsk[,1]),
+   cif = c(df_pred_cmprsk[,2], df_pred_cmprsk[,3])
+ )
+
+ggplot(cifd, aes(years, cif, color=program)) + geom_step()
+#We see that the probability of dying while serving in the court is declining over time net of age at appointment. For a justice appointed at age 55, the probability would be 31.6% if appointed in 1950 and 22.0% if appointed in the year 2000, assuming of course that current trends continue, so the model applies.
+```
+
+```{r competing_risks1_schoenfeld, dpi = 320, warning=F,message=F,fig.align='center', fig.cap="Figure 7a. Plots of Schoenfeld-type residuals against time failure of the covariates", error=T,fig.width=10, fig.height=10}
 time_aft_cmprsk<-Sys.time()
 
 #https://rpubs.com/kaz_yos/cmprsk2
@@ -3120,7 +3526,118 @@ for(j in 1:ncol(resCrrRelByDis$res))
 #Schoenfeld residuals against failure time for each covariate. It is noted that the residuals follows a non-constant distribution across failure times, indicating a potential violation to the proportional assumption.
 
 #the PH assumption can be assessed by fitting a LOESS curve to the plot. A straight line passing through a residual value of 0 with gradient 0 indicates that the variable satisfies the PH assumption and therefore does not depend on time.
+time_bef_cmprsk2<-Sys.time()
 ```
+
+```{r competing_risks1.3_cmprsk_ther_disch, warning=F,message=F, error=T, eval=T}
+options(knitr.kable.NA = '')
+
+resCrrRelByDis_only2 <-
+cmprsk::crr(ftime= CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$time_to_outcome, 
+   fstatus= CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$comp_status, 
+   cov1= cov_alone,
+   failcode = "Therapeutic discharge", 
+   cencode  = "Censored")
+
+resCrrRelByDis2 <- cmprsk::crr(ftime= CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$time_to_outcome, # vector of failure/censoring times
+                      fstatus= CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr$comp_status, # vector with a unique code for each failure type and censoring
+                      cov1= covars, #  matrix (nobs x ncovs) of fixed covariates
+                      ## cov2     = , # matrix of covariates that will be multiplied by functions of time
+                      ## tf       = , # functions of time
+                      ## cengroup = , # vector with different values for each group with a distinct censoring distribution
+                      failcode = "Therapeutic discharge", # code of fstatus that denotes the failure type of interest
+                      cencode  = "Censored" # code of fstatus that denotes censored observations
+                      )
+
+data.table::data.table(summary(resCrrRelByDis2)$conf.int, keep.rownames = T) %>% 
+  dplyr::left_join(dt_coefs_simple_surv, by=c("rn"="real_vars"))%>% 
+  dplyr::mutate(formal_vars= ifelse(rn=="factor(tipo_de_programa_2)Women specific","Type of program-Women specific",formal_vars))%>% 
+  dplyr::left_join(data.table::data.table(summary(resCrrRelByDis_only2)$conf.int,keep.rownames=T), by=c("formal_vars"="rn"))%>%   dplyr::mutate(conf.low2=sprintf("%1.2f",`2.5%.y`),
+                conf.high2=sprintf("%1.2f",`97.5%.y`),
+                conf.low1=sprintf("%1.2f",`2.5%.x`),
+                conf.high1=sprintf("%1.2f",`97.5%.x`),
+                `exp(coef)2`=sprintf("%1.2f",`exp(coef).y`),
+                `exp(coef)1`=sprintf("%1.2f",`exp(coef).x`),
+                `exp(-coef)2`=sprintf("%1.2f",`exp(-coef).y`),
+                `exp(-coef)1`=sprintf("%1.2f",`exp(-coef).x`),
+                `CI 95%1`=paste0(conf.low1,", ",conf.high1),
+                `CI 95%2`=paste0(conf.low2,", ",conf.high2)) %>% 
+  dplyr::filter(!rn %in% c("shape","scale")) %>% 
+  dplyr::select(formal_vars, `exp(coef)2`, `CI 95%2`,
+                `exp(coef)1`, `CI 95%1`) %>%
+  dplyr::mutate(`CI 95%1`=ifelse(`CI 95%1`=="NA, NA",NA,`CI 95%1`)) %>% 
+  dplyr::mutate(`CI 95%2`=ifelse(`CI 95%2`=="NA, NA",NA,`CI 95%2`)) %>% 
+  dplyr::mutate_at(c(2,4),~as.numeric(.)) %>% 
+    knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption=paste0("Table 7. Competing Risks (Treatment Outcomes, Failure Type of Interest= Therapeutic discharge) Regression Coefficients"),
+               col.names = c("Term","Hazard", "CI 95%", "Hazard", "CI 95%"),
+               align= c("l",rep('c', 6)))%>%
+  kableExtra::row_spec(23, bold = TRUE) %>% 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size=11)%>%
+  kableExtra::add_header_above(c(" ", "Only Type of Program" = 2, "Plus other covariates" = 2),bold=T) %>% 
+  kableExtra::add_footnote("Note. ", notation = "none") %>%
+  kableExtra::scroll_box(width = "100%", height = "340px")
+
+modsel.crr(resCrrRelByDis_only2,resCrrRelByDis2)
+#By fitting a set of candidate
+#models for which it pursues model selection after removal of all
+#non significant and marginally significant covariates.
+```
+
+Results were not conclusive. Without covariates, Women specific programs had greater hazards of therapeutic discharge `r paste0("(HR= ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis_only2)$conf.int,keep.rownames=T)[,"exp(coef)"]),"; CI 95% ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis_only2)$conf.int,keep.rownames=T)[,"2.5%"]),", ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis_only2)$conf.int,keep.rownames=T)[,"97.5%"]),")")`, but these estimations overlap with null hazards. However, Women specific had greater hazards of therapeutic discharge when controlling for covariates of interest `r paste0("(HR= ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis2)$conf.int,keep.rownames=T)[23,"exp(coef)"]),"; CI 95% ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis2)$conf.int,keep.rownames=T)[23,"2.5%"]),", ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis2)$conf.int,keep.rownames=T)[23,"97.5%"]),")")`.
+
+<br>
+
+```{r competing_risks_pred2, warning=F,message=F, error=T, eval=F}
+#Predicted Cumulative Incidence
+#We predict the CIF of death for a justice appointed at age 55 completed years in 1950 and 2000. The code below adds 0.5 to convert to exact ages and mid years.)
+
+df_pred_cmprsk_only2<-
+predict(resCrrRelByDis_only2, matrix(rbind("Type of program-Women specific"=1,"Type of program-Women specific"=0),nrow=2))
+
+cifd_only2 <- data.frame(
+   program = factor(rep(c("Women specific", "General population"),each=length(df_pred_cmprsk_only2[,1]))),
+   years = c(df_pred_cmprsk_only2[,1],df_pred_cmprsk_only2[,1]),
+   cif = c(df_pred_cmprsk_only2[,2], df_pred_cmprsk_only2[,3])
+ )
+ggplot(cifd_only2, aes(years, cif, color=program)) + geom_step()
+
+df_pred_cmprsk2<-
+predict(resCrrRelByDis2, matrix(rbind(c(program=1,bmtDisMat[120,2:11]),c(program=0,bmtDisMat[120,2:11])),nrow=2))
+
+cifd2 <- data.frame(
+  program = factor(rep(c("Women specific", "General population"),each=length(df_pred_cmprsk2[,1]))),
+   years = c(df_pred_cmprsk2[,1],df_pred_cmprsk2[,1]),
+   cif = c(df_pred_cmprsk2[,2], df_pred_cmprsk2[,3])
+ )
+
+ggplot(cifd2, aes(years, cif, color=program)) + geom_step()
+#We see that the probability of dying while serving in the court is declining over time net of age at appointment. For a justice appointed at age 55, the probability would be 31.6% if appointed in 1950 and 22.0% if appointed in the year 2000, assuming of course that current trends continue, so the model applies.
+```
+
+<br>
+
+```{r competing_risks2_schoenfeld, dpi = 320, warning=F,message=F,fig.align='center', fig.cap="Figure 7b. Plots of Schoenfeld-type residuals against time failure of the covariates", error=T,fig.width=10, fig.height=10}
+time_aft_cmprsk2<-Sys.time()
+
+#https://rpubs.com/kaz_yos/cmprsk2
+
+paste0("Time taken in process: ");time_aft_cmprsk2-time_bef_cmprsk2
+
+par(mfrow = c(4,6))
+for(j in 1:ncol(resCrrRelByDis2$res))
+  scatter.smooth(resCrrRelByDis2$uft, 
+                 resCrrRelByDis2$res[,j],
+    main = names(resCrrRelByDis2$coef)[j],
+    xlab = "Failure time",
+    ylab = "Schoenfeld residuals")
+
+#Schoenfeld residuals against failure time for each covariate. It is noted that the residuals follows a non-constant distribution across failure times, indicating a potential violation to the proportional assumption.
+
+#the PH assumption can be assessed by fitting a LOESS curve to the plot. A straight line passing through a residual value of 0 with gradient 0 indicates that the variable satisfies the PH assumption and therefore does not depend on time.
+```
+
+These inconsistencies and differences between the type of program and the treatment outcome, add support to the implementation of a joint model that capture different trajectories and their subsequent relationship with readmissions.
 
 <br>
 
@@ -3128,7 +3645,7 @@ for(j in 1:ncol(resCrrRelByDis$res))
 
 ### Transition matrix
 
-The model schematic illustrates treatment progression and the possible transitions between the states and the model structure.
+The model schematic illustrates treatment progression and the possible transitions between the states and the model structure. The first represents a semi-competing risks model, and the second represent a competing risk structure.
 
 <br>
 
@@ -4060,7 +4577,9 @@ for (i in 1:(n_trans2-3)){
 #optim uses a finite-difference approximation for the gradient as stated in help("optim")
   fits_c_ggam2[[3]] <- flexsurvreg(formula=fitform2,
                                data = subset(ms2_CONS_C1_SEP_2020_women_imputed_exp, trans == 3),
-                               dist = "gengamma", inits=c(-1, 1/mean(subset(ms2_CONS_C1_SEP_2020_women_imputed_exp, trans == 3)[,"time"])))
+                               dist = "gengamma", inits=c(.0001, mean(subset(ms2_CONS_C1_SEP_2020_women_imputed_exp, trans == 3)[,"time"],na.rm=T)))
+  
+#A function of the uncensored survival times t, which returns a vector of reasonable initial values for maximum likelihood estimation of each parameter. For example, function(t){ c(1, mean(t)) } will always initialize the first of two parameters at 1, and the second (a scale parameter, for instance) at the mean of t.
 
 for (i in 1:(n_trans2-2)){
   fits_c_gomp2[[i]] <- flexsurvreg(formula=fitform2,
@@ -4176,7 +4695,7 @@ Additionally, we compared the hazards of these distributions with non-parametric
 
 <br>
 
-```{r fit2a_3s, eval=T, echo=T, fig.cap="Figure 10c. Vissual Assessment of Hazards, Three-states Model (w/o covars)", fig.height= 17, fig.width= 10, paged.print=TRUE, fig.align="center", error= T, dpi=320, warnings= F}
+```{r fit2a_3s, eval=T, echo=T, fig.cap="Figure 10c. Vissual Assessment of Hazards, Three-states Model (w/o covars)", fig.height= 14, fig.width= 10, paged.print=TRUE, fig.align="center", error= T, dpi=320, warnings= F}
 #Micha Mandel (2013) Simulation-Based Confidence Intervals for Functions With Complicated Derivatives, The American Statistician, 67:2, 76-81, DOI: 10.1080/00031305.2013.783880
 # https://rpubs.com/martina_morris/testhazard
 tiempo_antes_fits2<-Sys.time()
@@ -4357,11 +4876,11 @@ ggplot(aes(dist, value, fill=variable))+
   #      panel.grid.minor = element_blank())+
   labs(y="Value")
 
-grid.arrange(haz_plot_int_only,fit_plot_int_only, heights=c(2,1.5))
+haz_plot_int_only
 
 if(no_mostrar==1){
-jpeg("C:/Users/andre/Desktop/SUD_CL/eso3.jpg", height=17, width= 10, res= 96, units = "in")
-grid.arrange(haz_plot_int_only,fit_plot_int_only, heights=c(2,1.5))
+jpeg("C:/Users/andre/Desktop/SUD_CL/eso3.jpg", height=14, width= 10, res= 96, units = "in")
+haz_plot_int_only
 dev.off()
 }
 ```
@@ -4587,7 +5106,8 @@ rmse_comp_fits_2b<-
 
 plot_fitted_flexsurvreg2b<-
 fitted_flexsurvreg2b[,c("dist","trans","time","est","lcl","ucl","factor(tipo_de_programa_2)")] %>% 
-  rbind(cbind(dplyr::rename(haz_int_only2, "factor(tipo_de_programa_2)"="tipo_programa"),"lcl"=1,"ucl"=1)) %>% 
+  rbind(cbind(dplyr::rename(haz_int_only2, "factor(tipo_de_programa_2)"="tipo_programa"),
+              "lcl"=haz_int_only2$est,"ucl"=haz_int_only2$est)) %>% 
   dplyr::rename("tipo_de_programa_2"="factor(tipo_de_programa_2)") %>% 
   dplyr::mutate(tipo_de_programa_2=factor(tipo_de_programa_2),
                 dist=factor(dist, levels=c("Kernel density",dists_w_covs$formal)),
@@ -4601,7 +5121,7 @@ ggplot()+
     scale_fill_manual(name="Distributions", values = c("red","gray20","darkolivegreen","#D3A347","#4F3C91","coral4","#085754","lightpink","cornflowerblue")) +
     facet_wrap(tipo_de_programa_2~trans,labeller = labeller(trans = transition_label, tipo_de_programa_2=tipo_programa_label))+
     sjPlot::theme_sjplot2()+
-    ylim(0,.3)+
+    #ylim(0,.3)+
     scale_x_continuous(breaks = seq(0, 15, 2))+
     theme(legend.position="bottom",
           strip.background = element_rect(fill = "white", colour = "white"))+
@@ -4636,7 +5156,6 @@ fit_flexsurvreg2b %>% group_by(trans) %>% slice_min(AIC,n=3)
 
 #### 4 states
 
-
 <br>
 
 ```{r fit2b_3s, eval=T, echo=T, fig.cap="Figure 10e. Vissual Assessment of Hazards, Four-states Model (w/o covars)", fig.height= 17, fig.width= 10, paged.print=TRUE, fig.align="center", dpi=320, error= T, warnings= F}
@@ -4645,7 +5164,7 @@ fit_flexsurvreg2b %>% group_by(trans) %>% slice_min(AIC,n=3)
 tiempo_antes_fits2<-Sys.time()
 
 newtime2 = seq(from=1/24, to= 15, by=1/12)
-
+mam
 kernel_haz_est_4s<-list()
 kernel_haz_4s<-list()
 for (i in 1:n_trans2){
@@ -4785,12 +5304,12 @@ ggplot()+
 "#166000","#b27ff9","#fa863b","#013eab","#a7aa48","#b34b40"))+
                          #c("black",brewer.pal(n = 9, name = 'Paired')))+
                          #c("#112A60","#085754","#D3A347","#4F3C91","red","#112A60","#085754","#8F630D","#251363")) +
-    facet_wrap(.~trans,labeller = labeller(trans = transition_label_4s), ncol=1, scales = "free")+
+    facet_wrap(.~trans,labeller = labeller(trans = transition_label_4s), ncol=1, scales = "free_y")+
     sjPlot::theme_sjplot2()+
     theme(legend.position="bottom",
           strip.background = element_rect(fill = "white", colour = "white"))+
   scale_x_continuous(breaks = seq(1, 15, 2))+
-  ylim(0,1.25)+
+  #ylim(0,1.25)+
   #theme(axis.text.x = element_blank(), 
   #      panel.grid.major = element_blank(), 
   #      panel.grid.minor = element_blank()) +
@@ -5053,7 +5572,8 @@ rmse_comp_fits_2b_4s<-
 
 plot_fitted_flexsurvreg2b_4s<-
 fitted_flexsurvreg2b_4s[,c("dist","trans","time","est","lcl","ucl","factor(tipo_de_programa_2)")] %>% 
-  rbind(cbind(dplyr::rename(haz_int_only2_4s, "factor(tipo_de_programa_2)"="tipo_programa"),"lcl"=1,"ucl"=1)) %>% 
+  rbind(cbind(dplyr::rename(haz_int_only2_4s, "factor(tipo_de_programa_2)"="tipo_programa"),
+              "lcl"=haz_int_only2_4s$est,"ucl"=haz_int_only2_4s$est)) %>% 
   dplyr::rename("tipo_de_programa_2"="factor(tipo_de_programa_2)") %>% 
   dplyr::mutate(tipo_de_programa_2=factor(tipo_de_programa_2),
                 dist=factor(dist, levels=c("Kernel density",dists_w_covs$formal)),
@@ -5090,7 +5610,7 @@ dev.off()
 }
 ```
 
-Due to convergence issues, the third transition for the Generalized gamma distribution was defined using initial values of `r  paste0("-1 and ", round(1/mean(subset(ms2_CONS_C1_SEP_2020_women_imputed_exp, trans == 3)[,"time"]),3))`. There was very little to choose between the distributions, but we aimed to choose the distribution that achieve the best balance of a reasonable fit to the observed data and a sensible extrapolation. A Gompertz was chosen for the first transition (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Log-logistic" & trans==1)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Log-logistic" & trans==1)["AIC"]),big.mark=",")`). The distribution for the second transition was Gompertz (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Gompertz" & trans==2)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Gompertz" & trans==2)["AIC"]),big.mark=",")`). For the third and fourth transition, we decided to choose Lognormal because it shows a lower AIC  (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Lognormal" & trans==3)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Lognormal" & trans==3)["AIC"]),big.mark=",")`; Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Lognormal" & trans==4)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Lognormal" & trans==4)["AIC"]),big.mark=",")`). For the fifth transition, we decided to choose  Generalized gamma because it shows a lower AIC  (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Generalized gamma" & trans==5)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Generalized gamma" & trans==5)["AIC"]),big.mark=",")`)
+Due to convergence issues, the third transition for the Generalized gamma distribution was defined using initial values of `r  paste0("0.0001 and ", round(mean(subset(ms2_CONS_C1_SEP_2020_women_imputed_exp, trans == 3)[,"time"]),3))`. There was very little to choose between the distributions, but we aimed to choose the distribution that achieve the best balance of a reasonable fit to the observed data and a sensible extrapolation. A Gompertz was chosen for the first transition (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Log-logistic" & trans==1)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Log-logistic" & trans==1)["AIC"]),big.mark=",")`). The distribution for the second transition was Gompertz (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Gompertz" & trans==2)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Gompertz" & trans==2)["AIC"]),big.mark=",")`). For the third and fourth transition, we decided to choose Lognormal because it shows a lower AIC  (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Lognormal" & trans==3)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Lognormal" & trans==3)["AIC"]),big.mark=",")`; Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Lognormal" & trans==4)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Lognormal" & trans==4)["AIC"]),big.mark=",")`). For the fifth transition, we decided to choose  Generalized gamma because it shows a lower AIC  (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Generalized gamma" & trans==5)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Generalized gamma" & trans==5)["AIC"]),big.mark=",")`)
 
 <!---
 fit_flexsurvreg2b_4s %>% group_by(trans) %>% slice_min(AIC,n=3)
@@ -5144,7 +5664,3 @@ CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados%>%
 
 sessionInfo()
 ```
-
-
-
-
