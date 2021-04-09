@@ -301,13 +301,13 @@ library(gurobi)
 
 <br>
 
-### Cumulative Hazards of the Joint Model
+### Cumulative Transition Hazards of Joint Models
 
-Cumulative baseline hazard can be estimated nonparametrically through Breslow estimator. Must take note that we are assuming a Markov process in these transitions.
+Cumulative baseline hazard can be estimated non-parametrically through a Breslow estimator. Must take note that we are assuming a Markov process in these transitions.
 
 <br>
 
-```{r msfit,eval=T, echo=T, paged.print=TRUE, fig.height=8, fig.width=12, fig.cap="Figure 1. Estimate of Cumulative Hazards (Semi-Markov), Stratified by Program", fig.align="center"}
+```{r msfit,eval=T, echo=T, paged.print=TRUE, fig.height=8, fig.width=12, fig.cap="Figure 1. Estimate of Cumulative Hazards (Markov), Stratified by Program", fig.align="center"}
 if(no_mostrar==1){
   for(i in c(1:3)){
     print(survdiff(Surv(time,status==1)~tipo_de_programa_2,data=subset(ms_CONS_C1_SEP_2020_women_imputed, trans == i)))
@@ -374,6 +374,8 @@ msf1_4s <- msfit(object = c1_4s,  trans = mat_4_states)
 #errors for the transition probabilities when there is no censoring. The two estimators give
 #almost equal results in all practical applications.
 
+#plot(msf0, use.ggplot = T)
+
 par(mfrow = c(2, 2))
 plot(msf0, cols = 1:3, lwd = 2, lty = 1:3, xlab = "",ylim=c(0,1.2),xlim=c(0,12),
  ylab = "Baseline hazards for each transition", legend.pos = c(4, 1.15), main= "General Population")
@@ -396,7 +398,6 @@ plot(msf0, cols = 1:3, lwd = 2, lty = 1:3, xlab = "",ylim=c(0,1.2),xlim=c(0,12),
  ylab = "Baseline hazards for each transition", legend.pos =c(4, .85), main= NULL,cex = 0.5)
  plot(msf1_4s, cols = 2:6, lwd = 2, lty = 1:5, xlab = "Years after baseline", ylim=c(0,1.2),xlim=c(0,12),
  ylab = "", legend.pos = c(4, 1), main= NULL,cex = 0.5)
-
  dev.off()
 }
 ```
@@ -421,7 +422,6 @@ as.formula(paste0("Surv(time, status==1) ~", paste0(fitform2," + arrival + strat
 paste0("We introduced the following Formula: ")
 formula3
 
-
 cox_fits0_prog0 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
                             data = subset(ms_CONS_C1_SEP_2020_women_imputed, tipo_de_programa_2==0), method = "breslow") 
 cox_fits0_prog1 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
@@ -438,19 +438,87 @@ cox_fits <- survival::coxph(formula3,
 cox_fits_4s <- survival::coxph(formula3, 
                             data = ms2_CONS_C1_SEP_2020_women_imputed, method = "breslow") 
 
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 # Parametric models
+
+# Sin covs= Trans 1: Gompertz o Gen-gamma en visual y RMSE, sin covariables. Se repite en AIC; Trans 2: Gen-gamma y Gompertz en RMSE (gompertz, mejor extrapolaci´n); gen-gamma, mejor inicio. Le sigue Lognormal. En AIC, parte Gen-gamma, gompertz y lognormal; Trans 3: Gompertz, Log-logistic y Gen-gamma. En AIC, Log-logistic, Gen-gamma y Weibull. Gompertz se aleja mucho.
+# 
+# Con covs= Trans 1: Gen-gamma y Gompertz en RMSE. Visualmente mejor gompertz. AIC mejor Gompertz, pero seguido de Gen-gamma; Trans 2: Gen-gamma, Lognormal y Gompertz. Visualmente Lognormal no destaca. AIC, gen-gamma, lognorma y un poco más atrás Gompertz; Trans 3: Gen-gamma, Log-logistic y Gamma. Gompertz se ve mejor, pero ni uno en verdad. AIC, Log-logistic, Gen-gamma y Lognormal.
+    
+#Gompertz, Gen-gamma, Log-logistic
+#Gompertz, Gen-gamma, Gen-gamma
+#Gompertz, Gompertz, Log-logistic
+#Gommpertz, Gompertz, Gen-gamma
+#Gen-gamma, Gen-gamma, Log-logistic
+#Gen-gamma, Gen-gamma, Gen-gamma
+#Gen-gamma, Gompertz, Log-logistic
+#Gen-gamma, Gompertz, Gen-gamma
+
 sel_param_fits <- vector(length = n_trans, mode = "list") 
     sel_param_fits[[1]]<- fits_c_gomp[[1]]
     sel_param_fits[[2]]<- fits_c_ggam[[2]]
-    sel_param_fits[[3]]<- fits_c_logn[[3]]
+    sel_param_fits[[3]]<- fits_c_llogis[[3]]
+    
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_    
 
-#Gompertz Gompertz Lognormal Lognormal Generalized gamma
+# Sin covs
+# Trans 1: Gompertz, Gen-gamma, Lognormal. Visualmente ninguno se ajusta   Gompertz tiene mejor progresión, Lognormal y Gen-gamma tienen buena guatita al principio. En AIC Gen-gamma, Lognormal y Log-logistic; Trans 2: Gompertz, Gen-gamma, Lognormal. Visualmente, Gompertz y Lognormal. AIC: Gompertz, Gen-gamma y Lognormal; Tans 3: Gen-gamma, Exponential y Lognormal. Visualmente, Gen-gamma y Exp. AIC: Gen-gammma y Lognormal; Trans 4: Log-logistic y Gen-gamma. Visualmente, Log-logistic parte bien, Gompertz también. AIC: Log-logistic, Weibull y Gen-gamma; Trans 5: Gompertz, Log-logistic y Gen-gamma. Visualemnte, Gompertz termina bien y Log-gistic parte bien. AIC: Gen-gamma, Lognormal y Log-logistic.
+    
+# Con covs
+#Gompertz, Gen-gamma, Lognormal. Visualmente, mejor extrapolación GOmpertz. AIC: Gen-gammma y Lognormal; Trans 2: Gompertz, Gen-gamma, Lognormal. AIC. Gompertz, Gen-gamma; Trans 3: Gen-gamma, Lognormal, Log-logistic. AIC: Gen-gamma, Lognormal, Log-logistic; Trans 4: Lognormal, Gen-gamma, Log-logistic. AIC: Log-logistic, Gen-gamma, Lognormal; Trans 5: Lognormal, Gen-gamma, Gompertz. Visualmente, GP Gompertz tiene mejor extrapolación. AIC: Gen-gamma, Lognormal, Log-logistic.
+    
+#32= 2^5
+# Gen-gamma, Gompertz, Gen-gamma, Log-logistic, Lognormal
+# Gen-gamma, Gompertz, Gen-gamma, Log-logistic, Gen-gamma
+# Gen-gamma, Gompertz, Gen-gamma, Gen-gamma, Lognormal
+# Gen-gamma, Gompertz, Gen-gamma, Gen-gamma, Gen-gamma
+
+# Gen-gamma, Gompertz, Lognormal, Log-logistic, Lognormal
+# Gen-gamma, Gompertz, Lognormal, Log-logistic, Gen-gamma
+# Gen-gamma, Gompertz, Lognormal, Gen-gamma, Lognormal
+# Gen-gamma, Gompertz, Lognormal, Gen-gamma, Gen-gamma
+
+# Gen-gamma, Gen-gamma, Gen-gamma, Log-logistic, Lognormal
+# Gen-gamma, Gen-gamma, Gen-gamma, Log-logistic, Gen-gamma
+# Gen-gamma, Gen-gamma, Gen-gamma, Gen-gamma, Lognormal
+# Gen-gamma, Gen-gamma, Gen-gamma, Gen-gamma, Gen-gamma
+
+# Gen-gamma, Gen-gamma, Lognormal, Log-logistic, Lognormal
+# Gen-gamma, Gen-gamma, Lognormal, Log-logistic, Gen-gamma
+# Gen-gamma, Gen-gamma, Lognormal, Gen-gamma, Lognormal
+# Gen-gamma, Gen-gamma, Lognormal, Gen-gamma, Gen-gamma
+
+# Lognormal, Gompertz, Gen-gamma, Log-logistic, Lognormal
+# Lognormal, Gompertz, Gen-gamma, Log-logistic, Gen-gamma
+# Lognormal, Gompertz, Gen-gamma, Gen-gamma, Lognormal
+# Lognormal, Gompertz, Gen-gamma, Gen-gamma, Gen-gamma
+
+# Lognormal, Gompertz, Lognormal, Log-logistic, Lognormal
+# Lognormal, Gompertz, Lognormal, Log-logistic, Gen-gamma
+# Lognormal, Gompertz, Lognormal, Gen-gamma, Lognormal
+# Lognormal, Gompertz, Lognormal, Gen-gamma, Gen-gamma
+
+# Lognormal, Gen-gamma, Gen-gamma, Log-logistic, Lognormal
+# Lognormal, Gen-gamma, Gen-gamma, Log-logistic, Gen-gamma
+# Lognormal, Gen-gamma, Gen-gamma, Gen-gamma, Lognormal
+# Lognormal, Gen-gamma, Gen-gamma, Gen-gamma, Gen-gamma
+
+# Lognormal, Gen-gamma, Lognormal, Log-logistic, Lognormal
+# Lognormal, Gen-gamma, Lognormal, Log-logistic, Gen-gamma
+# Lognormal, Gen-gamma, Lognormal, Gen-gamma, Lognormal
+# Lognormal, Gen-gamma, Lognormal, Gen-gamma, Gen-gamma
+
+    
+#Gompertz Gompertz Lognormal Lognormal Generalized gamma _ antes de 2021-04-08
+#Gen-gamma, Gompertz, Gen-gamma, Log-logistic, Lognormal _ 2021-04-08
 sel_param_fits_4s <- vector(length = n_trans2, mode = "list") 
-    sel_param_fits_4s[[1]]<- fits_c_gomp2[[1]]
+    sel_param_fits_4s[[1]]<- fits_c_ggam2[[1]]
     sel_param_fits_4s[[2]]<- fits_c_gomp2[[2]]
-    sel_param_fits_4s[[3]]<- fits_c_logn2[[3]]
-    sel_param_fits_4s[[4]]<- fits_c_logn2[[4]]
-    sel_param_fits_4s[[5]]<- fits_c_ggam2[[5]]
+    sel_param_fits_4s[[3]]<- fits_c_ggam2[[3]]
+    sel_param_fits_4s[[4]]<- fits_c_llogis2[[4]]
+    sel_param_fits_4s[[5]]<- fits_c_logn2[[5]]
 
 # Database to contrast adjustments
 newdat3a <- data.table::data.table(tipo_de_programa_2= factor(c(rep(1,1*n_trans))),
@@ -550,27 +618,34 @@ max_time_d <- max(cox_cumhaz_0_c_we$Haz$time) # Maximum follow-up time
 ```
 
 ```{r msfit2.3, eval=T, echo=T, paged.print=TRUE, error=T}
+#http://finzi.psych.upenn.edu/library/flexsurv/html/sim.fmsm.html
+#Simulate paths through a fully parametric semi-Markov multi-state model
+
 # Parametric
 flexsurv_cumhaz_a <- flexsurv::sim.fmsm(sel_param_fits, 
                                              newdata = newdat3a,
                                              t = seq(.001, max_time_a, by = .01),
-                                             B = n_iter,
-                                             trans = mat_3_states, variance = FALSE)
+                                             B = n_iter/10000,
+                                             tvars = mat_3_states, 
+                                             variance = FALSE)
 flexsurv_cumhaz_b <- flexsurv::sim.fmsm(sel_param_fits, 
                                              newdata = newdat3b,
                                              t = seq(.001, max_time_b, by = .01),
-                                             B = n_iter,
+                                             B = n_iter/10000,
                                              trans = mat_3_states, variance = FALSE)
 flexsurv_cumhaz_c <- flexsurv::sim.fmsm(sel_param_fits_4s, 
                                              newdata = newdat5a,
                                              t = seq(.001, max_time_c, by = .01),
-                                             B = n_iter,
-                                             trans = mat_4_states, variance = FALSE)
+                                             #B = n_iter/10000,
+                                             M = 1,#	Number of individual trajectories to simulate.
+                                             start = 1, #Starting state, or vector of starting states for each of the M individuals.
+                                          # Names of "predictable" time-dependent covariates in newdata, i.e. those whose values change at the same rate as time. Age is a typical example. During simulation, their values will be updated after each transition time, by adding the current time to the value supplied in newdata. This assumes the covariate is measured in the same unit as time. tcovs is supplied as a character vector.
+                                             trans = mat_4_states)#, variance = FALSE)
 flexsurv_cumhaz_d <- flexsurv::sim.fmsm(sel_param_fits_4s, 
                                              newdata = newdat5b,
                                              t = seq(.001, max_time_d, by = .01),
-                                             B = n_iter,
-                                             trans = mat_4_states, variance = FALSE)
+                                             B = n_iter/10000,
+                                             trans = mat_4_states)#, variance = FALSE)
 # Plot to compare
 cumhaz_data_a <- rbind(data.frame(cox_cumhaz_0_a_gp$Haz,
                                 model = "NP Cox"),
@@ -947,6 +1022,22 @@ for(i in seq(0, 12, by = 0.5)){
                         newdat= newdat3a,
                         trans = mat_3_states),
          envir=.GlobalEnv)
+}
+
+
+invisible(c("mssample"))
+#The mstate::mssample() function works by sampling survival times from each possible transition from the cumulative hazards. More precisely, the cumulative hazards are used to simulate the (discrete) times at which patients transition between health states using the base R function sample(), which is, in turn, used to count the number of patients in each health state at the times specified by the argument tvec.
+#Multi-state models can be simulated using mstate::mssample(), which simulates state occupancy probabilities from predicted cumulative hazards.
+#The mstate::mssample() function works by sampling survival times from each possible transition from the cumulative hazards. More precisely, the cumulative hazards are used to simulate the (discrete) times at which patients transition between health states using the base R function sample(), which is, in turn, used to count the number of patients in each health state at the times specified by the argument tvec.
+#The function below uses mstate::mssample() to simulate state occupancy probabilities with a “clock-reset” model at the times specified in yr_grid.
+if(no_mostrar==1){
+sim_stprobs_mstate_2 <- function(n_pats){
+  mstate::mssample(Haz = cumhaz_pat_2$Haz, 
+                    trans = tmat,
+                    tvec = yr_grid,
+                    clock = "reset",
+                    M = n_pats) 
+  }
 }
 
 time_after_los_ci95<-Sys.time()
