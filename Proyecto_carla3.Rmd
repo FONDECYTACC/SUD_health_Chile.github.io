@@ -1,5 +1,5 @@
 ---
-title: "Risk among Drug Dependent Women Treated in Women-Only versus Mixed-Gender Programs in Chile* (1st step)"
+title: "Readmission risk among women in women-only versus mixed gender treatment programs for substance use disorder in Chile (1st step)"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
@@ -2434,7 +2434,7 @@ attr(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados$tipo_de_plan_res,"
 
 <br>
 
-```{r bal1,eval=F, echo=T, paged.print=TRUE}                                 
+```{r bal1,eval=T, echo=T, paged.print=TRUE}                                 
 kableone <- function(x, ...) {
   capture.output(x <- print(x,...))
   knitr::kable(x,format= "html", format.args= list(decimal.mark= ".", big.mark= ","))
@@ -3924,6 +3924,19 @@ ms_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")] <- ms_CONS_C1_
 ms2_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")] <- ms2_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")]/365.25
 ```
 
+```{r msprep_2_2, eval=T, echo=T, paged.print=TRUE}
+glimpse(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2)
+CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2_exp<-
+CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2 %>% 
+  dplyr::rename("id"="row", "td.time"="date_ther_disch", 
+                "td.status"="ther_disch", "dwca.time"="date_disch_wo_clin_adv", 
+                "dwca.status"="disch_wo_clin_adv",
+                "readm.time"="date_post_treat",
+                "readm.status"="readmission")
+
+#rio::export(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2_exp, "4_st_data.csv")
+```
+
 <br>
 
 Then we present the transition with the frequencies and proportions.
@@ -4165,6 +4178,21 @@ rbind.data.frame(as.data.frame(cbind(HR,CI,P)),tab_cox_markov) %>%
 #this warning should be normal, since we are dealing with time to arrival at a determined state.
 ```
 
+```{r markov_semimarkov2,eval=F, echo=T, paged.print=TRUE}                                 
+
+MT <- MarkovTest(ms_CONS_C1_SEP_2020_women_imputed, 
+                 id = "row", 
+                 formula= "edad_al_ing_grupos+ escolaridad_rec+ sus_principal_mod+ 
+         #freq_cons_sus_prin+ compromiso_biopsicosocial+ tenencia_de_la_vivienda_mod+ 
+         #num_otras_sus_mod+ numero_de_hijos_mod_rec+ tipo_de_programa_2)+ tipo_de_plan_res",
+                 transition = 1,
+                 grid = grid, 
+                 B = 25)
+
+#Surv(time, status) ~  edad_al_ing_grupos+ escolaridad_rec+ sus_principal_mod+ 
+         #freq_cons_sus_prin+ compromiso_biopsicosocial+ tenencia_de_la_vivienda_mod+ 
+         #num_otras_sus_mod+ numero_de_hijos_mod_rec+ factor(tipo_de_programa_2)+ tipo_de_plan_res
+```
 <br>
 
 The model considered the transition from intermediate states to our absorbing state (being readmitted) is explained by the time spent in the previous health state. This covariate (time in the previous state) was shown to be statistically significant (p<.001); results indicated a longer duration spent in the first treatment is associated with increased risk of readmission. Therefore, a semi-Markov (called a Markov renewal model) or clock reset approach should be undertaken for both models. They bear the advantage that information from the process history can be included as transition-specific explanatory covariates.
@@ -5205,7 +5233,7 @@ fit_flexsurvreg2b %>% group_by(trans) %>% slice_min(AIC,n=3)
 tiempo_antes_fits2<-Sys.time()
 
 newtime2 = seq(from=1/24, to= 15, by=1/12)
-mam
+
 kernel_haz_est_4s<-list()
 kernel_haz_4s<-list()
 for (i in 1:n_trans2){
@@ -5216,6 +5244,7 @@ kernel_haz_4s[[i]] <- data.table(time = kernel_haz_est_4s[[i]]$est.grid,
                          est = kernel_haz_est_4s[[i]]$haz.est,
                          dist = "Kernel density")
 }
+#, n.est.grid=length(unique(ms2_CONS_C1_SEP_2020_women_imputed_exp[which(ms2_CONS_C1_SEP_2020_women_imputed_exp$trans==i),"time"]))/300
 
 haz_int_only_4s<-
 cbind(trans=rep(1:n_trans2,each=nrow(kernel_haz_4s[[i]])),

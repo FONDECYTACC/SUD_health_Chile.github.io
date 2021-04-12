@@ -9,6 +9,22 @@ output:
     toc_float: true
 ---
 
+
+```{js zoom-jquery, echo = FALSE}
+ $(document).ready(function() {
+    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
+    // onClick function for all plots (img's)
+    $('img:not(.zoomImg)').click(function() {
+      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
+      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
+    });
+    // onClick function for zoomImg
+    $('img.zoomImg').click(function() {
+      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
+    });
+  });
+```
+
 <style type="text/css">
 .tablelines table, .tablelines td, .tablelines th {
         border: 1px solid black;
@@ -47,7 +63,19 @@ div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-ali
 
 ```{r prev_setup, include = FALSE, cache=T}
 rm(list=ls());gc()
-load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+
+
+path<-rstudioapi::getSourceEditorContext()$path
+#load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+if (grepl("CISS Fondecyt",path)==T){
+    setwd("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+  } else if (grepl("andre",path)==T){
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+  } else if (grepl("E:",path)==T){
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+  } else {
+    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+  }
 rm(list=setdiff(ls(), c("CONS_C1_df_dup_SEP_2020_match","CONS_C1_df_dup_SEP_2020","CONS_C1")))
 unlink('G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Matching_Process_cache', recursive = TRUE)
 ```
@@ -3845,9 +3873,102 @@ We restricted the transitions following several criteria: cannot enter/complete/
 
 <br>
 
-```{r fig18_dec_tree_disc_dup_birthdate, warning=FALSE, fig.align = "center", message=F,fig.cap="Figure 18. Markov Influence Diagram of possible pathways of a user "}
+```{r fig18_dec_tree_disc_dup_birthdate, eval= F, warning=FALSE, fig.align = "center", message=F,fig.cap="Figure 18. Markov Influence Diagram of possible pathways of a user "}
 #plot(CONS_C1_df_dup_ENE_2020_prev2$ano_nac, CONS_C1_df_dup_ENE_2020_prev2$Edad, ylab="Age", xlab="Year of Birth")
-knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/multistate_scheme.svg")
+#tryCatch(knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/multistate_scheme.svg"), 
+#         error = function(c) {
+#      knitr::include_graphics("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/multistate_scheme.svg")
+#    })
+library(igraph)
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+## 3 ESTADOS SIMPLES ##
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+links<-data.frame(stringsAsFactors=FALSE,
+  from = c(rep("Admitted to\nTreatment", 2),"Therapeutic\nDischarge"),
+  to = c(rep(c("Therapeutic\nDischarge"),1), rep("Readmission", 2)),
+  value = c("1","2","3"))
+
+links2<-data.frame(stringsAsFactors=FALSE,
+   from = c(rep("Admitted to\nTreatment", 3),"Therapeutic\nDischarge","Discharge w/o\nClinical Advice"),
+   to = c(rep(c("Therapeutic\nDischarge","Discharge w/o\nClinical Advice"),1), rep("Readmission", 3)),
+   value = c("1","2","3","4","5"))
+
+#dev.off()
+#https://www.r-graph-gallery.com/248-igraph-plotting-parameters.html
+#https://rstudio-pubs-static.s3.amazonaws.com/341807_7b9d1a4e787146d492115f90ad75cd2d.html
+par(mfrow=c(1, 2))  
+#for (i in c(2560:2660)){
+  set.seed(2630) #i #2660 #2646 #2642 #2630 #2650
+  co <- layout.fruchterman.reingold(graph_from_data_frame(links, directed=TRUE))
+  plot(graph_from_data_frame(links, directed=TRUE),
+            asp = 0,
+            layout= co,
+            edge.label=links$value,
+            edge.label.cex=3,
+            edge.label.color="black",
+            #vertex.label= rev(),
+            vertex.color="white",
+            vertex.size=120,
+            vertex.size2=25,
+            vertex.label.cex=1, 
+            edge.arrow.size=1,
+            edge.color="black",
+            vertex.shape="rectangle",
+            vertex.label.color="black",
+            edge.curved=0,
+            edge.width=1.5,
+           #main=paste0(i),
+            outputorder="edgesfirst",  
+            vertex.label.dist=0,
+            vertex.cex = 3)
+#}
+title("a) Three-states Model (Simplest)", sub = "No recurring states; Absorving state: Readmission;\nOther causes of discharge were not events of interest;\nModified version of an illness-death model") ## internal titles
+
+set.seed(10990)#i #10990 10921 10898 10835
+co2 <- layout.fruchterman.reingold(graph_from_data_frame(links2, directed=TRUE))
+  plot(graph_from_data_frame(links2, directed=TRUE),
+            asp = 0,
+            layout= co2,
+            edge.label=links2$value,
+            edge.label.cex=2.5,
+            edge.label.color="black",
+            #vertex.label= rev(),
+            vertex.color="white",
+            vertex.size=120,
+            vertex.size2=25,
+            vertex.label.cex=1, 
+            edge.arrow.size=1,
+            edge.color="black",
+            vertex.shape="rectangle",
+            vertex.label.color="black",
+            edge.curved=0,
+            edge.width=1.5,
+            outputorder="edgesfirst",
+            #main=paste0(i),
+            vertex.label.dist=0,
+            vertex.cex = 3)
+  title("b) Four-states Model", sub = "No recurring states; Absorving state: Readmission;\nOther causes of discharge were not events of interest") ## internal titles
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+## Probando con paquetes estadísticos
+if(no_mostrar==1){
+library(igraph)
+Nodes <- c("Admitted to\nGP","Admitted to\nWE","Therapeutic\nDischarge","Discharge w/o\nClinical Advice","Readmission") #states possible in MSM
+Edges <- list("Admitted to\nGP"=list(edges=c("Therapeutic\nDischarge","Discharge w/o\nClinical Advice")),
+              "Admitted to\nWE"=list(edges=c("Therapeutic\nDischarge","Discharge w/o\nClinical Advice")),
+              "Therapeutic\nDischarge"=list(edges=c("Readmission")),
+              "Discharge /wo\nClinical Advice"=list(edges=c("Readmission")),
+              "Readmission"=list(edges=NULL)) #transitions from each state
+
+RCLTtree <- new("graphNEL",nodes=Nodes,edgeL=Edges,edgemode="directed")
+plot(RCLTtree)
+#https://www.rdocumentation.org/packages/msSurv/versions/1.2-2/topics/msSurv
+msSurv(LTRCdata, RCLTtree, cens.type="ind", LT=FALSE, bs=FALSE, B=200)
+}
+tiempo_antes_surv_mstate2_msm2<-Sys.time()
 ```
 
 <br>
@@ -3887,6 +4008,9 @@ summary(msm_model_cens)
 
 
 #CÓMO SETTEAR LA BASE DE DATOS PARA PONER COMO CENSURA EL ONGOING TREATMENT, Y LA COMPLETACIÓN DEL TRATAMIENTO COMO ALGO IMPORTANTE.
+tiempo_despues_surv_mstate2_msm2<-Sys.time()
+
+paste0("Time in process: ");tiempo_despues_surv_mstate2_msm2-tiempo_antes_surv_mstate2_msm2
 ```
 
 <br>
@@ -3897,7 +4021,13 @@ Since users with more than 2 readmissions covered around  `r scales::percent(d_m
 
 ```{r fig18_dec_tree_disc_dup_birthdate2, warning=FALSE, fig.align = "center", message=F,fig.cap="Figure 19. Markov Influence Diagram of possible pathways of a user (up to 3 treatments)"}
 #plot(CONS_C1_df_dup_ENE_2020_prev2$ano_nac, CONS_C1_df_dup_ENE_2020_prev2$Edad, ylab="Age", xlab="Year of Birth")
-knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/multistate_scheme.svg")
+
+tryCatch(knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/multistate_scheme.svg"), 
+         error = function(c) {
+      knitr::include_graphics("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/multistate_scheme.svg")
+    })
+tiempo_antes_surv_mstate2_msm3<-Sys.time()
+
 ```
 
 <br>
@@ -3976,8 +4106,29 @@ msm_mat_cens_allowed_up_3 <- matrix(c(
                           byrow=TRUE,
                           dimnames=list(from=1:18,to=1:18))
 
+#gen.inits=TRUE, ...) to auto-generate initial values for maximum likelihood estimation using a heuristic
 
-msm_model_cens_up3<- msm(state_up3 ~ years_in_study_corr, subject = PTNUM, data = d_match_surv_msm_up_3, qmatrix = msm_mat_cens_allowed_up_3, gen.inits=T,control=list(fnscale=4000,reltol = 1e-16),censor = c(91,92,93,94,95,96),censor.states = list(c(2,3),c(5,6),c(8,9),c(11,12),c(14,15),c(17,18)),obstype=1)
+msm_model_cens_up3<- msm(state_up3 ~ years_in_study_corr, subject = PTNUM, data = d_match_surv_msm_up_3, 
+                         
+qmatrix = msm_mat_cens_allowed_up_3, 
+# gen.inits=TRUE, ...) to auto-generate initial values for maximum likelihood estimation using a heuristic I Usually works, unless model badly misspecified. 
+#Or. . . Supply initial values for optimisation alongside the transition structure (0: transition disallowed)
+#c(0, 0.25, 0, 0.25),
+#e.g. first row: guess mean of 1/(0.25+0.25) = 2 years in state 1, and equal chance that next state is 2 or 4
+gen.inits=T, 
+control=list(fnscale=4000,reltol = 1e-16),
+# censor: Observations of 999 in state variable could be states 1, 2, 3 (alive) but not 4 (dead)   
+# censor=999, censor.states=c(1,2,3)
+censor = c(91,92,93,94,95,96),censor.states = list(c(2,3),c(5,6),c(8,9),c(11,12),c(14,15),c(17,18)),obstype=1)
+# Different covariates affect different transition rates
+# covariates = list("1-2" = ~ sex + dage, "2-3"= ~dage))
+# Covariates: same covariates on all transition rates
+# covariates = ~ sex + age)
+# covariates = ~ factor(rx) + sex + age)
+
+#Simplify the model if necessary
+#I Constrain covariate effects, e.g. same effect of age on rate of death from any state: msm(..., constraint=)
+#Fix parameters at their initial values instead of optimising: msm(..., fixedpars=)
 
 print(msm_model_cens_up3)
 summary(msm_model_cens_up3)
@@ -3985,67 +4136,84 @@ invisible(c("Me apareció el siguiente mensaje"))
 #Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite.
 #Optimisation probably not converged to the maximum likelihood.
 #optim() reported convergence but estimated Hessian not positive-definite.
+tiempo_despues_surv_mstate2_msm3<-Sys.time()
+
+paste0("Time in process: ");tiempo_despues_surv_mstate2_msm3-tiempo_antes_surv_mstate2_msm3
 ```
 
-```{r surv_mstate3_mstate, eval=F, echo=T, paged.print=TRUE, error=T}                                  
-#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
-#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
-#MSTATEs
-#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
-#See data structure:
-#View(ebmt4)
 
-invisible(c("tengo 2 problemas con esta aplicación: si veo ebmt, tiene formateado los casos en que cada columns es un tiempo a un determinado estado. Si llego a ese estado, entonces es un tiempo menor al person time y viene con un 0"))
- #file:///G:/Mi%20unidad/Alvacast/Srv%20Analysis/(Use%20R!)%20Frans%20Willekens%20-%20Multistate%20Analysis%20of%20Life%20Histories%20with%20R-Springer%20(2014).pdf
-#In other words, the package requires one record for each potential transition. 
+```{r surv_mstate2_msm3_2,eval=T, echo=T, paged.print=TRUE, error=T}                                  
 
-library("mstate")
-#https://rdrr.io/cran/mstate/f/inst/doc/Tutorial.pdf 
+#expected number of visits to a state
+#f total time expected to spend in a state
+envisits.msm(msm_model_cens_up3)
 
-#The first step in a multi-state model analysis is to set up the transition matrix. The transition
-#matrix specifies which direct transitions are possible (those with NA are impossible) and assigns
-#numbers to the transitions for future reference.
-mstate_mat_cens_allowed <- matrix(c(
-                          NA,1,1,NA,NA,NA,
-                          1,NA,NA,1,NA,NA,
-                          1,NA,NA,1,NA,NA,
-                          NA,NA,NA,NA,1,1,
-                          1,NA,NA,1,NA,NA,
-                          1,NA,NA,1,NA,NA
-                          ), nrow=6, ncol=6,
-                          byrow=TRUE,
-                          dimnames=list(from=1:6,to=1:6))
-library("mstate")
-tmat <- mstate::transMat(x = list(c(2, 3), 
-                         c(1,4), 
-                         c(1,4), 
-                         c(5,6),
-                         c(1,4),
-                         c(1,4)),
-                       names = c("Enter R", "Comp R", "N-Comp R", "Enter O", 
-                                 "Comp O", "N-Comp O"))
-print(tmat)
-#1~"Enter to a Residential Treatment(1)",
-#from==2~"Complete a Residential Treatment(2)",
-#from==3~"Not Complete a Residential Treatment(3)",
-#from==4~"Enter to an Outpatient Treatment(4)",
-#from==5~"Complete an Outpatient Treatment(5)",
-#from==6~"Not Complete an Outpatient Treatment(6)",
-#from==7~"Ongoing treatment (Residential)(Censored)(7)",
-#from==8~"Ongoing treatment (Outpatient)(Censored)(8)"
+#Pearson-type goodness-of-fit test
+#Model checking (other methods)
+#generalized χ2 -type test
+#p-value sensitive to choice of grouping
+# if fit is poor, difficult to judge what model may be better.
+#statistically 6= practically significant poor fit
+pearson.msm(msm_model_cens_up3)
 
-#https://www.rdocumentation.org/packages/msm/versions/1.6.8/topics/msm2Surv
-msm2Surv(d_match_surv_msm[c("PTNUM","years_in_study_corr","state","min_achievement")],"PTNUM", "years_in_study_corr", "state", "min_achievement", data.frame(msm_mat_cens_allowed))
+#Other models:
+#if death times known, compare model predictions of survival with Kaplan-Meier estimates
 
+install_github("larmarange/JLutils", upgrade="never")
+
+JLutils::tidy(msm_model_cens_up3)
+
+#covariates = ~x, method='BFGS'
+
+#
+hazard.msm(msm_model_cens_up3)
+#"No covariates on transition intensities"
+
+draic.msm(msm_model_cens_up3,msm_model_cens)
+#Error in draic.msm(msm_model_cens_up3, msm_model_cens) : 
+#  Models with censoring not supported
+
+
+
+
+
+#The likelihood is maximized by numerical methods, which need a set of initial
+#values to start the search for the maximum. Initial values for a model could be
+#set by assuming that transitions between states take place only at the observation
+#times. The msm package provides a function for calculating initial values. The input
+#command is
+qmat1 <- crudeinits.msm(state ~ dtime, ptnum, data = colon.msm, qmatrix = qmat0)
+# crudeinits.msm(state ~ years, subject=PTNUM, data=heart, qmatrix=qmat0)
+#This function ignores the interval-censoring in the data by assuming that transitions occur at the
+##time of clinical visits. As the function name suggests, it is designed to provide initial values for
+#the model. Save the result as qmat1
+
+
+#death=4, we specify that state 4 is a special state, whose transition
+#times are not interval censored: unlike the other states, the time of transition to state 4 (i.e. time
+#of death) is known exactly.
 ```
 
+<br>
 
 # Session Info
 
 ```{r session_info, echo=T, paged.print=TRUE}
+path<-rstudioapi::getSourceEditorContext()$path
+
 Sys.getenv("R_LIBS_USER")
 rstudioapi::getSourceEditorContext()
-save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state.RData")
+#save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state.RData")
+
+if (grepl("CISS Fondecyt",path)==T){
+    save.image("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/mult_state.RData")
+  } else if (grepl("andre",path)==T){
+    save.image("C:/Users/andre/Desktop/SUD_CL/mult_state_carla_2.RData")
+  } else if (grepl("E:",path)==T){
+    save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state.RData")
+  } else {
+    save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state.RData")
+  }
 
 sessionInfo()
 ```
