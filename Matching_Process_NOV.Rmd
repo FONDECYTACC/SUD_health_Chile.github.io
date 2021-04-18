@@ -527,7 +527,7 @@ restab1_only_one <- createTable(table1_only_one, show.p.overall = T)
 
 pvals1 <- getResults(table1_all)
 #p.adjust(pvals, method = "BH")
- export2md(restab1_all, size=10, first.strip=T, hide.no="no", position="center",
+ export2md(restab1_all, size=11, first.strip=T, hide.no="no", position="center",
            format="html",caption= "Table 1. Summary descriptives at baseline, between Users with Residential and Ambulatory Treatments from 2010-2019",col.names=c("Variables","Residential", "Ambulatory", "p-value"))%>%
   kableExtra::add_footnote(c("Note. Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
   kableExtra::scroll_box(width = "100%", height = "375px")
@@ -2819,7 +2819,7 @@ paste0("Percentage of the selected controls: ",
 
 <br>
 
-```{r  Fig 7_dist_no_treat_treat, warning=FALSE, fig.align = "center", message=F, fig.height=7, cache=T, eval=T, fig.cap="Figure 9. Empirical Cumulative Distribution Functions on the Matched Sample", results='asis'}
+```{r  Fig 7_dist_no_treat_treat, warning=FALSE, fig.align = "center", message=F, fig.height=7, cache=T, eval=T, fig.cap="Figures 9-12. Empirical Cumulative Distribution Functions on the Matched Sample", results='asis'}
 
 vars_ecdf<- c('edad_al_ing', 'edad_ini_cons', 'fech_ing_num')
 headings <- c("Age at Admission", "Age of Onset of Drug Use", "Date of Admission")
@@ -2828,6 +2828,12 @@ for (i in 1:length(headings)) {
   f<-vars_ecdf[i]
   ecdfplot(as.data.frame(CONS_SEP_match)[,f], t_id_1, c_id_1, main_title = "", legend_position = "right")
   cat('\n\n')
+}
+
+if(no_mostrar==1){
+jpeg("C:/Users/andre/Desktop/SUD_CL/eso3.jpg", height=14, width= 10, res= 96, units = "in")
+ecdfplot(as.data.frame(CONS_SEP_match)[,f], t_id_1, c_id_1, main_title = "", xlab="", legend_position = "right")
+dev.off()
 }
 ```
 
@@ -3027,29 +3033,45 @@ smd_df_prev_match_after_match<-
   dplyr::rename("Before\nMatching"= !!names(.[2]),"After\nMatching"= !!names(.[3])) %>% 
   melt() %>% 
   dplyr::left_join(var.names,by=c("vars"="rn")) %>% 
-                     dplyr::select(unlist_var_names,everything())
+                     dplyr::select(unlist_var_names,everything()) %>% 
+  dplyr::filter(!vars %in% c("sexo_2_Men","dg_trs_cons_sus_or_FALSE","tipo_centro_pub_FALSE")) %>% 
+  dplyr::mutate(unlist_var_names=dplyr::case_when(vars=="dg_trs_cons_sus_or_TRUE"~"Drug Dependence",
+                                                  vars=="tipo_centro_pub_TRUE"~"Public Center",
+                                                  T~unlist_var_names))
+#tipo_centro_pub Public Center 
+#dg_trs_cons_sus_or Drug Dependence 
+#sexo_2_Women Sex-Women
 ```
-```{r  Fig 13_plot, warning=FALSE, fig.align = "center", message=F, fig.height=11, cache=T, fig.cap="Figure 13. Love plot of the Matched Sample in Covariates v/s Unmatched Sample"}
+```{r  Fig 13_plot, warning=FALSE, fig.align = "center", message=F, fig.height=8, fig.width=8, cache=T, fig.cap="Figure 13. Love plot of the Matched Sample in Covariates v/s Unmatched Sample"}
 
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 # Data set with stand. diff. before post matching
 
 # Generate plot
-loveplot_bal3 = ggplot(data = smd_df_prev_match_after_match, mapping = aes(x = reorder(vars, value), y = value,
+loveplot_bal3 = ggplot(data = smd_df_prev_match_after_match, mapping = aes(x = reorder(unlist_var_names, value), y = value,
                                                     group = variable, color = variable)) +
   geom_hline(yintercept = 0.2, color = "black", size = 0.2, linetype="dashed") +
   coord_flip() +
   theme_bw() + 
   theme(legend.key = element_blank()) +
   labs(y = "Average absolute standardized differences in means",x = "",color="",shape="") +
-  scale_y_continuous(limits = c(0,1.5), breaks = seq(0,1.5,by=.1)) +
+  scale_y_continuous(limits = c(0,max(smd_df_prev_match_after_match$value+.05)), breaks = seq(0,1.5,by=.1)) +
   scale_color_manual(values=c("gray20","black")) + 
   geom_point(aes(shape=variable),size=4) +
   scale_shape_manual(values=c(8,16)) + 
-  theme(text = element_text(size=7))
+  theme(text = element_text(size=13),
+        legend.background=element_blank(),
+        legend.key = element_rect(colour = "transparent", fill = "transparent"),
+        legend.position = c(max(smd_df_prev_match_after_match$value)*.65,.5))
 
 loveplot_bal3
+
+if(no_mostrar==1){
+jpeg("C:/Users/andre/Desktop/SUD_CL/loveplot_bal32.jpg", height=8, width= 8, res= 96, units = "in")
+loveplot_bal3
+dev.off()
+}
 ```
 <br>
 
@@ -3058,6 +3080,10 @@ We allowed to tolerate `r smd_df2[order(smd_df2$smd, decreasing = TRUE), ][[1]][
 # Survival Setting
 
 ## Bivariate
+
+We selected the first treatments, 
+
+<br>
 
 ```{r irrs_health_conditions,eval=T, echo=T, paged.print=TRUE}                                 
 
@@ -3081,7 +3107,9 @@ return(
       )
     )
 }
-
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+# CHECK  DUPLICATED ROWS
 #CONS_C1_df_dup_SEP_2020%>% 
 #  dplyr::filter(hash_key %in% unlist(unique(d_match$hash_key))) %>% 
 #  janitor::tabyl(condicion_ocupacional_corr)
@@ -3095,6 +3123,8 @@ return(
 #nrow(ids_matched)/2 =11,457
 
 #CONS_SEP_match %>% dplyr::group_by(hash_key) %>% dplyr::mutate(rn_hash=row_number()) %>% dplyr::ungroup() %>% janitor::tabyl(rn_hash)
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
 ids_matched_filter<-
 ids_matched %>% 
@@ -3112,7 +3142,7 @@ ids_matched_rows<-cbind.data.frame("row_t"=CONS_SEP_match[c(t_id_1),"row"],
 
 CONS_C1_df_dup_SEP_2020_irrs_health<-  
 d_match %>% 
-  dplyr::left_join(CONS_C1_df_dup_SEP_2020[c("row","dias_treat_imp_sin_na", "event", "person_days", "person_years","diff_bet_treat")],by="row") %>%
+  dplyr::left_join(CONS_C1_df_dup_SEP_2020[c("row","dias_treat_imp_sin_na", "event", "person_days","fech_egres_num", "person_years","diff_bet_treat")],by="row") %>%
   dplyr::left_join(ids_matched_rows, by=c("row")) %>% 
   dplyr::mutate(group_match=ifelse(!is.na(group),group,NA)) %>% 
   dplyr::select(-rn_id,-group) %>% #glimpse()
@@ -3135,7 +3165,14 @@ d_match %>%
     dplyr::mutate(min_ach=factor(min_ach)) %>% 
   dplyr::mutate(status_censorship=dplyr::case_when(
   motivodeegreso_mod_imp=="Ongoing treatmentt" ~1,
-  TRUE~0)) 
+  TRUE~0)) %>% 
+
+  dplyr::mutate(outcome_to_readmission= dplyr::case_when(
+                        event==1~ (diff_bet_treat)/365.25,# & grepl("",comp_status)
+                        event==0~ (as.numeric(as.Date("2019-11-13"))-fech_egres_num)/365.25)) %>% 
+  dplyr::mutate(admission_to_readmission= dplyr::case_when(
+                        event==1~ (diff_bet_treat+dias_treat_imp_sin_na)/365.25,# & grepl("",comp_status)
+                        event==0~ (as.numeric(as.Date("2019-11-13"))-fech_ing_num)/365.25))
   
 # CONS_C1_df_dup_SEP_2020_irrs_health%>% janitor::tabyl(cnt_diagnostico_trs_fisico_irr)
 #label(CONS_C1_df_dup_SEP_2020_prev4_explore$dg_fis_anemia) <- "Physical Dg. Anemia"
@@ -3152,23 +3189,25 @@ d_match %>%
 #CONS_C1_df_dup_SEP_2020_irrs_health %>% dplyr::group_by(hash_key) %>% dplyr::mutate(rn_hash=row_number()) %>% dplyr::ungroup() %>% janitor::tabyl(rn_hash)
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
-irrs_early_drop<-irrs(x="abandono_temprano_rec" ,db="CONS_C1_df_dup_SEP_2020_irrs_health")
-irrs_res_plan<-irrs(x="tipo_de_plan_res" ,db="CONS_C1_df_dup_SEP_2020_irrs_health")
-irrs_res_early<-irrs(x="res_drop_out" ,db="CONS_C1_df_dup_SEP_2020_irrs_health")
-irrs_min_ach<-irrs(x="min_ach" ,db="CONS_C1_df_dup_SEP_2020_irrs_health")
+#irrs_min_ach & irrs_res_early- outcome to readmission  
+irrs_early_drop<-irrs(x="abandono_temprano_rec", z="outcome_to_readmission", db="CONS_C1_df_dup_SEP_2020_irrs_health")
+irrs_res_plan<-irrs(x="tipo_de_plan_res" ,z="admission_to_readmission", db="CONS_C1_df_dup_SEP_2020_irrs_health")
+irrs_res_early<-irrs(x="res_drop_out" ,z="outcome_to_readmission", db="CONS_C1_df_dup_SEP_2020_irrs_health")
+irrs_min_ach<-irrs(x="min_ach" , z="outcome_to_readmission", db="CONS_C1_df_dup_SEP_2020_irrs_health")
 ```
 
 <br>
 
-The incidence rate of readmission was `r round(as.numeric(irrs_early_drop$estimate[1]),2)` (95% IC `r round(irrs_early_drop$conf.int[1],2)`-`r round(irrs_early_drop$conf.int[2],2)`) in users that had at least an early dropout, compared with users that did not have a physical condition at baseline (p = `r sprintf("%1.3f",irrs_early_drop$p.value)`).
+The incidence rate of readmission was `r round(as.numeric(irrs_early_drop$estimate[1]),2)` (95% IC `r round(irrs_early_drop$conf.int[1],2)`-`r round(irrs_early_drop$conf.int[2],2)`) in users that had at least an early dropout, compared with users that did not have a physical condition at baseline (p`r ifelse(sprintf("%1.3f",irrs_early_drop$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",irrs_early_drop$p.value)))`).
 
 <br>
 
 ```{r fig12_survplot_abandono_temprano_rec, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 12. Cum. Hazards to Experience Readmission to SUD Treatment, by Ealy Dropout of Treatment at Baseline", error=T,fig.width=8}
 library(survminer)
-fit_abandono_temprano_rec<- survfit(Surv(person_days, event==1) ~abandono_temprano_rec, data=CONS_C1_df_dup_SEP_2020_irrs_health,
-                   type ="fleming-harrington", conf.type = "log-log")
+fit_abandono_temprano_rec<- survfit(Surv(outcome_to_readmission, event) ~abandono_temprano_rec, data=CONS_C1_df_dup_SEP_2020_irrs_health,
+                               type      = "kaplan-meier",
+                                error     = "greenwood",
+                                conf.type = "log-log") 
 library(tidyverse)
 library(lubridate)
 library(ggfortify) 
@@ -3194,16 +3233,16 @@ ggsurvplot_fit_abandono_temprano_rec<-
            font.tickslab = c(10),
            risk.table.height = .2,
            risk.table.fontsize = 2.5,
-           break.time.by = 365.25,
+           #break.time.by = 365.25,
            pval = F,
-           ylim=c(0,10),
+           #ylim=c(0,10),
            legend = c(0.88, 0.15), 
            legend.title="Early Drop.",
            xlab= "Time (in years)", 
            #cumevents=T,
            surv.connect = T,
            censor= F,
-           xscale=  "d_y",
+          # xscale=  "d_y",
            palette = c("skyblue4","orangered4"))
 ggsurvplot_fit_abandono_temprano_rec
  # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
@@ -3211,14 +3250,16 @@ ggsurvplot_fit_abandono_temprano_rec
 
 <br>
 
-The incidence rate of readmission was `r round(as.numeric(irrs_res_plan$estimate[1]),2)` (95% IC `r round(irrs_res_plan$conf.int[1],2)`-`r round(irrs_res_plan$conf.int[2],2)`) in users that had a residential plan, compared with users that had an ambulatory plan at baseline (p = `r sprintf("%1.3f",irrs_res_plan$p.value)`).
+The incidence rate of readmission was `r round(as.numeric(irrs_res_plan$estimate[1]),2)` (95% IC `r round(irrs_res_plan$conf.int[1],2)`-`r round(irrs_res_plan$conf.int[2],2)`) in users that had a residential plan, compared with users that had an ambulatory plan at baseline (p`r ifelse(sprintf("%1.3f",irrs_res_plan$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",irrs_res_plan$p.value)))`).
 
 <br>
 
 ```{r fig13_survplot_tipo_de_plan_res, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 13. Cum. Hazards to Experience Readmission to SUD Treatment, by Type of Plan at Baseline", error=T,fig.width=8}
 library(survminer)
-fit_tipo_de_plan_res<- survfit(Surv(person_days, event==1) ~tipo_de_plan_res, data=CONS_C1_df_dup_SEP_2020_irrs_health,
-                   type ="fleming-harrington", conf.type = "log-log")
+fit_tipo_de_plan_res<- survfit(Surv(admission_to_readmission, event==1) ~tipo_de_plan_res, data=CONS_C1_df_dup_SEP_2020_irrs_health,
+                               type      = "kaplan-meier",
+                                error     = "greenwood",
+                                conf.type = "log-log") 
 library(tidyverse)
 library(lubridate)
 library(ggfortify) 
@@ -3244,16 +3285,16 @@ ggsurvplot_fit_tipo_de_plan_res<-
            font.tickslab = c(10),
            risk.table.height = .2,
            risk.table.fontsize = 2.5,
-           break.time.by = 365.25,
+          # break.time.by = 365.25,
            pval = F,
-           ylim=c(0,10),
+           #ylim=c(0,10),
            legend = c(0.88, 0.15), 
            legend.title="Res. Plan",
            xlab= "Time (in years)", 
            #cumevents=T,
            surv.connect = T,
            censor= F,
-           xscale=  "d_y",
+           #xscale=  "d_y",
            palette = c("skyblue4","orangered4"))
 ggsurvplot_fit_tipo_de_plan_res
  # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
@@ -3261,26 +3302,21 @@ ggsurvplot_fit_tipo_de_plan_res
 
 <br>
 
-The incidence rate of readmission was `r round(as.numeric(irrs_res_early$estimate[1]),2)` (95% IC `r round(irrs_res_early$conf.int[1],2)`-`r round(irrs_res_early$conf.int[2],2)`) in users that had a residential plan and an early dropout, compared with the rest of users at baseline (p = `r sprintf("%1.3f",irrs_res_early$p.value)`).
+The incidence rate of readmission was `r round(as.numeric(irrs_res_early$estimate[1]),2)` (95% IC `r round(irrs_res_early$conf.int[1],2)`-`r round(irrs_res_early$conf.int[2],2)`) in users that had a residential plan and an early dropout, compared with the rest of users at baseline (p`r ifelse(sprintf("%1.3f",irrs_res_early$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",irrs_res_early$p.value)))`).
 
 <br>
 
 ```{r fig14_survplot_res_drop_out, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 14. Cum. Hazards to Experience Readmission to SUD Treatment, whether it was a person in a Residential Treatment with an Early Dropout", error=T,fig.width=8}
 library(survminer)
-fit_res_drop_out<- survfit(Surv(person_days, event==1) ~res_drop_out, data=CONS_C1_df_dup_SEP_2020_irrs_health,
-                   type ="fleming-harrington", conf.type = "log-log")
+fit_res_drop_out<- survfit(Surv(outcome_to_readmission, event==1) ~res_drop_out, data=CONS_C1_df_dup_SEP_2020_irrs_health,
+                               type      = "kaplan-meier",
+                                error     = "greenwood",
+                                conf.type = "log-log") 
 library(tidyverse)
 library(lubridate)
 library(ggfortify) 
 fit_res_drop_out_na <- fit_res_drop_out %>% fortify %>% group_by(strata) %>% mutate(CumHaz = cumsum(n.event/n.risk))
 #min_ach
-#http://rstudio-pubs-static.s3.amazonaws.com/522481_5e55bec9c94044678e680a6d07e96a2e.html
-#https://rstudio-pubs-static.s3.amazonaws.com/258589_cd197f86fb5548ac89d7bcffd4bc6afe.html
-#http://pcool.dyndns.org:8080/statsbook/?page_id=513
-#http://rstudio-pubs-static.s3.amazonaws.com/316989_83cbe556125645b698c9ff6cf88c4c1a.html
-#https://cran.r-project.org/web/packages/survminer/readme/README.html
-#https://docs.ufpr.br/~jlpadilha/CE077/Aulas/2.TecnicasNaoParametricas.pdf 
-#http://www.columbia.edu/~sjm2186/EPIC_R/packages.pdf
 ggsurvplot_fit_res_drop_out<-
   ggsurvplot(fit_res_drop_out, 
            fun = "cumhaz",
@@ -3294,16 +3330,16 @@ ggsurvplot_fit_res_drop_out<-
            font.tickslab = c(10),
            risk.table.height = .2,
            risk.table.fontsize = 2.5,
-           break.time.by = 365.25,
+         #  break.time.by = 365.25,
            pval = F,
-           ylim=c(0,10),
-           legend = c(0.88, 0.15), 
+           #ylim=c(0,10),
+           legend = c(0.78, 0.15), 
            legend.title="Res. Plan",
            xlab= "Time (in years)", 
            #cumevents=T,
            surv.connect = T,
            censor= F,
-           xscale=  "d_y",
+          # xscale=  "d_y",
            palette = c("skyblue4","orangered4"))
 ggsurvplot_fit_res_drop_out
  # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
@@ -3311,14 +3347,16 @@ ggsurvplot_fit_res_drop_out
 
 <br>
 
-The incidence rate of readmission was `r round(as.numeric(irrs_min_ach$estimate[1]),2)` (95% IC `r round(irrs_min_ach$conf.int[1],2)`-`r round(irrs_min_ach$conf.int[2],2)`) in users that had a minimum achievement of the therapeutic goals, compared with the rest of users at baseline  (p = `r sprintf("%1.3f",irrs_min_ach$p.value)`).
+The incidence rate of readmission was `r round(as.numeric(irrs_min_ach$estimate[1]),2)` (95% IC `r round(irrs_min_ach$conf.int[1],2)`-`r round(irrs_min_ach$conf.int[2],2)`) in users that had a minimum achievement of the therapeutic goals, compared with the rest of users at baseline (p`r ifelse(sprintf("%1.3f",irrs_min_ach$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",irrs_min_ach$p.value)))`).
 
 <br>
 
 ```{r fig15_survplot_res_drop_out, dpi = 96, warning=F,message=F,fig.align='center', fig.cap="Figure 15. Cum. Hazards to Experience Readmission to SUD Treatment, whether it was a person had a Minimum Achievement in Therapeutic Goals", error=T,fig.width=8}
 library(survminer)
-fit_min_ach<- survfit(Surv(person_days, event==1) ~min_ach, data=CONS_C1_df_dup_SEP_2020_irrs_health,
-                   type ="fleming-harrington",error = "tsiatis", conf.type = "log-log")
+fit_min_ach<- survfit(Surv(outcome_to_readmission, event==1) ~min_ach, data=CONS_C1_df_dup_SEP_2020_irrs_health,
+                                type      = "kaplan-meier",
+                                error     = "greenwood",
+                                conf.type = "log-log") 
 library(tidyverse)
 library(lubridate)
 library(ggfortify) 
@@ -3344,16 +3382,16 @@ ggsurvplot_fit_fit_min_ach<-
            font.tickslab = c(10),
            risk.table.height = .2,
            risk.table.fontsize = 2.5,
-           break.time.by = 365.25,
+           #break.time.by = 365.25,
            pval = F,
-           ylim=c(0,10),
+           #ylim=c(0,10),
            legend = c(0.88, 0.15), 
            legend.title="Res. Plan",
            xlab= "Time (in years)", 
            #cumevents=T,
            surv.connect = T,
            censor= F,
-           xscale=  "d_y",
+           #xscale=  "d_y",
            palette = c("skyblue4","orangered4"))
 ggsurvplot_fit_fit_min_ach
  # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
@@ -3456,7 +3494,7 @@ cox.zph(m2)
 
 <br>
 
-There was evidence of unproportional hazards. Users in residential treatments experience `r scales::percent(exp(m1$coeff)-1)` within the study period than users in outpatient treatments (95% CI: `r scales::percent(exp(confint(m1))[1]-1)` - `r scales::percent(exp(confint(m1))[2]-1)`; p=`r round(tidy(m1)$p.value,4)`).
+There was evidence of not proportional hazards. Users in residential treatments experience `r scales::percent(exp(m1$coeff)-1)` within the study period than users in outpatient treatments (95% CI: `r scales::percent(exp(confint(m1))[1]-1)` - `r scales::percent(exp(confint(m1))[2]-1)`; p=`r round(tidy(m1)$p.value,4)`).
 
 <br>
 
@@ -3592,7 +3630,7 @@ d_match_surv %>%
     dplyr::group_by(row) %>% 
     dplyr::mutate(n_row=n()) %>% 
     dplyr::ungroup() %>% 
-    dplyr::filter(n_row>1) %>% nrow()>1){"hay filas duplicadas"}
+    dplyr::filter(n_row>1) %>% nrow()>1){stop("Duplicated rows")}
   
 attr(d_match_surv$res_drop_out,"label") <- "Early Drop-out & Residential Plan (=1)"
 attr(d_match_surv$status_censorship,"label") <- "Ongoing treatment"
@@ -3624,7 +3662,7 @@ attr(d_match_surv$tr_completion,"label")<-"Treatment Successful Completion"
 
 
 library(compareGroups)
-table_surv <- compareGroups::compareGroups(tipo_de_plan_res ~ origen_ingreso_mod+ dg_cie_10_rec+ sexo_2+ edad_al_ing+ abandono_temprano_rec+ duplicates_filtered+ more_one_treat+ sus_ini_mod_mvv+ estado_conyugal_2+ escolaridad_rec+ freq_cons_sus_prin+ nombre_region+ tipo_centro_pub+ min_achievement+ dg_trs_cons_sus_or+ edad_ini_cons+ condicion_ocupacional_corr+ dias_treat_imp_sin_na+ event+ person_days+ person_years+ diff_bet_treat+ tr_completion+ res_drop_out+motivodeegreso_mod_imp,
+table_surv <- compareGroups::compareGroups(tipo_de_plan_res ~ origen_ingreso_mod+ dg_cie_10_rec+ sexo_2+ edad_al_ing+ abandono_temprano_rec+ duplicates_filtered+ more_one_treat+ sus_ini_mod_mvv+ estado_conyugal_2+ escolaridad_rec+ freq_cons_sus_prin+ nombre_region+ tipo_centro_pub+ min_achievement+ dg_trs_cons_sus_or+ edad_ini_cons+ condicion_ocupacional_corr+ dias_treat_imp_sin_na+ event+ person_days+ person_years+ diff_bet_treat+ tr_completion+ motivodeegreso_mod_imp,
                                        method= c(origen_ingreso_mod=3,
                                                  dg_cie_10_rec=3,
                                                  sexo_2=3,
@@ -3649,7 +3687,6 @@ table_surv <- compareGroups::compareGroups(tipo_de_plan_res ~ origen_ingreso_mod
                                                  person_years= 2,
                                                  diff_bet_treat= 2, 
                                                  tr_completion= 3,
-                                                 res_drop_out=3,
                                                  motivodeegreso_mod_imp=3
                                                  ),
                                        data = d_match_surv,
@@ -3660,8 +3697,9 @@ table_surv <- compareGroups::compareGroups(tipo_de_plan_res ~ origen_ingreso_mod
 pvals <- getResults(table_surv)
 #p.adjust(pvals, method = "BH")
 restab_surv <- createTable(table_surv,show.p.overall = T)
-compareGroups::export2md(restab_surv, size=9, first.strip=T, hide.no="no", position="center",col.names=c("Variables","Ambulatory","Residential", "Sig."),
+compareGroups::export2md(restab_surv, size=12, first.strip=T, hide.no="no", position="center",col.names=c("Variables","Ambulatory","Residential", "Sig."),
                          format="html",caption= "Table 6. Summary descriptives table")%>%
+  kableExtra::row_spec(1,bold=T) %>% 
   kableExtra::add_footnote(c("Note. Variables of C1 dataset had to be standardized before comparison;", "Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
   kableExtra::scroll_box(width = "100%", height = "600px")
 ```
@@ -4195,6 +4233,14 @@ qmat1 <- crudeinits.msm(state ~ dtime, ptnum, data = colon.msm, qmatrix = qmat0)
 ```
 
 <br>
+
+
+# Simulate semi-Markov and perform cost-effectiveness analysis (CEA)
+
+```{r hesim1, echo=T, paged.print=TRUE, error= T}
+
+
+```
 
 # Session Info
 

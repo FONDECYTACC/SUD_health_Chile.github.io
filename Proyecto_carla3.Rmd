@@ -602,7 +602,7 @@ ME FALTA TENENCIA DE LA VIVIENDA, EDAD INICIO SUSTANCIA PRINCIPAL, TIPO DE PLAN 
 
 - 'Type of program'(`tipo_de_programa_2`)
 - 'Marital status'(`estado_conyugal_2`)
-- 'Educational Attainment' (`escolaridad_rec`)= We selected the most vulnerable category among continous treatments for the same user.
+- 'Educational Attainment' (`escolaridad_rec`)= We selected the most vulnerable category among continuous treatments for the same user.
 - 'Age at admission to treatment, grouped'(`edad_al_ing_grupos`)
 - 'Consumption frequency of primary or main substance'(`freq_cons_sus_prin`)= Among the categories of the Frequency of Drug Consumption, we grouped Less than 1 day a week (`r CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(as.character(sexo_2)=="Women") %>% dplyr::filter(dup==1) %>%  janitor::tabyl(freq_cons_sus_prin) %>% dplyr::filter(freq_cons_sus_prin=="Less than 1 day a week") %>% dplyr::select(percent) %>% as.numeric() %>% scales::percent(accuracy = .01)`) with Did not use in the last 30 days (`r CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(as.character(sexo_2)=="Women") %>% dplyr::filter(dup==1) %>%  janitor::tabyl(freq_cons_sus_prin) %>% dplyr::filter(freq_cons_sus_prin=="Did not use") %>% dplyr::select(percent) %>% as.numeric() %>% scales::percent(accuracy = .01)`)
 - 'Pregnant at admission'(`embarazo`)
@@ -610,7 +610,7 @@ ME FALTA TENENCIA DE LA VIVIENDA, EDAD INICIO SUSTANCIA PRINCIPAL, TIPO DE PLAN 
 - 'Primary or main substance'(`sus_principal_mod`)= We used the primary substance at admission of the largest treatment for continuous treatments. Every substance was chosen from the largest treatment, excepting cases where the value was not available in the largest treatment.
 - 'Co-occurring SUD' (`num_otras_sus_mod`)= We counted the times that different substances at admission appear for each entry.
 - 'Number of children (max. Value) (Dichotomized)'(`numero_de_hijos_mod_rec`)= We selected the number of children with the maximum value among continuous treatments. We decided to dichotomize between no children (`r CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(as.character(sexo_2)=="Women") %>% dplyr::filter(dup==1) %>%  janitor::tabyl(numero_de_hijos_mod) %>% dplyr::filter(numero_de_hijos_mod==0) %>% dplyr::select(percent) %>% as.numeric() %>% scales::percent(accuracy = .01)`) and children (`r CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(as.character(sexo_2)=="Women") %>% dplyr::filter(dup==1) %>%  janitor::tabyl(numero_de_hijos_mod) %>% dplyr::mutate(numero_de_hijos_mod=as.numeric(numero_de_hijos_mod)) %>%  dplyr::filter(numero_de_hijos_mod>0) %>% summarise(n=sum(n),percent=sum(percent),valid_percent=sum(valid_percent))%>% dplyr::select(percent) %>% as.numeric() %>% scales::percent(accuracy = .01)`).
-- 'Treatment Setting'(`tipo_de_plan_res`)= We dichotomized into Residntial and Outpatient treatments.
+- 'Treatment Setting'(`tipo_de_plan_res`)= We dichotomized into Residential and Outpatient treatments.
 
 <br>
 
@@ -2795,7 +2795,7 @@ Excluding censored cases, the incidence rate of readmission was significantly hi
 
 <br>
 
-#### Parametric regression, Interaction of Type of Program and Treatment Outcome on Readmission
+#### Parametric regression of the risk of Readmission, Stratified by Treatment Outcome
 
 To estimate the risk and the time to treatment readmission by type of treatment program (i.e, women-only and mixed-gender treatment programs) conditioned by previous treatment outcome (i.e., administrative discharge, early and late drop-outs, therapeutic discharge), we chose the parametric distribution that resembles most to the Kaplan-Meier survival curve among the intercept-only models.
 
@@ -3299,6 +3299,9 @@ cbind.data.frame(melt(timepoints_cuminc_comp$est),var=melt(timepoints_cuminc_com
     #  lwd <- if(missing(lwd)) rep(1, g*(s-1)) 
     #         else             rep(lwd, g*(s-1))   
 
+#rio::export(
+#CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_irr, 
+#paste0(dta_path,"cmprsk.dta"))
 
 #plot(cuminc_comp_status, col = 1:4, lwd = 3, lty = 1, xlab = "Time (in years)")
 
@@ -3403,7 +3406,10 @@ resCrrRelByDis <- cmprsk::crr(ftime= CONS_C1_df_dup_SEP_2020_women_miss_after_im
                       )
 
 #~15 min. in a DELL 3ghz 32gb ram
+caso_hipotetico<-rbind(bmtDisMat[120,2:11],bmtDisMat[120,2:11])
 
+caso_hipotetico[1,]<- c(1,1,4,3,4,1,1,3,1,1)
+caso_hipotetico[2,]<- c(1,1,4,3,4,1,1,3,1,1)
 #The first argument to the function wald.test() is the estimated covariance matrix for the coefficients, followed
 #by the vector of coefficients estimates, and the position of coefficients for which we want to assess significance
 #aod::wald.test(resCrrRelByDis$var, resCrrRelByDis$coef, Terms = 1:3)
@@ -3497,7 +3503,7 @@ cifd_only <- data.frame(
 ggplot(cifd_only, aes(years, cif, color=program)) + geom_step()
 
 df_pred_cmprsk<-
-predict(resCrrRelByDis, matrix(rbind(c(program=1,bmtDisMat[120,2:11]),c(program=0,bmtDisMat[120,2:11])),nrow=2))
+predict(resCrrRelByDis, rbind(c(program=1,caso_hipotetico[1,]),c(program=0,caso_hipotetico[1,])))
 
 cifd <- data.frame(
   program = factor(rep(c("Women specific", "General population"),each=length(df_pred_cmprsk[,1]))),
@@ -3604,7 +3610,7 @@ cifd_only2 <- data.frame(
 ggplot(cifd_only2, aes(years, cif, color=program)) + geom_step()
 
 df_pred_cmprsk2<-
-predict(resCrrRelByDis2, matrix(rbind(c(program=1,bmtDisMat[120,2:11]),c(program=0,bmtDisMat[120,2:11])),nrow=2))
+predict(resCrrRelByDis2, rbind(c(program=1,caso_hipotetico[1,]),c(program=0,caso_hipotetico[1,])))
 
 cifd2 <- data.frame(
   program = factor(rep(c("Women specific", "General population"),each=length(df_pred_cmprsk2[,1]))),
@@ -3612,7 +3618,12 @@ cifd2 <- data.frame(
    cif = c(df_pred_cmprsk2[,2], df_pred_cmprsk2[,3])
  )
 
-ggplot(cifd2, aes(years, cif, color=program)) + geom_step()
+grid.arrange(
+    ggplot(cifd2, aes(years, cif, color=program)) + geom_step()+ggtitle("Therapeutic Discharge")+ sjPlot::theme_sjplot2()+ scale_color_manual(name="Type of program",values=c("red","blue"))+theme(legend.position="none")+ylab("")+ scale_y_continuous(labels = function(x) paste0(x*100, "%"), limits=c(0,.5))+ xlim(0,3),
+    ggplot(cifd, aes(years, cif, color=program)) + geom_step()+ggtitle("Discharge without clinical advice")+ sjPlot::theme_sjplot2()+theme(legend.position = "bottom")+ scale_color_manual(name="Type of program",values=c("red","blue"))+ylab("")+ scale_y_continuous(labels = function(x) paste0(x*100, "%"),limits=c(0,.5))+ xlim(0,3),
+    left = grid::textGrob("Predicted probability of achieving one of the outcomes", rot = 90, vjust = 1),
+    heights=c(1,1.2)
+)
 #We see that the probability of dying while serving in the court is declining over time net of age at appointment. For a justice appointed at age 55, the probability would be 31.6% if appointed in 1950 and 22.0% if appointed in the year 2000, assuming of course that current trends continue, so the model applies.
 ```
 
@@ -3860,6 +3871,32 @@ tail(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2) %>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 11)%>% 
   kableExtra::add_footnote("Note= Proportions from the initial state") %>% 
   kableExtra::scroll_box(width = "100%", height = "350px")
+
+
+path<-rstudioapi::getSourceEditorContext()$path
+if (grepl("CISS Fondecyt",path)==T){
+    dta_path<-paste0("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/")
+  } else if (grepl("andre",path)==T){
+    dta_path<-paste0('C:/Users/andre/Desktop/SUD_CL/')
+  } else if (grepl("E:",path)==T){
+    dta_path<-paste0("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/")
+  } else {
+    dta_path<-paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/")
+  }
+
+rio::export(
+CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep %>% 
+  dplyr::rename("id"="row", "ther_disch_time"="date_ther_disch","ther_disch_status"="ther_disch",
+                "readmission_time"="date_post_treat","readmission_status"="readmission"),
+paste0(dta_path,"three_st_msprep.dta"))
+
+
+rio::export(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2%>% 
+  dplyr::rename("id"="row", "ther_disch_time"="date_ther_disch","ther_disch_status"="ther_disch",
+                "disch_wo_clin_adv_time"="date_disch_wo_clin_adv",
+                "disch_wo_clin_adv_status"="disch_wo_clin_adv",
+                "readmission_time"="date_post_treat","readmission_status"="readmission"),
+  paste0(dta_path,"four_st_msprep.dta"))
 ```
 
 ```{r msprep_2, eval=T, echo=T, paged.print=TRUE}                                 
@@ -3925,7 +3962,6 @@ ms2_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")] <- ms2_CONS_C
 ```
 
 ```{r msprep_2_2, eval=T, echo=T, paged.print=TRUE}
-glimpse(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2)
 CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2_exp<-
 CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2 %>% 
   dplyr::rename("id"="row", "td.time"="date_ther_disch", 
@@ -4193,7 +4229,6 @@ MT <- MarkovTest(ms_CONS_C1_SEP_2020_women_imputed,
          #freq_cons_sus_prin+ compromiso_biopsicosocial+ tenencia_de_la_vivienda_mod+ 
          #num_otras_sus_mod+ numero_de_hijos_mod_rec+ factor(tipo_de_programa_2)+ tipo_de_plan_res
 ```
-<br>
 
 The model considered the transition from intermediate states to our absorbing state (being readmitted) is explained by the time spent in the previous health state. This covariate (time in the previous state) was shown to be statistically significant (p<.001); results indicated a longer duration spent in the first treatment is associated with increased risk of readmission. Therefore, a semi-Markov (called a Markov renewal model) or clock reset approach should be undertaken for both models. They bear the advantage that information from the process history can be included as transition-specific explanatory covariates.
 
@@ -5682,7 +5717,7 @@ dev.off()
 
 Due to convergence issues, we defined the third transition for the Generalized gamma distribution using initial values of `r  paste0("0.0001 and ", round(mean(subset(ms2_CONS_C1_SEP_2020_women_imputed_exp, trans == 3)[,"time"]),3))`. There was very little to choose between the distributions, but we aimed to choose the distribution that achieve the best balance of a reasonable fit to the observed data and a sensible extrapolation. A Generalized gamma was chosen for the first transition (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Generalized gamma" & trans==1)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Generalized gamma" & trans==1)["AIC"]),big.mark=",")`). The distribution for the second transition was Gompertz (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Gompertz" & trans==2)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Gompertz" & trans==2)["AIC"]),big.mark=",")`). For the third transition, we decided to choose a Lognormal, considering that Generalized Gamma distributions required to specify starting values (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Lognormal" & trans==3)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Lognormal" & trans==3)["AIC"]),big.mark=",")`). For the fourth transition, we decided to choose a Log-logistic because it shows a lower AIC  (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Log-logistic" & trans==4)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Log-logistic" & trans==4)["AIC"]),big.mark=",")`). For the fifth transition, we decided to choose a Lognormal (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Lognormal" & trans==5)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Lognormal" & trans==5)["AIC"]),big.mark=",")`)
 
-We decided to not to include by now the Generalized F yet because we are still studying its behavior. However, it shoed to be a good candidate for transitions 1 and 2, as welll as transition 4 and 5 (but not the better for these two).
+We decided to not to include by now the Generalized F yet because we are still studying its behavior. However, it showed to be a good candidate for transitions 1 and 2, as well as transition 4 and 5 (but not the better for these two).
 
 <!---
 fit_flexsurvreg2b_4s %>% group_by(trans) %>% slice_min(AIC,n=3)

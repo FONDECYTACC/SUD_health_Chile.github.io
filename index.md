@@ -26,11 +26,13 @@ This page is composed by the following main topics:
 
 2. Associations & Analytic Exercises
     
-    2.1. [Matching and Multistate Model of Treatment Setting](Matching_Process_NOV)
+    2a.1. [Matching and Multistate Model of Treatment Setting](Matching_Process_NOV)
     
-    3.1. [Type of Program, Completion & Readmission in Women (Step 1)](Proyecto_carla3)
+    2b.1. [Type of Program, Completion & Readmission in Women (Step 1)](Proyecto_carla3)
     
-    3.2. [Type of Program, Completion & Readmission in Women (Step 2)](Proyecto_carla32)
+    2b.2. [Type of Program, Completion & Readmission in Women (Step 2)](Proyecto_carla32)
+    
+    2b.3. [Type of Program, Completion & Readmission in Women (Step 3)](Proyecto_carla33)
   
 3. [Data Preparation and Standardization of TOP or Profile of Treatment Results](Data_prep_TOP)
 
