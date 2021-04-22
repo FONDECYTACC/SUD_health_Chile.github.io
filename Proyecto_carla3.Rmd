@@ -3045,10 +3045,6 @@ fit_flexsurvreg0 %>% dplyr::arrange(subset, AIC)
 
 We chose the most adequate distribution following visual assessment of the smooth kernel hazards. This was followed by a measure of the error of the data, and considering that the smooth kernel distribution had different time points than the parametric survival distributions presented, we split time into `r length(seq(0,max(kernel_haz_simple$time),.05))`  categories, each one separated .05 years from 0 to the last available time point in the smooth kernel (in this case, `r max(kernel_haz_simple$time)` years). Once we had the same amount of data between the smooth kernel hazards and each distribution and different cause of discharge, we calculated the RMSE by comparing the smooth kernel hazards with each parametric survival distribution and type of discharge.
 
-For individuals tat had a therapeutic discharge, we ended choosing the Gompertz (AIC= `r fit_flexsurvreg0%>% dplyr::filter(dist=="Gompertz"  & status=="Therapeutic discharge") %>% dplyr::select("AIC") %>% as.numeric() %>% format(big.mark=",")`; RMSE= `r rmse_comp_fits_0 %>% dplyr::filter(dist=="Gompertz") %>% dplyr::select("rmse_td") %>% as.numeric() %>% round(4) %>% format(big.mark=",")`) & Weibull (PH) (AIC= `r fit_flexsurvreg0%>% dplyr::filter(dist=="Weibull (PH)" & status=="Therapeutic discharge") %>% dplyr::select("AIC") %>% as.numeric() %>% format(big.mark=",")`; RMSE= `r rmse_comp_fits_0 %>%  dplyr::filter(dist=="Weibull (PH)") %>% dplyr::select("rmse_td") %>% as.numeric() %>% round(4) %>% format(big.mark=",")`) distributions, because of its lower dissimilarities.
-
-For individuals that had a discharge without clinical advice, we ended choosing the Gompertz (AIC= `r fit_flexsurvreg0%>% dplyr::filter(dist=="Gompertz" & grepl("without",status)) %>% dplyr::select("AIC") %>% as.numeric() %>% format(big.mark=",")`; RMSE= `r rmse_comp_fits_0 %>% dplyr::filter(dist=="Gompertz") %>% dplyr::select("rmse_dwca") %>% as.numeric() %>% round(4) %>% format(big.mark=",")`) & Gamma (AIC= `r fit_flexsurvreg0%>% dplyr::filter(dist=="Gamma" & grepl("without",status)) %>% dplyr::select("AIC") %>% as.numeric() %>% format(big.mark=",")`; RMSE= `r rmse_comp_fits_0 %>%  dplyr::filter(dist=="Gamma") %>% dplyr::select("rmse_dwca") %>% as.numeric() %>% round(4) %>% format(big.mark=",")`) distributions, because of its lower dissimilarities.
-
 The estimated model included covariates of interest, stratified by Cause of Discharge of the baseline treatment.
 
 <br>
@@ -3175,8 +3171,6 @@ coefs_surv %>%
 #</div>
 ```
 
-
-The table above depicts greater hazards of readmission in women with Therapeutic discharge, compared to women in General population programs `r paste0("(Gompertz HR= ",coefs_surv[1,2]," CI 95% ",coefs_surv[1,3],"); Weibull (PH)= ", coefs_surv[1,6]," CI 95% ",coefs_surv[1,7],")")`. However, when controlling for  covariates, these hazards overlapped with null associations `r paste0("(Gompertz HR= ",coefs_surv[1,4]," CI 95% ",coefs_surv[1,5],"); Weibull (PH)= ", coefs_surv[1,8]," CI 95% ",coefs_surv[1,9],")")`. On the other hand, women with Discharge w/o Clinical Advice had greater hazards of readmission, compared to women in General population programs `r paste0("(Gompertz HR= ",coefs_surv[1,10]," CI 95% ",coefs_surv[1,11],"); Weibull (PH)= ", coefs_surv[1,14]," CI 95% ",coefs_surv[1,15],")")`, even controlling on the rest of the covariates `r paste0("(Gompertz HR= ",coefs_surv[1,12]," CI 95% ",coefs_surv[1,13],"); Weibull (PH)= ", coefs_surv[1,16]," CI 95% ",coefs_surv[1,17],")")`.
 
 <br>
 
@@ -3349,10 +3343,6 @@ data.table(cuminc_comp_status$Tests, keep.rownames = T)
 
 The cumulative incidence allow us to estimate different causes of failure (Therapeutic discharge & Discharge without clinical advice) and compare between groups (Women in Women specific and General Population Programs). 
 
-As seen in the Figure above, women in the General population programs show a lower risk of Discharge without clinical advice specifically in the first year, while women in the the General population programs show a sightly lower incidence of Therapeutic discharge, compared to the Women specific program.
-
-First, the print out shows the results of Gray's test for equality of CIFs across groups. In our example, cumulative incidence curves for types of programs are not statistically different for Therapeutic discharge (`r paste0(round(subset(tests_comp_status_crsk,rn=="Therapeutic discharge")[,"stat"],2),"(",subset(tests_comp_status_crsk,rn=="Therapeutic discharge")[,"df"],"), p= ",sprintf("%.3f",subset(tests_comp_status_crsk,rn=="Therapeutic discharge")[,"pv"]))`), but women in Women specific programs seem to be more likely Discharged without clinical advice than women in the General population (`r paste0(round(subset(tests_comp_status_crsk,grepl("without",rn))[,"stat"],2),"(",subset(tests_comp_status_crsk,grepl("without",rn))[,"df"],"), p= ",sprintf("%.3f",subset(tests_comp_status_crsk,grepl("without",rn))[,"pv"]))`).
-
 <br>
 
 ```{r competing_risks2_disch_wo_clin_adv, warning=F,message=F, error=T, eval=T}
@@ -3483,8 +3473,6 @@ modsel.crr(resCrrRelByDis_only,resCrrRelByDis)
 #2: Discharge without clinical advice 9.031602 0.002653518  1
 > 
 --->
-
-Results were not conclusive. Without covariates, Women specific programs had greater hazards of discharge without clinical advice `r paste0("(HR= ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis_only)$conf.int,keep.rownames=T)[,"exp(coef)"]),"; CI 95% ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis_only)$conf.int,keep.rownames=T)[,"2.5%"]),", ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis_only)$conf.int,keep.rownames=T)[,"97.5%"]),")")`. However, Women specific had lower hazards of discharge without clinical advice when controlling for covariates of interest `r paste0("(HR= ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis)$conf.int,keep.rownames=T)[23,"exp(coef)"]),"; CI 95% ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis)$conf.int,keep.rownames=T)[23,"2.5%"]),", ",sprintf("%1.2f",data.table::data.table(summary(resCrrRelByDis)$conf.int,keep.rownames=T)[23,"97.5%"]),")")`.
 
 <br>
 
@@ -3871,32 +3859,6 @@ tail(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2) %>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 11)%>% 
   kableExtra::add_footnote("Note= Proportions from the initial state") %>% 
   kableExtra::scroll_box(width = "100%", height = "350px")
-
-
-path<-rstudioapi::getSourceEditorContext()$path
-if (grepl("CISS Fondecyt",path)==T){
-    dta_path<-paste0("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/")
-  } else if (grepl("andre",path)==T){
-    dta_path<-paste0('C:/Users/andre/Desktop/SUD_CL/')
-  } else if (grepl("E:",path)==T){
-    dta_path<-paste0("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/")
-  } else {
-    dta_path<-paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/")
-  }
-
-rio::export(
-CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep %>% 
-  dplyr::rename("id"="row", "ther_disch_time"="date_ther_disch","ther_disch_status"="ther_disch",
-                "readmission_time"="date_post_treat","readmission_status"="readmission"),
-paste0(dta_path,"three_st_msprep.dta"))
-
-
-rio::export(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2%>% 
-  dplyr::rename("id"="row", "ther_disch_time"="date_ther_disch","ther_disch_status"="ther_disch",
-                "disch_wo_clin_adv_time"="date_disch_wo_clin_adv",
-                "disch_wo_clin_adv_status"="disch_wo_clin_adv",
-                "readmission_time"="date_post_treat","readmission_status"="readmission"),
-  paste0(dta_path,"four_st_msprep.dta"))
 ```
 
 ```{r msprep_2, eval=T, echo=T, paged.print=TRUE}                                 
@@ -3962,15 +3924,30 @@ ms2_CONS_C1_SEP_2020_women_imputed[, c("Tstart", "Tstop", "time")] <- ms2_CONS_C
 ```
 
 ```{r msprep_2_2, eval=T, echo=T, paged.print=TRUE}
-CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2_exp<-
-CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2 %>% 
-  dplyr::rename("id"="row", "td.time"="date_ther_disch", 
-                "td.status"="ther_disch", "dwca.time"="date_disch_wo_clin_adv", 
-                "dwca.status"="disch_wo_clin_adv",
-                "readm.time"="date_post_treat",
-                "readm.status"="readmission")
+path<-rstudioapi::getSourceEditorContext()$path
+if (grepl("CISS Fondecyt",path)==T){
+    dta_path<-paste0("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/")
+  } else if (grepl("andre",path)==T){
+    dta_path<-paste0('C:/Users/andre/Desktop/SUD_CL/')
+  } else if (grepl("E:",path)==T){
+    dta_path<-paste0("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/")
+  } else {
+    dta_path<-paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/")
+  }
 
-#rio::export(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2_exp, "4_st_data.csv")
+rio::export(
+CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep %>% 
+  dplyr::rename("id"="row", "ther_disch_time"="date_ther_disch","ther_disch_status"="ther_disch",
+                "readmission_time"="date_post_treat","readmission_status"="readmission"),
+paste0(dta_path,"three_st_msprep.dta"))
+
+
+rio::export(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_msprep2%>% 
+  dplyr::rename("id"="row", "ther_disch_time"="date_ther_disch","ther_disch_status"="ther_disch",
+                "disch_wo_clin_adv_time"="date_disch_wo_clin_adv",
+                "disch_wo_clin_adv_status"="disch_wo_clin_adv",
+                "readmission_time"="date_post_treat","readmission_status"="readmission"),
+  paste0(dta_path,"four_st_msprep.dta"))
 ```
 
 <br>
@@ -4991,12 +4968,6 @@ dev.off()
 
 <br>
 
-Visual assessments seems to show that for the first 2 transitions, the Gompertz distribution may reproduce more adequately the extrapolation of hazards posterior to 5 years, and  Log-normal may reproduce adequately the third transition. However, Gompertz, Generalized gamma and Log-logistic show lower AICs for each transitions. Must consider that differences between distributions are really low.
-
-For the first two transitions, Generalized gamma distributions reproduced more accurately the expected number of events in the interval between 0 and six months, compared to the other models that tended to overestimate hazards around the first months.  The only exception is in the third transition, being not capable to capture rates in the first year. Gompertz extrapolations tend to produce more realistic estimations after 5 years, compared to a Generalized gamma model which appear to extrapolate higher readmission rates after 5 years.
-
-Gompertz (Mean RMSE= `r subset(rmse_comp_fits_2a, dist=="Generalized gamma" & trans==1)["rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2a, dist=="Generalized gamma" & trans==1)["AIC"]),big.mark=",")`; Mean RMSE(2)= `r subset(rmse_comp_fits_2a, dist=="Generalized gamma" & trans==2)["rmse"]`; AIC(2)= `r format(as.numeric(subset(fit_flexsurvreg2a, dist=="Generalized gamma" & trans==2)["AIC"]),big.mark=",")`) and Generalized gamma (Mean RMSE= `r subset(rmse_comp_fits_2a, dist=="Generalized gamma" & trans==1)["rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2a, dist=="Generalized gamma" & trans==1)["AIC"]),big.mark=",")`;Mean RMSE(2)= `r subset(rmse_comp_fits_2a, dist=="Generalized gamma" & trans==2)["rmse"]`; AIC(2)= `r format(as.numeric(subset(fit_flexsurvreg2a, dist=="Generalized gamma" & trans==2)["AIC"]),big.mark=",")`) distributions showed better indices for the first 2 transitions, while Log-logistic showed better indices in the third transition  (Mean RMSE= `r subset(rmse_comp_fits_2a, dist=="Generalized gamma" & trans==3)["rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2a, dist=="Generalized gamma" & trans==3)["AIC"]),big.mark=",")`)
-
 <!--- Gompertz Generalized gamma Log-logistic  
 fit_flexsurvreg2a %>% 
     dplyr::arrange(trans, AIC)
@@ -5248,8 +5219,6 @@ dev.off()
 }
 ```
 
-There was very little to choose between the distributions, but we aimed to choose the distribution that achieve the best balance of a reasonable fit to the observed data and a sensible extrapolation. A Gompertz was chosen for the first transition (Mean RMSE= `r round(subset(rmse_comp_fits_2b, dist=="Gompertz" & trans==1)["mean_rmse"],4)`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b, dist=="Gompertz" & trans==1)["AIC"]),big.mark=",")`). The distribution for the second transition was Generalized gamma (Mean RMSE= `r round(subset(rmse_comp_fits_2b, dist=="Generalized gamma" & trans==2)["mean_rmse"],4)`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b, dist=="Generalized gamma" & trans==2)["AIC"]),big.mark=",")`). We decided to choose the third transition as a Log-logistic distribution because it shows better indices (Mean RMSE= `r subset(rmse_comp_fits_2b, dist=="Log-logistic" & trans==3)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b, dist=="Log-logistic" & trans==3)["AIC"]),big.mark=",")`).
-
 <!----
 rmse_comp_fits_2b %>% group_by(trans) %>% slice_min(mean_rmse,n=3)
   # Gompertz sobre  
@@ -5464,8 +5433,6 @@ fitted_flexsurvreg2a_4s %>%
 #2 Generalized gamma     3 14.87500    20.011049
 #3 Generalized gamma     3 14.95833 14615.640988
 --->    
-
-We selected the distribution of the first transition as Generalized gamma (Mean RMSE= `r subset(rmse_comp_fits_2c, dist=="Generalized gamma" & trans==1)["rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2a_4s, dist=="Generalized gammal" & trans==1)["AIC"]),big.mark=",")`). For the second transition, we selected the Gompertz distribution (Mean RMSE= `r subset(rmse_comp_fits_2c, dist=="Gompertz" & trans==2)["rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2a_4s, dist=="Gompertz" & trans==2)["AIC"]),big.mark=",")`). In the third transition we must observe that after the 14th year for the third transition, the Generalized gamma shows best estimated hazards, but increases over 1.25 to an abnormal projection of 14,615 at year 14 and after, and none of the distribution reproduced very well the hazards (Mean RMSE= `r subset(rmse_comp_fits_2c, dist=="Generalized gamma" & trans==3)["rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2a_4s, dist=="Generalized gamma" & trans==3)["AIC"]),big.mark=",")`). For the fourth transition, Log-logistic distribution fitted better compared to the other distributions (Mean RMSE= `r subset(rmse_comp_fits_2c, dist=="Log-logistic" & trans==4)["rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2a_4s, dist=="Log-logistic" & trans==4)["AIC"]),big.mark=",")`). For the fifth transition, we selected the Lognormal distribution (Mean RMSE= `r subset(rmse_comp_fits_2c, dist=="Lognormal" & trans==4)["rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2a_4s, dist=="Lognormal" & trans==4)["AIC"]),big.mark=",")`).
 
 <!--- 
 # Generalized gamma, Lognormal, Log-logistic
@@ -5714,10 +5681,6 @@ plot_fitted_flexsurvreg2b_4s
 dev.off()
 }
 ```
-
-Due to convergence issues, we defined the third transition for the Generalized gamma distribution using initial values of `r  paste0("0.0001 and ", round(mean(subset(ms2_CONS_C1_SEP_2020_women_imputed_exp, trans == 3)[,"time"]),3))`. There was very little to choose between the distributions, but we aimed to choose the distribution that achieve the best balance of a reasonable fit to the observed data and a sensible extrapolation. A Generalized gamma was chosen for the first transition (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Generalized gamma" & trans==1)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Generalized gamma" & trans==1)["AIC"]),big.mark=",")`). The distribution for the second transition was Gompertz (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Gompertz" & trans==2)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Gompertz" & trans==2)["AIC"]),big.mark=",")`). For the third transition, we decided to choose a Lognormal, considering that Generalized Gamma distributions required to specify starting values (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Lognormal" & trans==3)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Lognormal" & trans==3)["AIC"]),big.mark=",")`). For the fourth transition, we decided to choose a Log-logistic because it shows a lower AIC  (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Log-logistic" & trans==4)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Log-logistic" & trans==4)["AIC"]),big.mark=",")`). For the fifth transition, we decided to choose a Lognormal (Mean RMSE= `r subset(rmse_comp_fits_2b_4s, dist=="Lognormal" & trans==5)["mean_rmse"]`; AIC= `r format(as.numeric(subset(fit_flexsurvreg2b_4s, dist=="Lognormal" & trans==5)["AIC"]),big.mark=",")`)
-
-We decided to not to include by now the Generalized F yet because we are still studying its behavior. However, it showed to be a good candidate for transitions 1 and 2, as well as transition 4 and 5 (but not the better for these two).
 
 <!---
 fit_flexsurvreg2b_4s %>% group_by(trans) %>% slice_min(AIC,n=3)

@@ -71,19 +71,14 @@ rm(list=ls());gc()
 path<-rstudioapi::getSourceEditorContext()$path
 #load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
 if (grepl("CISS Fondecyt",path)==T){
-    setwd("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+    setwd("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla_2.RData")
   } else if (grepl("andre",path)==T){
-    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla_2.RData")
   } else if (grepl("E:",path)==T){
-    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla_2.RData")
   } else {
-    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla_2.RData")
   }
-
-#getwd()
-#knitr::opts_knit$get()
-#devtools::install_github("hputter/mstate")
-
 ```
 
 ```{r setup, include = FALSE, cache=T}
@@ -270,6 +265,12 @@ eval_fork <- function(..., timeout=60){
   #send the buffered response
   return(myresult);  
 }
+
+if(isTRUE(getOption('knitr.in.progress'))==T){
+    n_iter=10000
+} else {
+n_iter=20
+}
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 
@@ -279,9 +280,694 @@ eval_fork <- function(..., timeout=60){
 #Sys.setenv(RENV_PATHS_LOCAL = paste0(getwd(),"/renv_local"))
 #install.packages(paste0(getwd(),"/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
 #install.packages(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
-library(gurobi)
 #"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)"
 #Sys.getenv("R_LIBS_USER")
+```
+
+
+# Cumulative Transition Hazards of Joint Models
+
+
+```{r haz_df, eval=T, echo=T, paged.print=TRUE, error=T}
+`%>%`<-magrittr::`%>%`
+# 3 states -General population
+cumhaz_data_a <- rbind(data.frame(cox_cumhaz_0_a_gp$Haz,
+                                model = "NP Cox"),
+                      data.frame(mrcox_a$Haz,
+                                model = "Cox"),
+                      data.frame(flexsurv_cumhaz_a$Haz,
+                                model = "Parametric"))
+
+cumhaz_data_a$trans <- factor(cumhaz_data_a$trans,
+                            levels = seq(1, 3),
+                            labels = c("Adm -> Ther.Disch",
+                                       "Adm -> Readm",
+                                       "Ther.Disch -> Readm"))
+
+# 3 states -Women specific
+cumhaz_data_b <- rbind(data.frame(cox_cumhaz_0_a_we$Haz,
+                                model = "NP Cox"),
+                      data.frame(mrcox_b$Haz,
+                                model = "Cox"),
+                      data.frame(flexsurv_cumhaz_b$Haz,
+                                model = "Parametric"))
+cumhaz_data_b$trans <- factor(cumhaz_data_b$trans,
+                            levels = seq(1, 3),
+                            labels = c("Adm -> Ther.Disch",
+                                       "Adm -> Readm",
+                                       "Ther.Disch -> Readm"))
+
+## 4 states -General population
+cumhaz_data_c <- rbind(data.frame(cox_cumhaz_0_c_gp$Haz,
+                                model = "NP Cox"),
+                      data.frame(mrcox_c$Haz,
+                                model = "Cox"),
+                      data.frame(flexsurv_cumhaz_c$Haz,
+                                model = "Parametric"))
+
+cumhaz_data_c$trans <- factor(cumhaz_data_c$trans,
+                            levels = seq(1, 5),
+                            labels = c("Adm -> Ther.Disch",
+                                       "Adm -> Disch.w/oClin.Adv.",
+                                       "Adm -> Readm",
+                                       "Ther.Disch -> Readm",
+                                       "Disch.w/oClin.Adv.-> Readm"
+                                       ))
+## 4 states -Women specific
+cumhaz_data_d <- rbind(data.frame(cox_cumhaz_0_c_we$Haz,
+                                model = "NP Cox"),
+                      data.frame(mrcox_d$Haz,
+                                model = "Cox"),
+                      data.frame(flexsurv_cumhaz_d$Haz,
+                                model = "Parametric"))
+
+cumhaz_data_d$trans <- factor(cumhaz_data_d$trans,
+                            levels = seq(1, 5),
+                            labels = c("Adm -> Ther.Disch",
+                                       "Adm -> Disch.w/oClin.Adv.",
+                                       "Adm -> Readm",
+                                       "Ther.Disch -> Readm",
+                                       "Disch.w/oClin.Adv.-> Readm"
+                                       ))
+
+fig_cox_ab<-
+cumhaz_data_a %>%  
+  dplyr::left_join(cumhaz_data_b, by=c("time","trans","model"), suffix=c(".gp",".ws")) %>% 
+  reshape2::melt(id.vars=c("time","trans","model")) %>% 
+ggplot(aes(time, value, color= model, linetype =variable))+
+  geom_step(size=1, alpha=.65) + 
+  facet_wrap(trans~., ncol=1, scales="free_y") + 
+  scale_color_manual(name ="Model",values=c("#0A0D46","#9C8F1A","#653C08"),labels= c("Cox","NP Cox","Par"))+
+  scale_linetype_manual(name= "Type of Plan",values=c(4,1), labels=c("General Population","Women-specific"))+
+  scale_x_continuous(breaks=seq(0, 11, by = 1/2))+
+  xlab("Years") + 
+  ylab("Cumulative hazards") + 
+  theme_minimal()+
+  theme(legend.position=c(.9,.585),
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+fig_cox_cd<-
+cumhaz_data_c %>%  
+    dplyr::left_join(cumhaz_data_d, by=c("time","trans","model"), suffix=c(".gp",".ws")) %>% 
+  reshape2::melt(id.vars=c("time","trans","model")) %>% 
+ggplot(aes(time, value, color= model, linetype =variable))+
+  geom_step(size=1, alpha=.65) + 
+  facet_wrap(trans~., ncol=1, scales="free_y") + 
+  scale_color_manual(name ="Model",values=c("#0A0D46","#9C8F1A","#653C08"),labels= c("Cox","NP Cox","Par"))+
+  scale_linetype_manual(name= "Type of Plan",values=c(4,1), labels=c("General Population","Women-specific"))+
+  scale_x_continuous(breaks=seq(0, 11, by = 1/2))+
+  xlab("Years") + 
+  ylab("Cumulative") + 
+  theme_minimal()+
+  theme(legend.position=c(.9,.585),
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+```
+```{r cum_haz1, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 1a. Estimate of Cumulative Hazards, Three States Model", fig.align="center", error=T}
+fig_cox_ab + theme(legend.position=c(.9,.585))+ ylim(0,1)
+```
+
+```{r cum_haz2, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 1b. Estimate of Cumulative Hazards, Four States Model", fig.align="center", error=T}
+fig_cox_cd+ theme(legend.position=c(.9,.585))+ ylim(0,2)
+```
+
+# Transition Probabilities
+
+```{r dfs1,eval=T, echo=T, paged.print=TRUE, error=T}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#This functionality is implemented in pmatrix.simfs, 
+#but the tcovs argument actually has no impact on the transition probabilities, as evidenced below.
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+pmatrix_t_a_lo<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    attr(get(paste0("pmatrix_t_a_",t)),"lower")
+    }))
+
+pmatrix_t_b_lo<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    attr(get(paste0("pmatrix_t_b_",t)),"lower")
+    }))
+
+pmatrix_4s_t_a_lo<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    attr(get(paste0("pmatrix_4s_t_a_",t)),"lower")
+    }))
+
+pmatrix_4s_t_b_lo<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    attr(get(paste0("pmatrix_4s_t_b_",t)),"lower")
+    }))
+
+pmatrix_t_a_up<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    attr(get(paste0("pmatrix_t_a_",t)),"upper")
+    }))
+
+pmatrix_t_b_up<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    attr(get(paste0("pmatrix_t_b_",t)),"upper")
+    }))
+
+pmatrix_4s_t_a_up<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    attr(get(paste0("pmatrix_4s_t_a_",t)),"upper")
+    }))
+
+pmatrix_4s_t_b_up<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    attr(get(paste0("pmatrix_4s_t_b_",t)),"upper")
+    }))
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+pmatrix_t_a_df_final<-
+cbind.data.frame(t=rep(seq(0, 11, by = 1/12),each=dim(mat_3_states)[2]),
+  trans=rep(1:dim(mat_3_states)[2]),
+                  pmatrix_t_a,pmatrix_t_a_lo,pmatrix_t_a_up) %>% 
+  data.frame() %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2") %>% 
+  dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
+                                   sprintf("%1.2f",Trans_1_lo),"-",
+                                   sprintf("%1.2f",Trans_1_up),"]")) %>% 
+  dplyr::mutate(Trans_2_cis=paste0(sprintf("%1.2f",Trans_2)," [",
+                                   sprintf("%1.2f",Trans_2_lo),"-",
+                                   sprintf("%1.2f",Trans_2_up),"]")) %>% 
+  dplyr::mutate(Trans_3_cis=paste0(sprintf("%1.2f",Trans_3)," [",
+                                   sprintf("%1.2f",Trans_3_lo),"-",
+                                   sprintf("%1.2f",Trans_3_up),"]"))
+
+pmatrix_t_b_df_final<-
+cbind.data.frame(t=rep(seq(0, 11, by = 1/12),each=dim(mat_3_states)[2]),
+  trans=rep(1:dim(mat_3_states)[2]),
+                  pmatrix_t_b,pmatrix_t_b_lo,pmatrix_t_b_up) %>% 
+    data.frame() %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2") %>% 
+  dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
+                                   sprintf("%1.2f",Trans_1_lo),"-",
+                                   sprintf("%1.2f",Trans_1_up),"]")) %>% 
+  dplyr::mutate(Trans_2_cis=paste0(sprintf("%1.2f",Trans_2)," [",
+                                   sprintf("%1.2f",Trans_2_lo),"-",
+                                   sprintf("%1.2f",Trans_2_up),"]")) %>% 
+  dplyr::mutate(Trans_3_cis=paste0(sprintf("%1.2f",Trans_3)," [",
+                                   sprintf("%1.2f",Trans_3_lo),"-",
+                                   sprintf("%1.2f",Trans_3_up),"]"))
+
+pmatrix_4s_t_a_df_final<-
+cbind.data.frame(t=rep(seq(0, 11, by = 1/12),each=dim(mat_4_states)[2]),
+  trans=rep(1:dim(mat_4_states)[2]),
+                  pmatrix_4s_t_a,pmatrix_4s_t_a_lo,pmatrix_4s_t_a_up) %>% 
+    data.frame() %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3","Trans_4"="X4",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1","Trans_4_lo"="X4.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2","Trans_4_up"="X4.2") %>% 
+  dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
+                                   sprintf("%1.2f",Trans_1_lo),"-",
+                                   sprintf("%1.2f",Trans_1_up),"]")) %>% 
+  dplyr::mutate(Trans_2_cis=paste0(sprintf("%1.2f",Trans_2)," [",
+                                   sprintf("%1.2f",Trans_2_lo),"-",
+                                   sprintf("%1.2f",Trans_2_up),"]")) %>% 
+  dplyr::mutate(Trans_3_cis=paste0(sprintf("%1.2f",Trans_3)," [",
+                                   sprintf("%1.2f",Trans_3_lo),"-",
+                                   sprintf("%1.2f",Trans_3_up),"]")) %>% 
+  dplyr::mutate(Trans_4_cis=paste0(sprintf("%1.2f",Trans_4)," [",
+                                   sprintf("%1.2f",Trans_4_lo),"-",
+                                   sprintf("%1.2f",Trans_4_up),"]"))
+
+pmatrix_4s_t_b_df_final<-
+cbind.data.frame(t=rep(seq(0, 11, by = 1/12),each=dim(mat_4_states)[2]),
+  trans=rep(1:dim(mat_4_states)[2]),
+                  pmatrix_4s_t_b,pmatrix_4s_t_b_lo,pmatrix_4s_t_b_up) %>% 
+    data.frame() %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3","Trans_4"="X4",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1","Trans_4_lo"="X4.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2","Trans_4_up"="X4.2") %>% 
+  dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
+                                   sprintf("%1.2f",Trans_1_lo),"-",
+                                   sprintf("%1.2f",Trans_1_up),"]")) %>% 
+  dplyr::mutate(Trans_2_cis=paste0(sprintf("%1.2f",Trans_2)," [",
+                                   sprintf("%1.2f",Trans_2_lo),"-",
+                                   sprintf("%1.2f",Trans_2_up),"]")) %>% 
+  dplyr::mutate(Trans_3_cis=paste0(sprintf("%1.2f",Trans_3)," [",
+                                   sprintf("%1.2f",Trans_3_lo),"-",
+                                   sprintf("%1.2f",Trans_3_up),"]")) %>% 
+  dplyr::mutate(Trans_4_cis=paste0(sprintf("%1.2f",Trans_4)," [",
+                                   sprintf("%1.2f",Trans_4_lo),"-",
+                                   sprintf("%1.2f",Trans_4_up),"]"))
+
+```
+
+```{r probtrans_semimark_ci951_mssample_cox2.1a, eval=T, echo=T, paged.print=TRUE, error=T}
+set.seed(1234)
+pmatrix_cox_a_0<-
+mstate::mssample(msf0$Haz, trans = mat_3_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+set.seed(1234)
+pmatrix_cox_b_0<-
+mstate::mssample(msf1$Haz, trans = mat_3_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+```
+```{r probtrans_semimark_ci951_mssample_cox2.1b, eval=T, echo=T, paged.print=TRUE, error=T}
+set.seed(1234)
+pmatrix_cox_a_4s_0<-
+mstate::mssample(msf0_4s$Haz, trans = mat_4_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+set.seed(1234)
+pmatrix_cox_b_4s_0<-
+mstate::mssample(msf1_4s$Haz, trans = mat_4_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+
+#pmatrix_cox_a
+#pmatrix_cox_b
+#pmatrix_cox_c
+#pmatrix_cox_d
+```
+```{r probtrans_semimark_ci951_mssample_flexsurv, eval=T, echo=T, paged.print=TRUE}
+#flexsurv_cumhaz_c$Haz
+set.seed(1234)
+pmatrix_flexsurv_a<-
+mstate::mssample(flexsurv_cumhaz_a$Haz, trans = mat_3_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+set.seed(1234)
+pmatrix_flexsurv_b<-
+mstate::mssample(flexsurv_cumhaz_b$Haz, trans = mat_3_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+```
+```{r probtrans_semimark_ci951_mssample_flexsurv_2, eval=T, echo=T, paged.print=TRUE, error=T}
+#pstate1–pstate3 are close to the first rows of the matrices returned by pmatrix.fs
+set.seed(1234)
+pmatrix_flexsurv_c<-
+mstate::mssample(flexsurv_cumhaz_c$Haz, trans = mat_4_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+set.seed(1234)
+pmatrix_flexsurv_d<-
+mstate::mssample(flexsurv_cumhaz_d$Haz, trans = mat_4_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+```
+
+<br>
+
+We simulated the trajectories from Semi-markov models by y generating the time to the next transition until the individual reaches an absorbing state or a specified censoring time
+
+<br>
+
+```{r mssample_plot, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 2a. Estimate of State Occupancies at Baseline, Three-states model", fig.align="center", error=T}
+invisible(c("For semi-Markov models, mstate provides the function mssample to produce both simulated trajectories and transition probability matrices from semi-Markov models, given the estimated piecewise-constant cumulative hazards (Fiocco et al. 2008), produced by msfit or msfit.flexsurvreg, though this is generally less efficient than pmatrix.simfs. In this example, 1000 samples from mssample give estimates of transition probabilities that are accurate to within around 0.02. However with pmatrix.simfs, greater precision is achieved by simulating 100 times as many trajectories in a shorter time"))
+
+#pmatrix_t_a_df_final pmatrix_t_b_df_final pmatrix_4s_t_a_df_final pmatrix_4s_t_b_df_final
+fig_ab_pmatrix<-
+pmatrix_cox_a %>%  
+  dplyr::left_join(pmatrix_cox_b, by="time", suffix=c("",".wcovs_cox.gp")) %>% 
+  dplyr::left_join(pmatrix_cox_a_0, by="time", suffix=c("",".wo_covs.ws")) %>% 
+  dplyr::left_join(pmatrix_cox_b_0, by="time", suffix=c("",".wo_covs.gp")) %>% 
+  #pstate1–pstate3 are close to the first rows of the matrices returned by pmatrix.fs
+  dplyr::left_join(pmatrix_flexsurv_a, by="time", suffix=c("",".wcovs_par.ws")) %>% 
+  dplyr::left_join(pmatrix_flexsurv_b, by="time", suffix=c("",".wcovs_par.gp")) %>% 
+  dplyr::left_join(pmatrix_t_a_df_final[which(pmatrix_t_a_df_final$trans==1),c("t","Trans_1","Trans_2","Trans_3")], by=c("time"="t"))%>% 
+  dplyr::rename("pstate1.wcovs_2par.ws"="Trans_1","pstate2.wcovs_2par.ws"="Trans_2", "pstate3.wcovs_2par.ws"="Trans_3") %>% 
+  dplyr::left_join(pmatrix_t_b_df_final[which(pmatrix_t_b_df_final$trans==1),c("t","Trans_1","Trans_2","Trans_3")], by=c("time"="t"))%>%
+  dplyr::rename("pstate1.wcovs_2par.gp"="Trans_1","pstate2.wcovs_2par.gp"="Trans_2", "pstate3.wcovs_2par.gp"="Trans_3") %>% 
+  dplyr::rename("pstate1.wcovs_cox.ws"="pstate1","pstate2.wcovs_cox.ws"="pstate2", "pstate3.wcovs_cox.ws"="pstate3") %>% 
+  reshape2::melt(id.vars="time") %>% #janitor::tabyl(variable)
+  #tidyr::separate(variable, into=c("state","covs","program")) %>% 
+  dplyr::mutate(state= dplyr::case_when(grepl("pstate1",variable)~"1)Admission",
+                                        grepl("pstate2",variable)~"2)Therapeutic Discharge",
+                                        grepl("pstate3",variable)~"3)Readmission",
+                                        T~NA_character_)) %>%
+  dplyr::mutate(covs= dplyr::case_when(grepl("wo_covs",variable)~"NP Cox",
+                                       grepl("wcovs_2par",variable)~"Parametric (flexsurv)",
+                                       grepl("wcovs_par",variable)~"Parametric (mssample)",
+                                       grepl("wcovs_cox",variable)~"Cox",#debe ir después,  menos restrictivo
+                                        T~NA_character_)) %>%
+  dplyr::mutate(type_of_program= dplyr::case_when(grepl("ws",variable)~"Women-specific",
+                                               grepl("gp",variable)~"General Population",
+                                               T~NA_character_)) %>% 
+ggplot(aes(time, value, color= covs, linetype =type_of_program))+
+  geom_step(size=1, alpha=.65) + 
+  facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
+  scale_color_manual(name ="Model",values=c("#747118","#0F4940","#743D18","#33114E"),labels= c("Cox","NP Cox","Par (flexsurv)", "Par (mssample)"))+
+ # scale_linetype_manual(name ="Type of program",values=c(1,4), labels= c("General Population","Women-specific"))+
+  #scale_linetype_manual(name= "Covariates",values=c(1,4), labels=c("w/covs","w/o covs"))+
+  scale_x_continuous(breaks=seq(0, 11,.5))+
+  xlab("Years") + 
+  ylab("State occupancy probabilities") + 
+  theme_minimal()+
+  theme(legend.position=c(.9,.9),
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+
+fig_ab_pmatrix
+```
+
+```{r mssample_plot2, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 2b. Estimate of State Occupancies at Baseline, Four-states model", fig.align="center", error=T}
+
+#pmatrix_t_a_df_final pmatrix_t_b_df_final pmatrix_4s_t_a_df_final pmatrix_4s_t_b_df_final
+fig_cd_pmatrix<-
+pmatrix_cox_c %>%  
+  dplyr::left_join(pmatrix_cox_d, by="time", suffix=c("",".wcovs_cox.gp")) %>% 
+  dplyr::left_join(pmatrix_cox_a_4s_0, by="time", suffix=c("",".wo_covs.ws")) %>% 
+  dplyr::left_join(pmatrix_cox_b_4s_0, by="time", suffix=c("",".wo_covs.gp")) %>% 
+  #pstate1–pstate3 are close to the first rows of the matrices returned by pmatrix.fs
+  dplyr::left_join(pmatrix_flexsurv_c, by="time", suffix=c("",".wcovs_par.ws")) %>% 
+  dplyr::left_join(pmatrix_flexsurv_d, by="time", suffix=c("",".wcovs_par.gp")) %>% 
+  dplyr::left_join(pmatrix_4s_t_a_df_final[which(pmatrix_4s_t_a_df_final$trans==1),c("t","Trans_1","Trans_2","Trans_3","Trans_4")], by=c("time"="t"))%>% 
+  dplyr::rename("pstate1.wcovs_2par.ws"="Trans_1","pstate2.wcovs_2par.ws"="Trans_2", "pstate3.wcovs_2par.ws"="Trans_3",
+                "pstate4.wcovs_2par.ws"="Trans_4") %>% 
+  dplyr::left_join(pmatrix_4s_t_b_df_final[which(pmatrix_4s_t_b_df_final$trans==1),c("t","Trans_1","Trans_2","Trans_3","Trans_4")], by=c("time"="t"))%>%
+  dplyr::rename("pstate1.wcovs_2par.gp"="Trans_1","pstate2.wcovs_2par.gp"="Trans_2", "pstate3.wcovs_2par.gp"="Trans_3",
+                "pstate4.wcovs_2par.gp"="Trans_4") %>% 
+  dplyr::rename("pstate1.wcovs_cox.ws"="pstate1","pstate2.wcovs_cox.ws"="pstate2", "pstate3.wcovs_cox.ws"="pstate3",
+                "pstate4.wcovs_cox.ws"="pstate4") %>% 
+  reshape2::melt(id.vars="time") %>% #janitor::tabyl(variable)
+  #tidyr::separate(variable, into=c("state","covs","program")) %>% 
+  dplyr::mutate(state= dplyr::case_when(grepl("pstate1",variable)~"1)Admission",
+                                        grepl("pstate2",variable)~"2)Therapeutic Discharge",
+                                        grepl("pstate3",variable)~"3)Discharge without medical advice",
+                                        grepl("pstate4",variable)~"4)Readmission",
+                                        T~NA_character_)) %>%
+  dplyr::mutate(covs= dplyr::case_when(grepl("wo_covs",variable)~"NP Cox",
+                                       grepl("wcovs_2par",variable)~"Parametric (flexsurv)",
+                                       grepl("wcovs_par",variable)~"Parametric (mssample)",
+                                       grepl("wcovs_cox",variable)~"Cox",#debe ir después,  menos restrictivo
+                                        T~NA_character_)) %>%
+  dplyr::mutate(type_of_program= dplyr::case_when(grepl("ws",variable)~"Women-specific",
+                                               grepl("gp",variable)~"General Population",
+                                               T~NA_character_)) %>% 
+ggplot(aes(time, value, color= covs, linetype =type_of_program))+
+  geom_step(size=1, alpha=.65) + 
+  facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
+  scale_color_manual(name ="Model",values=c("#747118","#0F4940","#743D18","#33114E"),labels= c("Cox","NP Cox","Par (flexsurv)", "Par (mssample)"))+
+  scale_linetype_manual(name ="Type of program",values=c(1,4), labels= c("General Population","Women-specific"))+
+  #scale_linetype_manual(name= "Covariates",values=c(1,4), labels=c("w/covs","w/o covs"))+
+  scale_x_continuous(breaks=seq(0, 11,.5))+
+  scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
+  xlab("Years") + 
+  ylab("State occupancy probabilities") + 
+  theme_minimal()+
+  theme(legend.position=c(.9,.9),
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+
+fig_cd_pmatrix
+#_#_#_#_#_#_#_#_#_#_#__#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#__#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#Transition probability matrix from a fully-parametric, semi-Markov multi-state model
+#_#_#_#_#_#_#_#_#_#_#__#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+```
+
+## Transition probabilities of parametric models by treatment arm
+
+```{r flexsurv_t_arm_3s_plot, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 3a. Estimate of State Occupancies (w/ confidence intervals), Three-states model", fig.align="center", error=T}
+
+pmatrix_t_a_df_final_mod<-
+data.table::data.table(pmatrix_t_a_df_final)[,-c("Trans_1_cis","Trans_2_cis","Trans_3_cis")]%>% 
+    dplyr::rename("Trans_1.lo"="Trans_1_lo", "Trans_2.lo"="Trans_2_lo",
+                  "Trans_3.lo"="Trans_3_lo", "Trans_1.up"="Trans_1_up",
+                  "Trans_2.up"="Trans_2_up", "Trans_3.up"="Trans_3_up") %>% 
+  melt(id.vars=c("t","trans")) %>% 
+  dplyr::rename("trans_from"="trans") %>% 
+  dplyr::mutate(variable=dplyr::case_when(!grepl("up|lo",variable)~paste0(variable,".est"),
+                                          T~as.character(variable))) %>% 
+  tidyr::separate(variable, c("trans_to", "cis"), "\\.") %>% #View()
+  dplyr::mutate(cis=ifelse(cis=="est","estimate",cis)) %>% 
+  dplyr::ungroup() %>% 
+  #dplyr::group_by(t, trans_from, trans_to, cis) %>% summarise(n=n())%>% dplyr::filter(n>1)
+  tidyr::pivot_wider(names_from="cis", values_from="value") %>% 
+  dplyr::mutate(trans_to=factor(str_sub(trans_to, start= -1)),trans_from=factor(trans_from))
+
+pmatrix_t_b_df_final_mod<-
+data.table::data.table(pmatrix_t_b_df_final)[,-c("Trans_1_cis","Trans_2_cis","Trans_3_cis")]%>% 
+    dplyr::rename("Trans_1.lo"="Trans_1_lo", "Trans_2.lo"="Trans_2_lo",
+                  "Trans_3.lo"="Trans_3_lo", "Trans_1.up"="Trans_1_up",
+                  "Trans_2.up"="Trans_2_up", "Trans_3.up"="Trans_3_up") %>% 
+  melt(id.vars=c("t","trans")) %>% 
+  dplyr::rename("trans_from"="trans") %>% 
+  dplyr::mutate(variable=dplyr::case_when(!grepl("up|lo",variable)~paste0(variable,".est"),
+                                          T~as.character(variable))) %>% 
+  tidyr::separate(variable, c("trans_to", "cis"), "\\.") %>% #View()
+  dplyr::mutate(cis=ifelse(cis=="est","estimate",cis)) %>% 
+  dplyr::ungroup() %>% 
+  #dplyr::group_by(t, trans_from, trans_to, cis) %>% summarise(n=n())%>% dplyr::filter(n>1)
+  tidyr::pivot_wider(names_from="cis", values_from="value") %>% 
+  dplyr::mutate(trans_to=factor(str_sub(trans_to, start= -1)),trans_from=factor(trans_from))
+
+rbind.data.frame(
+cbind.data.frame(pmatrix_t_a_df_final_mod,program="Women-specific"),
+cbind.data.frame(pmatrix_t_b_df_final_mod,program="General population")) %>% 
+  dplyr::mutate(combi=paste0(trans_from,"-",trans_to)) %>% 
+  dplyr::filter(!combi %in% c("2-1","3-1","3-2","3-3")) %>% 
+  dplyr::mutate(trans_from=dplyr::case_when(trans_from==1~"1)Admission",
+                                            trans_from==2~"2)Therapeutic\nDischarge",
+                                            trans_from==3~"3)Readmission")) %>% 
+  dplyr::mutate(trans_to=dplyr::case_when(trans_to==1~"to\n1)Admission",
+                                            trans_to==2~"to\n2)Therapeutic\nDischarge",
+                                            trans_to==3~"to\n3)Readmission")) %>% 
+  ggplot(aes(x=t, y=estimate, fill=program, color=program))+
+  geom_step(size=1)+
+  geom_ribbon(aes(ymin=lo, ymax=up),alpha=.3)+
+  facet_wrap(.~trans_from+trans_to, ncol=3, scales="free_y") + 
+  scale_fill_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_color_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_x_continuous(breaks=seq(0, 11))+
+  scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
+  xlab("Years") + 
+  ylab("State occupancy probabilities") + 
+  theme_minimal()+
+  theme(legend.position=c(.9,.2),
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+```
+
+
+```{r flexsurv_t_arm_4s_plot, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 3b. Estimate of State Occupancies (w/ confidence intervals), Four-states model", fig.align="center", error=T}
+
+pmatrix_4s_t_a_df_final_mod<-
+data.table::data.table(pmatrix_4s_t_a_df_final)[,-c("Trans_1_cis","Trans_2_cis","Trans_3_cis", "Trans_4_cis")]%>% 
+    dplyr::rename("Trans_1.lo"="Trans_1_lo", "Trans_2.lo"="Trans_2_lo",
+                  "Trans_3.lo"="Trans_3_lo", "Trans_4.lo"="Trans_4_lo", "Trans_1.up"="Trans_1_up",
+                  "Trans_2.up"="Trans_2_up", "Trans_3.up"="Trans_3_up","Trans_4.up"="Trans_4_up") %>% 
+  melt(id.vars=c("t","trans")) %>% 
+  dplyr::rename("trans_from"="trans") %>% 
+  dplyr::mutate(variable=dplyr::case_when(!grepl("up|lo",variable)~paste0(variable,".est"),
+                                          T~as.character(variable))) %>% 
+  tidyr::separate(variable, c("trans_to", "cis"), "\\.") %>% #View()
+  dplyr::mutate(cis=ifelse(cis=="est","estimate",cis)) %>% 
+  dplyr::ungroup() %>% 
+  #dplyr::group_by(t, trans_from, trans_to, cis) %>% summarise(n=n())%>% dplyr::filter(n>1)
+  tidyr::pivot_wider(names_from="cis", values_from="value") %>% 
+  dplyr::mutate(trans_to=factor(str_sub(trans_to, start= -1)),trans_from=factor(trans_from))
+
+pmatrix_4s_t_b_df_final_mod<-
+data.table::data.table(pmatrix_4s_t_b_df_final)[,-c("Trans_1_cis","Trans_2_cis","Trans_3_cis", "Trans_4_cis")]%>% 
+    dplyr::rename("Trans_1.lo"="Trans_1_lo", "Trans_2.lo"="Trans_2_lo",
+                  "Trans_3.lo"="Trans_3_lo", "Trans_4.lo"="Trans_4_lo", "Trans_1.up"="Trans_1_up",
+                  "Trans_2.up"="Trans_2_up", "Trans_3.up"="Trans_3_up","Trans_4.up"="Trans_4_up") %>% 
+  melt(id.vars=c("t","trans")) %>% 
+  dplyr::rename("trans_from"="trans") %>% 
+  dplyr::mutate(variable=dplyr::case_when(!grepl("up|lo",variable)~paste0(variable,".est"),
+                                          T~as.character(variable))) %>% 
+  tidyr::separate(variable, c("trans_to", "cis"), "\\.") %>% #View()
+  dplyr::mutate(cis=ifelse(cis=="est","estimate",cis)) %>% 
+  dplyr::ungroup() %>% 
+  #dplyr::group_by(t, trans_from, trans_to, cis) %>% summarise(n=n())%>% dplyr::filter(n>1)
+  tidyr::pivot_wider(names_from="cis", values_from="value") %>% 
+  dplyr::mutate(trans_to=factor(str_sub(trans_to, start= -1)),trans_from=factor(trans_from))
+
+rbind.data.frame(
+cbind.data.frame(pmatrix_4s_t_a_df_final_mod,program="Women-specific"),
+cbind.data.frame(pmatrix_4s_t_b_df_final_mod,program="General population")) %>% 
+  dplyr::mutate(combi=paste0(trans_from,"-",trans_to)) %>% 
+  dplyr::filter(!combi %in% c("2-1","3-1","2-3","3-2","3-1","3-2","4-1","4-2","4-3","4-4")) %>% 
+    dplyr::mutate(trans_from=dplyr::case_when(trans_from==1~"1)Admission",
+                                            trans_from==2~"2)Therapeutic\nDischarge",
+                                            trans_from==3~"3)Discharge Without\nMedical Advice",
+                                            trans_from==4~"4)Readmission")) %>% 
+  dplyr::mutate(trans_to=dplyr::case_when(trans_to==1~"to\n1)Admission",
+                                            trans_to==2~"to\n2)Therapeutic\nDischarge",
+                                            trans_to==3~"to\n3)Discharge Without\nMedical Advice",
+                                            trans_to==4~"to\n4)Readmission")) %>% 
+  ggplot(aes(x=t, y=estimate, fill=program, color=program))+
+  geom_step(size=1)+
+  geom_ribbon(aes(ymin=lo, ymax=up),alpha=.3)+
+  facet_wrap(.~trans_from+trans_to, ncol=3, scales="free_y") + 
+  scale_fill_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_color_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_x_continuous(breaks=seq(0, 11))+
+  scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
+  xlab("Years") + 
+  ylab("State occupancy probabilities") + 
+  theme_minimal()+
+  theme(legend.position=c(.9,.2),
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+```
+
+<br>
+
+# Length of Stay
+
+```{r dfs2,eval=T, echo=T, paged.print=TRUE, error=T}
+tolos_t_a_str2_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(t=t,state=1:dim(mat_3_states)[2],get(paste0("tolos_t_a_str2_",t)))
+    }))
+tolos_t_b_str2_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(t=t,state=1:dim(mat_3_states)[2],get(paste0("tolos_t_b_str2_",t)))
+    }))
+tolos_4s_t_a_str2_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(t=t,state=1:dim(mat_4_states)[2],get(paste0("tolos_4s_t_a_str2_",t)))
+    }))
+tolos_4s_t_b_str2_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(t=t,state=1:dim(mat_4_states)[2],get(paste0("tolos_4s_t_b_str2_",t)))
+    }))
+tolos_4s_t_a_str3_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(t=t,state=1:dim(mat_4_states)[2],get(paste0("tolos_4s_t_a_str3_",t)))
+    }))
+tolos_4s_t_b_str3_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(t=t,state=1:dim(mat_4_states)[2],get(paste0("tolos_4s_t_b_str3_",t)))
+    }))
+
+
+tolos_t_a_df2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(t= t, state=1:dim(mat_3_states)[2],get(paste0("tolos_t_a_",t)))
+    }))
+tolos_t_b_df2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(t= t, state=1:dim(mat_3_states)[2],get(paste0("tolos_t_b_",t)))
+    }))
+tolos_4s_t_a_df2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(t= t, state=1:dim(mat_4_states)[2],get(paste0("tolos_4s_t_a_",t)))
+    }))
+tolos_4s_t_b_df2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(t= t, state=1:dim(mat_4_states)[2],get(paste0("tolos_4s_t_b_",t)))
+    }))
+```
+
+
+```{r flexsurv_t_arm_3s_plot1, eval=T, echo=T, paged.print=TRUE, fig.height=10, fig.cap="Figure 4a. Estimate of Length of Stay (w/ confidence intervals), Three-states model", fig.align="center", error=T}
+rbind.data.frame(
+cbind.data.frame(tolos_t_a_df2,program="Women-specific"),
+cbind.data.frame(tolos_t_b_df2,program="General Population")
+) %>% 
+        dplyr::mutate(state=dplyr::case_when(state==1~"to\n1)Admission",
+                                      state==2~"to\n2)Therapeutic\nDischarge",
+                                      state==3~"to\n3)Readmission"))%>%
+  ggplot(aes(x=t, y=est, color=program, fill=program))+
+    geom_step(size=1)+
+  geom_ribbon(aes(ymin=L, ymax=U),alpha=.3)+
+  facet_wrap(.~state, ncol=3, scales="free_y") + 
+  scale_fill_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_color_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_x_continuous(breaks=seq(0, 11))+
+ #scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
+  xlab("Years") + 
+  #ylab("State occupancy probabilities") + 
+  theme_minimal()+
+  theme(legend.position=c(.9,.1),
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+```
+
+
+```{r flexsurv_t_arm_3s_plot2, eval=T, echo=T, paged.print=TRUE, fig.height=10, fig.cap="Figure 4b. Estimate of Length of Stay (w/ confidence intervals), Three-states model (start from Therapeutic\nDischarge)", fig.align="center", error=T}
+rbind.data.frame(
+cbind.data.frame(tolos_t_a_str2_df,program="Women-specific", start=2),
+cbind.data.frame(tolos_t_b_str2_df,program="General Population", start=2)
+) %>% 
+      dplyr::mutate(state=dplyr::case_when(state==1~"to\n1)Admission",
+                                      state==2~"to\n2)Therapeutic\nDischarge",
+                                      state==3~"to\n3)Readmission"))%>%
+  dplyr::filter(state!="to\n1)Admission") %>% 
+  ggplot(aes(x=t, y=est, color=program, fill=program))+
+    geom_step(size=1)+
+  geom_ribbon(aes(ymin=L, ymax=U),alpha=.3)+
+  facet_wrap(.~state, ncol=3, scales="free_y") + 
+  scale_fill_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_color_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_x_continuous(breaks=seq(0, 11))+
+ #scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
+  xlab("Years") + 
+  #ylab("State occupancy probabilities") + 
+  theme_minimal()+
+  theme(legend.position=c(.9,.1),
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+  
+```
+
+```{r flexsurv_t_arm_4s_plot1, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 5a. Estimate of Length of Stay (w/ confidence intervals), Four-states model", fig.align="center", error=T}
+rbind.data.frame(
+cbind.data.frame(tolos_4s_t_a_df2,program="Women-specific"),
+cbind.data.frame(tolos_4s_t_b_df2,program="General Population")
+)%>% 
+    dplyr::mutate(state=dplyr::case_when(state==1~"to\n1)Admission",
+                                      state==2~"to\n2)Therapeutic\nDischarge",
+                                      state==3~"to\n3)Discharge Without\nMedical Advice",
+                                      T~"to\n4)Readmission"))%>%
+  ggplot(aes(x=t, y=est, color=program, fill=program))+
+    geom_step(size=1)+
+  geom_ribbon(aes(ymin=L, ymax=U),alpha=.3)+
+  facet_wrap(.~state, ncol=2, scales="free_y") + 
+  scale_fill_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_color_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_x_continuous(breaks=seq(0, 11))+
+ #scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
+  xlab("Years") + 
+  #ylab("State occupancy probabilities") + 
+  theme_minimal()+
+  theme(legend.position=c(.9,.1),
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+```
+
+
+```{r flexsurv_t_arm_4s_plot2, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 5b. Estimate of Length of Stay (w/ confidence intervals), Four-states model", fig.align="center", error=T}
+rbind.data.frame(
+cbind.data.frame(tolos_4s_t_a_str2_df,program="Women-specific", start=2),
+cbind.data.frame(tolos_4s_t_b_str2_df,program="General Population", start=2),
+cbind.data.frame(tolos_4s_t_a_str3_df,program="Women-specific", start=3),
+cbind.data.frame(tolos_4s_t_b_str3_df,program="General Population", start=3))%>% 
+  dplyr::mutate(comb=dplyr::case_when(start==2 & state==1~"a",
+                                      start==2 & state==3~"a",
+                                      start==3 & state==1~"a",
+                                      start==3 & state==2~"a",
+                                      T~NA_character_)) %>% 
+  dplyr::mutate(start=dplyr::case_when(start==2~"2)Therapeutic\nDischarge",start==3~"3)Discharge Without\nMedical Advice",T~NA_character_))%>%
+  dplyr::mutate(state=dplyr::case_when(state==1~"to\n1)Admission",
+                                      state==2~"to\n2)Therapeutic\nDischarge",
+                                      state==3~"to\n3)Discharge Without\nMedical Advice",
+                                      T~"to\n4)Readmission"))%>%
+  dplyr::filter(is.na(comb)) %>% 
+  #dplyr::filter(est==0) %>% 
+  ggplot(aes(x=t, y=est, color=program, fill=program))+
+    geom_step(size=1)+
+  geom_ribbon(aes(ymin=L, ymax=U),alpha=.3)+
+  facet_wrap(start~state, ncol=2, nrow=2, scales="free_y") + 
+  scale_fill_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_color_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_x_continuous(breaks=seq(0, 11))+
+ #scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
+  xlab("Years") + 
+  #ylab("State occupancy probabilities") + 
+  theme_minimal()+
+  theme(legend.position=c(.9,.1),
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
 ```
 
 <br>
@@ -292,7 +978,7 @@ Cumulative baseline hazard can be estimated non-parametrically through a Breslow
 
 <br>
 
-```{r mstate_hazards_cis,eval=T, echo=T, paged.print=TRUE, error=T}
+```{r mstate_hazards_cis,eval=F, echo=T, paged.print=TRUE, error=T}
 #extended Markov renewal model
 #http://www.math.leidenuniv.nl/scripties/MasterXinruLi.pdf
 #MUCHAS FUNCIONES
@@ -333,72 +1019,177 @@ UCI<-apply(res,1,function(x)quantile(x,probs=0.975))
 print(CI<-cbind(LCI,estimate,UCI),digits=2)
 
 
- # b o o t s t r a p s amplin g by msboot
- re <- msboot (theta, bc.long , B=500, id ="id")
- # c o n fi d e n c e i n t e r v a l f o r p r e d i c i t i o n
- LCI <- apply (res , 1 , function(x) quantile(x,probs=.025))
- UCI <- apply (res, 1 , function(x) quantile(x,probs=.025))
- CI <- cbind (LCI , UCI )
+# bootstrap ampling by msboot
+re <- msboot (theta, bc.long , B=500, id ="id")
+# confidence intervals for prediction
+LCI <- apply (res , 1 , function(x) quantile(x,probs=.025))
+UCI <- apply (res, 1 , function(x) quantile(x,probs=.975))
+CI <- cbind (LCI , UCI )
+
+invisible(c("LMAJ"))
 
 ```
 
-```{r sim, eval=F, echo=T, paged.print=TRUE, error=T}
-set.seed(1234)
-simfinal_fmsm(sim_t_b_8.91666666666667, probs = c(0.25, 0.5, 0.75), M=10000)
+<br>
 
-invisible(c("Aclarar si ocupar bootci.fmsm"))
-#bootci.fmsm: Bootstrap confidence intervals for flexsurv output functions
+# Simulate Final State
 
+We estimated the probability to end in the readmission state, median of stay, percentiles 25, 75 and confidence intervals based on `r n_iter/40` resamples, by simulating a large sample of individuals from the model depending on the type of program they were admitted at baseline.
+
+```{r sim_medians, eval=T, echo=T, paged.print=TRUE, error=T}
+time_before_sim_medians_10y<-Sys.time()
+#Estimates the probability of each final outcome ("absorbing" state), and the mean and quantiles of the time to that outcome for people who experience it, by simulating a large sample of individuals from the model. This can be used for both Markov and semi-Markov models.
+#n_iter=12
+fmsm_sel_param_fits_4s_b<-
+    fmsm(fits_c_gomp2[[1]],fits_c_gomp2[[2]],fits_c_logn2[[3]],fits_c_ggam2[[4]],fits_c_logn2[[5]], trans=mat_4_states)
+
+fmsm_sel_param_fits_b<-
+    fmsm(fits_c_gomp[[1]],fits_c_genf[[2]],fits_c_ggam[[3]], trans=mat_3_states)
+
+  set.seed(1234)
+simfinal_fmsm_3_st_10y<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat3a[1,],newdat3b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 10, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              M=10000000, #necesita grandes números
+              B=n_iter/40, #Pondría 1,000
+              cores=8
+              )
+  set.seed(1234)
+simfinal_fmsm_3_st_.3y<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat3a[1,],newdat3b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= .3, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/40, #Pondría 1,000
+              cores=8
+              ) 
+  set.seed(1234)
+simfinal_fmsm_3_st_1y<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat3a[1,],newdat3b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/40, #Pondría 1,000
+              cores=8
+              )  
+  set.seed(1234)
+simfinal_fmsm_3_st_3y<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat3a[1,],newdat3b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 3, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/4, #Pondría 1,000
+              cores=8
+              )  
+
+
+
+  set.seed(1234)
+simfinal_fmsm_4_st_10y<-
+simfinal_fmsm(fmsm_sel_param_fits_4s_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat5a[1,],newdat5b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 10, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/40, #Pondría 1,000
+              cores=8
+              )
+  set.seed(1234)
+simfinal_fmsm_4_st_.3y<-
+simfinal_fmsm(fmsm_sel_param_fits_4s_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat5a[1,],newdat5b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= .3, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/40, #Pondría 1,000
+              cores=8
+              )
+  set.seed(1234)
+simfinal_fmsm_4_st_1y<-
+simfinal_fmsm(fmsm_sel_param_fits_4s_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat5a[1,],newdat5b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/40, #Pondría 1,000
+              cores=8
+              )
+simfinal_fmsm_4_st_3y<-
+simfinal_fmsm(fmsm_sel_param_fits_4s_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat5a[1,],newdat5b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 3, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/40, #Pondría 1,000
+              cores=8
+              )
+time_after_sim_medians_10y<-Sys.time()
+
+paste0("Time in process: ");time_after_sim_medians_10y-time_before_sim_medians_10y
+
+# probability of each final outcome
+# mean and quantiles of the time to that outcome for people who experience it
+```
+```{r sim_medians, eval=T, echo=T, paged.print=TRUE, error=T}
+simfinal_fmsm_3_st_df<-        
+rbind.data.frame(
+simfinal_fmsm_3_st_.3y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=.3),
+simfinal_fmsm_3_st_1y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=1),
+simfinal_fmsm_3_st_3y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=3),
+simfinal_fmsm_3_st_10y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=10))
+
+simfinal_fmsm_4_st_df<-
+rbind.data.frame(
+simfinal_fmsm_4_st_.3y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=.3),
+simfinal_fmsm_4_st_1y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=1),
+simfinal_fmsm_4_st_3y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=3),
+simfinal_fmsm_4_st_10y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=10))
 ```
 
-
-```{r stateval, eval=F, echo=T, paged.print=TRUE, error=T}
-#Drug and medical costs can be specified in a similar fashion. Drug costs are assumed to be known with certainty and vary by treatment strategy whereas medical costs are assumed to vary by health state and to follow a gamma distribution.
-tmat <- rbind(c(NA, 1, 2),
-              c(3, NA, 4),
-              c(NA, NA, NA))
-colnames(tmat) <- rownames(tmat) <- c("Healthy", "Sick", "Death")
-print(tmat)
-
-#A table of treatment strategies. Must contain the column strategy_id denoting a unique strategy. Other columns are variables describing the characteristics of a treatment strategy.
-strategies <- data.table(strategy_id = c(1, 2),
-                         strategy_name = c("SOC", "New"))
-#A table of patients. Must contain the column patient_id denoting a unique patient. The number of rows should be equal to the number of patients in the model. The table may also include columns for grp_id for subgroups and patient_wt specifying the weight to apply to each patient (within a subgroup). If grp_id is NULL, then it is assumed that there is only one subgroup. If patient_wt is NULL. then each patient is given the same weight. Weights cannot be used in individual-level models because each patient should be weighted equally; that is, weights can only be specified in cohort models. Weights within subgroups are normalized to sum to one. Other columns are variables describing the characteristics of a patient.
-n_patients <- 1000
-patients <- data.table(patient_id = 1:n_patients,
-                       age = rnorm(n_patients, mean = 45, sd = 7),
-                       female = rbinom(n_patients, size = 1, prob = .51))
-#A table of health states. Must contain the column state_id, which denotes a unique health state. The number of rows should be equal to the number of health states in the model. Other columns can describe the characteristics of a health state.
-states <- data.table(state_id = c(1, 2),
-                     state_name = rownames(tmat)[1:2]) # Non-death health states
-#A table of health state transitions. Must contain the column transition_id, which denotes a unique transition; from, which denotes the starting health state; and to which denotes the state that will be transitioned to.
-hesim_dat <- hesim_data(strategies = strategies,
-                        patients = patients, 
-                        states = states)
-
-labs <- get_labels(hesim_dat)
-labs$transition_id <- c("Healthy-> Sick" = 1, 
-                        "Healthy -> Death" = 2,
-                        "Sick -> Healthy" = 3,
-                        "Sick -> Death" = 4)
-print(labs)
-
-transmod_cr <- create_IndivCtstmTrans(wei_fits_cr, transmod_data,
-                                      trans_mat = tmat, 
-                                      n = 1000, #we will use 1000 samples of the parameters for the probabilistic sensitivity analysis (PSA).
-                                      clock = "reset",
-                                      start_age = patients$age)
-
-
-#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
-#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
-
-library(hesim)
-drugcost_tbl <- stateval_tbl(data.table(strategy_id = strategies$strategy_id,
-                                       est = mstate3_exdata$costs$drugs$costs),
-                            dist = "fixed")
+```{r sim_final_plot1, eval=T, echo=T, paged.print=TRUE, fig.height=10, fig.cap="Figure 6a. Time to Readmission for Users who Experience it (Mean and 95%CIs), Three-states model", fig.align="center", error=T}
+#time to that outcome for people who experience
+#itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+simfinal_fmsm_3_st_df %>%
+  dplyr::mutate(year=factor(year,levels=c(.3, 1, 3, 10))) %>% 
+  dplyr::group_by(year, tipo_de_programa_2) %>% 
+  summarise(mean=sum(val[quantity=="mean"],na.rm=T),
+            lo=sum(lower[quantity=="2.5%"],na.rm=T),
+            up=sum(upper[quantity=="97.5%"],na.rm=T)) %>% 
+  ggplot(aes(x=year, y=mean, color=tipo_de_programa_2))+
+  geom_bar(aes(x=year, y=mean, color=tipo_de_programa_2, fill=tipo_de_programa_2), position="dodge", stat="identity", alpha=0.4)+
+  sjPlot::theme_sjplot2()+
+  geom_errorbar(aes(x=year, ymin=lo, ymax=up, color=tipo_de_programa_2), position="dodge", stat="identity", width=0.4,  alpha=0.9, size=1.3)+
+  ylim(0,11)+
+  ylab("Time to event")+
+  scale_color_manual(name ="Type of program",values=c("#FF6400","#00A383"), labels= c("Women-specific","General Population"))+
+  scale_fill_manual(name ="Type of program",values=c("#FF6400","#00A383"), labels= c("Women-specific","General Population"))+
+    xlab("Maximum time of simualted individuals in the absorbing state (in years)")
 ```
 
+```{r sim_final_plot1, eval=T, echo=T, paged.print=TRUE, fig.height=10, fig.cap="Figure 6b. Time to Readmission for Users who Experience it (Mean and 95%CIs), Four-states model", fig.align="center", error=T}
+simfinal_fmsm_4_st_df %>%
+  dplyr::mutate(year=factor(year,levels=c(.3, 1, 3, 10))) %>% 
+  dplyr::group_by(year, tipo_de_programa_2) %>% 
+  summarise(mean=sum(val[quantity=="mean"],na.rm=T),
+            lo=sum(lower[quantity=="2.5%"],na.rm=T),
+            up=sum(upper[quantity=="97.5%"],na.rm=T)) %>% 
+  ggplot(aes(x=year, y=mean, color=tipo_de_programa_2))+
+  geom_bar(aes(x=year, y=mean, color=tipo_de_programa_2, fill=tipo_de_programa_2), position="dodge", stat="identity", alpha=0.4)+
+  sjPlot::theme_sjplot2()+
+  geom_errorbar(aes(x=year, ymin=lo, ymax=up, color=tipo_de_programa_2), position="dodge", stat="identity", width=0.4,  alpha=0.9, size=1)+
+  ylim(0,11)+
+  ylab("Time to event")+
+  scale_color_manual(name ="Type of program",values=c("#FF6400","#00A383"), labels= c("Women-specific","General Population"))+
+  scale_fill_manual(name ="Type of program",values=c("#FF6400","#00A383"), labels= c("Women-specific","General Population"))+
+  xlab("Maximum time of simualted individuals in the absorbing state (in years)")
+```
+
+<br>
 
 # Session Info
 
@@ -407,11 +1198,11 @@ Sys.getenv("R_LIBS_USER")
 rstudioapi::getSourceEditorContext()
 #save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
 
-if (grepl("CISS Fondecyt",path)==T){
+if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
     save.image("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/mult_state_carla_3.RData")
-  } else if (grepl("andre",path)==T){
+  } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
     save.image("C:/Users/andre/Desktop/SUD_CL/mult_state_carla_3.RData")
-  } else if (grepl("E:",path)==T){
+  } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
     save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla_3.RData")
   } else {
     save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla_3.RData")

@@ -789,7 +789,6 @@ cumhaz_data_c$trans <- factor(cumhaz_data_c$trans,
                                        "Ther.Disch -> Readm",
                                        "Disch.w/oClin.Adv.-> Readm"
                                        ))
-## 4 states -Women specific
 cumhaz_data_d <- rbind(data.frame(cox_cumhaz_0_c_we$Haz,
                                 model = "NP Cox"),
                       #data.frame(cox_cumhaz_d$Haz,
@@ -838,11 +837,6 @@ plot_comp_mssurvfit
 dev.off()
 }
 ```
-
-As we can see in the figure above, our modeling assumptions seem to have a great impact on the cumulative hazards.
-
-<br>
-
 
 ```{r msfit2.5_4s, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 2b. Estimate of Cumulative Hazards (Semi-Markov), Four-states", fig.align="center", error=T}
 
@@ -982,57 +976,6 @@ mstate::mssample(mrcox_d$Haz, trans = mat_4_states, clock = "reset", M = n_iter/
 
 #1000 samples from mssample give estimates of transition probabilities that are accurate to within around 0.02
 #
-```
-
-```{r mssample_plot, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 3. Estimate of State Occupancies", fig.align="center", error=T}
-fig_cox_ab<-
-pmatrix_cox_a %>%  
-  dplyr::left_join(pmatrix_cox_b, by="time", suffix=c("",".wcovs.gp")) %>% 
-  dplyr::left_join(pmatrix_cox_a_0, by="time", suffix=c("",".wo_covs.ws")) %>% 
-  dplyr::left_join(pmatrix_cox_b_0, by="time", suffix=c("",".wo_covs.gp")) %>% 
-  dplyr::rename("pstate1.wcovs.ws"="pstate1","pstate2.wcovs.ws"="pstate2", "pstate3.wcovs.ws"="pstate3") %>% 
-  reshape2::melt(id.vars="time") %>%
-  tidyr::separate(variable, into=c("state","covs","type_of_plan")) %>% 
-  dplyr::mutate(type_of_plan= dplyr::case_when(type_of_plan=="ws"~"Women-specific",
-                                               T~"General Population")) %>% 
-ggplot(aes(time, value, color= type_of_plan, linetype =covs))+
-  geom_line(size=1, alpha=.65) + 
-  facet_wrap(state~., ncol=1, scales="free_y") + 
-  scale_color_manual(name ="Type of program",values=c("#061F70","#A68D00"),labels= c("General Population","Women-specific"))+
-  scale_linetype_manual(name= "Covariates",values=c(1,4), labels=c("w/covs","w/o covs"))+
-  xlab("Years") + ylab("State occupancy probabilities") + 
-  theme_minimal()+
-  theme(legend.position=c(.9,.585),
-        legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"))
- 
-fig_cox_cd<-
-pmatrix_cox_c %>%  
-  dplyr::left_join(pmatrix_cox_d, by="time", suffix=c("",".wcovs.gp")) %>% 
-  dplyr::left_join(pmatrix_cox_a_4s_0, by="time", suffix=c("",".wo_covs.ws")) %>% 
-  dplyr::left_join(pmatrix_cox_b_4s_0, by="time", suffix=c("",".wo_covs.gp")) %>% 
-  dplyr::rename("pstate1.wcovs.ws"="pstate1","pstate2.wcovs.ws"="pstate2", "pstate3.wcovs.ws"="pstate3") %>% 
-  reshape2::melt(id.vars="time") %>%
-  tidyr::separate(variable, into=c("state","type_of_plan")) %>% 
-  dplyr::mutate(type_of_plan= dplyr::case_when(type_of_plan=="x"~"Women-specific",
-                                               T~"General Population")) %>% 
-ggplot(aes(time, value, color= type_of_plan, linetype =covs))+
-  geom_line(size=1, alpha=.65) + 
-  facet_wrap(state~., ncol=1, scales="free_y") + 
-  scale_color_manual(name ="Type of program",values=c("#061F70","#A68D00"),labels= c("General Population","Women-specific"))+
-  scale_linetype_manual(name= "Covariates",values=c(1,4), labels=c("w/covs","w/o covs"))+
-  xlab("Years") + ylab("State occupancy probabilities") + 
-  theme_minimal()+
-  theme(legend.position=c(.9,.585),
-        legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"))
-
-#_#_#_#_#_#_#_#_#_#_#__#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#__#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#Transition probability matrix from a fully-parametric, semi-Markov multi-state model
-#_#_#_#_#_#_#_#_#_#_#__#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 ```
 
 ```{r probtrans_semimark_ci952,eval=T, echo=T, paged.print=TRUE}
@@ -1567,11 +1510,11 @@ Sys.getenv("R_LIBS_USER")
 rstudioapi::getSourceEditorContext()
 #save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
 
-if (grepl("CISS Fondecyt",path)==T){
+if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
     save.image("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/mult_state_carla_2.RData")
-  } else if (grepl("andre",path)==T){
+  } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
     save.image("C:/Users/andre/Desktop/SUD_CL/mult_state_carla_2.RData")
-  } else if (grepl("E:",path)==T){
+  } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
     save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla_2.RData")
   } else {
     save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla_2.RData")
