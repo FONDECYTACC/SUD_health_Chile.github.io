@@ -357,13 +357,13 @@ cumhaz_data_a %>%
 ggplot(aes(time, value, color= model, linetype =variable))+
   geom_step(size=1, alpha=.65) + 
   facet_wrap(trans~., ncol=1, scales="free_y") + 
-  scale_color_manual(name ="Model",values=c("#0A0D46","#9C8F1A","#653C08"),labels= c("Cox","NP Cox","Par"))+
+  scale_color_manual(name ="Model",values=c("#0E53A7","#200772","#BF8830"),labels= c("Cox","NP Cox","Par"))+
   scale_linetype_manual(name= "Type of Plan",values=c(4,1), labels=c("General Population","Women-specific"))+
   scale_x_continuous(breaks=seq(0, 11, by = 1/2))+
   xlab("Years") + 
   ylab("Cumulative hazards") + 
   theme_minimal()+
-  theme(legend.position=c(.9,.585),
+  theme(legend.position=c(.9,.59),
         legend.background = element_rect(fill="white",
                                   size=0.5, linetype="solid", 
                                   colour ="black"))
@@ -374,7 +374,7 @@ cumhaz_data_c %>%
 ggplot(aes(time, value, color= model, linetype =variable))+
   geom_step(size=1, alpha=.65) + 
   facet_wrap(trans~., ncol=1, scales="free_y") + 
-  scale_color_manual(name ="Model",values=c("#0A0D46","#9C8F1A","#653C08"),labels= c("Cox","NP Cox","Par"))+
+  scale_color_manual(name ="Model",values=c("#0E53A7","#200772","#BF8830"),labels= c("Cox","NP Cox","Par"))+
   scale_linetype_manual(name= "Type of Plan",values=c(4,1), labels=c("General Population","Women-specific"))+
   scale_x_continuous(breaks=seq(0, 11, by = 1/2))+
   xlab("Years") + 
@@ -601,7 +601,7 @@ pmatrix_cox_a %>%
 ggplot(aes(time, value, color= covs, linetype =type_of_program))+
   geom_step(size=1, alpha=.65) + 
   facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
-  scale_color_manual(name ="Model",values=c("#747118","#0F4940","#743D18","#33114E"),labels= c("Cox","NP Cox","Par (flexsurv)", "Par (mssample)"))+
+  scale_color_manual(name ="Model",values=c("#A66F00","#FFD300","#6A48D7","#06266F"),labels= c("Cox","NP Cox","Par (flexsurv)", "Par (mssample)"))+
  # scale_linetype_manual(name ="Type of program",values=c(1,4), labels= c("General Population","Women-specific"))+
   #scale_linetype_manual(name= "Covariates",values=c(1,4), labels=c("w/covs","w/o covs"))+
   scale_x_continuous(breaks=seq(0, 11,.5))+
@@ -639,7 +639,7 @@ pmatrix_cox_c %>%
   #tidyr::separate(variable, into=c("state","covs","program")) %>% 
   dplyr::mutate(state= dplyr::case_when(grepl("pstate1",variable)~"1)Admission",
                                         grepl("pstate2",variable)~"2)Therapeutic Discharge",
-                                        grepl("pstate3",variable)~"3)Discharge without medical advice",
+                                        grepl("pstate3",variable)~"3)Discharge without Clinical Advice",
                                         grepl("pstate4",variable)~"4)Readmission",
                                         T~NA_character_)) %>%
   dplyr::mutate(covs= dplyr::case_when(grepl("wo_covs",variable)~"NP Cox",
@@ -653,7 +653,7 @@ pmatrix_cox_c %>%
 ggplot(aes(time, value, color= covs, linetype =type_of_program))+
   geom_step(size=1, alpha=.65) + 
   facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
-  scale_color_manual(name ="Model",values=c("#747118","#0F4940","#743D18","#33114E"),labels= c("Cox","NP Cox","Par (flexsurv)", "Par (mssample)"))+
+  scale_color_manual(name ="Model",values=c("#A66F00","#FFD300","#6A48D7","#06266F"),labels= c("Cox","NP Cox","Par (flexsurv)", "Par (mssample)"))+
   scale_linetype_manual(name ="Type of program",values=c(1,4), labels= c("General Population","Women-specific"))+
   #scale_linetype_manual(name= "Covariates",values=c(1,4), labels=c("w/covs","w/o covs"))+
   scale_x_continuous(breaks=seq(0, 11,.5))+
@@ -742,7 +742,7 @@ rbind.data.frame(
 cbind.data.frame(pmatrix_t_a_df_final_mod,program="Women-specific"),
 cbind.data.frame(pmatrix_t_b_df_final_mod,program="General population")) %>% 
   dplyr::mutate(combi=paste0(trans_from,"-",trans_to)) %>% 
-  #dplyr::filter(!combi %in% c("2-1","3-1","3-2","3-3")) %>% 
+    dplyr::filter(trans_from!=3) %>% 
   dplyr::mutate(trans_from=dplyr::case_when(trans_from==1~"1)From Admission",
                                             trans_from==2~"2)From Therapeutic\nDischarge",
                                             trans_from==3~"3)From Readmission")) %>% 
@@ -752,13 +752,27 @@ cbind.data.frame(pmatrix_t_b_df_final_mod,program="General population")) %>%
   ggplot(aes(x=t, y=estimate, fill=trans_to, color=trans_to))+
     geom_area()+
   facet_wrap(program~trans_from)+
-  sjPlot::theme_538()+
+  sjPlot::theme_sjplot()+
   theme(legend.position="bottom")+
   xlab("Years")+
-  scale_fill_manual(name ="Transition to", values=c("#374140","#D9CB9E","#751c12"))+
-  scale_color_manual(name ="Transition to", values=c("#374140","#D9CB9E","#751c12"))+
+  ylab("Probabilities")+
+  scale_fill_manual(name ="Transition to", values=c("#BF8F30","#1D7373","#876ED7"))+
+  scale_color_manual(name ="Transition to", values=c("#BF8F30","#1D7373","#876ED7"))+
   scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
-  scale_x_continuous(breaks=seq(0, 11,2))
+  scale_x_continuous(breaks=seq(0, 11,2))+
+   theme(
+    panel.background = element_blank(), # bg of the panel
+    plot.background = element_blank(), # bg of the plot
+    panel.grid.major = element_blank(), # get rid of major grid
+    panel.grid.minor = element_blank(), # get rid of minor grid
+    legend.background = element_blank(), # get rid of legend bg
+    legend.box.background = element_blank() # get rid of legend panel bg
+  )+
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank(),
+        panel.border = element_blank(),
+          legend.box.background = element_blank())
 ```
 
 
@@ -803,11 +817,11 @@ cbind.data.frame(pmatrix_4s_t_b_df_final_mod,program="General population")) %>%
   dplyr::filter(!combi %in% c("2-1","3-1","2-3","3-2","3-1","3-2","4-1","4-2","4-3","4-4")) %>% 
     dplyr::mutate(trans_from=dplyr::case_when(trans_from==1~"1)Admission",
                                             trans_from==2~"2)Therapeutic\nDischarge",
-                                            trans_from==3~"3)Discharge Without\nMedical Advice",
+                                            trans_from==3~"3)Discharge Without\nClinical Advice",
                                             trans_from==4~"4)Readmission")) %>% 
   dplyr::mutate(trans_to=dplyr::case_when(trans_to==1~"to\n1)Admission",
                                             trans_to==2~"to\n2)Therapeutic\nDischarge",
-                                            trans_to==3~"to\n3)Discharge Without\nMedical Advice",
+                                            trans_to==3~"to\n3)Discharge Without\nClinical Advice",
                                             trans_to==4~"to\n4)Readmission")) %>% 
   ggplot(aes(x=t, y=estimate, fill=program, color=program))+
   geom_step(size=1)+
@@ -831,25 +845,40 @@ rbind.data.frame(
 cbind.data.frame(pmatrix_4s_t_a_df_final_mod,program="Women-specific"),
 cbind.data.frame(pmatrix_4s_t_b_df_final_mod,program="General population")) %>% 
   dplyr::mutate(combi=paste0(trans_from,"-",trans_to)) %>% 
-  dplyr::filter(!combi %in% c("2-1","3-1","2-3","3-2","3-1","3-2","4-1","4-2","4-3","4-4")) %>% 
+  dplyr::filter(trans_from!=4) %>% 
     dplyr::mutate(trans_from=dplyr::case_when(trans_from==1~"1)From Admission",
                                             trans_from==2~"2)From Therapeutic\nDischarge",
-                                            trans_from==3~"3)From Discharge Without\nMedical Advice",
+                                            trans_from==3~"3)From Discharge Without\nClinical Advice",
                                             trans_from==4~"4)From Readmission")) %>% 
   dplyr::mutate(trans_to=dplyr::case_when(trans_to==1~"1)Admission",
                                             trans_to==2~"2)Therapeutic\nDischarge",
-                                            trans_to==3~"3)Discharge Without\nMedical Advice",
+                                            trans_to==3~"3)Discharge Without\nClinical Advice",
                                             trans_to==4~"4)Readmission")) %>% 
   ggplot(aes(x=t, y=estimate, fill=trans_to, color=trans_to))+
   geom_area()+
   facet_wrap(program~trans_from)+
-  sjPlot::theme_538()+
+  sjPlot::theme_sjplot()+
   theme(legend.position="bottom")+
   xlab("Years")+
-  scale_fill_manual(name ="Transition to", values=c("#374140","#D9CB9E","#751c12","#939da3"))+
-  scale_color_manual(name ="Transition to", values=c("#374140","#D9CB9E","#751c12","#939da3"))+
+  ylab("Probabilities")+
+  scale_fill_manual(name ="Transition to", values=c("#BF8F30","#1D7373","#876ED7","#1240AB"))+
+  scale_color_manual(name ="Transition to", values=c("#BF8F30","#1D7373","#876ED7","#1240AB"))+
+#scale_color_manual(name ="Model",values=c("#A66F00","#FFD300","#6A48D7","#06266F"),labels= c("Cox","NP Cox","Par (flexsurv)", "Par (mssample)"))+
   scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
-  scale_x_continuous(breaks=seq(0, 11,2))
+  scale_x_continuous(breaks=seq(0, 11,2))+
+     theme(
+    panel.background = element_blank(), # bg of the panel
+    plot.background = element_blank(), # bg of the plot
+    panel.grid.major = element_blank(), # get rid of major grid
+    panel.grid.minor = element_blank(), # get rid of minor grid
+    legend.background = element_blank(), # get rid of legend bg
+    legend.box.background = element_blank() # get rid of legend panel bg
+  )+
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank(),
+        panel.border = element_blank(),
+          legend.box.background = element_blank())
 ```
 
 
@@ -858,20 +887,20 @@ pmatrix_t_b_df_final_join<-
 pmatrix_t_b_df_final %>% 
     dplyr::mutate(t=round(t,3)) %>% 
     dplyr::select(t, trans, ends_with("cis")) %>% 
-  dplyr::filter(t%in% c(0.000, 0.083, 0.333, 0.50, .75, 1, 3, 5)) %>%
-      dplyr::mutate(t=factor(t, levels=c(0.000, 0.083, 0.333, 0.50, .75, 1, 3, 5),
-                                labels=c("0 days", "~30days/1 month", "~91 days/3 months", "~183 days/6 months", "~274days/9 months", "~1 year", "~3 years", "~5 years")))
+       dplyr::filter(t%in% c(0.000, 0.083, .25, 0.333, 0.50, .75, 1, 3, 5)) %>%
+      dplyr::mutate(t=factor(t, levels=c(0.000, 0.083, .25, 0.333, 0.50, .75, 1, 3, 5),
+                                labels=c("0 days", "~30days/1 month", "~91 days/3 months", "~122days/4months", "~183 days/6 months", "~274days/9 months", "~1 year", "~3 years", "~5 years")))
 
 pmatrix_t_a_df_final %>% 
      dplyr::mutate(t=round(t,3)) %>% 
   dplyr::select(t, trans, ends_with("cis")) %>% 
-       dplyr::filter(t%in% c(0.000, 0.083, 0.333, 0.50, .75, 1, 3, 5)) %>%
-      dplyr::mutate(t=factor(t, levels=c(0.000, 0.083, 0.333, 0.50, .75, 1, 3, 5),
-                                labels=c("0 days", "~30days/1 month", "~91 days/3 months", "~183 days/6 months", "~274days/9 months", "~1 year", "~3 years", "~5 years"))) %>% 
+       dplyr::filter(t%in% c(0.000, 0.083, .25, 0.333, 0.50, .75, 1, 3, 5)) %>%
+      dplyr::mutate(t=factor(t, levels=c(0.000, 0.083, .25, 0.333, 0.50, .75, 1, 3, 5),
+                                labels=c("0 days", "~30days/1 month", "~91 days/3 months", "~122days/4months", "~183 days/6 months", "~274days/9 months", "~1 year", "~3 years", "~5 years"))) %>% 
   dplyr::left_join(pmatrix_t_b_df_final_join,by=c("t","trans")) %>% 
       dplyr::mutate(trans=dplyr::case_when(trans==1~"1)Admission",
                                             trans==2~"2)Therapeutic\nDischarge",
-                                            #trans==3~"3)From Discharge Without\nMedical Advice",
+                                            #trans==3~"3)From Discharge Without\nClinical Advice",
                                             trans==3~"3)Readmission")) %>% 
   dplyr::select(-t) %>% 
           knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
@@ -884,11 +913,12 @@ pmatrix_t_a_df_final %>%
   kableExtra::pack_rows("At 0 days", 1, 3) %>% 
   kableExtra::pack_rows("At ~30 days/1 month", 4, 6) %>% 
   kableExtra::pack_rows("At ~91 days/3 months", 7, 9) %>% 
-  kableExtra::pack_rows("At ~183 days/6 months", 10, 12) %>%
-  kableExtra::pack_rows("At ~274days/9 months", 13, 15) %>%
-  kableExtra::pack_rows("At ~1 year", 16, 18) %>%
-  kableExtra::pack_rows("At ~3 years", 19, 21) %>%
-  kableExtra::pack_rows("At ~5 years", 22, 24) %>%
+  kableExtra::pack_rows("At ~122 days/4 months", 10, 12) %>%
+  kableExtra::pack_rows("At ~183 days/6 months", 13, 15) %>%
+  kableExtra::pack_rows("At ~274days/9 months", 16, 18) %>%
+  kableExtra::pack_rows("At ~1 year", 19, 21) %>%
+  kableExtra::pack_rows("At ~3 years", 22, 24) %>%
+  kableExtra::pack_rows("At ~5 years", 25, 27) %>%
   kableExtra::scroll_box(width = "100%", height = "375px") 
   #dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",estimate)," [",
   #                                 sprintf("%1.2f",lo),"-",
@@ -906,25 +936,25 @@ pmatrix_4s_t_b_df_final_join<-
 pmatrix_4s_t_b_df_final %>% 
     dplyr::mutate(t=round(t,3)) %>% 
     dplyr::select(t, trans, ends_with("cis")) %>% 
-  dplyr::filter(t%in% c(0.000, 0.083, 0.333, 0.50, .75, 1, 3, 5)) %>%
-      dplyr::mutate(t=factor(t, levels=c(0.000, 0.083, 0.333, 0.50, .75, 1, 3, 5),
-                                labels=c("0 days", "~30days/1 month", "~91 days/3 months", "~183 days/6 months", "~274days/9 months", "~1 year", "~3 years", "~5 years")))
+  dplyr::filter(t%in% c(0.000, 0.083, .25, 0.333, 0.50, .75, 1, 3, 5)) %>%
+      dplyr::mutate(t=factor(t, levels=c(0.000, 0.083, .25, 0.333, 0.50, .75, 1, 3, 5),
+                                labels=c("0 days", "~30days/1 month", "~91 days/3 months", "~122days/4months", "~183 days/6 months", "~274days/9 months", "~1 year", "~3 years", "~5 years")))
 
 pmatrix_4s_t_a_df_final %>% 
      dplyr::mutate(t=round(t,3)) %>% 
   dplyr::select(t, trans, ends_with("cis")) %>% 
-       dplyr::filter(t%in% c(0.000, 0.083, 0.333, 0.50, .75, 1, 3, 5)) %>%
-      dplyr::mutate(t=factor(t, levels=c(0.000, 0.083, 0.333, 0.50, .75, 1, 3, 5),
-                                labels=c("0 days", "~30days/1 month", "~91 days/3 months", "~183 days/6 months", "~274days/9 months", "~1 year", "~3 years", "~5 years"))) %>% 
+       dplyr::filter(t%in% c(0.000, 0.083, .25, 0.333, 0.50, .75, 1, 3, 5)) %>%
+      dplyr::mutate(t=factor(t, levels=c(0.000, 0.083, .25, 0.333, 0.50, .75, 1, 3, 5),
+                                labels=c("0 days", "~30days/1 month", "~91 days/3 months", "~122days/4months", "~183 days/6 months", "~274days/9 months", "~1 year", "~3 years", "~5 years"))) %>% 
   dplyr::left_join(pmatrix_4s_t_b_df_final_join,by=c("t","trans")) %>% 
       dplyr::mutate(trans=dplyr::case_when(trans==1~"1)Admission",
                                             trans==2~"2)Therapeutic\nDischarge",
-                                            trans==3~"3)From Discharge Without\nMedical Advice",
+                                            trans==3~"3)From Discharge Without\nClinical Advice",
                                             trans==4~"4)Readmission")) %>% 
   dplyr::select(-t) %>% 
           knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption = paste0("Table 2. Estimated transition probabilities, Four-states model"),
-               col.names = c("Actual state", rep(c("Admission","Therapeutic Discharge","Discharge Without\nMedical Advice","Readmission"),2)),
+               col.names = c("Actual state", rep(c("Admission","Therapeutic Discharge","Discharge Without\nClinical Advice","Readmission"),2)),
                align =rep('c', 101)) %>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
  # kableExtra::add_footnote("Note. NA= Null values", notation="none") %>% 
@@ -932,18 +962,207 @@ pmatrix_4s_t_a_df_final %>%
   kableExtra::pack_rows("At 0 days", 1, 4) %>% 
   kableExtra::pack_rows("At ~30 days/1 month", 5, 8) %>% 
   kableExtra::pack_rows("At ~91 days/3 months", 9, 12) %>% 
-  kableExtra::pack_rows("At ~183 days/6 months", 13, 16) %>%
-  kableExtra::pack_rows("At ~274days/9 months", 17, 20) %>%
-  kableExtra::pack_rows("At ~1 year", 21, 24) %>%
-  kableExtra::pack_rows("At ~3 years", 25, 28) %>%
-  kableExtra::pack_rows("At ~5 years", 29, 32) %>%
+  kableExtra::pack_rows("At ~122 days/4 months", 13, 16) %>%
+  kableExtra::pack_rows("At ~183 days/6 months", 17, 20) %>%
+  kableExtra::pack_rows("At ~274days/9 months", 21, 24) %>%
+  kableExtra::pack_rows("At ~1 year", 25, 28) %>%
+  kableExtra::pack_rows("At ~3 years", 29, 32) %>%
+  kableExtra::pack_rows("At ~5 years", 33, 36) %>%
   kableExtra::scroll_box(width = "100%", height = "375px") 
-#
 ```
 
 <br>
 
 # Length of Stay
+
+## Partitioned survival analyses
+
+We first looked over the restricted mean survival time, which may be the equivalent measure of the length of stay for partitioned survival analyses of each transition (as stated by Crowther in this [link](https://www.stata.com/meeting/italy18/slides/italy18_Crowther.pdf)). We calculated its 95% confidence intervals by  `r n_iter` resamples.
+
+<br>
+
+```{r PSA_mean, eval=T, echo=T, paged.print=TRUE, error=T}
+
+rmst_a_3s_1<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=1,summary(sel_param_fits_b[[1]],newdata=newdat3a[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=3)
+    }))
+rmst_a_3s_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=2,summary(sel_param_fits_b[[2]],newdata=newdat3a[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=3)
+    }))
+rmst_a_3s_3<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=3,summary(sel_param_fits_b[[3]],newdata=newdat3a[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=3)
+    }))
+
+rmst_b_3s_1<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=1,summary(sel_param_fits_b[[1]],newdata=newdat3b[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=3)
+    }))
+rmst_b_3s_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=2,summary(sel_param_fits_b[[2]],newdata=newdat3b[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=3)
+    }))
+rmst_b_3s_3<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=3,summary(sel_param_fits_b[[3]],newdata=newdat3b[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=3)
+    }))
+
+
+rmst_a_4s_1<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=1,summary(sel_param_fits_4s_b[[1]],newdata=newdat5a[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_a_4s_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=2,summary(sel_param_fits_4s_b[[2]],newdata=newdat5a[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_a_4s_3<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=3,summary(sel_param_fits_4s_b[[3]],newdata=newdat5a[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_a_4s_4<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=4,summary(sel_param_fits_4s_b[[4]],newdata=newdat5a[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_a_4s_5<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=5,summary(sel_param_fits_4s_b[[5]],newdata=newdat5a[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+
+rmst_b_4s_1<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=1,summary(sel_param_fits_4s_b[[1]],newdata=newdat5b[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_b_4s_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=2,summary(sel_param_fits_4s_b[[2]],newdata=newdat5b[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_b_4s_3<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=3,summary(sel_param_fits_4s_b[[3]],newdata=newdat5b[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_b_4s_4<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=4,summary(sel_param_fits_4s_b[[4]],newdata=newdat5b[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_b_4s_5<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=5,summary(sel_param_fits_4s_b[[5]],newdata=newdat5b[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+
+rmst_df_psa_3s<-
+rbind.data.frame(rmst_a_3s_1, rmst_a_3s_2, rmst_a_3s_3, rmst_b_3s_1, rmst_b_3s_2, rmst_b_3s_3)
+rmst_df_psa_4s<-
+rbind.data.frame(rmst_a_4s_1, rmst_a_4s_2, rmst_a_4s_3, rmst_a_4s_4, rmst_a_4s_5, rmst_b_4s_1, rmst_b_4s_2, rmst_b_4s_3, rmst_b_4s_4, rmst_b_4s_5)
+```
+
+
+```{r flexsurv_t_arm_4s_plot5, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 4a. Restricted Mean Survival Times (w/ confidence intervals), Three-states model", fig.align="center", error=T}
+transition_label<- c(`1`="Transition 1: Admission to Ther.Discharge",`2`="Transition 2: Admission to Readmission",`3`="Transition 3: Ther.Discharge to Readmission")
+
+  ggplot(rmst_df_psa_3s, aes(x=t, y=est, color=pr, fill=pr))+
+    geom_step(size=1)+        
+  geom_ribbon(aes(ymin=lcl, ymax=ucl),alpha=.3)+
+  facet_wrap(.~tr, labeller = labeller(tr = transition_label), ncol=1, scales = "free_y")+
+  scale_fill_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_color_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_x_continuous(breaks=seq(0, 11))+
+ #scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
+  xlab("Years") + 
+  #ylab("State occupancy probabilities") + 
+  theme_minimal()+
+  theme(legend.position=c(.9,.1),
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+```
+
+
+```{r flexsurv_t_arm_4s_plot6, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 4b. Restricted Mean Survival Times (w/ confidence intervals), Four-states model", fig.align="center", error=T}
+  ggplot(rmst_df_psa_4s, aes(x=t, y=est, color=pr, fill=pr))+
+    geom_step(size=1)+        
+  geom_ribbon(aes(ymin=lcl, ymax=ucl),alpha=.3)+
+  facet_wrap(.~tr, labeller = labeller(tr = transition_label_4s), ncol=1, scales = "free_y")+
+  scale_fill_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_color_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
+  scale_x_continuous(breaks=seq(0, 11))+
+ #scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
+  xlab("Years") + 
+  #ylab("State occupancy probabilities") + 
+  theme_minimal()+
+  theme(legend.position=c(.9,.1),
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+```
+
+
+```{r PSA_rmst_a, eval=T, echo=T, paged.print=TRUE, error=T}
+#In order to estimate performances of average LOS (ALOS) estimation methods according to the accumulating data that become available over time, ALOS with their 95% confidence intervals (CI) 
+
+#rmst_df_psa_4s
+rmst_df_psa_3s %>% 
+  dplyr::mutate(pr=dplyr::case_when(pr=="ws"~"Women-specific",
+                                    T~"General population")) %>% 
+    dplyr::mutate(est_ci=paste0(sprintf("%1.2f",est)," [",
+                                   sprintf("%1.2f",lcl),"-",
+                                   sprintf("%1.2f",ucl),"]")) %>% 
+  dplyr::select(pr, t, tr, st, est_ci) %>% 
+  tidyr::pivot_wider(names_from="pr", values_from=c("est_ci")) %>% 
+  dplyr::select(-st) %>% 
+  dplyr::mutate_at(1,~sprintf("%1.4f",.)) %>%
+  dplyr::filter(t %in% c("0.0000","0.0833", "0.2500", "0.3333", "0.5000", "1.0000", "3.0000", "5.0000")) %>% 
+  dplyr::mutate(t=factor(t,levels=c("0.0000","0.0833", "0.2500", "0.3333", "0.5000", "1.0000", "3.0000", "5.0000"), labels=c("0 days","30 days", "90 days", "4 months", "6 months", "1 year", "3 years", "5 years"))) %>% 
+  dplyr::select(-tr) %>%
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table 3a. Restricted Mean Survival Time by Partitioned Survival Analyses, Three-states model"),
+       col.names = c("Time",rep(c("Estimate [95% CI]"),2)),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::add_header_above(c(rep("",1),"Women-specific"=1, "General population"=1)) %>% 
+  kableExtra::pack_rows("Transition 1: Admission to Ther.Discharge", 1, 8) %>%
+  kableExtra::pack_rows("Transition 2: Admission to Readmission", 9, 16) %>%
+  kableExtra::pack_rows("Transition 3: Ther.Discharge to Readmission", 17, 24) %>%
+    kableExtra::scroll_box(width = "100%", height = "375px")
+  #kableExtra::add_footnote("Note. NA= Null values", notation="none") 
+```
+
+```{r PSA_rmst_b, eval=T, echo=T, paged.print=TRUE, error=T}
+#In order to estimate performances of average LOS (ALOS) estimation methods according to the accumulating data that become available over time, ALOS with their 95% confidence intervals (CI) 
+
+#rmst_df_psa_4s
+rmst_df_psa_4s %>% 
+  dplyr::mutate(pr=dplyr::case_when(pr=="ws"~"Women-specific",
+                                    T~"General population")) %>% 
+    dplyr::mutate(est_ci=paste0(sprintf("%1.2f",est)," [",
+                                   sprintf("%1.2f",lcl),"-",
+                                   sprintf("%1.2f",ucl),"]")) %>% 
+  dplyr::select(pr, t, tr, st, est_ci) %>% 
+  tidyr::pivot_wider(names_from="pr", values_from=c("est_ci")) %>% 
+  dplyr::select(-st) %>% 
+  dplyr::mutate_at(1,~sprintf("%1.4f",.)) %>%
+  dplyr::filter(t %in% c("0.0000","0.0833", "0.2500", "0.3333", "0.5000", "1.0000", "3.0000", "5.0000")) %>% 
+  dplyr::mutate(t=factor(t,levels=c("0.0000","0.0833", "0.2500", "0.3333", "0.5000", "1.0000", "3.0000", "5.0000"), labels=c("0 days", "30 days", "90 days", "4 months", "6 months", "1 year", "3 years", "5 years"))) %>% 
+  dplyr::select(-tr) %>%
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table 3b. Restricted Mean Survival Time by Partitioned Survival Analyses, Four-states model"),
+       col.names = c("Time",rep(c("Estimate [95% CI]"),2)),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::add_header_above(c(rep("",1),"Women-specific"=1, "General population"=1)) %>% 
+  kableExtra::pack_rows("Transition 1: Admission to Ther.Discharge", 1, 8) %>%
+  kableExtra::pack_rows("Transition 2: Admission to Discharge w/o Clinical Advice", 9, 16) %>%
+  kableExtra::pack_rows("Transition 3: Admission to Readmission", 17, 24) %>%
+  kableExtra::pack_rows("Transition 4: Ther.Discharge to Readmission", 25, 32) %>%
+  kableExtra::pack_rows("Transition 5: Discharge w/o Clinical Advice to Readmission", 33, 40) %>%
+    kableExtra::scroll_box(width = "100%", height = "375px")
+  #kableExtra::add_footnote("Note. NA= Null values", notation="none") 
+```
+
+## Multistate
+
 
 ```{r dfs2_los,eval=T, echo=T, paged.print=TRUE, error=T}
 tolos_t_a_str2_df<-
@@ -991,18 +1210,27 @@ do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
 ```
 
 
-```{r flexsurv_t_arm_3s_plot3, eval=T, echo=T, paged.print=TRUE, fig.height=10, fig.cap="Figure 4a. Estimate of Length of Stay (w/ confidence intervals), Three-states model", fig.align="center", error=T}
+```{r flexsurv_t_arm_3s_plot3, eval=T, echo=T, paged.print=TRUE, fig.height= 9, fig.cap="Figure 5a. Estimated Length of Stay (w/ confidence intervals), Three-states model", fig.align="center", error=T}
+#tolos_t_a_df2  tolos_t_b_df2 tolos_4s_t_a_df2 %>% dplyr::filter(t==10) tolos_4s_t_b_df2 tolos_4s_t_a_10
+
+los_3s<-
 rbind.data.frame(
-cbind.data.frame(tolos_t_a_df2,program="Women-specific"),
-cbind.data.frame(tolos_t_b_df2,program="General Population")
+cbind.data.frame(tolos_t_a_df2,program="Women-specific", start=1),
+cbind.data.frame(tolos_t_b_df2,program="General Population", start=1),
+cbind.data.frame(tolos_t_a_str2_df,program="Women-specific", start=2)%>% dplyr::filter(state==2),
+cbind.data.frame(tolos_t_b_str2_df,program="General Population", start=2)%>% dplyr::filter(state==2)
 ) %>% 
-        dplyr::mutate(state=dplyr::case_when(state==1~"to\n1)Admission",
-                                      state==2~"to\n2)Therapeutic\nDischarge",
-                                      state==3~"to\n3)Readmission"))%>%
+  dplyr::filter(state<3) %>% 
+        dplyr::mutate(state=dplyr::case_when(state==1~"1)Admission",
+                                      state==2~"2)Therapeutic Discharge",
+                                      state==3~"3)Readmission"))%>%
+          dplyr::mutate(start=dplyr::case_when(start==1~"Starting from Admission",
+                                      start==2~"Starting from Therapeutic Discharge",
+                                      start==3~"Starting from Readmission"))%>%
   ggplot(aes(x=t, y=est, color=program, fill=program))+
     geom_step(size=1)+
   geom_ribbon(aes(ymin=L, ymax=U),alpha=.3)+
-  facet_wrap(.~state, ncol=3, scales="free_y") + 
+  facet_wrap(.~start+state, ncol=3, scales="free_y") + 
   scale_fill_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
   scale_color_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
   scale_x_continuous(breaks=seq(0, 11))+
@@ -1010,54 +1238,50 @@ cbind.data.frame(tolos_t_b_df2,program="General Population")
   xlab("Years") + 
   #ylab("State occupancy probabilities") + 
   theme_minimal()+
-  theme(legend.position=c(.9,.1),
+  theme(legend.position=c(.87,.1),
         legend.background = element_rect(fill="white",
                                   size=0.5, linetype="solid", 
                                   colour ="black"))
-  
+
+los_3s
+
+if(no_mostrar==1){
+jpeg("eso17.jpg", height=15, width= 10, res= 96, units = "in")
+los_3s
+dev.off()
+}
 ```
 
 
-```{r flexsurv_t_arm_3s_plot4, eval=T, echo=T, paged.print=TRUE, fig.height=10, fig.cap="Figure 4b. Estimate of Length of Stay (w/ confidence intervals), Three-states model (start from Therapeutic\nDischarge)", fig.align="center", error=T}
+```{r flexsurv_t_arm_4s_plot3, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 5b. Estimated Length of Stay (w/ confidence intervals), Four-states model", fig.align="center", error=T}
 rbind.data.frame(
-cbind.data.frame(tolos_t_a_str2_df,program="Women-specific", start=2),
-cbind.data.frame(tolos_t_b_str2_df,program="General Population", start=2)
-) %>%    
-      dplyr::mutate(state=dplyr::case_when(state==1~"to\n1)Admission",
-                                      state==2~"to\n2)Therapeutic\nDischarge",
-                                      state==3~"to\n3)Readmission"))%>%
-  dplyr::filter(state!="to\n1)Admission") %>% 
-  ggplot(aes(x=t, y=est, color=program, fill=program))+
-    geom_step(size=1)+
-  geom_ribbon(aes(ymin=L, ymax=U),alpha=.3)+
-  facet_wrap(.~state, ncol=3, scales="free_y") + 
-  scale_fill_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
-  scale_color_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
-  scale_x_continuous(breaks=seq(0, 11))+
- #scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
-  xlab("Years") + 
-  #ylab("State occupancy probabilities") + 
-  theme_minimal()+
-  theme(legend.position=c(.9,.1),
-        legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"))
-  
-```
-
-```{r flexsurv_t_arm_4s_plot3, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 5a. Estimate of Length of Stay (w/ confidence intervals), Four-states model", fig.align="center", error=T}
-rbind.data.frame(
-cbind.data.frame(tolos_4s_t_a_df2,program="Women-specific"),
-cbind.data.frame(tolos_4s_t_b_df2,program="General Population")
-)%>% 
-    dplyr::mutate(state=dplyr::case_when(state==1~"to\n1)Admission",
-                                      state==2~"to\n2)Therapeutic\nDischarge",
-                                      state==3~"to\n3)Discharge Without\nMedical Advice",
+cbind.data.frame(tolos_4s_t_a_df2,program="Women-specific",start=1),
+cbind.data.frame(tolos_4s_t_b_df2,program="General Population",start=1),
+cbind.data.frame(tolos_4s_t_a_str2_df,program="Women-specific", start=2),
+cbind.data.frame(tolos_4s_t_b_str2_df,program="General Population", start=2),
+cbind.data.frame(tolos_4s_t_a_str3_df,program="Women-specific", start=3),
+cbind.data.frame(tolos_4s_t_b_str3_df,program="General Population", start=3))%>% 
+  dplyr::filter(state<4) %>% 
+    dplyr::mutate(comb=dplyr::case_when(
+                                      start==2 & state==1~"a",
+                                      start==2 & state==3~"a",
+                                      start==3 & state==1~"a",
+                                      start==3 & state==2~"a",
+                                      T~NA_character_)) %>% 
+      dplyr::filter(is.na(comb)) %>% 
+    dplyr::mutate(state=dplyr::case_when(state==1~"1)Admission",
+                                      state==2~"2)Therapeutic Discharge",
+                                      state==3~"3)Discharge Without Clinical Advice",
                                       T~"to\n4)Readmission"))%>%
+      dplyr::mutate(start=dplyr::case_when(start==1~"Starting from Admission",
+                                      start==2~"Starting from Therapeutic Discharge",
+                                      start==3~"Starting from Discharge Without Clinical Advice",
+                                      T~"Starting from Readmission"))%>%
+  dplyr::arrange(start, state) %>% 
   ggplot(aes(x=t, y=est, color=program, fill=program))+
     geom_step(size=1)+
   geom_ribbon(aes(ymin=L, ymax=U),alpha=.3)+
-  facet_wrap(.~state, ncol=2, scales="free_y") + 
+  facet_wrap(.~start+state, ncol=3, scales="free_y") + 
   scale_fill_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
   scale_color_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
   scale_x_continuous(breaks=seq(0, 11))+
@@ -1069,11 +1293,60 @@ cbind.data.frame(tolos_4s_t_b_df2,program="General Population")
         legend.background = element_rect(fill="white",
                                   size=0.5, linetype="solid", 
                                   colour ="black"))
+if(no_mostrar==1){
+jpeg("C:/Users/andre/Desktop/SUD_CL/eso17.jpg", height=15, width= 10, res= 96, units = "in")
+plot_comp_mssurvfit2
+dev.off()
+}
 ```
 
 
-```{r flexsurv_t_arm_4s_plot4, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 5b. Estimate of Length of Stay (w/ confidence intervals), Four-states model", fig.align="center", error=T}
+```{r MSM_rmst_a, eval=T, echo=T, paged.print=TRUE, error=T}
 rbind.data.frame(
+cbind.data.frame(tolos_t_a_df2,program="Women-specific", start=1),
+cbind.data.frame(tolos_t_b_df2,program="General Population", start=1),
+cbind.data.frame(tolos_t_a_str2_df,program="Women-specific", start=2),
+cbind.data.frame(tolos_t_b_str2_df,program="General Population", start=2))%>% 
+  dplyr::mutate(comb=dplyr::case_when(start==2 & state==1~"a",
+                                      start==3 & state==1~"a",
+                                      start==3 & state==2~"a",
+                                      T~NA_character_)) %>% 
+    dplyr::filter(state<max(mat_3_states,na.rm=T)) %>% 
+  dplyr::mutate(start=dplyr::case_when(start==1~"1)Admission", start==2~"2)Therapeutic\nDischarge",start==3~"3)Readmission",T~NA_character_))%>%
+  dplyr::mutate(state=dplyr::case_when(state==1~"1)Admission",
+                                      state==2~"2)Therapeutic\nDischarge",
+                                      state==3~"3)Readmission"))%>%
+
+  dplyr::filter(is.na(comb)) %>% #  janitor::tabyl(start, state)
+  dplyr::mutate(est_ci=paste0(sprintf("%1.2f",est)," [",
+                                   sprintf("%1.2f",L),"-",
+                                   sprintf("%1.2f",U),"]")) %>% 
+  dplyr::select(program, t, start, state, est_ci) %>% 
+  tidyr::pivot_wider(names_from="program", values_from=c("est_ci")) %>% 
+  dplyr::mutate(comb=paste0(start, "_", state)) %>%  #janitor::tabyl(start, state)
+  dplyr::mutate(t=sprintf("%1.4f",t)) %>%
+  dplyr::filter(t %in% c("0.0000","0.0833", "0.2500", "0.3333", "0.5000", "1.0000", "3.0000", "5.0000")) %>% 
+  dplyr::mutate(t=factor(t,
+                levels=c("0.0000","0.0833", "0.2500", "0.3333", "0.5000", "1.0000", "3.0000", "5.0000"), 
+                labels=c("0 days","30 days", "90 days", "4 months", "6 months", "1 year", "3 years", "5 years"))) %>% 
+  dplyr::arrange(start, state, t) %>% 
+  dplyr::select(-start,-comb) %>%
+  dplyr::select(state, t, `Women-specific`, `General Population`) %>% 
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table 4a. Length of Stay, Three-states model"),
+       col.names = c("State","Time","Women-specific","General population"),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::pack_rows("Starting From Admission", 1, 16) %>% 
+  kableExtra::pack_rows("Starting From Therapeutic Discharge", 17, 24) %>% 
+  kableExtra::add_footnote("Note. NA= Null values", notation="none") %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+```{r MSM_rmst_b, eval=T, echo=T, paged.print=TRUE, error=T}
+rbind.data.frame(
+cbind.data.frame(tolos_4s_t_a_df2,program="Women-specific", start=1),
+cbind.data.frame(tolos_4s_t_b_df2,program="General Population", start=1),
 cbind.data.frame(tolos_4s_t_a_str2_df,program="Women-specific", start=2),
 cbind.data.frame(tolos_4s_t_b_str2_df,program="General Population", start=2),
 cbind.data.frame(tolos_4s_t_a_str3_df,program="Women-specific", start=3),
@@ -1083,38 +1356,46 @@ cbind.data.frame(tolos_4s_t_b_str3_df,program="General Population", start=3))%>%
                                       start==3 & state==1~"a",
                                       start==3 & state==2~"a",
                                       T~NA_character_)) %>% 
-  dplyr::mutate(start=dplyr::case_when(start==2~"2)Therapeutic\nDischarge",start==3~"3)Discharge Without\nMedical Advice",T~NA_character_))%>%
-  dplyr::mutate(state=dplyr::case_when(state==1~"to\n1)Admission",
-                                      state==2~"to\n2)Therapeutic\nDischarge",
-                                      state==3~"to\n3)Discharge Without\nMedical Advice",
-                                      T~"to\n4)Readmission"))%>%
-  dplyr::filter(is.na(comb)) %>% 
-  #dplyr::filter(est==0) %>% 
-  ggplot(aes(x=t, y=est, color=program, fill=program))+
-    geom_step(size=1)+
-  geom_ribbon(aes(ymin=L, ymax=U),alpha=.3)+
-  facet_wrap(start~state, ncol=2, nrow=2, scales="free_y") + 
-  scale_fill_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
-  scale_color_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
-  scale_x_continuous(breaks=seq(0, 11))+
- #scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
-  xlab("Years") + 
-  #ylab("State occupancy probabilities") + 
-  theme_minimal()+
-  theme(legend.position=c(.9,.1),
-        legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"))
+      dplyr::filter(state<max(dim(mat_4_states)[2],na.rm=T)) %>% 
+  dplyr::mutate(start=dplyr::case_when(start==1~"1)Admission", start==2~"2)Therapeutic Discharge",start==3~"3)Discharge Without Clinical Advice",start==4~"4)Readmission",T~NA_character_))%>%
+  dplyr::mutate(state=dplyr::case_when(state==1~"1)Admission",
+                                      state==2~"2)Therapeutic Discharge",
+                                      state==3~"3)Discharge Without Clinical Advice",
+                                      T~"4)Readmission"))%>%
+  dplyr::filter(is.na(comb)) %>%   #janitor::tabyl(start, state)
+  dplyr::mutate(est_ci=paste0(sprintf("%1.2f",est)," [",
+                                   sprintf("%1.2f",L),"-",
+                                   sprintf("%1.2f",U),"]")) %>% 
+  dplyr::select(program,t,start,state,est_ci) %>% 
+  tidyr::pivot_wider(names_from="program",values_from=c("est_ci")) %>% 
+  dplyr::mutate(comb=paste0(start,"_",state)) %>% 
+  dplyr::mutate(t=sprintf("%1.4f",t)) %>%
+  dplyr::filter(t %in% c("0.0000","0.0833","0.2500","0.3333","0.5000","1.0000","3.0000","5.0000")) %>% 
+  dplyr::mutate(t=factor(t,levels=c("0.0000","0.0833","0.2500","0.3333","0.5000","1.0000","3.0000","5.0000"),labels=c("0 days","30 days","90 days","4 months","6 months","1 year","3 years","5 years"))) %>% 
+  dplyr::arrange(start, state, t) %>% 
+  dplyr::select(-start,-comb) %>%
+  dplyr::select(state, t, `Women-specific`, `General Population`) %>% 
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table 4b. Length of Stay, Four-states model"),
+       col.names = c("State","Time","Women-specific","General population"),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  #kableExtra::add_header_above(c(rep("",1),"Women-specific"=1, "General population"=1)) %>% 
+  kableExtra::pack_rows("Starting From Admission", 1, 24) %>%
+  kableExtra::pack_rows("Starting From Therapeutic Discharge", 25, 32) %>%
+  kableExtra::pack_rows("Starting From Discharge Without Clinical Advice", 33, 40) %>%
+  kableExtra::add_footnote("Note. NA= Null values", notation="none") %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px")
 ```
 
 <br>
 
 # Simulate Final State
 
-We estimated the probability to end in the readmission state, median of stay, percentiles 25, 75 and confidence intervals based on `r n_iter/20` resamples, by simulating a large sample of individuals from the model depending on the type of program they were admitted at baseline.
+We estimated the median of stay, percentiles 25, 75 and confidence intervals based on `r n_iter/20` resamples, by simulating a large sample of individuals from the model depending on the type of program they were admitted at baseline.
 
 ```{r sim_medians, eval=T, echo=T, paged.print=TRUE, error=T}
-time_before_sim_medians_10y<-Sys.time()
+time_before_sim_medians<-Sys.time()
 #Estimates the probability of each final outcome ("absorbing" state), and the mean and quantiles of the time to that outcome for people who experience it, by simulating a large sample of individuals from the model. This can be used for both Markov and semi-Markov models.
 #n_iter=12
 fmsm_sel_param_fits_4s_b<-
@@ -1184,10 +1465,10 @@ simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a mu
               cores=8
               )  
   set.seed(1234)
-simfinal_fmsm_3_st_10y<-
+simfinal_fmsm_3_st_5y<-
 simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
               newdata = rbind.data.frame(newdat3a[1,],newdat3b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
-              t= 10, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              t= 5, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
               probs = c(0.025,0.25, 0.5, 0.75,0.975), 
               #M=10000000, #necesita grandes números
               B=n_iter/20, #Pondría 1,000
@@ -1245,6 +1526,7 @@ simfinal_fmsm(fmsm_sel_param_fits_4s_b, #Object returned by fmsm, representing a
               B=n_iter/20, #Pondría 1,000
               cores=8
               )
+  set.seed(1234)
 simfinal_fmsm_4_st_3y<-
 simfinal_fmsm(fmsm_sel_param_fits_4s_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
               newdata = rbind.data.frame(newdat5a[1,],newdat5b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
@@ -1255,18 +1537,18 @@ simfinal_fmsm(fmsm_sel_param_fits_4s_b, #Object returned by fmsm, representing a
               cores=8
               )
   set.seed(1234)
-simfinal_fmsm_4_st_10y<-
+simfinal_fmsm_4_st_5y<-
 simfinal_fmsm(fmsm_sel_param_fits_4s_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
               newdata = rbind.data.frame(newdat5a[1,],newdat5b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
-              t= 10, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              t= 5, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
               probs = c(0.025,0.25, 0.5, 0.75,0.975), 
               #M=100000, #necesita grandes números
               B=n_iter/20, #Pondría 1,000
               cores=8
               )
-time_after_sim_medians_10y<-Sys.time()
+time_after_sim_medians<-Sys.time()
 
-paste0("Time in process: ");time_after_sim_medians_10y-time_before_sim_medians_10y
+paste0("Time in process: ");time_after_sim_medians-time_before_sim_medians
 
 # probability of each final outcome
 # mean and quantiles of the time to that outcome for people who experience it
@@ -1280,7 +1562,7 @@ simfinal_fmsm_3_st_4m%>%dplyr::select("tipo_de_programa_2","quantity","val","low
 simfinal_fmsm_3_st_6m%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=.5),
 simfinal_fmsm_3_st_1y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=1),
 simfinal_fmsm_3_st_3y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=3),
-simfinal_fmsm_3_st_10y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=10))
+simfinal_fmsm_3_st_5y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=5))
 
 simfinal_fmsm_4_st_df<-
 rbind.data.frame(
@@ -1290,14 +1572,14 @@ simfinal_fmsm_4_st_4m%>%dplyr::select("tipo_de_programa_2","quantity","val","low
 simfinal_fmsm_4_st_6m%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=.5),
 simfinal_fmsm_4_st_1y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=1),
 simfinal_fmsm_4_st_3y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=3),
-simfinal_fmsm_4_st_10y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=10))
+simfinal_fmsm_4_st_5y%>%dplyr::select("tipo_de_programa_2","quantity","val","lower","upper")%>%mutate(year=5))
 ```
 
 ```{r sim_final_plot1, eval=T, echo=T, paged.print=TRUE, fig.height=8, fig.cap="Figure 6a. Time to Readmission for Users who Experience it (Mean and 95%CIs), Three-states model", fig.align="center", error=T}
 #time to that outcome for people who experience
 #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
 simfinal_fmsm_3_st_df %>%
-  dplyr::mutate(year=factor(year,levels=c(.08,.25, .333, .5, 1, 3, 10), labels=c("30 days", "90 days", "4 months", "6 months", "1 year", "3 years", "10 years"))) %>% 
+  dplyr::mutate(year=factor(year,levels=c(.08,.25, .333, .5, 1, 3, 5), labels=c("30 days", "90 days", "4 months", "6 months", "1 year", "3 years", "5 years"))) %>% 
   dplyr::group_by(year, tipo_de_programa_2) %>% 
   summarise(mean=sum(val[quantity=="mean"],na.rm=T),
             lo=sum(lower[quantity=="2.5%"],na.rm=T),
@@ -1308,14 +1590,14 @@ simfinal_fmsm_3_st_df %>%
   geom_errorbar(aes(x=year, ymin=lo, ymax=up, color=tipo_de_programa_2), position="dodge", stat="identity", width=0.4,  alpha=0.9, size=1.3)+
   ylim(0,11)+
   ylab("Time to event")+
-  scale_color_manual(name ="Type of program",values=c("#FF6400","#00A383"), labels= c("Women-specific","General Population"))+
-  scale_fill_manual(name ="Type of program",values=c("#FF6400","#00A383"), labels= c("Women-specific","General Population"))+
+  scale_color_manual(name ="Type of program",values=c("#0E53A7","#FFB540"), labels= c("Women-specific","General Population"))+
+  scale_fill_manual(name ="Type of program",values=c("#0E53A7","#FFB540"), labels= c("Women-specific","General Population"))+
     xlab("Maximum time of simualted individuals in the absorbing state")
 ```
 
 ```{r sim_final_plot2, eval=T, echo=T, paged.print=TRUE, fig.height=8, fig.cap="Figure 6b. Time to Readmission for Users who Experience it (Mean and 95%CIs), Four-states model", fig.align="center", error=T}
 simfinal_fmsm_4_st_df %>%
-dplyr::mutate(year=factor(year,levels=c(.08,.25, .333, .5, 1, 3, 10), labels=c("30 days", "90 days", "4 months", "6 months", "1 year", "3 years", "10 years"))) %>% 
+dplyr::mutate(year=factor(year,levels=c(.08,.25, .333, .5, 1, 3, 5), labels=c("30 days", "90 days", "4 months", "6 months", "1 year", "3 years", "5 years"))) %>% 
   dplyr::group_by(year, tipo_de_programa_2) %>% 
   summarise(mean=sum(val[quantity=="mean"],na.rm=T),
             lo=sum(lower[quantity=="2.5%"],na.rm=T),
@@ -1326,8 +1608,8 @@ dplyr::mutate(year=factor(year,levels=c(.08,.25, .333, .5, 1, 3, 10), labels=c("
   geom_errorbar(aes(x=year, ymin=lo, ymax=up, color=tipo_de_programa_2), position="dodge", stat="identity", width=0.4,  alpha=0.9, size=1)+
   ylim(0,11)+
   ylab("Time to event")+
-  scale_color_manual(name ="Type of program",values=c("#FF6400","#00A383"), labels= c("Women-specific","General Population"))+
-  scale_fill_manual(name ="Type of program",values=c("#FF6400","#00A383"), labels= c("Women-specific","General Population"))+
+  scale_color_manual(name ="Type of program",values=c("#0E53A7","#FFB540"), labels= c("Women-specific","General Population"))+
+  scale_fill_manual(name ="Type of program",values=c("#0E53A7","#FFB540"), labels= c("Women-specific","General Population"))+
   xlab("Maximum time of simualted individuals in the absorbing state")
 ```
 
@@ -1467,7 +1749,6 @@ UCI <- apply (res, 1 , function(x) quantile(x,probs=.975))
 CI <- cbind (LCI , UCI )
 
 invisible(c("LMAJ"))
-
 ```
 
 <br>

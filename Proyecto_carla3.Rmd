@@ -3741,6 +3741,42 @@ msSurv(LTRCdata, RCLTtree, cens.type="ind", LT=FALSE, bs=FALSE, B=200)
 }
 ```
 
+```{r fig5 mstate_models_3s, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 8a. Tree Structure for the Multistate System, Three-states model", error=T, fig.height=8, eval=T, dpi=320}
+library(Epi)
+#For censored state transitions it can be awkward having to replicate the censoring time for each non-visited state
+#https://github.com/stulacy/multistateutils
+mat_3_states <- trans.illdeath(names=c("Admission","Therapeutic\nDischarge","Readmission"))
+#All possible paths through the multi-state model can be found here:
+#paths(mat_3_states)
+box_ms_3s<-
+boxes.Lexis(mat_3_states, wmult=1.25, hmult=1.25, cex=1.2,
+             boxpos = list(x = c(20, 70, 70), y = c(80, 80, 20)),
+            txt.arr=c(expression(" 1) " *lambda['01']), 
+                      expression(" 2) " *lambda['02']),
+                      expression(" 3) " *lambda['12'])))
+title("a) Three-states Model (Simplest)", sub = "No recurring states; Absorving state: Readmission;\nOther causes of discharge were not events of interest;\nModified version of an illness-death model") ## internal titles
+
+```
+
+```{r fig5 mstate_models_4s, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 8b. Tree Structure for the Multistate System, Four-states model", fig.height=8, error=T, eval=T, dpi=320}
+#Los números son determinados por posición en cada columna (o eje Y). 
+#Si uno quiere definir para la otra fila, salta al siguiente vector: 
+mat_4_states<- transMat(list(c(2,3,4), 4, 4, c()), 
+                names = c("Admission", "Therapeutic\nDischarge", "Discharge Without\nMedical Advice", "Readmission"))
+
+
+box_ms_4s<-
+boxes.Lexis(mat_4_states, wmult=1.25, hmult=1.5, boxpos = list(x = c(20, 20, 70, 70), y = c(80, 20, 80, 20)), cex=1.2,
+                        txt.arr=c(
+                      expression("1)" *lambda['01']), 
+                      expression("2)" *lambda['02']),
+                      expression("3)" *lambda['03']),
+                      expression("4)" *lambda['13']),
+                      expression("5)" *lambda['23'])))
+  title("b) Four-states Model", sub = "No recurring states; Absorving state: Readmission;\nOther causes of discharge were not events of interest") ## internal titles 
+  
+```
+
 <br>
 
 Any observation where an event occurs which is not the event of interest for a specific transition is treated as a censored at the end of the study (2019, November 13) observation (only referrals and also had inexact dates of discharge), that is, in the same way as a patient that was lost to follow-up. If there is a readmission posterior to loss-to follow-up cases, these cases we obtained the length in days between being readmitted posterior and the time of admission, knowing that any intermediate date of discharge was interval-censored (the exact time in which users discharged is unknown, and its treatment outcomes are unknown, so there is no exact time-to-readmission). Covariates are fixed at baseline. Some transitions were shown to be simultaneous (n= `r CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados %>% dplyr::mutate(diff_bet_treat=fech_ing_next_treat-fech_egres_num) %>% dplyr::filter(diff_bet_treat==0|dias_treat_imp_sin_na==0) %>% nrow()`). Small adjustment such that transitions were sequential rather than simultaneous by adding one day to the absorbing event, and subtracting a day if the transition corresponded to an intermediate state.
