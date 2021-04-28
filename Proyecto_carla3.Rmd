@@ -2564,6 +2564,77 @@ grViz("digraph flowchart {
 ```
 
 
+```{r fig1_alt, image-ref-for-in-text, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 4.Summary of Process of Data Cleaning and Standardization, Imputation & Matching", fig.height=10, error=T, eval=F}
+
+tab_miss <-paste0("      Impute missing values: (n=",CONS_C1_df_dup_SEP_2020_women_miss[,..vector_variables_only_for_imputation] %>% complete.cases() %>% janitor::tabyl() %>% dplyr::filter(.=="FALSE") %>% dplyr::select(n) %>% as.numeric() %>% format(big.mark=","),")")
+tab4_lab<- paste0('Imputed C1 Dataset \n(users: ',formatC(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+tab32_lab <- paste0('&#8226;Discard men (users=',formatC(CONS_C1_df_dup_SEP_2020%>% dplyr::filter(sexo_2=="Men") %>% distinct(hash_key) %>% nrow(), format='f', big.mark=',', digits=0),')\\\\l&#8226;Discard posterior treatments (>2) (n= ',formatC(CONS_C1_df_dup_SEP_2020%>% dplyr::filter(dup>2) %>% nrow(), format='f', big.mark=',', digits=0), '; users=',formatC(CONS_C1_df_dup_SEP_2020%>% dplyr::filter(dup>2) %>% distinct(hash_key) %>% nrow(), format='f', big.mark=',', digits=0),')        \\\\l&#8226;Discard population of minors (users=',formatC(CONS_C1_df_dup_SEP_2020%>% dplyr::filter(edad_al_ing<18) %>% distinct(hash_key) %>% nrow(), format='f', big.mark=',', digits=0),')\\\\l')
+
+gr_selected<-
+grViz("digraph flowchart {
+      # node definitions with substituted label text
+      node [fontname = Times, shape = rectangle,fontsize = 10]
+      tab1 [label = '@@1']
+      tab2 [label = '@@2']
+      tab32 [label = '@@5',fontsize = 10]
+      tab22 [label = '@@6', fontsize= 11]
+      tab3 [label = '&#8226;Duplicated entries\\l&#8226;Intermediate events of treatment (continuous referrals)        \\l',fontsize = 10]
+      tab4 [label = '@@4']
+      blank [label = '', width = 0.0001, height = 0.0001]
+      blank1 [label = '', width = 0.0001, height = 0.0001]
+      blank2 [label = '', width = 0.0001, height = 0.0001]
+      blank3 [label = '', width = 0.0001, height = 0.0001]
+      tab5 [label = '&#8226;Logically inconsistent candidates for imputation    \\l&#8226;Ties in candidates for imputation\\l',fontsize = 10]
+
+      # edge definitions with the node IDs
+      tab1 -> blank [arrowhead = none,label='      Data wrangling and normalization process',fontsize = 13];
+      blank -> tab3
+      blank -> tab2
+      tab2 -> blank1 [arrowhead = none,label='  Sample selection',fontsize = 13];
+      blank1 -> tab32
+      blank1 -> tab22
+      tab22 -> blank2 [arrowhead = none, label= '@@7', fontsize= 13];
+      blank2 -> tab5 
+      blank2 -> tab4 [label='      Result of the imputation of missing values',fontsize = 13];#
+
+            subgraph {
+              rank = same; tab3; blank;
+            }
+              subgraph {
+              rank = same; tab32; blank1;
+            }
+            subgraph {
+              rank = same; tab5; blank2;
+            }
+      }
+
+      [1]:  tab1_lab
+      [2]:  tab2_lab
+      [3]:  tab1_5_lab
+      [4]:  tab4_lab
+      [5]:  tab32_lab
+      [6]:  tab22_lab
+      [7]:  tab_miss
+      [8]:  tab_ref_lab
+      ")
+#install.packages("rsvg")
+#install.packages("DiagrammeRsvg")
+
+library(rsvg)
+library(DiagrammeRsvg)
+gr_selected %>%
+    export_svg %>% charToRaw %>% rsvg_pdf("flowchart_women_specific_programs.pdf")
+gr_selected %>%
+    export_svg %>% charToRaw %>% rsvg_png("flowchart_women_specific_programs.png")
+#library(htmltools); html_print(HTML(gr_selected %>% export_svg))
+
+#DiagrammeR::export_graph(gr_selected, height= 10, width=8)
+#      {rank=same; 'tab2'' -> tab3 [label='',fontsize = 11]}; #⋉
+#CONS_C1_df_dup_SEP_2020_irrs_health
+```
+
+<br>
+
 ## Survival analysis
 
 ### Incidence rate
@@ -3949,7 +4020,7 @@ CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados %>%
     )) %>%
     dplyr::select(row, motivodeegreso_mod_imp, contains("fech"))
 }
-invisible(c("Investigate warning"))
+invisible(c("Investigate warning: done"))
 #37595    Administrative discharge    2013-03-18    2013-03-19    2013-03-19
 #
 
@@ -4228,19 +4299,418 @@ rbind.data.frame(as.data.frame(cbind(HR,CI,P)),tab_cox_markov) %>%
 ```
 
 ```{r markov_semimarkov2,eval=F, echo=T, paged.print=TRUE}                                 
+columna_dummy <- function(df, columna) {
+  df %>% 
+  mutate_at(columna, ~paste(columna, eval(as.symbol(columna)), sep = "_")) %>% 
+    mutate(valor = 1) %>% 
+    spread(key = columna, value = valor, fill = 0)
+}
 
-MT <- MarkovTest(ms_CONS_C1_SEP_2020_women_imputed, 
-                 id = "row", 
-                 formula= "edad_al_ing_grupos+ escolaridad_rec+ sus_principal_mod+ 
-         #freq_cons_sus_prin+ compromiso_biopsicosocial+ tenencia_de_la_vivienda_mod+ 
-         #num_otras_sus_mod+ numero_de_hijos_mod_rec+ tipo_de_programa_2)+ tipo_de_plan_res",
-                 transition = 1,
+catVars<-c("edad_al_ing_grupos","escolaridad_rec","sus_principal_mod","freq_cons_sus_prin","compromiso_biopsicosocial",
+           "tenencia_de_la_vivienda_mod","num_otras_sus_mod","numero_de_hijos_mod_rec","tipo_de_programa_2","tipo_de_plan_res","estado_conyugal_2")
+
+ms_CONS_C1_SEP_2020_women_imputed_mod<-ms_CONS_C1_SEP_2020_women_imputed
+for (i in c(1:length(catVars))){#catVars[-10] excluding treatment indicator
+  cat<-as.character(catVars[i])#catVars[-10] excluding treatment indicator
+  ms_CONS_C1_SEP_2020_women_imputed_mod<-columna_dummy(ms_CONS_C1_SEP_2020_women_imputed_mod,cat)
+}
+
+colnames(ms_CONS_C1_SEP_2020_women_imputed_mod)[8:length(ms_CONS_C1_SEP_2020_women_imputed_mod)]<-
+  colnames(janitor::clean_names(ms_CONS_C1_SEP_2020_women_imputed_mod))[8:length(ms_CONS_C1_SEP_2020_women_imputed_mod)]
+
+attr(ms_CONS_C1_SEP_2020_women_imputed_mod,"trans")<-mat_3_states
+
+#data: dataset in etm format: "entry", "exit", "from", "to", "id". Should also contain the relevant covariates: no factors allowed
+#Multi-state data in msdata format. Should also contain (dummy codings of) the relevant covariates; no factors allowed  
+#  ms_CONS_C1_SEP_2020_women_imputed$id<-ms_CONS_C1_SEP_2020_women_imputed$row
+
+ms_CONS_C1_SEP_2020_women_imputed_mod$id<-ms_CONS_C1_SEP_2020_women_imputed_mod$row
+ms_CONS_C1_SEP_2020_women_imputed_mod$row<-NULL
+formula_char<-
+"edad_al_ing_grupos_18_29+ edad_al_ing_grupos_30_39+ 
+edad_al_ing_grupos_40_49+ edad_al_ing_grupos_50+ escolaridad_rec_1_more_than_high_school+
+escolaridad_rec_2_completed_high_school_or_less+ escolaridad_rec_3_completed_primary_school_or_less+
+sus_principal_mod_alcohol+ sus_principal_mod_cocaine_hydrochloride+ sus_principal_mod_cocaine_paste+
+sus_principal_mod_marijuana+ sus_principal_mod_other+ freq_cons_sus_prin_1_day_a_week_or_more+
+freq_cons_sus_prin_2_to_3_days_a_week+ freq_cons_sus_prin_4_to_6_days_a_week+
+freq_cons_sus_prin_daily+ freq_cons_sus_prin_less_than_1_day_a_week+
+compromiso_biopsicosocial_1_mild+ compromiso_biopsicosocial_2_moderate+
+compromiso_biopsicosocial_3_severe+ tenencia_de_la_vivienda_mod_illegal_settlement+
+tenencia_de_la_vivienda_mod_others+ tenencia_de_la_vivienda_mod_owner_transferred_dwellings_pays_dividends+
+tenencia_de_la_vivienda_mod_renting+ tenencia_de_la_vivienda_mod_stays_temporarily_with_a_relative+
+num_otras_sus_mod_more_than_one_additional_substance+ num_otras_sus_mod_no_additional_substance+
+num_otras_sus_mod_one_additional_substance+ numero_de_hijos_mod_rec_no+
+numero_de_hijos_mod_rec_yes+ tipo_de_programa_2_1+
+tipo_de_programa_2_0+ tipo_de_plan_res_outpatient+
+tipo_de_plan_res_residential+ estado_conyugal_2_married_shared_living_arrangements+
+estado_conyugal_2_separated_divorced+ estado_conyugal_2_single+
+estado_conyugal_2_widower
+"
+
+
+MT <- MarkovTest(ms_CONS_C1_SEP_2020_women_imputed_mod, 
+                 formula= formula_char,
+                 transition = 3,
                  grid = grid, 
                  B = 25)
 
-#Surv(time, status) ~  edad_al_ing_grupos+ escolaridad_rec+ sus_principal_mod+ 
-         #freq_cons_sus_prin+ compromiso_biopsicosocial+ tenencia_de_la_vivienda_mod+ 
-         #num_otras_sus_mod+ numero_de_hijos_mod_rec+ factor(tipo_de_programa_2)+ tipo_de_plan_res
+
+
+
+data<-ms_CONS_C1_SEP_2020_women_imputed_mod #no puede ir arrival
+id<-"id"
+transition<-3
+grid<-90 #3 months
+grid<-1096 #3 years
+dist<-"poisson"
+trans=ifelse(is.null(attr(data, "trans")),get("mat_3_states"),attr(data, "trans"))
+fn = list(function(x) mean(abs(x), na.rm = TRUE))
+fn2 = list(function(x) mean(x, na.rm = TRUE))
+formula<-formula_char
+B=25
+
+MarkovTest <- function(data, id, formula = NULL, transition, grid,
+                       trans=NULL,
+                       B = 1000,
+                       fn = list(function(x) mean(abs(x), na.rm = TRUE)),
+                       fn2 = list(function(x) mean(x, na.rm = TRUE)),
+                       min_time = 0,
+                       other_weights = NULL,
+                       dist = c("poisson", "normal")) {
+  
+  dist <- match.arg(dist)
+  if (missing(id)) id <- "id"
+  # Remove "empty" lines in the data
+  wh <- which(data$Tstop <= data$Tstart)
+  if (length(wh)>0)
+  {
+    warning(length(wh), " lines with Tstart <= Tstop, have been removed before applying tests!")
+    data <- data[-wh, ]
+  }
+
+  # Convert data to etm data
+  # Make sure to retain all covariates (possibly way to many) in msdata (needed in formula perhaps)
+  mtch <- match(c("id", "from", "to", "trans", "Tstart", "Tstop", "status"), names(data)) 
+  covcols <- 1:ncol(data)
+  covcols <- covcols[!covcols %in% mtch]
+  ncovs <- length(covcols)
+  
+  trans <- get("mat_3_states")
+  etmdata <- msdata2etm(data, id)
+  if (ncovs > 0) etmdata <- msdata2etm(data, id, names(data)[covcols])
+  trans2 <- to.trans2(trans)
+  tfrom <- trans2$from[trans2$transno == transition]
+  tto <- trans2$to[trans2$transno == transition]
+  
+  # Determine qualifying set
+  qualset <- c(tfrom, which(trans2Q(trans)[, tfrom] > 0))
+  qualset <- sort(unique(qualset))  # for circular models, tfrom is included twice
+
+  # Functions
+  if (!is.list(fn)) 
+    fn <- list(fn)  # coerce to be list if a single function is provided
+  if (is.list(fn) & is.function(fn[[1]])) {
+    # coerce to be a list of lists, by repeating the same list each time
+    tempfn <- list()
+    for (i in 1:length(qualset)) tempfn[[i]] <- fn
+    fn <- tempfn
+  }
+  if (!is.list(fn2)) 
+    fn2 <- list(fn2)  # coerce to be list if a single function is provided
+  
+  # Establish the relevant patients who ever enter tfrom
+  relpat <- sort(unique(etmdata$id[etmdata$from == tfrom]))
+  
+  rdata <- etmdata[etmdata$from == tfrom, ]  # only need time periods in the relevant state...
+  rdata$status <- 1 * (rdata$to == tto)
+  if (!is.null(formula)) {
+    form <- as.formula(paste("Surv(entry, exit, status) ~ ", formula, 
+                             sep = ""))
+    progfit <- coxph(form, data = rdata)
+    if (length(progfit$coefficients) > 0) {
+      #Sacado por andrés
+      Zmat <- as.matrix(rdata[, match(names(progfit$coefficients), 
+                                      names(rdata))])
+      #Zmat <- as.matrix(rdata[, 7:44])
+      Ncov <- dim(Zmat)[2]
+    } else {
+      Ncov <- 0
+    }
+    if (!is.null(progfit$offset)) {
+      offset <- progfit$offset
+    } else {
+      offset <- rep(0, dim(rdata)[1])
+    }
+  } else {
+    Ncov <- 0
+    offset <- rep(0, dim(rdata)[1])
+    progfit <- NULL
+  }
+  
+  # Minimal data, change names
+  progdat <- rdata[, match(c("id", "entry", "exit", "status"), names(rdata))]
+  names(progdat) <- c("id", "T0", "T1", "D")
+  
+  nobs_grid <- sapply(grid, function(x) sum(progdat$D[progdat$T1 > x]))
+  
+  # Have the extra dimension of indexes
+  index_gM <- array(0, c(length(relpat), length(grid), length(qualset)))
+  for (indx in 1:length(qualset)) {
+    qualstate <- qualset[indx]
+    index_g <- sapply(grid, function(y) sapply(relpat, function(x)
+      which(etmdata$entry < y & etmdata$exit >= y & etmdata$id == x)))
+    index_g <- array(1 * (etmdata$from[sapply(index_g, function(y)
+      ifelse(length(y) > 0, y, 
+             dim(etmdata)[1] + 1))] == qualstate), c(length(relpat), length(grid)))
+    index_g[is.na(index_g)] <- 0
+    index_gM[, , indx] <- index_g
+  }
+
+  # Need a separate Z3mat for each group as well...
+  Z3mat <- index_gM[match(progdat$id, relpat), , , drop = FALSE]
+  
+  N1 <- dim(progdat)[1]
+  
+  if (Ncov > 0) {
+    LP <- c(Zmat %*% progfit$coefficients) + offset
+  } else {
+    LP <- rep(0, N1) + offset
+  }
+  S0 <- sapply(1:N1, function(x) sum(exp(LP) * (progdat$T0 < progdat$T1[x] & 
+                                                  progdat$T1 >= progdat$T1[x])))
+  
+  incr <- progdat$D / S0
+  cumhaz <- approxfun(c(0, sort(unique(progdat$T1)), Inf),
+                      c(0, cumsum(tapply(incr, progdat$T1, sum)), sum(incr)),
+                      method = "constant")
+  resid_mat <- sapply(grid, function(x) progdat$D * (progdat$T1 > x) - exp(LP) *
+                        (cumhaz(pmax(x, progdat$T1)) - cumhaz(pmax(x, progdat$T0))))
+  
+  # Have a separate trace for each qualifying state...
+  obs_trace <- array(0, c(length(grid), length(qualset)))
+  for (indx in 1:(length(qualset))) {
+    obs_trace[, indx] <- sapply(1:length(grid), function(k)
+      sum(resid_mat[, k] * Z3mat[, k, indx] * (progdat$T1 > grid[k])))
+  }
+  
+  nqstate <- length(qualset)
+  if (Ncov > 0) 
+    Ifish <- progfit$var
+  
+  N1 <- dim(progdat)[1]
+  if (Ncov > 0) 
+    Zbar0 <- array(0, c(N1, Ncov))
+  
+  Zbar <- array(0, c(N1, length(grid), nqstate))
+  for (i in 1:N1) {
+    x <- i
+    if (Ncov > 0) {
+      for (j in 1:Ncov) {
+        Zbar0[i, j] <- sum(Zmat[, j] * exp(LP) *
+                             (progdat$T0 < progdat$T1[x] & progdat$T1 >= progdat$T1[x])) /
+          sum(exp(LP) * (progdat$T0 < progdat$T1[x] & progdat$T1 >= progdat$T1[x]))
+      }
+    }
+    for (j in 1:length(grid)) {
+      for (k in 1:nqstate)
+        Zbar[i, j, k] <- sum(Z3mat[, j, k] * exp(LP) * 
+                               (progdat$T0 < progdat$T1[x] & progdat$T1 >= progdat$T1[x])) /
+          sum(exp(LP) * (progdat$T0 < progdat$T1[x] & progdat$T1 >= progdat$T1[x]))
+    }
+  }
+  
+  NAe <- incr
+  
+  if (Ncov > 0) {
+    Hmat <- array(0, c(length(grid), Ncov, nqstate))
+    for (j in 1:Ncov) {
+      # for (k in 1:nqstate) Hmat[,j,k] <- sapply(1:length(grid),function(y)
+      # sum(sapply(1:N1,function(x) sum(exp(LP) *Zmat[,j]* (Z3mat[x,y,k] -
+      # Zbar[x,y,k]) * NAe[x] * (progdat$T0[x] > grid[y] & progdat$T1[x] <=
+      # progdat$T1)))))
+      for (k in 1:nqstate) Hmat[, j, k] <- sapply(1:length(grid), function(y) 
+        sum(sapply(1:N1, function(x)
+          sum(exp(LP[x]) * ((Zmat[x, j] - Zbar0[, j]) *
+                              (Z3mat[x, y, k] - Zbar[, y, k])) * NAe *
+                (progdat$T1[x] > grid[y]) * (progdat$T1 > progdat$T0[x] & progdat$T1 <= progdat$T1[x])))))
+    }
+  }
+  
+  if (Ncov > 0) {
+    multiplier <- array(0, dim(Hmat))
+    for (k in 1:nqstate) multiplier[, , k] <- Hmat[, , k] %*% Ifish
+    est_cov <- array(0, c(length(grid), nqstate, nqstate))
+    for (indx1 in 1:nqstate) {
+      for (indx2 in (indx1):nqstate) {
+        est_var <- sapply(1:length(grid), function(k)
+          sum(sapply(1:N1, function(v) 
+            sum(((Z3mat[v, k, indx1] - Zbar[, k, indx1]) * 
+                   (progdat$T1 > grid[k]) - c(multiplier[k, , indx1, drop = FALSE] %*%
+                                                t(Zmat[v, ] - Zbar0))) *
+                  ((Z3mat[v, k, indx2] - Zbar[, k, indx1]) * (progdat$T1 > grid[k]) - 
+                     c(multiplier[k, , indx2, drop = FALSE] %*% t(Zmat[v, ] - Zbar0))) *
+                  exp(LP[v]) * (progdat$T0[v] < progdat$T1 & progdat$T1[v] >= progdat$T1) * NAe))))
+        est_cov[, indx1, indx2] <- est_cov[, indx2, indx1] <- est_var
+      }
+    }
+    
+  } else {
+    est_cov <- array(0, c(length(grid), nqstate, nqstate))
+    for (indx1 in 1:nqstate) {
+      for (indx2 in (indx1):nqstate) {
+        est_var <- sapply(1:length(grid), function(k)
+          sum(sapply(1:N1, function(v)
+            sum((Z3mat[v, k, indx1] - Zbar[, k, indx1]) * (Z3mat[v, k, indx2] - Zbar[, k, indx2]) *
+                  exp(LP[v]) * (progdat$T1 > grid[k] & progdat$T0[v] < progdat$T1 & progdat$T1[v] >= progdat$T1) * NAe))))
+        est_cov[, indx1, indx2] <- est_cov[, indx2, indx1] <- est_var
+      }
+    }
+  }
+  
+  # First obtain the individually normalized traces...
+  est_var <- obs_norm_trace <- array(0, c(length(grid), nqstate))
+  for (k in 1:nqstate) {
+    est_var[, k] <- est_cov[cbind(1:length(grid), k, k)]
+    # This should be the same as before...
+    obs_norm_trace[, k] <- obs_trace[, k] / sqrt(est_var[, k] + 1 * (est_var[, k] == 0))
+  }
+  # Find singular matrices
+  obs_chisq_trace <- rep(0, length(grid))
+  for (k in 1:length(grid)) {
+    sol <- tryCatch(solve(est_cov[k, -1, -1]), error = function(e)
+      return(diag(0, nqstate - 1)))
+    obs_chisq_trace[k] <- (obs_trace[k, -1]) %*% sol %*%
+      (obs_trace[k, -1]) # do something about singular matrices...
+  }
+  
+  ############## 
+  
+  n_wb_trace <- wb_trace0 <- wb_trace <- array(0, c(B, length(grid), nqstate))
+  nch_wb_trace <- array(0, c(B, length(grid)))
+  for (wb in 1:B) {
+    if (dist == "poisson") {
+      G <- rpois(dim(progdat)[1], 1) - 1
+    } else if (dist == "normal") {
+      G <- rnorm(dim(progdat)[1], 0, 1)
+    } else stop("argument dist should be poisson or normal")
+    trace0 <- array(0, c(length(grid), nqstate))
+    for (k in 1:nqstate) {
+      trace0[, k] <- apply(sapply(1:length(grid), function(x)
+        progdat$D * (Z3mat[, x, k] - Zbar[, x, k]) * (progdat$T1 > grid[x]) * G), 2, sum)
+      if (Ncov > 0) {
+        Imul <- sapply(1:Ncov, function(x)
+          sum(progdat$D * (Zmat[, x] - Zbar0[, x]) * G))
+        trace1 <- (Hmat[, , k] %*% Ifish %*% Imul)[, 1]
+      } else {
+        trace1 <- 0
+      }
+      wb_trace[wb, , k] <- trace0[, k] - trace1
+      n_wb_trace[wb, , k] <- wb_trace[wb, , k]/sqrt(est_var[, k] + 
+                                                      1 * (est_var[, k] == 0))
+      for (w in 1:length(grid)) {
+        sol <- tryCatch(solve(est_cov[w, -1, -1]), error = function(e)
+          return(diag(0, nqstate - 1)))
+        nch_wb_trace[wb, w] <- (wb_trace[wb, w, -1]) %*% sol %*% 
+          (wb_trace[wb, w, -1]) # do something about singular matrices...
+      }
+    }
+  }
+  
+  # Need to have one of these per nqstate
+  NS <- length(fn[[1]])
+  
+  orig_stat <- array(sapply(1:nqstate, function(y)
+    sapply(fn[[y]], function(g) g(obs_norm_trace[, y]))), c(NS, nqstate))
+  orig_ch_stat <- sapply(fn2, function(g) g(obs_chisq_trace))
+  
+  p_stat_wb <- array(0, c(NS, nqstate))
+  wb_stat <- array(0, c(B, NS, nqstate))
+  for (k in 1:nqstate) {
+    wb_stat[, , k] <- array(t(apply(n_wb_trace[, , k, drop = FALSE], 
+                                    1, function(x)
+                                      sapply(fn[[k]], function(g) g(x)))), c(B, NS))
+    p_stat_wb[, k] <- sapply(1:NS, function(x) mean(wb_stat[, x, k] > orig_stat[x, k]))
+  }
+  est_quant <- array(0, c(2, length(grid), nqstate))
+  for (k in 1:nqstate)
+    est_quant[, , k] <- apply(n_wb_trace[, , k, drop = FALSE], 2,
+                              quantile, c(0.025, 0.975), na.rm = TRUE)
+  NS2 <- length(fn2)
+  p_ch_stat_wb <- rep(0, NS2)
+  wb_ch_stat <- array(t(apply(nch_wb_trace, 1, function(x)
+    sapply(fn2, function(g) g(x)))), c(B, NS2))
+  p_ch_stat_wb <- sapply(1:NS2, function(x) mean(wb_ch_stat[, x] > orig_ch_stat[x]))
+  # Is a question whether should use Nsub as number of subjects or number
+  # of spells within the state
+  
+  MTres <- list(orig_stat = orig_stat, orig_ch_stat = orig_ch_stat, p_stat_wb = p_stat_wb, 
+                p_ch_stat_wb = p_ch_stat_wb, b_stat_wb = wb_stat, zbar = obs_norm_trace, 
+                nobs_grid = nobs_grid, Nsub = length(relpat), est_quant = est_quant, 
+                obs_chisq_trace = obs_chisq_trace, nch_wb_trace = nch_wb_trace, 
+                n_wb_trace = n_wb_trace, est_cov = est_cov, transition = transition,
+                from = tfrom, to = tto, B = B, dist = dist,
+                qualset = qualset, coxfit = progfit, fn = fn, fn2 = fn2)
+  
+  class(MTres) <- c("MarkovTest")
+  return(MTres)
+}
+
+#' @export
+optimal_weights_multiple <- function(data, id, grid, transition, min_time = 0)
+{
+  # Convert data to etm data
+  trans <- attr(data, "trans")
+  etmdata <- msdata2etm(data, id)
+  trans2 <- to.trans2(trans)
+  from <- trans2$from[trans2$transno == transition]
+  to <- trans2$to[trans2$transno == transition]
+
+  numbers <- sapply(grid, function(x)
+    table(factor(etmdata$from)[(etmdata$entry <= x & etmdata$exit > x)]))
+  subevent <- sapply(grid, function(x)
+    sum(etmdata$from == from & etmdata$to == to & etmdata$exit > x))
+  tnumbers <- apply(numbers, 2, sum)
+  weights <- sapply(1:dim(numbers)[1], function(x)
+    subevent * numbers[x, ] * (tnumbers - numbers[x, ])/tnumbers^2)
+  weights[is.nan(weights)] <- 0
+  weight <- apply(weights, 1, max)
+  weight * diff(c(min_time, grid))
+}
+
+#' @export
+optimal_weights_matrix <- function(data, id, grid, transition, min_time = 0, 
+                                   other_weights = NULL)
+{
+  # Convert data to etm data
+  trans <- attr(data, "trans")
+  etmdata <- msdata2etm(data, id)
+  trans2 <- to.trans2(trans)
+  from <- trans2$from[trans2$transno == transition]
+  to <- trans2$to[trans2$transno == transition]
+
+  numbers <- sapply(grid, function(x)
+    table(factor(etmdata$from)[(etmdata$entry <= x & etmdata$exit > x)]))
+  subevent <- sapply(grid, function(x)
+    sum(etmdata$from == from & etmdata$to == to & etmdata$exit > x))
+  tnumbers <- apply(numbers, 2, sum)
+  weights <- sapply(1:dim(numbers)[1], function(x)
+    sqrt(subevent * numbers[x, ] * (tnumbers - numbers[x, ]))/tnumbers)
+  weights[is.nan(weights)] <- 0
+  fn_list <- list()
+  for (i in 1:dim(numbers)[1]) {
+    # Take into account the distance between grids
+    val <- weights[, i] * diff(c(min_time, grid))
+    fn_list[[i]] <- list(fn = function(x)
+      weighted.mean(abs(x), w = val, na.rm = TRUE))
+    if (!is.null(other_weights)) {
+      nother <- length(other_weights)
+      fn_list[[i]][2:(nother + 1)] <- other_weights
+    }
+  }
+  # Store the weights as an attribute
+  attr(fn_list, "weights") <- weights
+  fn_list
+}
 ```
 
 The model considered the transition from intermediate states to our absorbing state (being readmitted) is explained by the time spent in the previous health state. This covariate (time in the previous state) was shown to be statistically significant (p<.001); results indicated a longer duration spent in the first treatment is associated with increased risk of readmission. Therefore, a semi-Markov (called a Markov renewal model) or clock reset approach should be undertaken for both models. They bear the advantage that information from the process history can be included as transition-specific explanatory covariates.

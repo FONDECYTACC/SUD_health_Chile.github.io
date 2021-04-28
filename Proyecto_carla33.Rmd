@@ -380,13 +380,13 @@ ggplot(aes(time, value, color= model, linetype =variable))+
   xlab("Years") + 
   ylab("Cumulative") + 
   theme_minimal()+
-  theme(legend.position=c(.9,.585),
+  theme(legend.position=c(.9,.6),
         legend.background = element_rect(fill="white",
                                   size=0.5, linetype="solid", 
                                   colour ="black"))
 ```
 ```{r cum_haz1, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 1a. Estimate of Cumulative Hazards, Three States Model", fig.align="center", error=T}
-fig_cox_ab + theme(legend.position=c(.9,.585))+ ylim(0,1)
+fig_cox_ab + theme(legend.position=c(.9,.6))+ ylim(0,1)
 ```
 
 ```{r cum_haz2, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 1b. Estimate of Cumulative Hazards, Four States Model", fig.align="center", error=T}
@@ -608,7 +608,8 @@ ggplot(aes(time, value, color= covs, linetype =type_of_program))+
   xlab("Years") + 
   ylab("State occupancy probabilities") + 
   theme_minimal()+
-  theme(legend.position=c(.9,.9),
+  scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
+  theme(legend.position=c(.9,.6),
         legend.background = element_rect(fill="white",
                                   size=0.5, linetype="solid", 
                                   colour ="black"))
@@ -657,7 +658,7 @@ ggplot(aes(time, value, color= covs, linetype =type_of_program))+
   scale_linetype_manual(name ="Type of program",values=c(1,4), labels= c("General Population","Women-specific"))+
   #scale_linetype_manual(name= "Covariates",values=c(1,4), labels=c("w/covs","w/o covs"))+
   scale_x_continuous(breaks=seq(0, 11,.5))+
-  scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
+  scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
   xlab("Years") + 
   ylab("State occupancy probabilities") + 
   theme_minimal()+
@@ -675,7 +676,7 @@ fig_cd_pmatrix
 
 ## Transition probabilities of parametric models by treatment arm
 
-```{r flexsurv_t_arm_3s_plot1, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 3a. Estimate of State Occupancies (w/ confidence intervals), Three-states model", fig.align="center", error=T}
+```{r flexsurv_t_arm_3s_plot1, eval=T, echo=T, paged.print=TRUE, fig.height=10, fig.cap="Figure 3a. Estimate of State Occupancies (w/ confidence intervals), Three-states model", fig.align="center", error=T}
 
 pmatrix_t_a_df_final_mod<-
 data.table::data.table(pmatrix_t_a_df_final)[,-c("Trans_1_cis","Trans_2_cis","Trans_3_cis")]%>% 
@@ -713,12 +714,12 @@ rbind.data.frame(
 cbind.data.frame(pmatrix_t_a_df_final_mod,program="Women-specific"),
 cbind.data.frame(pmatrix_t_b_df_final_mod,program="General population")) %>% 
   dplyr::mutate(combi=paste0(trans_from,"-",trans_to)) %>% 
-  dplyr::filter(!combi %in% c("2-1","3-1","3-2","3-3")) %>% 
+  dplyr::filter(!combi %in% c("1-1","2-1","2-2","3-1","3-2","3-3")) %>% 
   dplyr::mutate(trans_from=dplyr::case_when(trans_from==1~"1)Admission",
-                                            trans_from==2~"2)Therapeutic\nDischarge",
+                                            trans_from==2~"2)Therapeutic Discharge",
                                             trans_from==3~"3)Readmission")) %>% 
   dplyr::mutate(trans_to=dplyr::case_when(trans_to==1~"to\n1)Admission",
-                                            trans_to==2~"to\n2)Therapeutic\nDischarge",
+                                            trans_to==2~"to\n2)Therapeutic Discharge",
                                             trans_to==3~"to\n3)Readmission")) %>% 
   ggplot(aes(x=t, y=estimate, fill=program, color=program))+
   geom_step(size=1)+
@@ -731,7 +732,7 @@ cbind.data.frame(pmatrix_t_b_df_final_mod,program="General population")) %>%
   xlab("Years") + 
   ylab("State occupancy probabilities") + 
   theme_minimal()+
-  theme(legend.position=c(.9,.2),
+  theme(legend.position=c(.86,.8),
         legend.background = element_rect(fill="white",
                                   size=0.5, linetype="solid", 
                                   colour ="black"))
@@ -744,10 +745,10 @@ cbind.data.frame(pmatrix_t_b_df_final_mod,program="General population")) %>%
   dplyr::mutate(combi=paste0(trans_from,"-",trans_to)) %>% 
     dplyr::filter(trans_from!=3) %>% 
   dplyr::mutate(trans_from=dplyr::case_when(trans_from==1~"1)From Admission",
-                                            trans_from==2~"2)From Therapeutic\nDischarge",
+                                            trans_from==2~"2)From Therapeutic Discharge",
                                             trans_from==3~"3)From Readmission")) %>% 
   dplyr::mutate(trans_to=dplyr::case_when(trans_to==1~"1)Admission",
-                                            trans_to==2~"2)Therapeutic\nDischarge",
+                                            trans_to==2~"2)Therapeutic Discharge",
                                             trans_to==3~"3)Readmission")) %>% 
   ggplot(aes(x=t, y=estimate, fill=trans_to, color=trans_to))+
     geom_area()+
@@ -814,14 +815,14 @@ rbind.data.frame(
 cbind.data.frame(pmatrix_4s_t_a_df_final_mod,program="Women-specific"),
 cbind.data.frame(pmatrix_4s_t_b_df_final_mod,program="General population")) %>% 
   dplyr::mutate(combi=paste0(trans_from,"-",trans_to)) %>% 
-  dplyr::filter(!combi %in% c("2-1","3-1","2-3","3-2","3-1","3-2","4-1","4-2","4-3","4-4")) %>% 
+  dplyr::filter(!combi %in% c("1-1","2-2","3-3","2-1","3-1","2-3","3-2","3-1","3-2","4-1","4-2","4-3","4-4")) %>% 
     dplyr::mutate(trans_from=dplyr::case_when(trans_from==1~"1)Admission",
-                                            trans_from==2~"2)Therapeutic\nDischarge",
-                                            trans_from==3~"3)Discharge Without\nClinical Advice",
+                                            trans_from==2~"2)Therapeutic Discharge",
+                                            trans_from==3~"3)Discharge Without Clinical Advice",
                                             trans_from==4~"4)Readmission")) %>% 
   dplyr::mutate(trans_to=dplyr::case_when(trans_to==1~"to\n1)Admission",
-                                            trans_to==2~"to\n2)Therapeutic\nDischarge",
-                                            trans_to==3~"to\n3)Discharge Without\nClinical Advice",
+                                            trans_to==2~"to\n2)Therapeutic Discharge",
+                                            trans_to==3~"to\n3)Discharge Without Clinical Advice",
                                             trans_to==4~"to\n4)Readmission")) %>% 
   ggplot(aes(x=t, y=estimate, fill=program, color=program))+
   geom_step(size=1)+
@@ -840,19 +841,20 @@ cbind.data.frame(pmatrix_4s_t_b_df_final_mod,program="General population")) %>%
                                   colour ="black"))
 ```
 
-```{r flexsurv_t_arm_4s_plot2, eval=T, echo=T, paged.print=TRUE, fig.height=10, fig.cap="Figure 3d. Estimate of State Occupancies (Area Plot), Four-states model", fig.align="center", error=T}
+```{r flexsurv_t_arm_4s_plot2, eval=T, echo=T, paged.print=TRUE, fig.height=10, fig.width=9, fig.cap="Figure 3d. Estimate of State Occupancies (Area Plot), Four-states model", fig.align="center", error=T}
+fig3d_plot<-
 rbind.data.frame(
 cbind.data.frame(pmatrix_4s_t_a_df_final_mod,program="Women-specific"),
 cbind.data.frame(pmatrix_4s_t_b_df_final_mod,program="General population")) %>% 
   dplyr::mutate(combi=paste0(trans_from,"-",trans_to)) %>% 
   dplyr::filter(trans_from!=4) %>% 
     dplyr::mutate(trans_from=dplyr::case_when(trans_from==1~"1)From Admission",
-                                            trans_from==2~"2)From Therapeutic\nDischarge",
-                                            trans_from==3~"3)From Discharge Without\nClinical Advice",
+                                            trans_from==2~"2)From Therapeutic Discharge",
+                                            trans_from==3~"3)From Discharge Without Clinical Advice",
                                             trans_from==4~"4)From Readmission")) %>% 
   dplyr::mutate(trans_to=dplyr::case_when(trans_to==1~"1)Admission",
-                                            trans_to==2~"2)Therapeutic\nDischarge",
-                                            trans_to==3~"3)Discharge Without\nClinical Advice",
+                                            trans_to==2~"2)Therapeutic Discharge",
+                                            trans_to==3~"3)Discharge Without Clinical Advice",
                                             trans_to==4~"4)Readmission")) %>% 
   ggplot(aes(x=t, y=estimate, fill=trans_to, color=trans_to))+
   geom_area()+
@@ -879,6 +881,13 @@ cbind.data.frame(pmatrix_4s_t_b_df_final_mod,program="General population")) %>%
         strip.background = element_blank(),
         panel.border = element_blank(),
           legend.box.background = element_blank())
+
+fig3d_plot
+
+if(no_mostrar==1){
+ggsave("eso13b.jpg", fig3d_plot,width = 10, height = 10, dpi = 300, units= "in")
+dev.off()
+}
 ```
 
 
@@ -903,22 +912,25 @@ pmatrix_t_a_df_final %>%
                                             #trans==3~"3)From Discharge Without\nClinical Advice",
                                             trans==3~"3)Readmission")) %>% 
   dplyr::select(-t) %>% 
+  dplyr::select(`trans`,`Trans_1_cis.y`,`Trans_2_cis.y`,`Trans_3_cis.y`,`Trans_1_cis.x`,`Trans_2_cis.x`,`Trans_3_cis.x`) %>% 
+    #2021-04-27: drop from/actual state, readmission
+  dplyr::filter(!grepl("Readmission",trans)) %>% 
           knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption = paste0("Table 1. Estimated transition probabilities, Three-states model"),
                col.names = c("Actual state", rep(c("Admission","Therapeutic Discharge","Readmission"),2)),
                align =rep('c', 101)) %>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
- # kableExtra::add_footnote("Note. NA= Null values", notation="none") %>% 
-  kableExtra::add_header_above(c(" ", "General Population: Transition to" = 3, "Women-specific: Transition to" = 3)) %>% 
-  kableExtra::pack_rows("At 0 days", 1, 3) %>% 
-  kableExtra::pack_rows("At ~30 days/1 month", 4, 6) %>% 
-  kableExtra::pack_rows("At ~91 days/3 months", 7, 9) %>% 
-  kableExtra::pack_rows("At ~122 days/4 months", 10, 12) %>%
-  kableExtra::pack_rows("At ~183 days/6 months", 13, 15) %>%
-  kableExtra::pack_rows("At ~274days/9 months", 16, 18) %>%
-  kableExtra::pack_rows("At ~1 year", 19, 21) %>%
-  kableExtra::pack_rows("At ~3 years", 22, 24) %>%
-  kableExtra::pack_rows("At ~5 years", 25, 27) %>%
+  kableExtra::add_footnote("Note. We removed Readmission because it was an absorbing state", notation="none") %>% 
+  kableExtra::add_header_above(c(" ", "Women-specific: Transition to" = 3,"General Population: Transition to" = 3)) %>% 
+  kableExtra::pack_rows("At 0 days", 1, 2) %>% 
+  kableExtra::pack_rows("At ~30 days/1 month", 3, 4) %>% 
+  kableExtra::pack_rows("At ~91 days/3 months", 5, 6) %>% 
+  kableExtra::pack_rows("At ~122 days/4 months", 7, 8) %>%
+  kableExtra::pack_rows("At ~183 days/6 months", 9, 10) %>%
+  kableExtra::pack_rows("At ~274days/9 months", 11, 12) %>%
+  kableExtra::pack_rows("At ~1 year", 13, 14) %>%
+  kableExtra::pack_rows("At ~3 years", 15, 16) %>%
+  kableExtra::pack_rows("At ~5 years", 17, 18) %>%
   kableExtra::scroll_box(width = "100%", height = "375px") 
   #dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",estimate)," [",
   #                                 sprintf("%1.2f",lo),"-",
@@ -952,22 +964,25 @@ pmatrix_4s_t_a_df_final %>%
                                             trans==3~"3)From Discharge Without\nClinical Advice",
                                             trans==4~"4)Readmission")) %>% 
   dplyr::select(-t) %>% 
+  dplyr::select(trans,Trans_1_cis.y,Trans_2_cis.y,Trans_3_cis.y,Trans_4_cis.y,Trans_1_cis.x,Trans_2_cis.x,Trans_3_cis.x,Trans_4_cis.x) %>% 
+      #2021-04-27: drop from/actual state, readmission
+  dplyr::filter(!grepl("Readmission",trans)) %>% 
           knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption = paste0("Table 2. Estimated transition probabilities, Four-states model"),
                col.names = c("Actual state", rep(c("Admission","Therapeutic Discharge","Discharge Without\nClinical Advice","Readmission"),2)),
                align =rep('c', 101)) %>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
- # kableExtra::add_footnote("Note. NA= Null values", notation="none") %>% 
-  kableExtra::add_header_above(c(" ", "General Population: Transition to" = 4, "Women-specific: Transition to" = 4)) %>% 
-  kableExtra::pack_rows("At 0 days", 1, 4) %>% 
-  kableExtra::pack_rows("At ~30 days/1 month", 5, 8) %>% 
-  kableExtra::pack_rows("At ~91 days/3 months", 9, 12) %>% 
-  kableExtra::pack_rows("At ~122 days/4 months", 13, 16) %>%
-  kableExtra::pack_rows("At ~183 days/6 months", 17, 20) %>%
-  kableExtra::pack_rows("At ~274days/9 months", 21, 24) %>%
-  kableExtra::pack_rows("At ~1 year", 25, 28) %>%
-  kableExtra::pack_rows("At ~3 years", 29, 32) %>%
-  kableExtra::pack_rows("At ~5 years", 33, 36) %>%
+  kableExtra::add_footnote("Note. We removed Readmission because it was an absorbing state", notation="none") %>% 
+  kableExtra::add_header_above(c(" ", "Women-specific: Transition to" = 4,"General Population: Transition to" = 4)) %>% 
+  kableExtra::pack_rows("At 0 days", 1, 3) %>% 
+  kableExtra::pack_rows("At ~30 days/1 month", 4, 6) %>% 
+  kableExtra::pack_rows("At ~91 days/3 months", 7, 9) %>% 
+  kableExtra::pack_rows("At ~122 days/4 months", 10, 12) %>%
+  kableExtra::pack_rows("At ~183 days/6 months", 13, 15) %>%
+  kableExtra::pack_rows("At ~274days/9 months", 16, 18) %>%
+  kableExtra::pack_rows("At ~1 year", 19, 21) %>%
+  kableExtra::pack_rows("At ~3 years", 22, 24) %>%
+  kableExtra::pack_rows("At ~5 years", 25, 27) %>%
   kableExtra::scroll_box(width = "100%", height = "375px") 
 ```
 
@@ -977,7 +992,7 @@ pmatrix_4s_t_a_df_final %>%
 
 ## Partitioned survival analyses
 
-We first looked over the restricted mean survival time, which may be the equivalent measure of the length of stay for partitioned survival analyses of each transition (as stated by Crowther in this [link](https://www.stata.com/meeting/italy18/slides/italy18_Crowther.pdf)). We calculated its 95% confidence intervals by  `r n_iter` resamples.
+We first looked over the restricted mean survival time, which may be the equivalent measure of the length of stay for partitioned survival analyses of each transition (as stated by Crowther in this [link](https://www.stata.com/meeting/italy18/slides/italy18_Crowther.pdf)). We calculated its 95% confidence intervals by  `r format(n_iter, big.mark=",")` resamples.
 
 <br>
 
@@ -1070,7 +1085,8 @@ transition_label<- c(`1`="Transition 1: Admission to Ther.Discharge",`2`="Transi
   scale_color_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
   scale_x_continuous(breaks=seq(0, 11))+
  #scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
-  xlab("Years") + 
+  xlab("Years") +
+  ylab("")+
   #ylab("State occupancy probabilities") + 
   theme_minimal()+
   theme(legend.position=c(.9,.1),
@@ -1089,7 +1105,8 @@ transition_label<- c(`1`="Transition 1: Admission to Ther.Discharge",`2`="Transi
   scale_color_manual(name ="Type of program",values=c("#0D56A6","#FF9A00"), labels= c("General Population","Women-specific"))+
   scale_x_continuous(breaks=seq(0, 11))+
  #scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
-  xlab("Years") + 
+  xlab("Years") +
+  ylab("")+
   #ylab("State occupancy probabilities") + 
   theme_minimal()+
   theme(legend.position=c(.9,.1),
@@ -1236,6 +1253,7 @@ cbind.data.frame(tolos_t_b_str2_df,program="General Population", start=2)%>% dpl
   scale_x_continuous(breaks=seq(0, 11))+
  #scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
   xlab("Years") + 
+  ylab("")+
   #ylab("State occupancy probabilities") + 
   theme_minimal()+
   theme(legend.position=c(.87,.1),
@@ -1287,6 +1305,7 @@ cbind.data.frame(tolos_4s_t_b_str3_df,program="General Population", start=3))%>%
   scale_x_continuous(breaks=seq(0, 11))+
  #scale_y_continuous(labels = scales::percent_format(accuracy = 2), limits=c(0,1))+
   xlab("Years") + 
+  ylab("")+
   #ylab("State occupancy probabilities") + 
   theme_minimal()+
   theme(legend.position=c(.9,.1),
@@ -1339,7 +1358,7 @@ cbind.data.frame(tolos_t_b_str2_df,program="General Population", start=2))%>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
   kableExtra::pack_rows("Starting From Admission", 1, 16) %>% 
   kableExtra::pack_rows("Starting From Therapeutic Discharge", 17, 24) %>% 
-  kableExtra::add_footnote("Note. NA= Null values", notation="none") %>% 
+  kableExtra::add_footnote("Note. Readmission state will not be considered because is an absorbing state", notation="none") %>% 
   kableExtra::scroll_box(width = "100%", height = "375px")
 ```
 
@@ -1384,7 +1403,7 @@ cbind.data.frame(tolos_4s_t_b_str3_df,program="General Population", start=3))%>%
   kableExtra::pack_rows("Starting From Admission", 1, 24) %>%
   kableExtra::pack_rows("Starting From Therapeutic Discharge", 25, 32) %>%
   kableExtra::pack_rows("Starting From Discharge Without Clinical Advice", 33, 40) %>%
-  kableExtra::add_footnote("Note. NA= Null values", notation="none") %>% 
+  kableExtra::add_footnote("Note. Readmission state will not be considered because is an absorbing state", notation="none") %>% 
   kableExtra::scroll_box(width = "100%", height = "375px")
 ```
 
@@ -1396,7 +1415,7 @@ We estimated the median of stay, percentiles 25, 75 and confidence intervals bas
 
 ```{r sim_medians, eval=T, echo=T, paged.print=TRUE, error=T}
 time_before_sim_medians<-Sys.time()
-#Estimates the probability of each final outcome ("absorbing" state), and the mean and quantiles of the time to that outcome for people who experience it, by simulating a large sample of individuals from the model. This can be used for both Markov and semi-Markov models.
+#Estimates the probability of each final outcome ("absorbing" state), and the mean and quantiles of the time to that outcome for people who experience it, by simulating a large sample of individuals from the model. This can be used for both Markov and semi-Markov models.C
 #n_iter=12
 fmsm_sel_param_fits_4s_b<-
     fmsm(fits_c_gomp2[[1]],fits_c_gomp2[[2]],fits_c_logn2[[3]],fits_c_ggam2[[4]],fits_c_logn2[[5]], trans=mat_4_states)
