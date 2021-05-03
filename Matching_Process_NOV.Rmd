@@ -2971,7 +2971,7 @@ pre_matched_matched%>%
                col.names = c("Variables","Nature of Variables", "SMDs","Threshold","Variance Ratios","Threshold","KS","SMDs","Threshold","Variance Ratios","Threshold","KS"),
                align =c('l',rep('c', 101))) %>%
   add_header_above(c(" "," ","Unadjusted" = 5, "Adjusted" = 5)) %>% 
-  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 9) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 11) %>%
   kableExtra::add_footnote( c(paste("Note.",paste0("Unadjusted (n=",dim(covs0_unmatch)[1] %>% format(big.mark=","),")"),";",paste0("Adjusted (n=",dim(covs0_match)[1] %>% format(big.mark=","),")"),";",paste0("Total pairs: ",length(c_id_1) %>% format(big.mark=",")))), 
                             notation = "none") %>%
   kableExtra::scroll_box(width = "100%", height = "375px") 
@@ -3455,43 +3455,6 @@ summary(m1)
 
 cox.zph(m1)#Possibly, a log-normal or log-logistic AFT model would fit better than Cox.
 ```
-
-```{r cox_simple_strata2,eval=F, echo=T, paged.print=TRUE}                
-m1b <- try_with_time_limit(
-            survreg(Surv(diff_bet_treat+1,event)~ strata(group_match)+ tipo_de_plan_res,data=CONS_C1_df_dup_SEP_2020_irrs_health, dist="weibull"),
-        elapsed = 60)
-        
-#The survreg function in R does not allow time = 0. This is because for several of the distributions, including the lognormal distribution, having events occur at time = 0 will result in an undefined estimator.
-(m1b)
-
-m2 <- eval_fork(
-        coxph(Surv(diff_bet_treat,event) ~ frailty(group_match, 
-          distribution = "gaussian", sparse = FALSE, method = "reml") + tipo_de_plan_res, 
-          data = CONS_C1_df_dup_SEP_2020_irrs_health),
-      timeout = 60)
-summary(m2)
-
-cox.zph(m2)
-#CONS_C1_df_dup_SEP_2020$condicion_ocupacional_corr CONS_C1_df_dup_SEP_2020$cnt_diagnostico_trs_fisico CONS_C1_df_dup_SEP_2020$tenencia_de_la_vivienda_mod
-
-##COx Diagnostics
-#ggcoxzph(cox.zph(m1))
-#ggcoxdiagnostics(m1, type = "dfbeta",
-#                 linear.predictions = FALSE, ggtheme = theme_bw())
-#ggcoxdiagnostics(m1, type = "deviance",
-#                 linear.predictions = FALSE, ggtheme = theme_bw())
-#It’s also possible to check outliers by visualizing the deviance residuals. The deviance residual is a normalized transform of the martingale residual. These residuals should be roughtly symmetrically distributed about zero with a standard deviation of 1.
-#Positive values correspond to individuals that “died too soon” compared to expected survival times.
-#Negative values correspond to individual that “lived too long”.
-#Very large or small values are outliers, which are poorly predicted by the model.
-
-#grid.arrange(
-#  ggforest(m1, data=CONS_C1_df_dup_SEP_2020_irrs_health),
-#  ggforest(m2, data=CONS_C1_df_dup_SEP_2020_irrs_health),
-#  ncol=2
-#)
-```
-
 <br>
 
 There was evidence of not proportional hazards. Users in residential treatments experience `r scales::percent(exp(m1$coeff)-1)` within the study period than users in outpatient treatments (95% CI: `r scales::percent(exp(confint(m1))[1]-1)` - `r scales::percent(exp(confint(m1))[2]-1)`; p=`r round(tidy(m1)$p.value,4)`).
