@@ -26,7 +26,9 @@ This page is composed by the following main topics:
 
 2. Associations & Analytic Exercises
     
-    2a.1. [Matching and Multistate Model of Treatment Setting](Matching_Process_NOV)
+    2a.1. [Matching and Multistate Model of Treatment Setting (Step 1)](Matching_Process_APR_21)
+    
+    2a.2. [Matching and Multistate Model of Treatment Setting (Step 2)](Matching_Process2_APR_21)
     
     2b.1. [Type of Program, Completion & Readmission in Women (Step 1)](Proyecto_carla3)
     

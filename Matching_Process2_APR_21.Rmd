@@ -1,0 +1,1565 @@
+---
+title: "Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 2)"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: hide  
+    toc: true # table of content true
+    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_float: true
+---
+
+```{css zoom-lib-src, echo = FALSE}
+script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+```
+
+```{js zoom-jquery, echo = FALSE}
+ $(document).ready(function() {
+    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
+    // onClick function for all plots (img's)
+    $('img:not(.zoomImg)').click(function() {
+      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
+      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
+    });
+    // onClick function for zoomImg
+    $('img.zoomImg').click(function() {
+      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
+    });
+  });
+```
+
+```{=html}
+<style type="text/css">
+.tablelines table, .tablelines td, .tablelines th {
+        border: 1px solid black;
+        }
+.centrado {
+    text-align: center;
+}
+.table.center {
+    margin-left:auto; 
+    margin-right:auto;
+  }
+.table_wrapper{
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+code.r{
+  font-size: 8px;
+}
+body{ /* Normal  */
+      text-align: justify;
+  }
+.superbigimage{
+    overflow-y:scroll;
+    white-space: nowrap;
+}
+.superbigimage img{
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+</style>
+```
+```{=html}
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
+</style>
+```
+```{r prev_setup, include = FALSE, cache=T}
+rm(list=ls());gc()
+path<-rstudioapi::getSourceEditorContext()$path
+#load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+if (grepl("CISS Fondecyt",path)==T){
+    setwd("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state.RData")
+  } else if (grepl("andre",path)==T){
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+  } else if (grepl("E:",path)==T){
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state.RData")
+  } else {
+    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state.RData")
+  }
+
+#getwd()
+#knitr::opts_knit$get()
+#devtools::install_github("hputter/mstate")
+
+```
+
+```{r setup, include = FALSE, cache=T}
+#Libraries used in the routine. Dont change the order
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
+  if(class(ungroup(x))[1]=="tbl_df"){
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)    
+        }
+  } else {
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)       
+  }
+ }
+}  
+#packageVersion("codebook")
+#https://github.com/RevolutionAnalytics/checkpoint
+#if(!require(checkpoint)){install.packages("checkpoint")}
+#if(!require(here)){install.packages("here")}
+#checkpoint::checkpoint("2020-02-19",project=here::here(),checkpointLocation=paste0(here::here(),"/dedup"), use.lock=F, use.knitr=T, auto.install.knitr = T,scan.rnw.with.knitr=T, forceInstall=T,scanForPackages = TRUE)
+#checkpointArchives(tempdir(), full.names = TRUE)
+
+#if(!require(tidyr)){install.packages("tidyr")}
+#if(!require(DataExplorer)){install.packages("DataExplorer")}
+#if(!require(stringi)){install.packages("stringi")}
+#if(!require(stringr)){install.packages("stringr")}
+#if(!require(ggplot2)){install.packages("ggplot2")}
+#if(!require(Hmisc)){install.packages("Hmisc")}
+#if(!require(kableExtra)){install.packages("kableExtra")}
+#if(!require(plotly)){install.packages("plotly")}
+#if(!require(rbokeh)){install.packages("rbokeh")}
+#if(!require(altair)){install.packages("altair")}
+#if(!require(zoo)){install.packages("zoo")}
+#if(!require(codebook)){install.packages("codebook")}
+#if(!require(broom)){install.packages("broom")}
+#if(!require(sqldf)){install.packages("sqldf")} 
+#if(!require(devtools)){install.packages("devtools")}
+#if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
+#if(!require(data.table)){install.packages("data.table")}
+#if(!require(dplyr)){install.packages("dplyr")}
+
+#if(!require(boot)){install.packages("boot")}
+#if(!require(plyr)){install.packages("plyr")}
+#if(!require(matrixStats)){install.packages("matrixStats")}
+#if(!require(radiant)){install.packages("radiant", repos = "https://radiant-rstats.github.io/minicran/")}
+
+try(library(boot))
+library(matrixStats)
+library(knitr)
+library(tidyr)
+library(stringi)
+library(stringr)
+library(ggplot2)
+library(Hmisc)
+library(kableExtra)
+library(plotly)
+library(janitor)
+library(rbokeh)
+library(zoo)
+library(broom)
+library(sqldf)
+library(devtools)
+library(codebook)
+library(data.table)
+library(panelr)
+library(RColorBrewer)
+library(lsmeans)
+library(finalfit)
+suppressPackageStartupMessages(library(ggiraph))
+suppressPackageStartupMessages(library(sf))
+library(treemapify)
+library(dplyr)
+library(tidyverse)
+library(epiR)
+library(survminer)
+library(ggfortify)
+library(survMisc)
+
+library(foreign)
+library(Hmisc)
+library(gridExtra)
+library(reshape2)
+library(stargazer)
+library(tableone)
+library(MatchIt)
+library(cobalt)
+library(eha)
+library(igraph)
+library(Amelia)
+library(DiagrammeR) 
+library(mstate)
+library(flexsurv)
+library(muhaz)
+library(Metrics)
+#library(mstateutils)
+#remotes::install_github("chjackson/flexsurv-dev", upgrade = "never")
+#devtools::install_github("stulacy/multistateutils", build_vignettes=TRUE, upgrade = "never")
+#devtools::install_github("hputter/mstate", upgrade = "never")
+#unlink("C:/Users/CISS Fondecyt/OneDrive/Documentos/R/win-library/4.0/mstate", recursive=T, force=T)
+
+if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
+#install.packages( repos = "https://radiant-rstats.github.io/minicran/")
+#install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")
+
+#tryCatch(source("https://raw.githubusercontent.com/radiant-rstats/minicran/gh-pages/update.R"), error = function(e) print("updated package, radiant"))
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+try_with_time_limit <- function(expr, cpu = Inf, elapsed = Inf)
+{
+  y <- try({setTimeLimit(cpu, elapsed); expr}, silent = TRUE) 
+  if(inherits(y, "try-error")) NULL else y 
+}
+eval_fork <- function(..., timeout=60){
+
+  #this limit must always be higher than the timeout on the fork!
+  setTimeLimit(timeout+5);      
+
+  #dispatch based on method
+  ##NOTE!!!!! Due to a bug in mcparallel, we cannot use silent=TRUE for now.
+  myfork <- parallel::mcparallel({
+    eval(...)
+  }, silent=FALSE);
+
+  #wait max n seconds for a result.
+  myresult <- parallel::mccollect(myfork, wait=FALSE, timeout=timeout);
+
+  #try to avoid bug/race condition where mccollect returns null without waiting full timeout.
+  #see https://github.com/jeroenooms/opencpu/issues/131
+  #waits for max another 2 seconds if proc looks dead 
+  while(is.null(myresult) && totaltime < timeout && totaltime < 2) {
+     Sys.sleep(.1)
+     enddtime <- Sys.time();
+     totaltime <- as.numeric(enddtime - starttime, units="secs")
+     myresult <- parallel::mccollect(myfork, wait = FALSE, timeout = timeout);
+  }
+
+  #kill fork after collect has returned
+  tools::pskill(myfork$pid, tools::SIGKILL);    
+  tools::pskill(-1 * myfork$pid, tools::SIGKILL);  
+
+  #clean up:
+  parallel::mccollect(myfork, wait=FALSE);
+
+  #timeout?
+  if(is.null(myresult)){
+    stop("R call did not return within ", timeout, " seconds. Terminating process.", call.=FALSE);      
+  }
+
+  #move this to distinguish between timeout and NULL returns
+  myresult <- myresult[[1]];
+
+  #reset timer
+  setTimeLimit();     
+
+  #forks don't throw errors themselves
+  if(inherits(myresult,"try-error")){
+    #stop(myresult, call.=FALSE);
+    stop(attr(myresult, "condition"));
+  }
+
+  #send the buffered response
+  return(myresult);  
+}
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#GET LOCAL
+#dir.create(paste0(getwd(),"/renv_local"))
+#Sys.setenv(RENV_PATHS_LOCAL = paste0(getwd(),"/renv_local"))
+#install.packages(paste0(getwd(),"/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+#install.packages(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+library(gurobi)
+#"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)"
+#Sys.getenv("R_LIBS_USER")
+```
+
+<br>
+
+# Cumulative Transition Hazards of Joint Models
+
+Cumulative baseline hazard can be estimated non-parametrically through a Breslow estimator. Must take note that we are assuming a Markov process in these transitions.
+
+<br>
+
+```{r msfit,eval=T, echo=T, paged.print=TRUE, fig.height=14, fig.width=12, fig.cap="Figure 1. Estimate of Cumulative Hazards (Markov), Stratified by Program", fig.align="center"}
+if(no_mostrar==1){
+  for(i in c(1:3)){
+    print(survdiff(Surv(time,status==1)~tipo_de_programa_2,data=subset(ms_CONS_C1_SEP_2020_women_imputed, trans == i)))
+    }
+  for(i in c(1:5)){
+    print(survdiff(Surv(time,status==1)~tipo_de_programa_2,data=subset(ms2_CONS_C1_SEP_2020_women_imputed, trans == i)))
+  } 
+}
+
+#We consider first the model without any proportionality assumption on the baseline hazards; this is achieved by adding strata(trans) to the formula, which estimates separate baseline hazards for different values of trans (the transitions). 
+
+pr0 <- subset(ms_CONS_C1_SEP_2020_women_imputed, tipo_de_programa_2==0)
+pr1 <- subset(ms_CONS_C1_SEP_2020_women_imputed, tipo_de_programa_2==1)
+attr(pr0, "trans") <- mat_3_states
+attr(pr1, "trans") <- mat_3_states
+
+# 4 states
+
+pr0_4s <- subset(ms2_CONS_C1_SEP_2020_women_imputed, tipo_de_programa_2==0)
+pr1_4s <- subset(ms2_CONS_C1_SEP_2020_women_imputed, tipo_de_programa_2==1)
+attr(pr0_4s, "trans") <- mat_4_states
+attr(pr1_4s, "trans") <- mat_4_states
+
+#Since there are tied event times, we need to specify ties="breslow" in order to obtain the Aalen-Johansen estimator of
+#the transition probability
+#If we only want the cumulative hazard for the relapse → death transition, we can
+#select the rows that refer to transition 3.
+#The stacked format allows to calculate all cumulative hazards via the basic coxph function.
+c0 <- survival::coxph(Surv(time, status) ~ strata(trans), #Surv(time, status) ~ strata(trans) 
+            data = pr0, method = "breslow")
+c1 <- survival::coxph(Surv(time, status) ~ strata(trans), 
+            data = pr1, method = "breslow")
+
+c0_4s <- survival::coxph(Surv(time, status) ~ strata(trans), #Surv(time, status) ~ strata(trans) 
+            data = pr0_4s, method = "breslow")
+c1_4s <- survival::coxph(Surv(time, status) ~ strata(trans), 
+            data = pr1_4s, method = "breslow")
+
+#The value of time is equal to Tstop−Tstart; it is of use in ’clock reset’-models, where the time t refers to the time spent in the current state
+
+#The alternative is to first apply the msfit function, which we also need when computing the transition
+#probabilities
+# piece-wise constant estimates - because is cox
+msf0 <- mstate::msfit(object = c0, trans = mat_3_states, vartype ="aalen")
+msf1 <- mstate::msfit(object = c1,  trans = mat_3_states, vartype ="aalen")
+
+msf0_4s <- mstate::msfit(object = c0_4s, trans = mat_4_states, vartype ="aalen")
+msf1_4s <- mstate::msfit(object = c1_4s,  trans = mat_4_states, vartype ="aalen")
+
+#Haz contains the estimated cumulative hazard for each of the transitions for the particular patient
+#specified in newd, while varHaz contains the estimated variances of these cumulative hazards,
+#as well as the covariances for each combination of two transitions. All are evaluated at the
+#time points for which any event in any transition occurs, possibly augmented with the largest
+#(non-event) time point in the data. The summary method for msfit objects is most conveniently
+#used for a summary. If we also would like to have a look at the covariances, we could set the
+#argument variance equal to TRUE.
+
+#This is a list with elements Haz (with the estimated cumulative hazard values at all event
+#times), varHaz (with the covariances of each pair of estimated cumulative hazards at each
+#event time point, i.e., cov( c Abgh(t), Abkl(t))), and trans, in which the transition matrix is stored
+#for further use. The (co)variances of the estimated cumulative hazards may be computed in
+#two different ways: by means of the Aalen estimator or by means of the Greenwood estimator.
+#An advantage of the Greenwood estimator is the fact that it yields exact multinomial standard
+#errors for the transition probabilities when there is no censoring. The two estimators give
+#almost equal results in all practical applications.
+
+#plot(msf0, use.ggplot = T)
+
+par(mfrow = c(2, 2))
+plot(msf0, cols = 1:3, lwd = 2, lty = 1:3, xlab = "",ylim=c(0,1.2),xlim=c(0,12),
+ ylab = "Baseline hazards for each transition", legend.pos = c(4, 1.15), main= "General Population")
+ plot(msf1, cols = 1:3, lwd = 2, lty = 1:3, xlab = "", ylim=c(0,1.2),xlim=c(0,12),
+ ylab = "", legend.pos = c(4, 1.15), main= "Women Specific")
+ plot(msf0_4s, cols = 2:6, lwd = 2, lty = 1:5, xlab = "Years after admission",ylim=c(0,1.2),xlim=c(0,12),
+ ylab = "Baseline hazards for each transition", legend.pos =c(4, .85), main= NULL,cex = 0.5)
+ plot(msf1_4s, cols = 2:6, lwd = 2, lty = 1:5, xlab = "Years after admission", ylim=c(0,1.2),xlim=c(0,12),
+ ylab = "", legend.pos = c(4, 1), main= NULL,cex = 0.5)
+
+ if(no_mostrar==1){
+jpeg("C:/Users/andre/Desktop/SUD_CL/eso14.jpg", height=14, width= 12, res= 96, units = "in")
+
+}
+```
+
+
+For the General population programs, the transition from Admission to Readmission tend to show a more rapid progression in rates compared to the transition from Therapeutic Discharge to Readmission. In contrast, for the Women specific programs, this progression is equal between the two transitions. In both programs, the rate of therapeutic discharge stops increasing due to restrictions to the database (treatments longer than 1095 days were not considered as valid). Must take note that we are not seeing the effect of confounders in these progressions.
+
+For the four-states model and in the General-population programs, the cumulative hazards of Discharge without medical advice starts growing much more than the rates of those that experienced a therapeutic discharge. Additionally, the transition rate from Admission to readmission with the rate of the transition from Therapeutic discharge to readmission. 
+
+We also calculated the cumulative hazards but considering a semi-parametric model and the parametric model selected. For the semi-parametric, its different to the one presented in the previous figure because is not stratified by program and also include other covariates.
+
+<br>
+
+```{r msfit2.0, eval=T, echo=T, paged.print=T, error=T}
+# Semi-parametric models
+#Since there are tied event times, we need to specify ties="breslow" in order to obtain the Aalen-Johansen estimator of
+#the transition probability
+
+formula3<-
+as.formula(paste0("Surv(time, status) ~", paste0(fitform2," + arrival + strata(trans)")[[3]]))
+
+formula3_mstate<-
+as.formula(paste0("Surv(time, status) ~", paste0(fitform2," + arrival")[[3]]))
+
+formula3_mstate_b<-
+as.formula(paste0("Surv(time, status) ~", paste0(fitform2," + arrival.1 + arrival.2 + arrival.3")[[3]]))
+
+paste0("We introduced the following Formula: ")
+formula3
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+cox_fits0_prog0 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
+                            data = subset(ms_d_match_surv, tipo_de_plan_res_1==0), method = "breslow") 
+cox_fits0_prog1 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
+                            data = subset(ms_d_match_surv, tipo_de_plan_res_1==1), method = "breslow") 
+
+cox_fits0_4s_prog0 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
+                            data = subset(ms_d_match_surv, tipo_de_plan_res_1==0), method = "breslow") 
+cox_fits0_4s_prog1 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
+                            data = subset(ms_d_match_surv, tipo_de_plan_res_1==1), method = "breslow") 
+
+cox_fits <- survival::coxph(formula3, 
+                            data = ms_d_match_surv, method = "breslow") 
+
+cox_fits_4s <- survival::coxph(formula3, 
+                            data = ms_d_match_surv, method = "breslow") 
+```
+
+```{r msfit2.1, eval=F, echo=T, paged.print=T, error=T}
+# Semi-parametric models
+#Since there are tied event times, we need to specify ties="breslow" in order to obtain the Aalen-Johansen estimator of
+#the transition probability
+
+formula3<-
+as.formula(paste0("Surv(time, status) ~", paste0(fitform2," + arrival + strata(trans)")[[3]]))
+
+formula3_mstate<-
+as.formula(paste0("Surv(time, status) ~", paste0(fitform2," + arrival")[[3]]))
+
+formula3_mstate_b<-
+as.formula(paste0("Surv(time, status) ~", paste0(fitform2," + arrival.1 + arrival.2 + arrival.3")[[3]]))
+
+paste0("We introduced the following Formula: ")
+formula3
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+cox_fits0_prog0 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
+                            data = subset(ms_CONS_C1_SEP_2020_women_imputed, tipo_de_programa_2==0), method = "breslow") 
+cox_fits0_prog1 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
+                            data = subset(ms_CONS_C1_SEP_2020_women_imputed, tipo_de_programa_2==1), method = "breslow") 
+
+cox_fits0_4s_prog0 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
+                            data = subset(ms2_CONS_C1_SEP_2020_women_imputed, tipo_de_programa_2==0), method = "breslow") 
+cox_fits0_4s_prog1 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
+                            data = subset(ms2_CONS_C1_SEP_2020_women_imputed, tipo_de_programa_2==1), method = "breslow") 
+
+cox_fits <- survival::coxph(formula3, 
+                            data = ms_CONS_C1_SEP_2020_women_imputed, method = "breslow") 
+
+cox_fits_4s <- survival::coxph(formula3, 
+                            data = ms2_CONS_C1_SEP_2020_women_imputed, method = "breslow") 
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+# Parametric models
+
+# Sin covs= Trans 1: Gompertz o Gen-gamma en visual y RMSE, sin covariables. Se repite en AIC; Trans 2: Gen-gamma y Gompertz en RMSE (gompertz, mejor extrapolaci´n); gen-gamma, mejor inicio. Le sigue Lognormal. En AIC, parte Gen-gamma, gompertz y lognormal; Trans 3: Gompertz, Log-logistic y Gen-gamma. En AIC, Log-logistic, Gen-gamma y Weibull. Gompertz se aleja mucho.
+# 
+# Con covs= Trans 1: Gen-gamma y Gompertz en RMSE. Visualmente mejor gompertz. AIC mejor Gompertz, pero seguido de Gen-gamma; Trans 2: Gen-gamma, Lognormal y Gompertz. Visualmente Lognormal no destaca. AIC, gen-gamma, lognorma y un poco más atrás Gompertz; Trans 3: Gen-gamma, Log-logistic y Gamma. Gompertz se ve mejor, pero ni uno en verdad. AIC, Log-logistic, Gen-gamma y Lognormal.
+    
+#Gompertz, Gen-gamma, Log-logistic
+#Gompertz, Gen-gamma, Gen-gamma
+#Gompertz, Gompertz, Log-logistic
+#Gommpertz, Gompertz, Gen-gamma
+#Gen-gamma, Gen-gamma, Log-logistic
+#Gen-gamma, Gen-gamma, Gen-gamma
+#Gen-gamma, Gompertz, Log-logistic
+#Gen-gamma, Gompertz, Gen-gamma
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_    
+
+#2021-04-10
+
+#AIC
+# 1.- GenF, Gompertz, Ggam
+# 2.- GenF, Ggam., Logn
+# 3.- Llogis, Weibull, Ggam, GenF -> Con covs: Gen F, LLogis, Ggam
+
+#RMSE
+# 1.- GenF, Gga,. Gompertz
+# 2.- GenF, Ggam, Lognormal
+# 3.- Lognormal, Ggam, GenF
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_    
+
+dists_w_covs_mstate<-
+cbind(
+formal= c("Gompertz", "Generalized gamma", "Log-logistic"),
+model= c("gomp", "ggam", "llogis"),
+dist= c("gompertz", "gengamma", "llogis"))
+#“genf”, “genf.orig”, “gengamma”, “gengamma.orig”, “exp”, “weibull”, “weibullph”, “lnorm”, “gamma”, “gompertz”, “llogis”, “exponential”, “lognormal”
+
+sel_param_fits_a <- vector(length = n_trans, mode = "list") 
+#for (i in 1:n_trans){
+#  sel_param_fits_a[[i]] <- flexsurvreg(formula3_mstate,#formula3_mstate_b #fitform2_t3 #fitform2
+#                       data = subset(ms_CONS_C1_SEP_2020_women_imputed, trans == i),#
+#                       dist = as.character(dists_w_covs_mstate[i,"dist"]))
+#}
+# If I use formula3_mstate (include arrival term in every transition):
+#Warning messages:
+#1: In flexsurvreg(formula3_mstate, data = subset(ms2_CONS_C1_SEP_2020_women_imputed,  :
+#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
+#2: In flexsurvreg(formula3_mstate, data = subset(ms2_CONS_C1_SEP_2020_women_imputed,  :
+#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
+#3: In flexsurvreg(formula3_mstate, data = subset(ms2_CONS_C1_SEP_2020_women_imputed,  :
+#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
+
+#If I use formula fitform2_t3:
+#Warning messages:
+#1: In flexsurvreg(fitform2_t3, data = subset(ms_CONS_C1_SEP_2020_women_imputed,  :
+#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
+#2: In flexsurvreg(fitform2_t3, data = subset(ms_CONS_C1_SEP_2020_women_imputed,  :
+#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
+
+#If I use the formula formula3_mstate_b and expand.covs(ms_CONS_C1_SEP_2020_women_imputed,"arrival"), i get:
+#Warning messages:
+#1: In flexsurvreg(formula3_mstate_b, data = subset(expand.covs(ms_CONS_C1_SEP_2020_women_imputed,  :
+#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
+#2: In flexsurvreg(formula3_mstate_b, data = subset(expand.covs(ms_CONS_C1_SEP_2020_women_imputed,  :
+#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
+#3: In flexsurvreg(formula3_mstate_b, data = subset(expand.covs(ms_CONS_C1_SEP_2020_women_imputed,  :
+#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
+
+sel_param_fits_b <- vector(length = n_trans, mode = "list") 
+    sel_param_fits_b[[1]]<- fits_c_gomp[[1]] #fits_c_gomp, original. Al 2021-04-09 decidí probar otro modelo con fits_c_ggam
+    sel_param_fits_b[[2]]<- fits_c_ggam[[2]] #fits_c_ggam, original. Al 2021-04-09 decidí probar otro modelo con fits_c_gomp
+    sel_param_fits_b[[3]]<- fits_c_ggam[[3]] #fits_c_llogis, original.  Al 2021-04-09 decidí probar otro modelo con fits_c_ggam
+
+#"2021-04-10"
+sel_param_fits_b <- vector(length = n_trans, mode = "list") 
+    sel_param_fits_b[[1]]<- fits_c_gomp[[1]] 
+    sel_param_fits_b[[2]]<- fits_c_genf[[2]]
+    sel_param_fits_b[[3]]<- fits_c_ggam[[3]]
+            
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_    
+
+# Sin covs
+# Trans 1: Gompertz, Gen-gamma, Lognormal. Visualmente ninguno se ajusta   Gompertz tiene mejor progresión, Lognormal y Gen-gamma tienen buena guatita al principio. En AIC Gen-gamma, Lognormal y Log-logistic; Trans 2: Gompertz, Gen-gamma, Lognormal. Visualmente, Gompertz y Lognormal. AIC: Gompertz, Gen-gamma y Lognormal; Tans 3: Gen-gamma, Exponential y Lognormal. Visualmente, Gen-gamma y Exp. AIC: Gen-gammma y Lognormal; Trans 4: Log-logistic y Gen-gamma. Visualmente, Log-logistic parte bien, Gompertz también. AIC: Log-logistic, Weibull y Gen-gamma; Trans 5: Gompertz, Log-logistic y Gen-gamma. Visualemnte, Gompertz termina bien y Log-gistic parte bien. AIC: Gen-gamma, Lognormal y Log-logistic.
+    
+# Con covs
+#Gompertz, Gen-gamma, Lognormal. Visualmente, mejor extrapolación GOmpertz. AIC: Gen-gammma y Lognormal; Trans 2: Gompertz, Gen-gamma, Lognormal. AIC. Gompertz, Gen-gamma; Trans 3: Gen-gamma, Lognormal, Log-logistic. AIC: Gen-gamma, Lognormal, Log-logistic (como gen-gamma tuvo problemas cconvergiendo, log-logistic se ve mejor opción); Trans 4: Lognormal, Gen-gamma, Log-logistic. AIC: Log-logistic, Gen-gamma, Lognormal; Trans 5: Lognormal, Gen-gamma, Gompertz. Visualmente, GP Gompertz tiene mejor extrapolación. AIC: Gen-gamma, Lognormal, Log-logistic.
+    
+#32= 2^5
+# Gen-gamma, Gompertz, Log-logistic, Log-logistic, Lognormal
+# Gen-gamma, Gompertz, Log-logistic, Log-logistic, Gen-gamma
+# Gen-gamma, Gompertz, Log-logistic, Gen-gamma, Lognormal
+# Gen-gamma, Gompertz, Log-logistic, Gen-gamma, Gen-gamma
+
+# Gen-gamma, Gompertz, Lognormal, Log-logistic, Lognormal
+# Gen-gamma, Gompertz, Lognormal, Log-logistic, Gen-gamma
+# Gen-gamma, Gompertz, Lognormal, Gen-gamma, Lognormal
+# Gen-gamma, Gompertz, Lognormal, Gen-gamma, Gen-gamma
+
+# Gen-gamma, Gen-gamma, Log-logistic, Log-logistic, Lognormal
+# Gen-gamma, Gen-gamma, Log-logistic, Log-logistic, Gen-gamma
+# Gen-gamma, Gen-gamma, Log-logistic, Gen-gamma, Lognormal
+# Gen-gamma, Gen-gamma, Log-logistic, Gen-gamma, Gen-gamma
+
+# Gen-gamma, Gen-gamma, Lognormal, Log-logistic, Lognormal
+# Gen-gamma, Gen-gamma, Lognormal, Log-logistic, Gen-gamma
+# Gen-gamma, Gen-gamma, Lognormal, Gen-gamma, Lognormal
+# Gen-gamma, Gen-gamma, Lognormal, Gen-gamma, Gen-gamma
+
+# Lognormal, Gompertz, Log-logistic, Log-logistic, Lognormal
+# Lognormal, Gompertz, Log-logistic, Log-logistic, Gen-gamma
+# Lognormal, Gompertz, Log-logistic, Gen-gamma, Lognormal
+# Lognormal, Gompertz, Log-logistic, Gen-gamma, Gen-gamma
+
+# Lognormal, Gompertz, Lognormal, Log-logistic, Lognormal
+# Lognormal, Gompertz, Lognormal, Log-logistic, Gen-gamma
+# Lognormal, Gompertz, Lognormal, Gen-gamma, Lognormal
+# Lognormal, Gompertz, Lognormal, Gen-gamma, Gen-gamma
+
+# Lognormal, Gen-gamma, Log-logistic, Log-logistic, Lognormal
+# Lognormal, Gen-gamma, Log-logistic, Log-logistic, Gen-gamma
+# Lognormal, Gen-gamma, Log-logistic, Gen-gamma, Lognormal
+# Lognormal, Gen-gamma, Log-logistic, Gen-gamma, Gen-gamma
+
+# Lognormal, Gen-gamma, Lognormal, Log-logistic, Lognormal
+# Lognormal, Gen-gamma, Lognormal, Log-logistic, Gen-gamma
+# Lognormal, Gen-gamma, Lognormal, Gen-gamma, Lognormal
+# Lognormal, Gen-gamma, Lognormal, Gen-gamma, Gen-gamma
+
+    
+#Gompertz Gompertz Lognormal Lognormal Generalized gamma _ antes de 2021-04-08
+#Gen-gamma, Gompertz, Gen-gamma, Log-logistic, Lognormal _ 2021-04-08
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_    
+#2021-04-10
+
+#RMSE
+#1.- GenF, Gompertz, Ggam
+#2.- GenF, Gompertz, Ggam
+#3.- Ggam, Logn., Llogis
+#4.- Logn., Ggam., GenF
+#5.- Logn., Ggam., GenF, Gompertz
+
+#AIC
+#1.- GenF, Ggam., Logn.
+#2.- GenF, Gompertz, Ggam
+#3.- Ggam., Logn., Llogis
+#4.- GenF, Llogis, Ggam
+#5.- GenF, Ggam, Logn
+    
+#VISUAL
+#1.- GenF 2.- GenF 3.- NADA 4.- Genf Exp 5.- Gompertz
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_    
+
+dists_w_covs_mstate_4s<-
+cbind(
+formal= c("Generalized gamma", "Gompertz", "Lognormal", "Log-logistic", "Lognormal"),
+model= c("ggam", "gomp", "logn", "llogis", "logn"),
+dist= c("gengamma", "gompertz", "lognormal", "llogis", "lognormal"))
+#“genf”, “genf.orig”, “gengamma”, “gengamma.orig”, “exp”, “weibull”, “weibullph”, “lnorm”, “gamma”, “gompertz”, “llogis”, “exponential”, “lognormal”
+
+sel_param_fits_4s_a <- vector(length = n_trans2, mode = "list") 
+#for (i in 1:n_trans2){
+#  sel_param_fits_4s_a[[i]] <- flexsurvreg(formula3_mstate, #fitform2, used in the original definitions
+#                       data = subset(ms2_CONS_C1_SEP_2020_women_imputed, trans == i),
+#                       dist = as.character(dists_w_covs_mstate_4s[i,"dist"]))
+#}
+#Error in optim(method = "BFGS", par = c(mu = -0.556869719436473, sigma = 0.123040334180129,  :non-finite finite-difference value [1]
+#train_data$time_queued <- scale(train_data$time_queued, scale=F)    --> Generalized gamma did not work out well, required definition of starting values.
+
+sel_param_fits_4s_b <- vector(length = n_trans2, mode = "list") 
+    sel_param_fits_4s_b[[1]]<- fits_c_gomp2[[1]]#fits_c_ggam2 y fits_c_logn2. At 2021-04-09 decided to prove another model with  Gompertz. At 04-10, Gen F; 
+    sel_param_fits_4s_b[[2]]<- fits_c_gomp2[[2]]#
+    sel_param_fits_4s_b[[3]]<- fits_c_logn2[[3]]
+    sel_param_fits_4s_b[[4]]<- fits_c_ggam2[[4]]#fits_c_llogis2, At 2021-04-09 decided to prove another model with  fits_c_ggam2
+    sel_param_fits_4s_b[[5]]<- fits_c_logn2[[5]]# At 2020-04-12, I think that Gompertz extrapolates better
+
+#2020-04-10    
+sel_param_fits_4s_b <- vector(length = n_trans2, mode = "list") 
+    sel_param_fits_4s_b[[1]]<- fits_c_gomp2[[1]]
+    sel_param_fits_4s_b[[2]]<- fits_c_gomp2[[2]]
+    sel_param_fits_4s_b[[3]]<- fits_c_logn2[[3]]
+    sel_param_fits_4s_b[[4]]<- fits_c_ggam2[[4]]
+    sel_param_fits_4s_b[[5]]<- fits_c_logn2[[5]]    #2021-04-13, could be a Gompertz, but this model its too optimistic. Even could be an exponential, but does not fit well at the first 3 years.
+    
+# Database to contrast adjustments
+newdat3a <- data.table::data.table(tipo_de_programa_2= factor(c(rep(1,1*n_trans))),
+  #comp_status= factor(rep(c("Therapeutic discharge","Discharge without clinical advice"),2)),
+  edad_al_ing_grupos= factor(rep("50+",1*n_trans)),
+  escolaridad_rec= factor(rep("1-More than high school",1*n_trans)),
+  sus_principal_mod= factor(rep("Marijuana",1*n_trans)),
+  freq_cons_sus_prin= factor(rep("2 to 3 days a week",1*n_trans)),
+  compromiso_biopsicosocial= factor(rep("1-Mild",1*n_trans)),
+  tenencia_de_la_vivienda_mod= factor(rep("Owner/Transferred dwellings/Pays Dividends",1*n_trans)),
+  num_otras_sus_mod= factor(rep("No additional substance",1*n_trans)),
+  numero_de_hijos_mod_rec= factor(rep("No",1*n_trans)),
+  tipo_de_plan_res= factor(rep("Outpatient",1*n_trans)),
+  strata= rep(1:n_trans,1),
+  arrival=rep(0,)
+                       )
+newdat3b <- data.table::data.table(tipo_de_programa_2= factor(c(rep(0,1*n_trans))),
+  #comp_status= factor(rep(c("Therapeutic discharge","Discharge without clinical advice"),2)),
+  edad_al_ing_grupos= factor(rep("50+",1*n_trans)),
+  escolaridad_rec= factor(rep("1-More than high school",1*n_trans)),
+  sus_principal_mod= factor(rep("Marijuana",1*n_trans)),
+  freq_cons_sus_prin= factor(rep("2 to 3 days a week",1*n_trans)),
+  compromiso_biopsicosocial= factor(rep("1-Mild",1*n_trans)),
+  tenencia_de_la_vivienda_mod= factor(rep("Owner/Transferred dwellings/Pays Dividends",1*n_trans)),
+  num_otras_sus_mod= factor(rep("No additional substance",1*n_trans)),
+  numero_de_hijos_mod_rec= factor(rep("No",1*n_trans)),
+  tipo_de_plan_res= factor(rep("Outpatient",1*n_trans)),
+  strata= rep(1:n_trans,1),
+  arrival=rep(0,)
+                       )
+newdat5a <- data.table::data.table(tipo_de_programa_2= factor(c(rep(1,1*n_trans2))),
+  #comp_status= factor(rep(c("Therapeutic discharge","Discharge without clinical advice"),2)),
+  edad_al_ing_grupos= factor(rep("50+",1*n_trans2)),
+  escolaridad_rec= factor(rep("1-More than high school",1*n_trans2)),
+  sus_principal_mod= factor(rep("Marijuana",1*n_trans2)),
+  freq_cons_sus_prin= factor(rep("2 to 3 days a week",1*n_trans2)),
+  compromiso_biopsicosocial= factor(rep("1-Mild",1*n_trans2)),
+  tenencia_de_la_vivienda_mod= factor(rep("Owner/Transferred dwellings/Pays Dividends",1*n_trans2)),
+  num_otras_sus_mod= factor(rep("No additional substance",1*n_trans2)),
+  numero_de_hijos_mod_rec= factor(rep("No",1*n_trans2)),
+  tipo_de_plan_res= factor(rep("Outpatient",1*n_trans2)),
+  strata= rep(1:n_trans2,1),
+  arrival=rep(0,)
+                       )
+newdat5b <- data.table::data.table(tipo_de_programa_2= factor(c(rep(0,1*n_trans2))),
+  #comp_status= factor(rep(c("Therapeutic discharge","Discharge without clinical advice"),2)),
+  edad_al_ing_grupos= factor(rep("50+",1*n_trans2)),
+  escolaridad_rec= factor(rep("1-More than high school",1*n_trans2)),
+  sus_principal_mod= factor(rep("Marijuana",1*n_trans2)),
+  freq_cons_sus_prin= factor(rep("2 to 3 days a week",1*n_trans2)),
+  compromiso_biopsicosocial= factor(rep("1-Mild",1*n_trans2)),
+  tenencia_de_la_vivienda_mod= factor(rep("Owner/Transferred dwellings/Pays Dividends",1*n_trans2)),
+  num_otras_sus_mod= factor(rep("No additional substance",1*n_trans2)),
+  numero_de_hijos_mod_rec= factor(rep("No",1*n_trans2)),
+  tipo_de_plan_res= factor(rep("Outpatient",1*n_trans2)),
+  strata= rep(1:n_trans2,1),
+  arrival=rep(0,)
+                       )
+
+# Non-parametric
+cox_cumhaz_0_a_gp <- mstate::msfit(cox_fits0_prog0, 
+                            newdata = data.frame(strata = 1:n_trans),
+                            trans = mat_3_states, variance = FALSE)
+cox_cumhaz_0_a_we <- mstate::msfit(cox_fits0_prog1, 
+                            newdata = data.frame(strata = 1:n_trans),
+                            trans = mat_3_states, variance = FALSE)
+
+cox_cumhaz_0_c_gp <- mstate::msfit(cox_fits0_4s_prog0, 
+                            newdata = data.frame(strata = 1:n_trans2),
+                            trans = mat_4_states, variance = FALSE)
+
+cox_cumhaz_0_c_we <- mstate::msfit(cox_fits0_4s_prog1, 
+                            newdata = data.frame(strata = 1:n_trans2),
+                            trans = mat_4_states, variance = FALSE)
+```
+
+```{r msfit2.2.1, eval=F, echo=T, paged.print=TRUE, error=T}
+#Example by https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5868723/
+#library(mstate)
+# Semi-parametric 
+cox_cumhaz_a <- mstate::msfit(cox_fits, 
+                            newdata = newdat3a,
+                            trans = mat_3_states, variance = FALSE)
+```
+```{r msfit2.2.2, eval=F, echo=T, paged.print=TRUE, error=T}
+cox_cumhaz_b <- mstate::msfit(cox_fits, 
+                            newdata = newdat3b,
+                            trans = mat_3_states, variance = FALSE)
+```
+```{r msfit2.2.3, eval=F, echo=T, paged.print=TRUE, error=T}
+cox_cumhaz_c <- mstate::msfit(cox_fits_4s, 
+                            newdata = newdat5a,
+                            trans = mat_4_states, variance = FALSE)
+```
+```{r msfit2.2.4, eval=F, echo=T, paged.print=TRUE, error=T}
+cox_cumhaz_d <- mstate::msfit(cox_fits_4s, 
+                            newdata = newdat5b,
+                            trans = mat_4_states, variance = FALSE)
+```
+```{r max_time, eval=T, echo=T, paged.print=TRUE, error=T}
+max_time_a <- max(cox_cumhaz_0_a_gp$Haz$time) # Maximum follow-up time
+max_time_b <- max(cox_cumhaz_0_a_we$Haz$time) # Maximum follow-up time
+max_time_c <- max(cox_cumhaz_0_c_gp$Haz$time) # Maximum follow-up time
+max_time_d <- max(cox_cumhaz_0_c_we$Haz$time) # Maximum follow-up time
+#==== C stack trace ===============================
+```
+
+```{r msfit2.3, eval=T, echo=T, paged.print=TRUE, error=T}
+
+#https://rdrr.io/cran/flexsurv/man/msfit.flexsurvreg.html
+# Parametric
+
+flexsurv_cumhaz_a <- flexsurv::msfit.flexsurvreg(sel_param_fits_b,#sel_param_fits, 
+                                             newdata = newdat3a, 
+                                             t = seq(.001, max_time_a, by = .01),
+                                             B = n_iter,
+                                             trans = mat_3_states, variance = FALSE)
+flexsurv_cumhaz_b <- flexsurv::msfit.flexsurvreg(sel_param_fits_b,#sel_param_fits, 
+                                             newdata = newdat3b,
+                                             t = seq(.001, max_time_b, by = .01),
+                                             B = n_iter,
+                                             trans = mat_3_states, variance = FALSE)
+flexsurv_cumhaz_c <- flexsurv::msfit.flexsurvreg(sel_param_fits_4s_b, # sel_param_fits_4s_b,#sel_param_fits_4s, 
+                                             newdata = newdat5a,
+                                             t = seq(.001, max_time_c, by = .01),
+                                             B = n_iter,
+                                             trans = mat_4_states, variance = FALSE)
+flexsurv_cumhaz_d <- flexsurv::msfit.flexsurvreg(sel_param_fits_4s_b,#sel_param_fits_4s_b,#sel_param_fits_4s, #Alternatively, if the parameters (including covariate effects) are assumed to be different between different transitions, then a list of transition-specific models can be formed. This list has one component for each permitted transition in the multi-state model. This is more computationally efficient, particularly for larger models and datasets. See the example below, and the vignette.
+                                             newdata = newdat5b, #A data frame specifying the values of covariates in the fitted model, other than the transition number. This must be specified if there are other covariates. The variable names should be the same as those in the fitted model formula. There must be either one value per covariate (the typical situation) or n values per covariate, a different one for each of the n allowed transitions.
+                                             t = seq(.001, max_time_d, by = .01), #Vector of times. These do not need to be the same as the observed event times, and since the model is parametric, they can be outside the range of the data. A grid of more frequent times will provide a better approximation to the cumulative hazard trajectory for prediction with probtrans or mssample, at the cost of greater computational expense.
+                                             B = n_iter,#Number of simulations from the normal asymptotic distribution used to calculate variances. Decrease for greater speed at the expense of accuracy.
+                                             trans = mat_4_states, 
+                                             variance = FALSE)#Calculate the variances and covariances of the transition cumulative hazards (TRUE or FALSE). This is based on simulation from the normal asymptotic distribution of the estimates, which is computationally-expensive.
+
+
+# Definition of the database to Plot to compare
+
+# 3 states -General population
+cumhaz_data_a <- rbind(data.frame(cox_cumhaz_0_a_gp$Haz,
+                                model = "NP Cox"),
+                      #data.frame(cox_cumhaz_a$Haz,
+                      #          model = "Cox"),
+                      data.frame(flexsurv_cumhaz_a$Haz,
+                                model = "Parametric"))
+
+cumhaz_data_a$trans <- factor(cumhaz_data_a$trans,
+                            levels = seq(1, 3),
+                            labels = c("Adm -> Ther.Disch",
+                                       "Adm -> Readm",
+                                       "Ther.Disch -> Readm"))
+
+# 3 states -Women specific
+cumhaz_data_b <- rbind(data.frame(cox_cumhaz_0_a_we$Haz,
+                                model = "NP Cox"),
+                      #data.frame(cox_cumhaz_b$Haz,
+                      #          model = "Cox"),
+                      data.frame(flexsurv_cumhaz_b$Haz,
+                                model = "Parametric"))
+cumhaz_data_b$trans <- factor(cumhaz_data_b$trans,
+                            levels = seq(1, 3),
+                            labels = c("Adm -> Ther.Disch",
+                                       "Adm -> Readm",
+                                       "Ther.Disch -> Readm"))
+
+## 4 states -General population
+cumhaz_data_c <- rbind(data.frame(cox_cumhaz_0_c_gp$Haz,
+                                model = "NP Cox"),
+                      #data.frame(cox_cumhaz_c$Haz,
+                      #          model = "Cox"),
+                      data.frame(flexsurv_cumhaz_c$Haz,
+                                model = "Parametric"))
+
+cumhaz_data_c$trans <- factor(cumhaz_data_c$trans,
+                            levels = seq(1, 5),
+                            labels = c("Adm -> Ther.Disch",
+                                       "Adm -> Disch.w/oClin.Adv.",
+                                       "Adm -> Readm",
+                                       "Ther.Disch -> Readm",
+                                       "Disch.w/oClin.Adv.-> Readm"
+                                       ))
+cumhaz_data_d <- rbind(data.frame(cox_cumhaz_0_c_we$Haz,
+                                model = "NP Cox"),
+                      #data.frame(cox_cumhaz_d$Haz,
+                      #          model = "Cox"),
+                      data.frame(flexsurv_cumhaz_d$Haz,
+                                model = "Parametric"))
+
+cumhaz_data_d$trans <- factor(cumhaz_data_d$trans,
+                            levels = seq(1, 5),
+                            labels = c("Adm -> Ther.Disch",
+                                       "Adm -> Disch.w/oClin.Adv.",
+                                       "Adm -> Readm",
+                                       "Ther.Disch -> Readm",
+                                       "Disch.w/oClin.Adv.-> Readm"
+                                       ))
+```
+
+```{r msfit2.4, eval=T, echo=T, paged.print=TRUE, fig.height=10, fig.width=10, fig.cap="Figure 2a. Estimate of Cumulative Hazards (Semi-Markov)", fig.align="center", error=T}
+
+#Son distintos, por mas que parezcan iguales.
+#plot(cumhaz_data_a$time[which(cumhaz_data_a$trans=="Adm -> Ther.Disch")],round(cumhaz_data_a$Haz[which(cumhaz_data_a$trans=="Adm -> Ther.Disch")]-cumhaz_data_b$Haz[which(cumhaz_data_b$trans=="Adm -> Ther.Disch")],3))
+
+`%>%` <-magrittr::`%>%` 
+library(ggplot2)
+plot_comp_mssurvfit<-
+rbind(cbind.data.frame(cumhaz_data_a,tipo_de_programa_2=1), 
+      cbind.data.frame(cumhaz_data_b,tipo_de_programa_2=0)) %>%
+ggplot2::ggplot(aes(x = time, y = Haz, col = model, linetype = factor(tipo_de_programa_2))) +
+  geom_line(size=1, alpha=.65) + 
+  facet_wrap(~trans, scales="free_y")+
+  scale_color_manual(name = "Model", values=c("#061F70","#A68D00"), labels= c("NP Cox","Parametric")) + # "#A65100" #"Cox",
+  scale_linetype_manual(name= "Type of program",values=c(1,4), labels=c("WE","GP")) +
+  xlab("Years") + ylab("Cumulative hazard") + 
+  theme_minimal()+
+  ylim(0,1)+
+  theme(legend.position=c(.9,.8),
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+plot_comp_mssurvfit
+#plot_comp_mssurvfit+ ggtitle("Figura 3 estados con Gompertz, Gen F y Gen-gamma")
+
+if(no_mostrar==1){
+jpeg("C:/Users/andre/Desktop/SUD_CL/eso16.jpg", height=10, width= 10, res= 96, units = "in")
+plot_comp_mssurvfit
+dev.off()
+}
+```
+
+```{r msfit2.5_4s, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 2b. Estimate of Cumulative Hazards (Semi-Markov), Four-states", fig.align="center", error=T}
+
+#Son distintos, por mas que parezcan iguales.
+#plot(cumhaz_data_a$time[which(cumhaz_data_a$trans=="Adm -> Ther.Disch")],round(cumhaz_data_a$Haz[which(cumhaz_data_a$trans=="Adm -> Ther.Disch")]-cumhaz_data_b$Haz[which(cumhaz_data_b$trans=="Adm -> Ther.Disch")],3))
+
+library(ggplot2)
+
+plot_comp_mssurvfit2<-
+rbind(cbind.data.frame(cumhaz_data_c,tipo_de_programa_2=1), 
+      cbind.data.frame(cumhaz_data_d,tipo_de_programa_2=0)) %>%
+ggplot2::ggplot(aes(x = time, y = Haz, col = model, linetype = factor(tipo_de_programa_2))) +
+  geom_line(size=1, alpha=.65) + 
+  facet_wrap(trans~., ncol=1, scales="free_y") + 
+  scale_color_manual(name = "Model", values=c("#061F70","#A68D00"), labels= c("NP Cox","Parametric")) + # "#A65100" #"Cox",
+  scale_linetype_manual(name= "Type of program",values=c(1,4), labels=c("WE","GP")) +
+  xlab("Years") + ylab("Cumulative hazard") + 
+  theme_minimal()+
+  theme(legend.position=c(.9,.485),
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+
+#cumhaz_data_d %>% 
+#     group_by(trans,model) %>% summarise(mean_haz=mean(Haz))
+# No sé por qué no resulta que aparaezca, si los estoy viendo.
+plot_comp_mssurvfit2
+#plot_comp_mssurvfit2+ ggtitle("Figura 4 estados con Gompertz, Gen F y Gen-gamma")
+
+
+if(no_mostrar==1){
+jpeg("C:/Users/andre/Desktop/SUD_CL/eso17.jpg", height=15, width= 10, res= 96, units = "in")
+plot_comp_mssurvfit2
+dev.off()
+}
+```
+
+<br>
+
+# Transition Probabilites of the Joint Model
+
+We also want to know the probability to be in each of the three states over time, not only the instantaneous transition rate reflected by the cumulative hazard. We need to create a data frame that represents an individual with Low risk score for reference. We need to compute the probability of readmission after being admitted to a treatment, with or without a therapeutic discharge, for the different periods.
+
+For mstate package, it is possible to use simulation to calculate transition probabilities through `mssample`.
+
+In semi-Markov models, solving the Kolmogorov forward equation numerically is not feasible because the transition is no longer a deterministic function of t, depending on the transition history to estimate differences. Considering the abovementioned, we calculated the transition probabilities not through a deterministic approach, but following a probabilistic one through resamples.
+
+The cumulative hazards obtained are used to simulate the times at which patients transition between health states,  that is,  state occupancy probabilities with a “clock-reset” model at the times specified by 
+
+<br>
+
+```{r probtrans_semimark_ci951_mssample_cox1,eval=T, echo=T, paged.print=TRUE, error=T}
+#, fig.height=13, fig.width=10, fig.cap="Figure 12a. Aalen-Johansen estimator with confidence intervals", fig.align="center"
+
+time_before_probtrans_ci95<-Sys.time()
+#load("C:/Users/andre/Desktop/SUD_CL/mult_state_carla_2.RData")
+#For semi-Markov models, mstate provides the function mssample to produce both simulated
+#trajectories and transition probability matrices from semi-Markov models, given the estimated
+#piecewise-constant cumulative hazards (Fiocco, Putter, and van Houwelingen 2008), produced
+#by msfit or msfit.flexsurvreg, though this is generally less efficient than pmatrix.simfs.
+#PARA SEMI-MARKOV, PODEMOS SIMULAR TRAYECTORIAS Y MATRICES DE PROBABILIDADES DE TRANSICIÓN, 
+#DADOS LOS HAZARDS PIECEWISE-CONSTANT DADOS POR MSFIT, AUNQUE ES MENOS EFICIENTE QUE PMATRIX.SIMFS
+
+# Cox model semi-parametric
+crcox <- survival::coxph(formula3,
+               #A character string specifying the type of variances ten co be computed (so only needed if variance=TRUE). Possible values are "aalen" or "greenwood"
+               data = ms_CONS_C1_SEP_2020_women_imputed)#, method = "breslow") 
+
+crcox_4s <- survival::coxph(formula3,
+               #A character string specifying the type of variances to be computed (so only needed if variance=TRUE). Possible values are "aalen" or "greenwood"
+               data = ms2_CONS_C1_SEP_2020_women_imputed)
+#The Efron option is more accurate if there are a large number of ties, and it is the default option here. In practice the number of ties is usually small, in which case all the methods are statistically indistinguishable.
+```
+```{r probtrans_semimark_ci951_mssample_cox2.0a,eval=T, echo=T, paged.print=TRUE, error=T}
+invisible(c("mssample"))
+#The mstate::mssample() function works by sampling survival times from each possible transition from the cumulative hazards. More precisely, the cumulative hazards are used to simulate the (discrete) times at which patients transition between health states using the base R function sample(), which is, in turn, used to count the number of patients in each health state at the times specified by the argument tvec.
+#Multi-state models can be simulated using mstate::mssample(), which simulates state occupancy probabilities from predicted cumulative hazards.
+#The mstate::mssample() function works by sampling survival times from each possible transition from the cumulative hazards. More precisely, the cumulative hazards are used to simulate the (discrete) times at which patients transition between health states using the base R function sample(), which is, in turn, used to count the number of patients in each health state at the times specified by the argument tvec.
+#The function below uses mstate::mssample() to simulate state occupancy probabilities with a “clock-reset” model at the times specified in yr_grid.
+
+#https://www.researchgate.net/publication/303029139_flexsurv_A_Platform_for_Parametric_Survival_Modeling_in_R/fulltext/5735e2f608aea45ee83ca2c0/flexsurv-A-Platform-for-Parametric-Survival-Modeling-in-R.pdf
+#Jackson C. H. (2016). flexsurv: A Platform for Parametric Survival Modeling in R. Journal of statistical software, 70, i08. https://doi.org/10.18637/jss.v070.i08
+#For semi-Markov models, mstate provides the function mssample to produce both simulated
+#trajectories and transition probability matrices from semi-Markov models, given the estimated
+#piecewise-constant cumulative hazards
+
+# piece-wise constant estimates
+set.seed(1234)
+mrcox_a <- mstate::msfit(object = crcox,
+                       newdata= newdat3a,
+                       trans = mat_3_states)
+mrcox_b <- mstate::msfit(object = crcox,
+                       newdata= newdat3b,
+                       trans = mat_3_states)
+```
+```{r probtrans_semimark_ci951_mssample_cox2.0b,eval=T, echo=T, paged.print=TRUE, error=T}
+mrcox_c <- mstate::msfit(object = crcox_4s,
+                       newdata= newdat5a,
+                       trans = mat_4_states)
+
+mrcox_d <- mstate::msfit(object = crcox_4s,
+                       newdata= newdat5b,
+                       trans = mat_4_states)
+```
+
+```{r probtrans_semimark_ci951_mssample_cox2.1,eval=F, echo=T, paged.print=TRUE, error=T}
+set.seed(1234)
+pmatrix_cox_a_0<-
+mstate::mssample(msf0$Haz, trans = mat_3_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+set.seed(1234)
+pmatrix_cox_b_0<-
+mstate::mssample(msf1$Haz, trans = mat_3_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+set.seed(1234)
+pmatrix_cox_a_4s_0<-
+mstate::mssample(msf0_4s$Haz, trans = mat_3_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+set.seed(1234)
+pmatrix_cox_b_4s_0<-
+mstate::mssample(msf1_4s$Haz, trans = mat_3_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+```
+
+```{r probtrans_semimark_ci951_mssample_cox2.2_mssample,eval=T, echo=T, paged.print=TRUE}
+
+set.seed(1234)
+pmatrix_cox_a<-
+mstate::mssample(mrcox_a$Haz, trans = mat_3_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+set.seed(1234)
+pmatrix_cox_b<-
+mstate::mssample(mrcox_b$Haz, trans = mat_3_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+```
+```{r probtrans_semimark_ci951_mssample_cox2.3_mssample,eval=T, echo=T, paged.print=TRUE, error=T}
+set.seed(1234)
+pmatrix_cox_c<-
+mstate::mssample(mrcox_c$Haz, trans = mat_4_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+set.seed(1234)
+pmatrix_cox_d<-
+mstate::mssample(mrcox_d$Haz, trans = mat_4_states, clock = "reset", M = n_iter/2, tvec = seq(0, 11, by = 1/12),do.trace=500)
+
+#1000 samples from mssample give estimates of transition probabilities that are accurate to within around 0.02
+#
+```
+
+```{r probtrans_semimark_ci952,eval=T, echo=T, paged.print=TRUE}
+
+# prediction transition probs -----------------------------------------------
+
+#As I understand it, this quantity is the probability that someone has had event k by time t. This is what pmatrix.fs does, but in the more general situation of continuous-time multi-state models. For a competing risks model, this is the transition probability between the "starting state" and "had event k" over a time interval t. It's computed using numerical ODE solver, so perhaps this is overkill for competing risks models if the formula (4) above is all that's needed - this can be taken directly from the hazards and cumulative hazards.
+
+#The transition probability matrix for time-inhomogeneous Markov multi-state models fitted to time-to-event data with flexsurvreg. This has \(r,s\) entry giving the probability that an individual is in state \(s\) at time \(t\), given they are in state \(r\) at time \(0\).
+
+#http://www.crm.umontreal.ca/probindustriels2016/wp-content/uploads/2017/05/ProbInd2016.pdf
+#Event Variables in Client Analytics
+#Project Submitted by The Co-operators
+#Alberto Alinas, Thierry Duchesne, Émilie Lavoie-Charland, Mernoosh Malekiha, James McVittie, Idir Saïdani, Arusharka Sen, Joey Wang, and Meng Zhao
+#Alternatively, once an object of class flexsurvreg has been fitted, careful use of the pmatrix.fs function will also us to compute the above quantity for various values of x as well as other transition probabilities.
+
+#CAUTION: "pmatrix.fs" is only for Markov models. For a time-inhomogeneous Markov model, these are related to the tranisition intensities via the Kolmogorov forward equation
+
+#Confidence intervals can be obtained by simulation from the asymptotic distribution of the
+#maximum likelihood estimates – see help("pmatrix.fs") for full details
+
+#Transition probability matrix from a fully-parametric, time-inhomogeneous Markov multi-state model
+
+
+#https://rdrr.io/github/n8thangreen/LTBIscreeningproject/src/scripts/flexsurv-model-fit.R
+
+invisible(c("Incorporating tcovs does not work, but in multistateutils they say that the inclusion of this term does not change probabilities"))
+#This functionality is implemented in pmatrix.simfs, but the tcovs argument actually has no impact on the transition probabilities, as evidenced below.
+#pmatrix.simfs(models_arrival, tmat, newdata=newdata_arrival, t=365, tcovs='Tstart')
+
+for(i in seq(0, 11, by = 1/12)){
+  set.seed(1234)
+  flexsurv::pmatrix.simfs(x = sel_param_fits_b,
+                        t = i, #Must be a single number unlike pmatrix.fs
+                        ci = T,
+                        #B= n_iter/5000, #Increasing B is usually more expensive than increasing M. NUmber of simulations from the noral asymptotic distribution. MOre, more accuracy
+                        newdat= newdat3a,
+                        tvar="trans", # variable in the data representing the transition type. NOt required if x is a list of models
+                        #tcovs= "arrival",# Predicatable time-dependent covariates such as age
+                        cores= 8,
+                        #M = 1,#Number of individual trajectories to simulate.
+                        trans = mat_3_states) %>% 
+  assign(paste0("pmatrix_t_a_",i),.,envir=.GlobalEnv)
+}
+
+for(i in seq(0, 11, by = 1/12)){
+  set.seed(1234)
+  flexsurv::pmatrix.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        #B= n_iter/5000,
+                        newdat= newdat3b,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8,#N of processor cores
+                        trans = mat_3_states) %>% 
+  assign(paste0("pmatrix_t_b_",i),.,envir=.GlobalEnv)
+}
+
+for(i in seq(0, 11, by = 1/12)){
+  set.seed(1234)
+  flexsurv::pmatrix.simfs(x = sel_param_fits_4s_b,
+                        t = i, #Must be a single number unlike pmatrix.fs
+                        ci = T,
+                        #B= n_iter/5000, #Increasing B is usually more expensive than increasing M. NUmber of simulations from the noral asymptotic distribution. MOre, more accuracy
+                        newdat= newdat5a,
+                        tvar="trans",
+                        #tcovs= "arrival",# Predicatable time-dependent covariates such as age
+                        cores= 8,
+                        #M = 1,#Number of individual trajectories to simulate.
+                        trans = mat_4_states) %>% 
+  assign(paste0("pmatrix_4s_t_a_",i),.,envir=.GlobalEnv)
+}
+
+for(i in seq(0, 11, by = 1/12)){
+  set.seed(1234)
+  flexsurv::pmatrix.simfs(x = sel_param_fits_4s_b,
+                        t = i,
+                        ci = T,
+                       # B= n_iter/5000,
+                        newdat= newdat5b,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8,#N of processor cores
+                        trans = mat_4_states) %>% 
+  assign(paste0("pmatrix_4s_t_b_",i),.,envir=.GlobalEnv)
+}
+
+# Names of "predictable" time-dependent covariates in newdata, i.e. those whose values change at the same rate as time. Age is a typical example. During simulation, their values will be updated after each transition time, by adding the current time to the value supplied in newdata. This assumes the covariate is measured in the same unit as time. tcovs is supplied as a character vector.
+
+#LIMITATIONS: ONLY HANDLES A SINGLE INDIVIDUAL AT A TIME, WITH CHARACTERISTICS DEFINED IN NEWDAT3A
+
+#ggplot(data = pmatrix,
+#       aes(x = X..i.., y = X1, colour = trans, group = trans)) +
+#  geom_step() +
+#  ylim(0, 0.05) + ylab("cumulative trans probs")
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+pmatrix_t_a<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    get(paste0("pmatrix_t_a_",t))
+    }))
+
+
+pmatrix_t_b<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    get(paste0("pmatrix_t_b_",t))
+    }))
+
+
+pmatrix_4s_t_a<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    get(paste0("pmatrix_4s_t_a_",t))
+    }))
+
+pmatrix_4s_t_b<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    get(paste0("pmatrix_4s_t_b_",t))
+    }))
+
+#_#_#_#_#_#_#_#_
+
+pmatrix_t_a_df<-data.frame()
+for (timep in seq(0, 11, by = 1/12)){
+    pmatrix<-
+    lapply(get(paste0("pmatrix_t_a_",x)), t) %>%
+    plyr::ldply(data.frame)
+    
+    pmatrix$trans <- c(1,2,3)
+    #pmatrix$'.id' <- as.numeric(pmatrix$'.id')
+    pmatrix$timepoint <- rep(timep,)
+    
+    pmatrix_t_a_df<- rbind(pmatrix_t_a_df,pmatrix)
+}
+
+pmatrix_t_b_df<-data.frame()
+for (timep in seq(0, 11, by = 1/12)){
+    pmatrix<-
+    lapply(get(paste0("pmatrix_t_b_",x)), t) %>%
+    plyr::ldply(data.frame)
+    
+    pmatrix$trans <- c(1,2,3)
+    #pmatrix$'.id' <- as.numeric(pmatrix$'.id')
+    pmatrix$timepoint <- rep(timep,)
+    
+    pmatrix_t_b_df<- rbind(pmatrix_t_b_df,pmatrix)
+}
+
+pmatrix_4s_t_a_df<-data.frame()
+for (timep in seq(0, 11, by = 1/12)){
+    pmatrix<-
+    lapply(get(paste0("pmatrix_4s_t_a_",x)), t) %>%
+    plyr::ldply(data.frame)
+    
+    pmatrix$trans <- c(1,2,3,4)
+    #pmatrix$'.id' <- as.numeric(pmatrix$'.id')
+    pmatrix$timepoint <- rep(timep,)
+    
+    pmatrix_4s_t_b_df<- rbind(pmatrix_4s_t_a_df,pmatrix)
+}
+
+pmatrix_4s_t_b_df<-data.frame()
+for (timep in seq(0, 11, by = 1/12)){
+    pmatrix<-
+    lapply(get(paste0("pmatrix_4s_t_b_",x)), t) %>%
+    plyr::ldply(data.frame)
+    
+    pmatrix$trans <- c(1,2,3,4)
+    #pmatrix$'.id' <- as.numeric(pmatrix$'.id')
+    pmatrix$timepoint <- rep(timep,)
+    
+    pmatrix_4s_t_b_df<- rbind(pmatrix_4s_t_b_df,pmatrix)
+}
+
+time_after_probtrans_ci95<-Sys.time()
+
+paste0("Time in process: ");time_after_probtrans_ci95-time_before_probtrans_ci95
+```
+
+<br>
+
+# Length of Stay
+
+We calculated the expected total time spent in each state for semi-Markov multi-state models fitted to time-to-event data
+
+<br>
+
+```{r los_ci95, eval=T, echo=T, paged.print=TRUE, error=T}
+time_before_los_ci95<-Sys.time()
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+#Length of stay estimates, as in flexsurv::totlos.simfs
+#Could integrate p0s (t) (probabilidad de transicion en un detemrinado t) to give
+#expected length of time spent
+#in state s (totlos.simfs)
+
+#Standard errors require a second level of simulation (available in flexsurv)
+
+#The expected total time spent in each state for semi-Markov multi-state models fitted to time-to-event data with flexsurvreg. This is defined by the integral of the transition probability matrix, though this is not analytically possible and is computed by simulation.
+
+#sojourn.msm for mean sojourn time
+library(dplyr)
+library(flexsurv)
+
+for(i in seq(0, 11, by = 1/12)){
+set.seed(1234)
+flexsurv::totlos.simfs(sel_param_fits_b, 
+             t = i, #Maximum time to predict to.
+            # start = 1, #Starting state.
+             newdata = newdat3a, 
+             trans= mat_3_states, 
+             ci = T, #Return a confidence interval calculated by simulating from the asymptotic normal distribution of the maximum likelihood estimates. This is turned off by default, since two levels of simulation are required. If turned on, users should adjust B and/or M until the results reach the desired precision. The simulation over M is generally vectorised, therefore increasing B is usually more expensive than increasing M.
+             tvar = "trans", #Variable in the data representing the transition type. Not required if x is a list of models.
+             #tcovs = "arrival", #Predictable time-dependent covariates such as age, see sim.fmsm.
+             group = NULL, #Optional grouping for the states. For example, if there are four states, and group=c(1,1,2,2), then totlos.simfs returns the expected total time in states 1 and 2 combined, and states 3 and 4 combined
+             #M = 1, #Number of individuals to simulate in order to approximate the transition probabilities. Users should adjust this to obtain the required precision.
+             #B = 1, #Number of simulations from the normal asymptotic distribution used to calculate variances. Decrease for greater speed at the expense of accuracy.
+  cl = 0.95)%>% 
+  assign(paste0("tolos_t_a_",i),.,envir=.GlobalEnv)
+}
+
+for(i in seq(0, 11, by = 1/12)){
+  set.seed(1234)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        #B= n_iter/5000,
+                        newdat= newdat3b,
+                        trans = mat_3_states,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_",i),.,envir=.GlobalEnv)
+}
+
+for(i in seq(0, 11, by = 1/12)){
+  set.seed(1234)
+  flexsurv::totlos.simfs(x = sel_param_fits_4s_b,
+                        t = i, #Must be a single number unlike pmatrix.fs
+                        ci = T,
+                        #B= n_iter/5000, #Increasing B is usually more expensive than increasing M. NUmber of simulations from the noral asymptotic distribution. MOre, more accuracy
+                        newdat= newdat5a,
+                        tvar="trans",
+                        #tcovs= "arrival",# Predicatable time-dependent covariates such as age
+                        cores= 8,
+                        #M = 1,#Number of individual trajectories to simulate.
+                        trans = mat_4_states) %>% 
+  assign(paste0("tolos_4s_t_a_",i),.,envir=.GlobalEnv)
+}
+
+for(i in seq(0, 11, by = 1/12)){
+  set.seed(1234)
+  flexsurv::totlos.simfs(x = sel_param_fits_4s_b,
+                        t = i,
+                        ci = T,
+                       # B= n_iter/5000,
+                        newdat= newdat5b,
+                        trans = mat_4_states,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_4s_t_b_",i),.,envir=.GlobalEnv)
+}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+tolos_t_a_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(state=1:dim(mat_3_states)[2],get(paste0("tolos_t_a_",t)))
+    }))
+tolos_t_b_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(state=1:dim(mat_3_states)[2],get(paste0("tolos_t_b_",t)))
+    }))
+tolos_4s_t_a_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(state=1:dim(mat_4_states)[2],get(paste0("tolos_4s_t_a_",t)))
+    }))
+tolos_4s_t_b_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(state=1:dim(mat_4_states)[2],get(paste0("tolos_4s_t_b_",t)))
+    }))
+
+time_after_los_ci95<-Sys.time()
+
+paste0("Time in process: ");time_after_los_ci95-time_before_los_ci95
+#200_ tiempo
+
+#Kearns, B., Stevens, J., Ren, S. et al. How Uncertain is the Survival Extrapolation? A Study of the Impact of Different Parametric Survival Models on Extrapolated Uncertainty About Hazard Functions, Lifetime Mean Survival and Cost Effectiveness. PharmacoEconomics 38, 193–204 (2020). https://doi.org/10.1007/s40273-019-00853-x
+```
+
+
+```{r los_ci952, eval=T, echo=T, paged.print=TRUE, error=T}
+time_before_los_ci952<-Sys.time()
+
+for(i in seq(0, 11, by = 1/12)){
+set.seed(1234)
+flexsurv::totlos.simfs(sel_param_fits_b, 
+             t = i, #Maximum time to predict to.
+            # start = 1, #Starting state.
+             newdata = newdat3a, 
+             trans= mat_3_states, 
+             start= 2,
+             ci = T, #Return a confidence interval calculated by simulating from the asymptotic normal distribution of the maximum likelihood estimates. This is turned off by default, since two levels of simulation are required. If turned on, users should adjust B and/or M until the results reach the desired precision. The simulation over M is generally vectorised, therefore increasing B is usually more expensive than increasing M.
+             tvar = "trans", #Variable in the data representing the transition type. Not required if x is a list of models.
+             #tcovs = "arrival", #Predictable time-dependent covariates such as age, see sim.fmsm.
+             group = NULL, #Optional grouping for the states. For example, if there are four states, and group=c(1,1,2,2), then totlos.simfs returns the expected total time in states 1 and 2 combined, and states 3 and 4 combined
+             #M = 1, #Number of individuals to simulate in order to approximate the transition probabilities. Users should adjust this to obtain the required precision.
+             #B = 1, #Number of simulations from the normal asymptotic distribution used to calculate variances. Decrease for greater speed at the expense of accuracy.
+  cl = 0.95)%>% 
+  assign(paste0("tolos_t_a_str2_",i),.,envir=.GlobalEnv)
+}
+
+for(i in seq(0, 11, by = 1/12)){
+  set.seed(1234)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 2,
+                        #B= n_iter/5000,
+                        newdat= newdat3b,
+                        trans = mat_3_states,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_str2_",i),.,envir=.GlobalEnv)
+}
+
+for(i in seq(0, 11, by = 1/12)){
+  set.seed(1234)
+  flexsurv::totlos.simfs(x = sel_param_fits_4s_b,
+                        t = i, #Must be a single number unlike pmatrix.fs
+                        ci = T,
+                        #B= n_iter/5000, #Increasing B is usually more expensive than increasing M. NUmber of simulations from the noral asymptotic distribution. MOre, more accuracy
+                        newdat= newdat5a,
+                        tvar="trans",
+                        start= 2,
+                        #tcovs= "arrival",# Predicatable time-dependent covariates such as age
+                        cores= 8,
+                        #M = 1,#Number of individual trajectories to simulate.
+                        trans = mat_4_states) %>% 
+  assign(paste0("tolos_4s_t_a_str2_",i),.,envir=.GlobalEnv)
+}
+
+for(i in seq(0, 11, by = 1/12)){
+  set.seed(1234)
+  flexsurv::totlos.simfs(x = sel_param_fits_4s_b,
+                        t = i,
+                        ci = T,
+                       # B= n_iter/5000,
+                        newdat= newdat5b,
+                        trans = mat_4_states,
+                        tvar="trans",
+                        start= 2,
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_4s_t_b_str2_",i),.,envir=.GlobalEnv)
+}
+
+for(i in seq(0, 11, by = 1/12)){
+  set.seed(1234)
+  flexsurv::totlos.simfs(x = sel_param_fits_4s_b,
+                        t = i, #Must be a single number unlike pmatrix.fs
+                        ci = T,
+                        #B= n_iter/5000, #Increasing B is usually more expensive than increasing M. NUmber of simulations from the noral asymptotic distribution. MOre, more accuracy
+                        newdat= newdat5a,
+                        tvar="trans",
+                        start= 3,
+                        #tcovs= "arrival",# Predicatable time-dependent covariates such as age
+                        cores= 8,
+                        #M = 1,#Number of individual trajectories to simulate.
+                        trans = mat_4_states) %>% 
+  assign(paste0("tolos_4s_t_a_str3_",i),.,envir=.GlobalEnv)
+}
+
+for(i in seq(0, 11, by = 1/12)){
+  set.seed(1234)
+  flexsurv::totlos.simfs(x = sel_param_fits_4s_b,
+                        t = i,
+                        ci = T,
+                       # B= n_iter/5000,
+                        newdat= newdat5b,
+                        trans = mat_4_states,
+                        tvar="trans",
+                        start= 3,
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_4s_t_b_str3_",i),.,envir=.GlobalEnv)
+}
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#tolos_t_a_str2_ tolos_t_b_str2_ tolos_4s_t_a_str2_ tolos_4s_t_b_str2_ tolos_4s_t_a_str3_ tolos_4s_t_b_str3_
+tolos_t_a_str2_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(state=1:dim(mat_3_states)[2],get(paste0("tolos_t_a_str2_",t)))
+    }))
+tolos_t_b_str2_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(state=1:dim(mat_3_states)[2],get(paste0("tolos_t_b_str2_",t)))
+    }))
+tolos_4s_t_a_str2_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(state=1:dim(mat_4_states)[2],get(paste0("tolos_4s_t_a_str2_",t)))
+    }))
+tolos_4s_t_b_str2_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(state=1:dim(mat_4_states)[2],get(paste0("tolos_4s_t_b_str2_",t)))
+    }))
+tolos_4s_t_a_str3_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(state=1:dim(mat_4_states)[2],get(paste0("tolos_4s_t_a_str3_",t)))
+    }))
+tolos_4s_t_b_str3_df<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+    cbind.data.frame(state=1:dim(mat_4_states)[2],get(paste0("tolos_4s_t_b_str3_",t)))
+    }))
+
+
+time_after_los_ci952<-Sys.time()
+
+paste0("Time in process: ");time_after_los_ci952-time_before_los_ci952
+```
+
+<br>
+
+# Probabilities of Readmission
+
+```{r sim2, eval=T, echo=T, paged.print=TRUE, error=T}
+#Predictions can then be made by simulation. The function sim.fmsm simulates trajectories from parametric semi-Markov
+#models by repeatedly generating the time to the next transition until the individual reaches
+#an absorbing state or a specified censoring time.
+
+# Simulate changes of state & transition times
+
+##http://finzi.psych.upenn.edu/library/flexsurv/html/sim.fmsm.html
+#https://www.rdocumentation.org/packages/flexsurv/versions/2.0/topics/sim.fmsm
+#sim.fmsm: Simulate paths through a fully parametric semi-Markov multi-state model
+#Simulate changes of state and transition times from a semi-Markov multi-state model fitted using flexsurvreg.
+
+#This is computed by simulating a large number of individuals M using the maximum likelihood estimates of the fitted model and the function sim.fmsm. Therefore this requires a random sampling function for the parametric survival model to be available: see the "Details" section of sim.fmsm. This will be available for all built-in distributions, though users may need to write this for custom models.
+
+for(i in seq(0, 11, by = 1/12)){
+  set.seed(1234) 
+flexsurv::sim.fmsm(
+  sel_param_fits_b,
+  trans = mat_3_states, #Matrix indicating allowed transitions. See msfit.flexsurvreg.
+  t=i,#seq(0, 11, by = 1/12), #Time, or vector of times for each of the M individuals, to simulate trajectories until.
+  newdata = newdat3a, #A data frame specifying the values of covariates in the fitted model, other than the transition number. See msfit.flexsurvreg.
+  start = 1, #Starting state, or vector of starting states for each of the M individuals
+  M = 10000, #Number of individual trajectories to simulate.
+  tvar = "trans", #Number of individual trajectories to simulate.
+ # tcovs =  "arrival", #Names of "predictable" time-dependent covariates in newdata, i.e. those whose values change at the same rate as time. Age is a typical example. During simulation, their values will be updated after each transition time, by adding the current time to the value supplied in newdata. This assumes the covariate is measured in the same unit as time. tcovs is supplied as a character vector.
+  tidy = F #If TRUE then the simulated data are returned as a tidy data frame with one row per simulated transition. See simfs_bytrans for a function to rearrange the data into this format if it was simulated in non-tidy format.
+  #debug = 50
+  )%>% 
+  assign(paste0("sim_t_a_",i),.,envir=.GlobalEnv)
+}
+
+for(i in seq(0, 11, by = 1/12)){
+    set.seed(1234) 
+sim.fmsm(
+  sel_param_fits_b,
+  trans = mat_3_states,
+  t=i,
+  newdata = newdat3b,
+  start = 1,
+  M = 10000,
+  tvar = "trans",
+  #tcovs = NULL,
+  tidy = F
+  )%>% 
+  assign(paste0("sim_t_b_",i),.,envir=.GlobalEnv)
+}
+for(i in seq(0, 11, by = 1/12)){
+    set.seed(1234) 
+sim.fmsm(
+  sel_param_fits_4s_b,
+  trans = mat_4_states,
+  t=i,
+  newdata = newdat5a,
+  start = 1,
+  M = 10000,
+  tvar = "trans",
+  #tcovs = NULL,
+  tidy = F
+  )%>% 
+  assign(paste0("sim_t_4s_a_",i),.,envir=.GlobalEnv)
+}
+
+for(i in seq(0, 11, by = 1/12)){
+    set.seed(1234) 
+sim.fmsm(
+  sel_param_fits_4s_b,
+  trans = mat_4_states,
+  t=i,
+  newdata = newdat5b,
+  start = 1,
+  M = 10000,
+  tvar = "trans",
+  #tcovs = NULL,
+  tidy = F
+  ) %>% 
+  assign(paste0("sim_t_4s_b_",i),.,envir=.GlobalEnv)
+}
+#A list of two matrices named st and t. The rows of each matrix represent simulated individuals. The columns of t contain the times when the individual changes state, to the corresponding states in st.
+
+# first columns will always contain the starting states and the starting times. The last column of t represents either the time when the individual moves to an absorbing state, or right-censoring in a transient state at the time given in the t argument to sim.fmsm.
+```
+
+
+# semi-Markov and perform cost-effectiveness analysis (CEA)
+
+
+# Session Info
+
+```{r session_info, echo=T, paged.print=TRUE}
+Sys.getenv("R_LIBS_USER")
+rstudioapi::getSourceEditorContext()
+#save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+
+if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/mult_state_2.RData")
+  } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/andre/Desktop/SUD_CL/mult_state_2.RData")
+  } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_2.RData")
+  } else {
+    save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_2.RData")
+  }
+
+sessionInfo()
+```
