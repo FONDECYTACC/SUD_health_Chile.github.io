@@ -1,5 +1,5 @@
 ---
-title: "Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 2)"
+title: "Ambulatory or residential? a multi-state analysis of treatments for substance use disorders (Step 2)"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
@@ -343,7 +343,6 @@ msf1 <- mstate::msfit(object = c1,  trans = trans_matrix, vartype ="aalen")
 #An advantage of the Greenwood estimator is the fact that it yields exact multinomial standard
 #errors for the transition probabilities when there is no censoring. The two estimators give
 #almost equal results in all practical applications.
-
 
 msf0_plot<-
 plot(msf0, 
@@ -835,10 +834,7 @@ cumhaz_data_d$trans <- factor(cumhaz_data_d$trans,
                                        ))
 ```
 
-
-
 <br>
-
 
 ```{r msfit2.5_4s, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 2. Estimate of Cumulative Hazards (Semi-Markov), Ten-states", fig.align="center", error=T, dpi=320}
 
@@ -853,7 +849,7 @@ rbind(cbind.data.frame(msf0$Haz,setting="Outpatient"),
 ggplot2::ggplot(aes(x = time, y = Haz, col = factor(setting), linetype = factor(setting))) +
   geom_line(size=1, alpha=.65) + 
   facet_wrap(trans~., ncol=1, scales="free_y", labeller = as_labeller(transition_label)) + 
-  scale_color_manual(name = "Model", values=c("#061F70","#A68D00"), labels= c("Outpatient","Residential")) + # "#A65100" #"Cox",
+  scale_color_manual(name = "Type of program", values=c("#061F70","#A68D00"), labels= c("Outpatient","Residential")) + # "#A65100" #"Cox",
   scale_linetype_manual(name= "Type of program",values=c(1,4), labels=c("Outpatient","Residential")) +
   xlab("Years") + ylab("Cumulative hazard") + 
   theme_minimal()+
@@ -875,6 +871,27 @@ jpeg("eso17.jpg", height=20, width= 10, res= 320, units = "in")
 plot_comp_mssurvfit2
 dev.off()
 }
+```
+
+
+
+```{r msboot,eval=F, echo=T, paged.print=TRUE, error=T}
+#https://rdrr.io/cran/mstate/man/msboot.html
+
+# define a function (this one returns vector of regression coef's)
+regcoefvec <- function(data) {
+  cx <- survival::coxph(Surv(time, status) ~ factor(tipo_de_plan_res_1)+ strata(trans), 
+            data = ms_d_match_surv, method = "breslow")
+  return(coef(cx))
+}
+
+regcoefvec(ms_d_match_surv)
+set.seed(2125)
+
+msboot_output<-
+msboot(theta=regcoefvec,data=ms_d_match_surv,id="id", B=500)
+
+paste0("Overall Effect of the type of plan in multistate model (COX): Mdn=",round(quantile(msboot_output,.5),3)," [IC 95% ", round(quantile(msboot_output,.025),3),"-",round(quantile(msboot_output,.975),3),"]")
 ```
 
 <br>
@@ -1001,6 +1018,9 @@ set.seed(1234)
 pmatrix_cox_b_0_s9<-
 mstate::mssample(msf1$Haz, trans = trans_matrix, clock = "reset", M = n_iter/2, tvec = seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/500),do.trace=500,
                  history=list(state = 9, time = 0, tstate = NULL))
+invisible("See cens")
+#cens = data.frame(time=c(0,3000),surv=c(1,0)))    #Adm censoring at t=3000
+
 #cens=An independent censoring distribution, given as a data frame with time and Haz
 #10 states
 ```
@@ -1008,13 +1028,13 @@ mstate::mssample(msf1$Haz, trans = trans_matrix, clock = "reset", M = n_iter/2, 
 
 <br>
 
-```{r mssample_plot, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 2a. Estimate of State Occupancies at Baseline, Ten-states model", fig.align="center", error=T}
+```{r mssample_plot, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 3. Estimate of State Occupancies at Baseline, Ten-states model", fig.align="center", error=T}
 #pmatrix_t_a_df_final pmatrix_t_b_df_final pmatrix_4s_t_a_df_final pmatrix_4s_t_b_df_final
 
-states_trans_lab<-states_trans
+states_trans_lab<-paste0(1:10,") ",states_trans)
 attr(states_trans_lab,"names")<-1:10
 
-fig_ab_pmatrix<-
+ab_pmatrix<-
   pmatrix_cox_a_0 %>% 
   dplyr::left_join(pmatrix_cox_b_0, by="time", suffix=c("",".w_covs.res.s1")) %>%
   dplyr::left_join(pmatrix_cox_a_0_s2, by="time", suffix=c("",".w_covs.out.s2")) %>% 
@@ -1050,25 +1070,23 @@ fig_ab_pmatrix<-
   dplyr::mutate(state=gsub("pstate", "", state), state=as.numeric(state)) %>% 
   dplyr::mutate(setting= dplyr::case_when(grepl(".out",variable)~"Outpatient",
                                                grepl(".res",variable)~"Residential",
-                                               T~NA_character_)) %>%
+                                               T~NA_character_))
+
+fig_ab_pmatrix<-
   #janitor::tabyl(start)
-ggplot(aes(time, value, color= start, linetype =setting))+
+ggplot(ab_pmatrix, aes(time, value, color= start, linetype =setting))+
   geom_step(size=1, alpha=.65) + 
   scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
   facet_wrap(state~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
   #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
-  scale_color_manual(name = "Starting from", values=c("#54478C","#2C699A","#048BA8","#0DB39E",
+  scale_color_manual(name = "Starting from\nState", values=c("#54478C","#2C699A","#048BA8","#0DB39E",
                                                       "#16DB93","#83E377","#EFEA5A","#F1C453","#F29E4C"), labels= as.character(c(1:9))) + # "#A65100" #"Cox",
-  scale_linetype_manual(name= "Type of program",values=c(1,4), labels=c("Outpatient","Residential")) +
- # scale_linetype_manual(name ="Type of program",values=c(1,4), labels= c("General Population","Women-specific"))+
-  #scale_linetype_manual(name= "Covariates",values=c(1,4), labels=c("w/covs","w/o covs"))+
-  scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/12))+
-  xlab("Days") + 
+  scale_linetype_manual(name= "Type of\nprogram",values=c(1,4), labels=c("Outpatient","Residential")) +
+  scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11),
+                     label=round(seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11)/365.25,2))+
+  xlab("Years") + 
   ylab("") + 
-  theme_minimal()+
-  theme(legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"))
+  theme_minimal()
 
 fig_ab_pmatrix
 
@@ -1081,31 +1099,729 @@ dev.off()
 
 <br>
 
-
 ## Landmark Aalen-Johansen
 
 
-```{r LMAJ, eval=F, echo=T, paged.print=TRUE, error=T}
+```{r LMAJ, eval=T, echo=T, paged.print=TRUE, error=T}
+#devtools::install_github("hputter/mstate")
 invisible(c("For semi-Markov models, mstate provides the function mssample to produce both simulated trajectories and transition probability matrices from semi-Markov models, given the estimated piecewise-constant cumulative hazards (Fiocco et al. 2008), produced by msfit or msfit.flexsurvreg, though this is generally less efficient than pmatrix.simfs. In this example, 1000 samples from mssample give estimates of transition probabilities that are accurate to within around 0.02. However with pmatrix.simfs, greater precision is achieved by simulating 100 times as many trajectories in a shorter time"))
+
+time_before_LMAJ<-Sys.time()
 
 trans_df<-cbind.data.frame(transition_label,trans=1:max(trans_matrix,na.rm=T))
 
-rmst_a_3s_1<-
-do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
-     cbind(pr="ws",t=t,tr=1,summary(sel_param_fits_b[[1]],newdata=newdat3a[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=3)
-    }))
-LMAJ(ms_d_match_surv, 30, 1, method ="aalen")
+lmaj_df<-data.frame()
+for (transo in 1:9){
+  if(tryCatch({LMAJ(pr0,from=transo,s=1,method="aalen")}, error=function(e) {data.frame()}) %>% data.frame() %>% nrow()>0){
+  lmaj_df<- rbind.data.frame(lmaj_df,
+     cbind(pr="out",
+                  LMAJ(pr0, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=transo, ##Either a single state or a set of states in the state space 1,...,S
+                  s=1,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  ),transo=transo))
+  } else if (tryCatch({LMAJ(pr1,from=transo,s=1,method="aalen")}, error=function(e) {data.frame()}) %>% data.frame() %>% nrow()>0){
+    lmaj_df<- rbind.data.frame(lmaj_df,
+     cbind(pr="out",
+                  LMAJ(pr1, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=transo, ##Either a single state or a set of states in the state space 1,...,S
+                  s=1,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  ),transo=transo))
+    } else {rep(0,21)
+  }
+}
+
+pr0_sel<-pr0[,c("id", "from", "to", "trans", "Tstart", "Tstop", "time", "status", "tipo_de_plan_res_1")]
+attr(pr0_sel,"trans")<-trans_matrix
+
+pr1_sel<-pr1[,c("id", "from", "to", "trans", "Tstart", "Tstop", "time", "status", "tipo_de_plan_res_1")]
+attr(pr1_sel,"trans")<-trans_matrix
+
+lmaj_out_1<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_2<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_3<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_4<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_5<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_6<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_7<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_8<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_9<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+
+lmaj_res_1<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_2<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_3<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_4<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_5<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_6<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_7<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_8<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_9<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+lmaj_out_1_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_2_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_3_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_4_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_5_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_6_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_7_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_8_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_9_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+
+lmaj_res_1_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_2_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_3_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_4_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_5_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_6_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_7_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_8_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_9_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+lmaj_out_1_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_2_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_3_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_4_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_5_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_6_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_7_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_8_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_9_365<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+
+lmaj_res_1_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_2_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_3_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_4_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_5_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_6_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_7_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_8_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_9_365<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+lmaj_out_1_1095<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_2_1095<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_3_1095<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_4_1095<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_5_1095<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_6_1095<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_7_1095<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_8_1095<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_out_9_1095<-
+LMAJ(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+
+lmaj_res_1_1095<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_2_1095<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_3_1095<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_4_1095<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_5_1095<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_6_1095<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_7_1095<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_8_1095<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj_res_9_1095<-
+LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+#if (nrow(mf) ==0) stop("No (non-missing) observations")
+
+LMAJ <- function(msdata, s, from, method=c("aalen", "greenwood"))
+{
+msdata<-pr1_sel
+s<-90
+from<-2
+method<-"aalen"
+  
+  tmat <- attr(msdata, "trans")
+  if (is.null(tmat)) stop("msdata object should have a \"trans\" attribute")
+  K <- nrow(tmat)
+  if (any(is.na(match(from, 1:K)))) stop("from should be subset of 1:K with K number of states")
+  #Given a dataset in long format, for instance generated by msprep, this function takes a cross-section at a given time point, to list the subjects under observation (at risk) at that time point and the states currently occupied.
+  xss <- xsect(msdata, s)
+  #Por ejemplo, en el estado 2, table(xss$state) resulta en 3 estados: 1 (11,329), 2(72) & 3(57)
+  #Se selecciona a los pacientes que tenian una transición desde el estado elegido(from) en el momento elegido
+  infrom <- xss$id[xss$state %in% from]
+  #https://rdrr.io/cran/mstate/man/cutLMms.html
+  msdatas <- cutLMms(msdata, LM=s)
+  msdatasfrom <- msdatas[msdatas$id %in% infrom, ]
+  c0 <- coxph(Surv(Tstart, Tstop, status) ~ strata(trans), data=msdatasfrom)
+  msf0 <- msfit(c0, trans=tmat)
+  pt0 <- probtrans(msf0, predt=s, method=method)[from]
+  if (length(from) == 1)
+    return(pt0[[1]])
+  else {
+    xsss <- xss[xss$state %in% from, ]
+    xsss$state <- factor(xsss$state, levels=from)
+    tbl <- table(xsss$state)
+    p <- tbl / sum(tbl)
+    varp <- (diag(p) - p %*% t(p)) / sum(tbl)
+    # Relying on fact that all items from list have exactly the same size and structure
+    # and that the sum of p equals 1; sorry for the double for-loop
+    res <- tmp1 <- tmp2 <- 0
+    for (j in 1:length(from)) {
+      ptj <- pt0[[j]]
+      res <- res + p[j] * ptj[, 1 + (1:K)]
+      tmp2 <- tmp2 + p[j] * (1 - p[j]) * (ptj[, K+1 + (1:K)])^2
+      for (k in 1:length(from)) {
+        ptk <- pt0[[k]]
+        tmp1 <- tmp1 + varp[j,k] * ptj[, 1 + (1:K)] * ptk[, 1 + (1:K)]
+      }
+    }
+    ses <- sqrt(tmp1 + tmp2)
+    # take ptj as template and insert estimates and SE's
+    pt <- ptj
+    pt[, 1 + (1:K)] <- res
+    pt[, K+1 + (1:K)] <- ses
+    return(pt)
+  }
+}
+
+time_after_LMAJ<-Sys.time()
+
+#LMAJ(pr1,from=1,s=90,method="aalen")
+
+paste0("Time in process: ");time_after_LMAJ-time_before_LMAJ
+```
+
+
+```{r lmaj_plot, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 4. State Occupancies, landmark Aalen-Johansen estimator", fig.align="center", error=T}
+#A data frame containing estimates and associated standard errors of the transition probabilities P(X(t)=k | X(s) in from) with s and from the arguments of the function.
+
+#View(lmaj_df %>% dplyr::mutate_at(3:22,~round(.,2)) %>% dplyr::filter(time==90))
+#View(lmaj_df %>% dplyr::mutate_at(3:22,~round(.,2)))
+
+lmaj_plot<-
+rbind(cbind(pr="res",lmaj_res_1,transo=1),
+      cbind(pr="out",lmaj_out_1,transo=1)) %>% 
+  melt(id.vars=c("pr","transo","time")) %>% 
+  dplyr::rename("state_from"="transo") %>% 
+  dplyr::mutate(state_to=stri_sub(variable,-1,-1)) %>%
+    dplyr::mutate(setting= dplyr::case_when(grepl("out",pr)~"Outpatient",
+                                            grepl("res",pr)~"Residential",
+                                            T~NA_character_)) %>%
+      dplyr::mutate(measure= dplyr::case_when(grepl("se",variable)~"se",
+                                            grepl("pstate",variable)~"Estimate",
+                                            T~NA_character_)) %>%
+  dplyr::select(-pr,-variable) %>% 
+  tidyr::pivot_wider(names_from=measure,values_from = value) %>% 
+  dplyr::filter(state_from>0, state_to>0) %>% 
+  purrr::when(dplyr::group_by(.,time, state_from, state_to, setting) %>% summarise(n=n()) %>% dplyr::filter(n>1)%>% nrow()>0 ~ stop("There are cases with differences different than 0 days of a variable that should be equal"), 
+            ~.) %>%
+  dplyr::mutate(state_from=factor(state_from),state_to=factor(state_to), setting=factor(setting)) %>%  
+  ggplot(aes(time, Estimate, linetype =setting))+
+  geom_step(size=1, alpha=.65) + 
+  facet_wrap(state_to~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
+  scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
+  #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
+  scale_color_manual(name = "Starting from\nState", values=c("#54478C","#2C699A","#048BA8","#0DB39E",
+                                                      "#16DB93","#83E377","#EFEA5A","#F1C453","#F29E4C"), labels= as.character(c(1:9))) + # "#A65100" #"Cox",
+  scale_linetype_manual(name= "Type of\nprogram",values=c(1,4), labels=c("Outpatient","Residential")) +
+  scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11),
+                     label=round(seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11)/365.25,2))+
+  xlab("Years") + 
+  ylab("") + 
+  theme_minimal()
+
+lmaj_plot
+
+if(no_mostrar==1){
+jpeg("eso17.jpg", height=20, width= 10, res= 320, units = "in")
+lmaj_plot
+dev.off()
+}
+```
+
+```{r dfs_mstate,eval=T, echo=T, paged.print=TRUE, error=T}
+# Prob.occ5 <- data.frame(P=tmp.prob,
+# lci=tmp.prob-qnorm(0.975)*c(tmp$se1,tmp$se2,tmp$se3),
+# uci=tmp.prob+qnorm(0.975)*c(tmp$se1,tmp$se2,tmp$se3))
+
+lmaj_ci_df<-
+rbind(cbind(pr="res",lmaj_res_1,transo=1),
+      cbind(pr="out",lmaj_out_1,transo=1)) %>% 
+  dplyr::mutate(lo_pstate1=pstate1-1.96*se1) %>% 
+  dplyr::mutate(lo_pstate2=pstate2-1.96*se2) %>% 
+  dplyr::mutate(lo_pstate3=pstate3-1.96*se3) %>% 
+  dplyr::mutate(lo_pstate4=pstate4-1.96*se4) %>% 
+  dplyr::mutate(lo_pstate5=pstate5-1.96*se5) %>% 
+  dplyr::mutate(lo_pstate6=pstate6-1.96*se6) %>% 
+  dplyr::mutate(lo_pstate7=pstate7-1.96*se7) %>% 
+  dplyr::mutate(lo_pstate8=pstate8-1.96*se8) %>% 
+  dplyr::mutate(lo_pstate9=pstate9-1.96*se9) %>% 
+  dplyr::mutate(lo_pstate10=pstate10-1.96*se10) %>% 
+  dplyr::mutate(up_pstate1=pstate1+1.96*se1) %>% 
+  dplyr::mutate(up_pstate2=pstate2+1.96*se2) %>% 
+  dplyr::mutate(up_pstate3=pstate3+1.96*se3) %>% 
+  dplyr::mutate(up_pstate4=pstate4+1.96*se4) %>% 
+  dplyr::mutate(up_pstate5=pstate5+1.96*se5) %>% 
+  dplyr::mutate(up_pstate6=pstate6+1.96*se6) %>% 
+  dplyr::mutate(up_pstate7=pstate7+1.96*se7) %>% 
+  dplyr::mutate(up_pstate8=pstate8+1.96*se8) %>% 
+  dplyr::mutate(up_pstate9=pstate9+1.96*se9) %>% 
+  dplyr::mutate(up_pstate10=pstate10+1.96*se10) %>% 
+  melt(id.vars=c("pr","transo","time")) %>% 
+  dplyr::rename("state_from"="transo") %>% 
+  dplyr::mutate(state_to=stri_sub(variable,-1,-1)) %>%
+  dplyr::mutate(setting= dplyr::case_when(grepl("out",pr)~"Outpatient",
+                                            grepl("res",pr)~"Residential",
+                                            T~NA_character_)) %>%
+  dplyr::mutate(measure= dplyr::case_when(grepl("se",variable)~"se",
+                                          grepl("lo",variable)~"l95ci",
+                                          grepl("up",variable)~"u95ci",
+                                          grepl("pstate",variable)~"Estimate",
+                                          T~NA_character_)) %>%
+  dplyr::select(-pr,-variable) %>% 
+  purrr::when(dplyr::group_by(.,state_from, time, state_to, setting, measure)%>% summarise(n=n())%>% dplyr::filter(n>1)%>% nrow()>0 ~ stop("There are cases with differences different than 0 days of a variable that should be equal"), 
+            ~.) %>% 
+  tidyr::pivot_wider(names_from=measure,values_from = value) %>% 
+  dplyr::mutate(state_from=ifelse(state_from==0,10,state_from)) %>% 
+  dplyr::mutate(state_to=ifelse(state_to==0,10,state_to)) %>% 
+  #dplyr::filter(state_from>0, state_to>0) %>% 
+  purrr::when(dplyr::group_by(.,time, state_from, state_to, setting) %>% summarise(n=n()) %>% dplyr::filter(n>1)%>% nrow()>0 ~ stop("There are cases with differences different than 0 days of a variable that should be equal"), 
+            ~.) %>%
+  dplyr::mutate(setting=factor(setting))  
+  
+  
+lmaj_ci_df %>% 
+    dplyr::select(time, state_from, state_to, setting, Estimate, l95ci, u95ci) %>% 
+    dplyr::arrange(state_from,state_to,setting,time) %>% 
+    dplyr::mutate(state_to=as.numeric(state_to)) %>% 
+    dplyr::filter(time %in% c(90, 365, 1095)) %>%
+    dplyr::mutate(time=factor(time, levels=c(90, 365, 1095),
+                  labels=c("~90days/3 months", "~1 year", "~3 years"),ordered=T)) %>% 
+    dplyr::mutate(comb=paste0(state_from,"_",state_to)) %>% 
+    dplyr::filter(comb %in% c("1_2","1_3","1_4","4_5","4_6","4_7","7_8","7_9","7_10")) %>% 
+  dplyr::left_join(cbind.data.frame(states_trans_lab,st=1:10), by=c("state_from"="st")) %>% 
+  dplyr::left_join(cbind.data.frame(states_trans_lab,st=1:10), by=c("state_to"="st")) %>% 
+  dplyr::select(-comb) %>% 
+  dplyr::rename("state_from_lab"="states_trans_lab.x","state_to_lab"="states_trans_lab.y") %>% 
+  dplyr::mutate(est_ci=paste0(sprintf("%1.3f",Estimate)," [",sprintf("%1.3f",abs(l95ci)),"-",sprintf("%1.3f",abs(u95ci)),"]")) %>%
+  dplyr::arrange(time, state_from,state_to) %>% 
+  dplyr::select(time, setting, state_from_lab, state_to_lab, est_ci) %>% 
+  tidyr::pivot_wider(names_from=setting,values_from = est_ci) %>% 
+  dplyr::select(-time) %>% 
+      #2021-04-27: drop from/actual state, readmission
+  knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption = paste0("Table 1. Estimated transition probabilities, Ten-states model"),
+               col.names = c("State from","State to","Outpatient","Residential"),
+               align =rep('l', 2),rep('c', 2)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 13) %>%
+  kableExtra::add_footnote("Note. We removed Readmission because it was an absorbing state", notation="none") %>% 
+  #kableExtra::add_header_above(c(" ", "Women-specific: Transition to" = 4,"General Population: Transition to" = 4)) %>% 
+  kableExtra::pack_rows("At 90 days", 1, 3) %>% 
+  kableExtra::pack_rows("At ~1 year", 4, 6) %>% 
+  kableExtra::pack_rows("At ~3 years", 7, 9) %>%
+  #kableExtra::pack_rows("At 90 days", 1, 9) %>% 
+  #kableExtra::pack_rows("At ~1 year", 10, 18) %>% 
+  #kableExtra::pack_rows("At ~3 years", 19, 27) %>%
+  kableExtra::scroll_box(width = "100%", height = "375px") 
+```
+
+```{r lmaj_plot_ci95, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 4. State Occupancies & 95% CIs, landmark Aalen-Johansen estimator from Admission (state 1)", fig.align="center", error=T}
+lmaj_ci_df %>% 
+  ggplot(aes(time, Estimate, color= setting, linetype =setting, fill=setting))+
+  geom_step(size=1, alpha=.65) + 
+  geom_ribbon(aes(ymin=l95ci, ymax=u95ci, fill=setting), alpha=.5)+
+  facet_wrap(state_to~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
+  scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
+  #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
+  scale_color_manual(name= "Type of\nprogram",values=c("gray65","gray35"), labels=c("Outpatient","Residential")) +
+  scale_fill_manual(name= "Type of\nprogram",values=c("gray65","gray35"), labels=c("Outpatient","Residential")) +
+  scale_linetype_manual(name= "Type of\nprogram",values=c(1,4), labels=c("Outpatient","Residential")) +
+  scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11),
+                     label=round(seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11)/365.25,2))+
+  xlab("Years") + 
+  ylab("") + 
+  theme_minimal()
 ```
 
 <br>
+
+
+
+
 
 # semi-Markov and perform cost-effectiveness analysis (CEA)
 
 
 # Session Info
 
-```{r session_info, echo=T, paged.print=TRUE}
+```{r session_info, echo=T, error=T, paged.print=TRUE}
 Sys.getenv("R_LIBS_USER")
+
 rstudioapi::getSourceEditorContext()
 #save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
 
