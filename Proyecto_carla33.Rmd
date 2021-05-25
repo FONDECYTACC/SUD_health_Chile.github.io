@@ -2249,7 +2249,7 @@ fig_cox_ab22<-
 ggplot()+
   geom_step(data=reshape2::melt(cumhaz_data_a2,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="dashed"),size=1, alpha=.65) + 
   geom_step(data=reshape2::melt(cumhaz_data_b2,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="solid"),size=1, alpha=.65) + 
-  facet_wrap(trans~., ncol=1) + 
+  facet_wrap(trans~., ncol=1, scales = "free_y") + 
   scale_color_manual(name ="Model",values=c("#0E53A7","#200772","#BF8830"),labels= c("Cox","NP Cox","Par"))+
   scale_linetype_manual(name= "Type of Plan",values=c("dashed","solid"), labels=c("Women only      ","Mixed gender      "))+
   scale_x_continuous(breaks=seq(0, 11, by = 1/2))+
@@ -2264,7 +2264,7 @@ fig_cox_cd22<-
 ggplot()+
   geom_step(data=reshape2::melt(cumhaz_data_c2,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="dashed"),size=1, alpha=.65) + 
   geom_step(data=reshape2::melt(cumhaz_data_d2,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="solid"),size=1, alpha=.65) + 
-  facet_wrap(trans~., ncol=1) + 
+  facet_wrap(trans~., ncol=1, scales = "free_y") + 
   scale_color_manual(name ="Model",values=c("#0E53A7","#200772","#BF8830"),labels= c("Cox","NP Cox","Par"))+
   scale_linetype_manual(name= "Type of Plan",values=c("dashed","solid"), labels=c("Women only      ","Mixed gender      "))+
   scale_x_continuous(breaks=seq(0, 11, by = 1/2))+
@@ -2410,45 +2410,9 @@ ggsave(paste0(jpg_path,"Fig2_alt_paper_carla.ps"), fig_cox_abcd_three_states_lab
 
 
 ```{r cum_haz12b, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 7b. Estimate of Cumulative Hazards, Three & Four-States Model", fig.align="center", error=T}
-cumhaz_plot13<-
-ggplot()+
-  geom_step(data=data.frame(flexsurv_cumhaz_a2$Haz) %>% dplyr::mutate(trans=factor(trans)), aes(time, Haz, color= trans,linetype="dashed"),size=1.5) + 
-  geom_step(data=data.frame(flexsurv_cumhaz_b2$Haz)%>% dplyr::mutate(trans=factor(trans)), aes(time, Haz, color= trans,linetype="solid"),size=1.5) +
-  scale_color_manual(name ="Transitions",values=c("#CCCCCC","#666666","#000000"),labels= c("Admission -> Therapeutic Discharge","Admission -> Readmission","Therapeutic Discharge -> Readmission"))+
-  scale_linetype_manual(name= "Type of Plan",values=c("dotted","solid"), labels=c("Women only","Mixed gender"))+
-  scale_x_continuous(breaks=seq(0, 4, by = 1/2), limits=c(0,4))+
-  ylab("Cumulative hazards")+
-  theme_minimal()+
-  theme(axis.title.x = element_blank(),
-        legend.position=c(.35,.75),
-        axis.title.y = element_text(size=12),
-        axis.text.x= element_text(size=12),
-        axis.text.y= element_text(size=12),
-        legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"))+
-  ylim(0,1.5)
 
-cumhaz_plot23<-
-ggplot()+
-  geom_step(data=data.frame(flexsurv_cumhaz_c2$Haz) %>% dplyr::mutate(trans=factor(trans)), aes(time, Haz, color= trans,linetype="dashed"),size=1.5) + 
-  geom_step(data=data.frame(flexsurv_cumhaz_d2$Haz)%>% dplyr::mutate(trans=factor(trans)), aes(time, Haz, color= trans,linetype="solid"),size=1.5) +
-   scale_color_manual(name ="Transitions",values=c("#CCCCCC","#999999","#666666","grey26","#000000"),labels= c("Admission-> Therapeutic Discharge","Admission-> Discharge Without Clinical Advice","Admission->Readmission","Therapeutic Discharge->Readmission","Discharge Without Clinical Advice->Readmission"))+
-  scale_linetype_manual(name= "Type of Plan",values=c("dotted","solid"), labels=c("Women only","Mixed gender"))+
-  #values=c("#BF8F30","#1D7373","#876ED7","#1240AB")
-  scale_x_continuous(breaks=seq(0, 4, by = 1/2),limits=c(0,4))+
-  theme_minimal()+
-  theme(axis.title.x = element_blank(),
-        axis.title.y = element_blank(),
-        axis.text.x= element_text(size=12),
-        axis.text.y= element_text(size=12),
-        legend.position=c(.35,.75),
-        legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"))+
-  ylim(0,1.5)
 
-ggarrange(cumhaz_plot13+xlim(0,4),cumhaz_plot23+xlim(0,4), labels = "AUTO")
+ggarrange(fig_cox_ab22+xlim(0,4),fig_cox_cd22+xlim(0,4), labels = "AUTO")
 
 if(no_mostrar==1){
 ggsave("eso13ab2.jpg", ggarrange(cumhaz_plot13+xlim(0,4),cumhaz_plot23+xlim(0,4), labels = "AUTO"), width = 10, height = 11.5, dpi = 600, units= "in")
@@ -2979,6 +2943,154 @@ dev.off()
 
 ## Length of Stay
 
+### PSA
+
+We first looked over the restricted mean survival time, which may be the equivalent measure of the length of stay for partitioned survival analyses of each transition (as stated by Crowther in this [link](https://www.stata.com/meeting/italy18/slides/italy18_Crowther.pdf)). We calculated its 95% confidence intervals by  `r format(n_iter, big.mark=",")` resamples.
+
+<br>
+
+```{r PSA_mean_pat2, eval=T, echo=T, paged.print=TRUE, error=T}
+
+rmst_a_3s_1_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=1,summary(sel_param_fits_b[[1]],newdata=newdat3a_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=3)
+    }))
+rmst_a_3s_2_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=2,summary(sel_param_fits_b[[2]],newdata=newdat3a_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=3)
+    }))
+rmst_a_3s_3_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=3,summary(sel_param_fits_b[[3]],newdata=newdat3a_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=3)
+    }))
+
+rmst_b_3s_1_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=1,summary(sel_param_fits_b[[1]],newdata=newdat3a_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=3)
+    }))
+rmst_b_3s_2_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=2,summary(sel_param_fits_b[[2]],newdata=newdat3b_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=3)
+    }))
+rmst_b_3s_3_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=3,summary(sel_param_fits_b[[3]],newdata=newdat3b_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=3)
+    }))
+
+
+rmst_a_4s_1_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=1,summary(sel_param_fits_4s_b[[1]],newdata=newdat5a_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_a_4s_2_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=2,summary(sel_param_fits_4s_b[[2]],newdata=newdat5a_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_a_4s_3_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=3,summary(sel_param_fits_4s_b[[3]],newdata=newdat5a_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_a_4s_4_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=4,summary(sel_param_fits_4s_b[[4]],newdata=newdat5a_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_a_4s_5_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="ws",t=t,tr=5,summary(sel_param_fits_4s_b[[5]],newdata=newdat5a_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+
+rmst_b_4s_1_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=1,summary(sel_param_fits_4s_b[[1]],newdata=newdat5b_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_b_4s_2_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=2,summary(sel_param_fits_4s_b[[2]],newdata=newdat5b_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_b_4s_3_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=3,summary(sel_param_fits_4s_b[[3]],newdata=newdat5b_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_b_4s_4_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=4,summary(sel_param_fits_4s_b[[4]],newdata=newdat5b_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+rmst_b_4s_5_2<-
+do.call('rbind', lapply(seq(0, 11, by = 1/12), function(t) {
+     cbind(pr="gp",t=t,tr=5,summary(sel_param_fits_4s_b[[5]],newdata=newdat5b_2[1,-"strata"],type="rmst",B=n_iter,tidy=T, start=0,t=t)[,c("est","lcl","ucl")],st=4)
+    }))
+
+rmst_df_psa_3s_2<-
+rbind.data.frame(rmst_a_3s_1_2, rmst_a_3s_2_2, rmst_a_3s_3_2, rmst_b_3s_1_2, rmst_b_3s_2_2, rmst_b_3s_3_2)
+rmst_df_psa_4s_2<-
+rbind.data.frame(rmst_a_4s_1_2, rmst_a_4s_2_2, rmst_a_4s_3_2, rmst_a_4s_4_2, rmst_a_4s_5_2, rmst_b_4s_1_2, rmst_b_4s_2_2, rmst_b_4s_3_2, rmst_b_4s_4_2, rmst_b_4s_5_2)
+```
+
+
+```{r PSA_rmst_a_pat2, eval=T, echo=T, paged.print=TRUE, error=T}
+#In order to estimate performances of average LOS (ALOS) estimation methods according to the accumulating data that become available over time, ALOS with their 95% confidence intervals (CI) 
+
+#rmst_df_psa_4s
+rmst_df_psa_3s_2 %>% 
+  dplyr::mutate(pr=dplyr::case_when(pr=="ws"~"Women-specific",
+                                    T~"General population")) %>% 
+    dplyr::mutate(est_ci=paste0(sprintf("%1.2f",est)," [",
+                                   sprintf("%1.2f",lcl),"-",
+                                   sprintf("%1.2f",ucl),"]")) %>% 
+  dplyr::select(pr, t, tr, st, est_ci) %>% 
+  tidyr::pivot_wider(names_from="pr", values_from=c("est_ci")) %>% 
+  dplyr::select(-st) %>% 
+  dplyr::mutate_at(1,~sprintf("%1.4f",.)) %>%
+  dplyr::filter(t %in% c("0.0000","0.0833", "0.2500", "0.3333", "0.5000", "1.0000", "3.0000", "5.0000")) %>% 
+  dplyr::mutate(t=factor(t,levels=c("0.0000","0.0833", "0.2500", "0.3333", "0.5000", "1.0000", "3.0000", "5.0000"), labels=c("0 days","30 days", "90 days", "4 months", "6 months", "1 year", "3 years", "5 years"))) %>% 
+  dplyr::select(-tr) %>%
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table 6a. Restricted Mean Survival Time by Partitioned Survival Analyses, Three-states model, 2nd patient"),
+       col.names = c("Time",rep(c("Estimate [95% CI]"),2)),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::add_header_above(c(rep("",1),"Women-specific"=1, "General population"=1)) %>% 
+  kableExtra::pack_rows("Transition 1: Admission to Ther.Discharge", 1, 8) %>%
+  kableExtra::pack_rows("Transition 2: Admission to Readmission", 9, 16) %>%
+  kableExtra::pack_rows("Transition 3: Ther.Discharge to Readmission", 17, 24) %>%
+    kableExtra::scroll_box(width = "100%", height = "375px")
+  #kableExtra::add_footnote("Note. NA= Null values", notation="none") 
+```
+
+```{r PSA_rmst_b_pat2, eval=T, echo=T, paged.print=TRUE, error=T}
+#In order to estimate performances of average LOS (ALOS) estimation methods according to the accumulating data that become available over time, ALOS with their 95% confidence intervals (CI) 
+
+#rmst_df_psa_4s
+rmst_df_psa_4s_2 %>% 
+  dplyr::mutate(pr=dplyr::case_when(pr=="ws"~"Women-specific",
+                                    T~"General population")) %>% 
+    dplyr::mutate(est_ci=paste0(sprintf("%1.2f",est)," [",
+                                   sprintf("%1.2f",lcl),"-",
+                                   sprintf("%1.2f",ucl),"]")) %>% 
+  dplyr::select(pr, t, tr, st, est_ci) %>% 
+  tidyr::pivot_wider(names_from="pr", values_from=c("est_ci")) %>% 
+  dplyr::select(-st) %>% 
+  dplyr::mutate_at(1,~sprintf("%1.4f",.)) %>%
+  dplyr::filter(t %in% c("0.0000","0.0833", "0.2500", "0.3333", "0.5000", "1.0000", "3.0000", "5.0000")) %>% 
+  dplyr::mutate(t=factor(t,levels=c("0.0000","0.0833", "0.2500", "0.3333", "0.5000", "1.0000", "3.0000", "5.0000"), labels=c("0 days", "30 days", "90 days", "4 months", "6 months", "1 year", "3 years", "5 years"))) %>% 
+  dplyr::select(-tr) %>%
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table 6b. Restricted Mean Survival Time by Partitioned Survival Analyses, Four-states model, 2nd patient"),
+       col.names = c("Time",rep(c("Estimate [95% CI]"),2)),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::add_header_above(c(rep("",1),"Women-specific"=1, "General population"=1)) %>% 
+  kableExtra::pack_rows("Transition 1: Admission to Ther.Discharge", 1, 8) %>%
+  kableExtra::pack_rows("Transition 2: Admission to Discharge w/o Clinical Advice", 9, 16) %>%
+  kableExtra::pack_rows("Transition 3: Admission to Readmission", 17, 24) %>%
+  kableExtra::pack_rows("Transition 4: Ther.Discharge to Readmission", 25, 32) %>%
+  kableExtra::pack_rows("Transition 5: Discharge w/o Clinical Advice to Readmission", 33, 40) %>%
+    kableExtra::scroll_box(width = "100%", height = "375px")
+  #kableExtra::add_footnote("Note. NA= Null values", notation="none") 
+```
+
+### MSM
+
 ```{r dfs2_los_pat2,eval=T, echo=T, paged.print=TRUE, error=T}
 tolos2_t_a_str2_df<-
 do.call('rbind', lapply(c(.25,1,3), function(t) {
@@ -3057,7 +3169,7 @@ cbind.data.frame(tolos2_t_b_str2_df,program="General Population", start=2))%>%
   dplyr::select(-start,-comb) %>%
   dplyr::select(state, t, `Women-specific`, `General Population`) %>% 
     knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-       caption = paste0("Table 6a. Length of Stay, Three-states model; patient 2"),
+       caption = paste0("Table 7a. Length of Stay, Three-states model; patient 2"),
        col.names = c("State","Time","Women only","Mixed gender"),
                align =rep('c', 101)) %>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
@@ -3102,7 +3214,7 @@ cbind.data.frame(tolos2_4s_t_b_str3_df,program="General Population", start=3))%>
   dplyr::select(-start,-comb) %>%
   dplyr::select(state, t, `Women-specific`, `General Population`) %>% 
     knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-       caption = paste0("Table 6b. Length of Stay, Four-states model; patient 2"),
+       caption = paste0("Table 7b. Length of Stay, Four-states model; patient 2"),
        col.names = c("State","Time","Women only","Mixed gender"),
                align =rep('c', 101)) %>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
@@ -3402,7 +3514,7 @@ dev.off()
 }
 ```
 
-
+<br>
 
 # Session Info
 
