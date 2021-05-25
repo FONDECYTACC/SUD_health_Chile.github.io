@@ -4637,7 +4637,7 @@ The following plots  fitted survival curves from each model (colored lines), wit
 
 <br>
 
-```{r fit1_10s, eval=T, echo=T, fig.cap="Figure 19. Vissual Assessment of Survival Curves", fig.height=15, fig.width=10, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
+```{r fit1_10s, eval=T, echo=T, fig.cap="Figure 19. Vissual Assessment of Survival Curves", fig.height=20, fig.width=10, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
 #options(warn=-1)
 
 n_iter<-10000
@@ -4968,8 +4968,8 @@ The following transitions deviated considerably from the models chosen. Consider
 
 <br>
 
-
-```{r fit1_10s_a, eval=T, echo=T, fig.cap="Figure 20. Vissual Assessment of Survival Curves (w/o covars)", fig.height=15, fig.width=10, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r fit1_10s_a_pre, eval=T, echo=T, warning=T, paged.print=T, fig.align="center", dpi=320, warnings=F, error=T}
 #
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
@@ -5071,40 +5071,129 @@ setting_type_label<- c(`0`="Outpatient",`1`="Residential")
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
+```
+</div>
+
+<br>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:700px; overflow-x: scroll; width:100%">
+```{r fit1_10s_a, eval=T, echo=T, fig.cap="Figure 20. Vissual Assessment of Survival Curves (w/o covars)", fig.height=10, fig.width=15, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
+#load("C:/Users/CISS Fondecyt/OneDrive/Escritorio/mult_state_ags.RData")
+
+c26 <- c(
+  "dodgerblue2", # red
+  "green4",
+  "#6A3D9A", # purple
+  "#FF7F00", # orange
+  "gray16", "gold1",
+  "skyblue2", "#FB9A99", # lt pink
+  "palegreen2",
+  "#CAB2D6", # lt purple
+  "#FDBF6F", # lt orange
+  "gray70", "khaki2",
+  "maroon", "orchid1", "deeppink1", "blue1", "steelblue4",
+  "darkturquoise", "green1", "yellow4", "yellow3",
+  "darkorange4", "brown", "gray40")
+
+fitted_flexsurvreg_binned_mix0_plot<-
 fitted_flexsurvreg_binned_mix0 %>% 
+  dplyr::mutate(text=paste0("Distribution: ",dist,"<br>survival: ",sprintf("%1.2f",est),"<br>Time (in years): ",round(time/365.25,2))) %>% 
+  dplyr::mutate(text2=paste0("Distribution: Observed Data<br>survival: ",sprintf("%1.2f",est),"<br>Time (in years): ",round(time/365.25,2))) %>% 
 ggplot()+
     geom_line(aes(time, est, color=dist),size=1)+
     geom_line(aes(time, surv), color="red",size=1)+
-    scale_color_manual(name="Distributions", values = c("black","#f54b96","#00e9b1","#69b763",
-"#166000","#b27ff9","#fa863b","#013eab","#a7aa48","#b34b40","darkred"))+
+    scale_color_manual(name="Distributions", values = c26[1:17])+
                          #c("black",brewer.pal(n = 9, name = 'Paired')))+
                          #c("#112A60","#085754","#D3A347","#4F3C91","red","#112A60","#085754","#8F630D","#251363")) +
-    facet_wrap(.~trans,labeller = labeller(trans = transition_label_4s), ncol=1, scales = "free_y")+
+    facet_wrap(.~trans,labeller = labeller(trans = transition_label), ncol=3, scales = "free_y")+
     sjPlot::theme_sjplot2()+
     theme(legend.position="bottom",
           strip.background = element_rect(fill = "white", colour = "white"))+
-  scale_x_continuous(breaks = seq(1, 15, 2))+
+  scale_x_continuous(breaks = seq(0, 365.25*12, 2*365.25), labels=seq(0,12,2))+
   #ylim(0,1.25)+
   #theme(axis.text.x = element_blank(), 
   #      panel.grid.major = element_blank(), 
   #      panel.grid.minor = element_blank()) +
-  labs(y="Hazard",x="Time (years)")
+  labs(y="",x="")+
+  theme(legend.position='none')
+
+m <- list(
+  l = 80*1.05,
+  r = 80,
+  b = 80,
+  t = 80*1.05,
+  pad = 4
+)
+
+fitted_flexsurvreg_binned_mix0_plot$data %>% 
+  dplyr::mutate(years=round(time/365.25,0)) %>% 
+  dplyr::mutate(trans2=trans) %>% 
+  dplyr::left_join(cbind.data.frame(transition_label,trans2=1:15), by="trans2") %>% 
+group_by(trans) %>%
+group_map(~ plot_ly(data=., x = ~time, y = ~est, color = ~dist, type = "scatter", mode="lines", text=~text) %>% 
+            add_trace(y = ~surv, type = 'scatter', mode = 'lines', line = list(color = 'red', width = 1), text=~text2)%>% 
+  layout(annotations = list(list(x = 0.5 , y = 1.03, text = ~unique(transition_label), showarrow = F, xref='paper', yref='paper'))) %>% 
+  layout(
+    xaxis = list(
+      ticktext = list(1, 3, 5, 7, 9, 11), 
+      textangle = 0,
+      tickvals = list(365.25*1, 365.25*3, 365.25*5, 365.25*7, 365.25*9, 365.25*11),
+      tickmode = "array"
+  )), keep=TRUE) %>%    
+subplot(nrows = 3, shareX = T, shareY=T, titleX = F, titleY = F, margin = .05)%>% layout(showlegend = F) %>% #, margin = 0.05) %>% 
+  layout(annotations = list(
+                list(x = -0.03, y = 0.5, text = "Survival",
+                     font = list(color = "black",size = 15),
+                     textangle = 270,
+                     showarrow = F, xref='paper', yref='paper', size=48,margin =m)))
+                 #%>% 
+  #layout(annotations = list(
+  #              list(x = 0.5 , y = -0.03, text = "Survival",
+  #                   font = list(color = "black",size = 15),
+  #                   textangle = 0,
+  #                   showarrow = F, xref='paper', yref='paper', size=48,
+  #                   automargin = T)
+   #             ))
 
 ```
+</div>
+
+
+```{r fit_flexsurvreg0_kable,eval=T, echo=T, paged.print=TRUE}                                 
+n_trans2 <- max(trans_matrix, na.rm = T)
+
+fit_flexurvreg0_kable<-
+fit_flexsurvreg0 %>% 
+  dplyr::arrange(transition, AIC) %>% 
+  dplyr::left_join(cbind.data.frame(transition_label,trans_nmb=1:n_trans2),by=c("transition"="trans_nmb")) %>% 
+  dplyr::mutate(trans_w_nmb=paste0(transition,")",transition_label)) %>% 
+  dplyr::select(trans_w_nmb, dist, Df, n2ll, AIC, AICc, BIC)  
+
+fit_flexurvreg0_kable %>%   
+      knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption = paste0("Table 11. Fit indices of the adjusted survival analyses (intercept-only)"),
+               col.names = c("Transition","Distribution", "DF","Negative 2 Log Likelihood","AIC","AICc","BIC"),
+               align =c("l",rep('c', 101))) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  #kableExtra::add_footnote("Note. NA= Null values", notation="none") %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px") 
+```
+
+<br>
 
 ```{r fit1_10s_b, eval=T, echo=T, fig.cap="Figure 21. Suvival RMSEs, Ten-states Model (w/o covars)",fig.align="center", error= T, fig.height=15, fig.width=11, dpi=320, paged.print=TRUE, warnings =F}
-
 rmse_plot0<-
 rmse_comp_fits0_filter %>% 
   dplyr::mutate(trans=as.numeric(trans)) %>% 
+  dplyr::mutate(trans2=as.numeric(trans)) %>% 
     dplyr::left_join(cbind.data.frame(transition_label,trans_nmb=1:n_trans2),by=c("trans"="trans_nmb")) %>% 
   dplyr::mutate(trans_w_nmb=paste0(trans,")",transition_label), 
-        trans_w_nmb=factor(trans_w_nmb,levels=unique(fit_flexurvreg_kable$trans_w_nmb))) %>% 
+        trans_w_nmb=factor(trans_w_nmb,levels=unique(fit_flexurvreg0_kable$trans_w_nmb))) %>% 
    ggplot()+
   geom_bar(aes(x=dist, y=rmse), position="dodge", stat="identity", alpha=0.4)+
   sjPlot::theme_sjplot2()+
   #geom_errorbar(aes(x=t, ymin=L, ymax=U, color=program), position="dodge", stat="identity", width=0.4,  alpha=0.9, size=1.3)+
-  facet_wrap(.~trans_w_nmb, ncol=3, scales="free_y", dir="v") + 
+  facet_wrap(.~trans_w_nmb, ncol=3, scales="free_y", dir="h") + 
   xlab("") + 
   ylab("")+
   #ylab("State occupancy probabilities") + 
@@ -5115,14 +5204,14 @@ rmse_comp_fits0_filter %>%
         strip.background = element_blank(),
         panel.border = element_blank(),
           legend.box.background = element_blank())+
-  theme(axis.text.x = element_text(angle = 90, hjust=0.3, vjust=0))
+  theme(axis.text.x = element_text(angle = 90,hjust=0.95,vjust=0.2))#, vjust=0, hjust=0.3
 
 rmse_plot0
 
 ```
 
 
-```{r fit2_10s, eval=F, echo=T, fig.cap="Figure 19. Vissual Assessment of Model Fits", fig.height=13, fig.width=10, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
+```{r fit2_10s, eval=F, echo=T, fig.cap="Figure 22 Vissual Assessment of Model Fits", fig.height=13, fig.width=10, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
 #install.packages("survHE")
 library(survHE)
 #First, defines the vector of models to be used
@@ -5149,7 +5238,9 @@ for (i in 1:n_trans){
 
 <br>
 
-```{r fit3_wcov, eval=T, echo=T, fig.cap="Figure 22. Vissual Assessment of Suvival, Ten-states Model (w/ covars)",fig.align="center", error= T, fig.height=15, fig.width=15, dpi=320, paged.print=TRUE, warnings =F}
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r fit3_wcov_pre, eval=T, echo=T, error= T, paged.print=TRUE, warnings =T}
 tiempo_antes_fits2<-Sys.time()
 
 
@@ -5309,7 +5400,7 @@ for (i in 1:n_trans2){
       attempt <- attempt + 1
       try(
         r <- flexsurvreg(formula=fitform2,
-                                   data = subset(ms_d_match_surv, trans == i),
+                                   data = subset(ms_d_match_surv, trans == i), 
                                    dist = "gompertz")
       )
     }
@@ -5469,6 +5560,11 @@ rmse_comp_fits<-
 setting_type_label<- c(`0`="Outpatient",`1`="Residential") 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+```
+</div>
+
+
+```{r fit3_wcov, eval=T, echo=T, fig.cap="Figure 22. Vissual Assessment of Suvival, Ten-states Model (w/Treatment Modality)",fig.align="center", error= T, fig.height=15, fig.width=15, dpi=320, paged.print=TRUE, warnings =F}
 
 #http://colorschemedesigner.com/csd-3.5/#
 #https://www.r-graph-gallery.com/42-colors-names.html
@@ -5502,24 +5598,25 @@ paste0("Time in process: ");tiempo_despues_fits2-tiempo_antes_fits2
 options(warn=0)
 
 if(no_mostrar==1){
-jpeg("eso4.jpg", height=15, width= 15, res= 96, units = "in")
+jpeg(paste0(dta_path,"_graphs_mult_state_ags/exp_surv_w_treat_modality.jpg"), height=30, width= 30, res= 600, units = "in")
 plot_fitted_flexsurvreg
 dev.off()
 }
 ```
 
+
 ```{r fit_flexsurvreg_kable,eval=T, echo=T, paged.print=TRUE}                                 
 
 fit_flexurvreg_kable<-
 fit_flexsurvreg %>% 
-  dplyr::arrange(dist, transition, AIC) %>% 
+  dplyr::arrange(transition, AIC) %>% 
   dplyr::left_join(cbind.data.frame(transition_label,trans_nmb=1:n_trans2),by=c("transition"="trans_nmb")) %>% 
   dplyr::mutate(trans_w_nmb=paste0(transition,")",transition_label)) %>% 
   dplyr::select(trans_w_nmb,dist,Df,n2ll,AIC,AICc,BIC)  
   
 fit_flexurvreg_kable %>%   
       knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption = paste0("Table 11. Fit indices of the adjusted survival analyses"),
+               caption = paste0("Table 12. Fit indices of the adjusted survival analyses"),
                col.names = c("Transition","Distribution", "DF","Negative 2 Log Likelihood","AIC","AICc","BIC"),
                align =c("l",rep('c', 101))) %>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
@@ -5529,7 +5626,7 @@ fit_flexurvreg_kable %>%
 
 <br>
 
-```{r fit4_wcov, eval=T, echo=T, fig.cap="Figure 23 Suvival RMSEs, Ten-states Model (w/ covars)",fig.align="center", error= T, fig.height=15, fig.width=11, dpi=320, paged.print=TRUE, warnings =F}
+```{r fit4_wcov, eval=T, echo=T, fig.cap="Figure 23 Suvival RMSEs, Ten-states Model (w/ Treatment Modality)",fig.align="center", error= T, fig.height=15, fig.width=11, dpi=320, paged.print=TRUE, warnings =F}
 
 rmse_plot<-
 rmse_comp_fits %>% 
@@ -5541,7 +5638,7 @@ rmse_comp_fits %>%
   geom_bar(aes(x=dist, y=mean_rmse), position="dodge", stat="identity", alpha=0.4)+
   sjPlot::theme_sjplot2()+
   #geom_errorbar(aes(x=t, ymin=L, ymax=U, color=program), position="dodge", stat="identity", width=0.4,  alpha=0.9, size=1.3)+
-  facet_wrap(.~trans_w_nmb, ncol=3, scales="free_y", dir="v") + 
+  facet_wrap(.~trans_w_nmb, ncol=3, scales="free_y", dir="h") + 
   xlab("") + 
   ylab("")+
   #ylab("State occupancy probabilities") + 
@@ -5552,18 +5649,18 @@ rmse_comp_fits %>%
         strip.background = element_blank(),
         panel.border = element_blank(),
           legend.box.background = element_blank())+
-  theme(axis.text.x = element_text(angle = 90, hjust=0.3, vjust=0))
+  theme(axis.text.x = element_text(angle = 90,hjust=0.95,vjust=0.2))#, vjust=0, hjust=0.3
 
 rmse_plot
 
 if(no_mostrar==1){
-jpeg("eso42.jpg", height=15, width= 10, res= 96, units = "in")
-rmse_plot
-dev.off()
+    jpeg(paste0(dta_path,"eso42.jpg"), height=15, width= 10, res= 96, units = "in")
+    rmse_plot
+    dev.off()
 }
 ```
 
-
+<br>
 
 # Session Info
 
