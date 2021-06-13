@@ -208,6 +208,9 @@ library(cobalt)
 library(eha)
 library(survHE)
 library(flexsurv)
+library(frailtyEM)
+library(frailtypack)
+library(Rfast)
 
 #devtools::install_github('ChristopherLucas/MatchingFrontier')
 
@@ -2187,7 +2190,7 @@ motivodeegreso_mod_imp_imputed<-
   dplyr::left_join(dplyr::select(CONS_C1_df_dup_SEP_2020,row,motivodeegreso_mod_imp, fech_egres_imp,fech_egres_num,dup, duplicates_filtered,evaluacindelprocesoteraputico,tipo_centro_derivacion),by=c("amelia_fit_imputations_imp1_row"="row")) %>% 
   dplyr::mutate(motivodeegreso_mod_imp_imputation= dplyr::case_when(
     ties==0 & adm_dis==1 & fech_egres_imp<"2019-11-13"~"Administrative discharge",
-    #its an absorving state. should not have posterior treatments
+    #its an absorbing state. should not have posterior treatments
     ties==0 & death==1 & fech_egres_imp<"2019-11-13" & dup==duplicates_filtered~"Death",
     ties==0 & referral==1 & fech_egres_imp<"2019-11-13"~"Referral to another treatment",
     ties==0 & ter_dis==1 & fech_egres_imp<"2019-11-13"~"Therapeutic discharge",
@@ -3764,6 +3767,23 @@ NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
                           byrow=TRUE,
                           dimnames=list(from=states_trans,to=states_trans))
 
+Tot_reg<-
+d_match_surv %>% 
+    dplyr::select(id, duplicates_filtered, fech_ing_num,fech_egres_num,dias_treat_imp_sin_na,fech_ing_next_treat,tipo_de_plan_res,motivodeegreso_mod_imp,min_achievement,group_match,dup) %>%
+    ## Filter cases with 4 or more registries
+    #sum(prop.table(table(d_match_surv$dup))[1:3])
+    #dplyr::filter(dup<4) %>% 
+     nrow()
+
+Less4_reg<-
+d_match_surv %>% 
+    dplyr::select(id, duplicates_filtered, fech_ing_num,fech_egres_num,dias_treat_imp_sin_na,fech_ing_next_treat,tipo_de_plan_res,motivodeegreso_mod_imp,min_achievement,group_match,dup) %>%
+    ## Filter cases with 4 or more registries
+    #sum(prop.table(table(d_match_surv$dup))[1:3])
+    dplyr::filter(dup<4) %>% 
+     nrow()
+
+
 #All possible paths through the multi-state model can be found here:
 #paths(mat_3_states)
 boxes.Lexis(trans_matrix, wmult=1.3, hmult=1.3, cex=.9,
@@ -3785,7 +3805,7 @@ boxes.Lexis(trans_matrix, wmult=1.3, hmult=1.3, cex=.9,
                       expression(" 14) " *lambda['79']),
                       expression(" 15) " *lambda['89'])
                       ))
-title(sub = "No recurring states; Absorving state: Third Readmission (97.1% of the registries, considering that each registry had a time-to-readmission);\nOther causes of discharge were not events of interest") ## internal titles
+title(sub = paste0("No recurring states;\nAbsorbing state: Third Readmission (",scales::percent((Less4_reg/Tot_reg),accuracy = 0.1)," of the registries, considering that each registry\n had a time-to-readmission); Other causes of discharge were not events of interest")) ## internal titles
 ```
 
 <br>
@@ -4054,7 +4074,7 @@ d_match_surv_msprep %>%
       tipo_de_plan_res_1,tipo_de_plan_res_2, tipo_de_plan_res_3,min_achievement_1,min_achievement_2,min_achievement_3), 
   #dplyr::rename("id"="row", "ther_disch_time"="date_ther_disch","ther_disch_status"="ther_disch",
   #             "readmission_time"="date_post_treat","readmission_status"="readmission"),
-paste0(dta_path,"ten_st_msprep.dta"))
+paste0(dta_path,"_mult_state_ags/ten_st_msprep.dta"))
 
 rio::export(
 d_match_surv_msprep %>% 
@@ -4067,7 +4087,7 @@ d_match_surv_msprep %>%
       tipo_de_plan_res_1,tipo_de_plan_res_2, tipo_de_plan_res_3,min_achievement_1,min_achievement_2,min_achievement_3), 
   #dplyr::rename("id"="row", "ther_disch_time"="date_ther_disch","ther_disch_status"="ther_disch",
   #             "readmission_time"="date_post_treat","readmission_status"="readmission"),
-paste0(dta_path,"ten_st_msprep.csv"))
+paste0(dta_path,"_mult_state_ags/ten_st_msprep.csv"))
 ```
 
 <br>
@@ -4092,6 +4112,125 @@ data.frame(events(ms_d_match_surv)$Frequencies) %>%
   kableExtra::add_footnote("Note. No event describes cases that remained in the state. Percentage depicts the proportion of the state of origin.") %>% 
   kableExtra::scroll_box(width = "100%", height = "350px")
 ```
+
+<br>
+
+
+### Frailty of readmissions
+
+```{r add_perc_in_res,eval=T, echo=T, paged.print=TRUE}                                 
+ms_d_match_surv_res<-
+  #El arrival y el número al lado del arrival repreenta el número de la transición
+  #mstate::expand.covs(ms_d_match_surv, "arrival", append = TRUE, longnames =F) %>% 
+  ms_d_match_surv %>% 
+  data.frame() %>%
+  dplyr::group_by(id) %>% 
+  #dplyr::mutate(across(paste0("arrival.",1:15),~max(.,na.rm=T))) %>% 
+  #dplyr::mutate(arrival_alt = ifelse(status==0, 0, arrival), #remove NA
+  #        Cum_Sum = cumsum(arrival_alt)) %>%
+
+# dplyr::mutate(arrival_alt1_res = dplyr::case_when(tipo_de_plan_res_1==1 & trans %in% c(4:5)~ arrival,
+#                T~0), Cum_Sum1_res = cumsum(arrival_alt1_res)) %>% 
+#  dplyr::mutate(arrival_alt1 = dplyr::case_when(tipo_de_plan_res_1==1 & trans %in% c(4:5)~ time,
+#                T~0), Cum_Sum1_time_to_readm = cumsum(arrival_alt1)) %>% 
+#  dplyr::mutate(arrival_alt2_res = dplyr::case_when(tipo_de_plan_res_2==1 & trans %in% c(9:10)~ arrival,
+#                T~0), Cum_Sum2_res = cumsum(arrival_alt2_res)) %>% 
+#  dplyr::mutate(arrival_alt2 = dplyr::case_when(tipo_de_plan_res_2==1 & trans %in% c(9:10)~ time,
+#                T~0), Cum_Sum2_time_to_readm = cumsum(arrival_alt2)) %>% 
+#  dplyr::mutate(arrival_alt3_res = dplyr::case_when(tipo_de_plan_res_3==1 & trans %in% c(14:15)~ arrival,
+#                T~0), Cum_Sum3_res = cumsum(arrival_alt3_res)) %>% 
+#  dplyr::mutate(arrival_alt3 = dplyr::case_when(tipo_de_plan_res_3==1 & trans %in% c(14:15)~ arrival,
+#                T~0), Cum_Sum3_time_to_readm = cumsum(arrival_alt3)) %>% 
+
+  dplyr::mutate(arrival_alt1_res = dplyr::case_when(tipo_de_plan_res_1==1 & status==1 & trans %in% c(1:3)~ time,
+                T~0), Cum_Sum1_res = cumsum(arrival_alt1_res)) %>% 
+  dplyr::mutate(arrival_alt2_res = dplyr::case_when(tipo_de_plan_res_2==1 &  status==1 & trans %in% c(6:8)~ time,
+                T~0), Cum_Sum2_res = cumsum(arrival_alt2_res)) %>% 
+  dplyr::mutate(arrival_alt3_res = dplyr::case_when(tipo_de_plan_res_3==1 &  status==1 & trans %in% c(11:12)~ time,
+                T~0), Cum_Sum3_res = cumsum(arrival_alt3_res)) %>% 
+
+  dplyr::mutate(arrival_alt1_out = dplyr::case_when(tipo_de_plan_res_1==0 & status==1 & trans %in% c(1:3)~ time,
+                T~0), Cum_Sum1_out = cumsum(arrival_alt1_out)) %>% 
+  dplyr::mutate(arrival_alt2_out = dplyr::case_when(tipo_de_plan_res_2==0 &  status==1 & trans %in% c(6:8)~ time,
+                T~0), Cum_Sum2_out = cumsum(arrival_alt2_out)) %>% 
+  dplyr::mutate(arrival_alt3_out = dplyr::case_when(tipo_de_plan_res_3==0 &  status==1 & trans %in% c(11:12)~ time,
+                T~0), Cum_Sum3_out = cumsum(arrival_alt3_out)) %>% 
+
+  dplyr::select(-starts_with("arrival_alt")) %>% 
+  dplyr::ungroup() %>% 
+  #sum of days
+  dplyr::mutate(Cum_Sum_res_tot = base::rowSums(dplyr::select(., Cum_Sum1_res, Cum_Sum2_res, Cum_Sum3_res)))%>%
+  dplyr::mutate(Cum_Sum_out_tot = base::rowSums(dplyr::select(., Cum_Sum1_out, Cum_Sum2_out, Cum_Sum3_out))) %>% 
+  dplyr::mutate(perc_in_res = Cum_Sum_res_tot/(Cum_Sum_res_tot+Cum_Sum_out_tot)) %>% 
+  dplyr::mutate(perc_in_res=replace(perc_in_res, is.nan(perc_in_res), 0)) %>% 
+  dplyr::mutate(perc_in_res=replace(perc_in_res, is.infinite(perc_in_res), 1))
+
+ms_d_match_surv$perc_in_res<-ms_d_match_surv_res$perc_in_res
+```
+
+```{r frailty2,eval=T, echo=T, paged.print=TRUE}                                 
+
+frailty_a<-
+frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) + tipo_de_plan_res_1 +perc_in_res, 
+                          data = subset(ms_d_match_surv_res,!trans %in%c(1,2,6,7,11,12)),
+                          RandDist="Gamma",
+                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
+                          recurrentAG = T, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
+                          n.knots = 10,
+                          kappa = 1,
+                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
+                          )
+frailty_b<-
+frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) + tipo_de_plan_res_1 +perc_in_res, 
+                          data = subset(ms_d_match_surv_res,!trans %in%c(1,2,6,7,11,12)),
+                          RandDist="LogN",
+                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
+                          recurrentAG = T, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
+                          n.knots = 10,
+                          kappa = 1,
+                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
+                          )
+invisible(c("Log normal gets stuck"))
+frailty_c<-
+frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) + tipo_de_plan_res_1, 
+                          data = subset(ms_d_match_surv_res,!trans %in%c(1,2,6,7,11,12)),
+                          RandDist="Gamma",
+                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
+                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
+                          n.knots = 10,
+                          kappa = 1,
+                          #hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
+                          )
+frailty_d<-
+frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) + tipo_de_plan_res_1, 
+                          data = subset(ms_d_match_surv_res,!trans %in%c(1,2,6,7,11,12)),
+                          RandDist="LogN",
+                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
+                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
+                          n.knots = 10,
+                          kappa = 1,
+                          #hazard="Splines" #Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
+                          )
+#The program took 20500.91 seconds 
+
+#The variance of the frailty term theta is significantly different from 0, meaning that there
+#is heterogeneity between subjects.
+# you will be violating the proportionality assumption and underestimating the treatment effect
+
+paste0("Frailty including % of residential (Andersen-Gill model), Rand Effects: Gamma");summary(frailty_a, level = 0.95,len=3)
+paste0("Frailty including % of residential (Andersen-Gill model), Rand Effects: Log-normal");summary(frailty_b, level = 0.95,len=3)
+paste0("Frailty, Rand Effects: Gamma");summary(frailty_c, level = 0.95,len=3)
+paste0("Frailty, Rand Effects: Log-normal");summary(frailty_d, level = 0.95,len=3)
+#tipo_de_plan_res_11 1.40 ( 1.35 - 1.46 ) tipo_de_plan_res_11 1.41 ( 1.35 - 1.47 )
+
+#https://www.uhasselt.be/documents/censtat/IBS2017/sessionI.pdf
+#Balan, T. A., & Putter, H. (2019). Nonproportional hazards and unobserved heterogeneity in clustered survival data: When can we tell the difference?. Statistics in medicine, 38(18), 3405–3420. https://doi.org/10.1002/sim.8171
+```
+
+<br>
+
+We can suspect that in readmissions there may be unobserved heterogeneity that affects the risk and time to readmission. The frailty term introduces dependence between the waiting time until leaving the initial state model and the waiting time until the current state and, hence, a violation of the Markov assumption. However, there has been evidence pointing out that shared frailty in sparse recurrent events in small subjects might capture non-proportional hazards instead of heterogeneity (Balan & Putter, 2019)
+
 
 <br>
 
@@ -4220,36 +4359,27 @@ attr(ms_CONS_C1_SEP_2020_women_imputed_mod,"trans")<-mat_3_states
 
 ms_CONS_C1_SEP_2020_women_imputed_mod$id<-ms_CONS_C1_SEP_2020_women_imputed_mod$row
 ms_CONS_C1_SEP_2020_women_imputed_mod$row<-NULL
-formula_char<-
-"edad_al_ing_grupos_18_29+ edad_al_ing_grupos_30_39+ 
-edad_al_ing_grupos_40_49+ edad_al_ing_grupos_50+ escolaridad_rec_1_more_than_high_school+
-escolaridad_rec_2_completed_high_school_or_less+ escolaridad_rec_3_completed_primary_school_or_less+
-sus_principal_mod_alcohol+ sus_principal_mod_cocaine_hydrochloride+ sus_principal_mod_cocaine_paste+
-sus_principal_mod_marijuana+ sus_principal_mod_other+ freq_cons_sus_prin_1_day_a_week_or_more+
-freq_cons_sus_prin_2_to_3_days_a_week+ freq_cons_sus_prin_4_to_6_days_a_week+
-freq_cons_sus_prin_daily+ freq_cons_sus_prin_less_than_1_day_a_week+
-compromiso_biopsicosocial_1_mild+ compromiso_biopsicosocial_2_moderate+
-compromiso_biopsicosocial_3_severe+ tenencia_de_la_vivienda_mod_illegal_settlement+
-tenencia_de_la_vivienda_mod_others+ tenencia_de_la_vivienda_mod_owner_transferred_dwellings_pays_dividends+
-tenencia_de_la_vivienda_mod_renting+ tenencia_de_la_vivienda_mod_stays_temporarily_with_a_relative+
-num_otras_sus_mod_more_than_one_additional_substance+ num_otras_sus_mod_no_additional_substance+
-num_otras_sus_mod_one_additional_substance+ numero_de_hijos_mod_rec_no+
-numero_de_hijos_mod_rec_yes+ tipo_de_programa_2_1+
-tipo_de_programa_2_0+ tipo_de_plan_res_outpatient+
-tipo_de_plan_res_residential
-"
 ```
 
-```{r markov_semimarkov22,eval=F, echo=T, paged.print=TRUE}                                 
+```{r markov_semimarkov22,eval=F, echo=T, paged.print=TRUE}      
+rm(list=ls()[!ls() %in% c("trans_matrix","ms_d_match_surv")])
+pryr::mem_used()
+
+formula_char<-
+"tipo_de_plan_res_1
+"
 MT <- MarkovTest(ms_d_match_surv, 
-                 formula= "tipo_de_plan_res_1",
+                 formula= formula_char,
                  transition = 4,
                  grid = 1,#seq(0, 11, by = 1/12), 
-                 B = 25)
+                 B = 10)
 #Tried with transition 2 and 3
 #Error in rep(mmm, length.out = l1) : 
 #  attempt to replicate an object of type 'symbol'
 #Además: There were 50 or more warnings (use warnings() to see the first 50)
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
 data<-ms_d_match_surv #no puede ir arrival
 id<-"id"
@@ -4275,6 +4405,7 @@ MarkovTest <- function(data, id, formula = NULL, transition, grid,
   dist <- match.arg(dist)
   if (missing(id)) id <- "id"
   # Remove "empty" lines in the data
+# Elimina datos inconsistentes
   wh <- which(data$Tstop <= data$Tstart)
   if (length(wh)>0)
   {
@@ -4286,6 +4417,7 @@ MarkovTest <- function(data, id, formula = NULL, transition, grid,
   # Make sure to retain all covariates (possibly way to many) in msdata (needed in formula perhaps)
   mtch <- match(c("id", "from", "to", "trans", "Tstart", "Tstop", "status"), names(data)) 
   covcols <- 1:ncol(data)
+  # aquellas variables que no son las principales
   covcols <- covcols[!covcols %in% mtch]
   ncovs <- length(covcols)
   
@@ -4618,1046 +4750,6 @@ The model considered the transition from intermediate states to our absorbing st
 #ms_d_match_surv[, c("Tstart", "Tstop", "time")] <- ms_d_match_surv[, c("Tstart", "Tstop", "time")]/30
 ms_d_match_surv <- expand.covs(ms_d_match_surv, "arrival", append = TRUE, longnames =F)
 ms_d_match_surv$arrival<-ms_d_match_surv$Tstart
-```
-
-<br>
-
-### Assessment of Fit of Transitions
-
-<!--- 
-Base-case parametric functions were selected with consideration of: goodness-of-fit (assesed by MSE y visual assessment) between predicted vs. observed RFS in each treatment arm during the trial period and plausibility of long term extrapolations based on external data and clinical expert opinion. Consstent with recommended practice, the same funcional forms were used in both arms.
- Bensimon, et al., 2019
---->
-
-We need to derive appropriate functional forms and define respective survival functions. One reason to favor patametric models is that they can be easier to generalize. Several candidate distributions were considered to model transitions, including Weibull (assume a monotonically increasing or decreasing hazard), Log-logistic (non-monotonic hazards), Gompertz (assume a monotonically increasing or decreasing hazard), Log-normal (non-monotonic hazards), Exponential (constant hazard), Gamma, Generalized gamma & Generalized F (more flexible). 
-
-<!---  (non-monotonic hazards) --->
-
-The following plots  fitted survival curves from each model (colored lines), with the Kaplan-Meier estimate, in red, obtained from an example of Jackson available [here](https://cran.r-project.org/web/packages/fic/vignettes/survival.pdf), added to the contributions of Wathers & Cutler available [here](https://digitalcommons.usu.edu/cgi/viewcontent.cgi?article=1936&context=gradreports).
-
-<br>
-
-```{r fit1_10s, eval=T, echo=T, fig.cap="Figure 19. Vissual Assessment of Survival Curves", fig.height=20, fig.width=10, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
-#options(warn=-1)
-
-n_iter<-10000
-
-tiempo_antes_fits<-Sys.time()
-
-#Weathers, Brandon and Cutler, Richard Dr., "Comparision of Survival Curves Between Cox Proportional 
-#Hazards, Random Forests, and Conditional Inference Forests in Survival Analysis" (2017). All Graduate 
-#Plan B and other Reports. 927. 
-#https://digitalcommons.usu.edu/gradreports/927 
-
-#<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">            
-#https://devinincerti.com/2019/01/01/sim-mstate.html
-
-n_trans <- max(trans_matrix, na.rm = TRUE)
-fits_wei <- vector(mode = "list", length = n_trans)
-fits_weiph <- vector(mode = "list", length = n_trans)
-fits_llogis <- vector(mode = "list", length = n_trans)
-fits_gomp <- vector(mode = "list", length = n_trans)
-fits_logn <- vector(mode = "list", length = n_trans)
-fits_exp <- vector(mode = "list", length = n_trans)
-fits_gam <- vector(mode = "list", length = n_trans)
-fits_ggam <- vector(mode = "list", length = n_trans)
-fits_genf <- vector(mode = "list", length = n_trans)
-fits_rp02 <- vector(mode = "list", length = n_trans)
-fits_rp03 <- vector(mode = "list", length = n_trans)
-fits_rp04 <- vector(mode = "list", length = n_trans)
-fits_rp05 <- vector(mode = "list", length = n_trans)
-fits_rp06 <- vector(mode = "list", length = n_trans)
-fits_rp07 <- vector(mode = "list", length = n_trans)
-fits_rp08 <- vector(mode = "list", length = n_trans)
-fits_rp09 <- vector(mode = "list", length = n_trans)
-fits_rp10 <- vector(mode = "list", length = n_trans)
-fits_c_wei <- vector(mode = "list", length = n_trans)
-fits_c_weiph <- vector(mode = "list", length = n_trans)
-fits_c_llogis <- vector(mode = "list", length = n_trans)
-fits_c_gomp <- vector(mode = "list", length = n_trans)
-fits_c_logn <- vector(mode = "list", length = n_trans)
-fits_c_exp <- vector(mode = "list", length = n_trans)
-fits_c_gam <- vector(mode = "list", length = n_trans)
-fits_c_ggam <- vector(mode = "list", length = n_trans)
-fits_c_genf <- vector(mode = "list", length = n_trans)
-km.lc<-list()
-fits_cox<-list()
-fits_c_cox<-list()
-#"gengamma"	Generalized gamma (stable parameterisation)
-#"gengamma.orig"	Generalized gamma (original parameterisation)
-#"genf"	Generalized F (stable parameterisation)
-#"genf.orig"	Generalized F (original parameterisation)
-#"weibull"	Weibull
-#"gamma"	Gamma
-#"exp"	Exponential
-#"lnorm"	Log-normal
-#"gompertz"	Gompertz
-
-library(flexsurv)
-
-#Specify the formula
-fitform <- Surv(time, status) ~ 1
-
-for (i in 1:n_trans){  
-  fits_wei[[i]] <- flexsurvreg(formula=fitform,
-                               data = subset(ms_d_match_surv, trans == i),
-                               dist = "weibull")
-}
-
-for (i in 1:n_trans){  
-  fits_weiph[[i]] <- flexsurvreg(formula=fitform,
-                               data = subset(ms_d_match_surv, trans == i),
-                               dist = "weibullph")
-}
-
-for (i in 1:n_trans){
-  fits_llogis[[i]] <- flexsurvreg(formula=fitform,
-                               data = subset(ms_d_match_surv, trans == i),
-                               dist = "llogis")
-}
-
-for (i in 1:n_trans){
-  fits_gam[[i]] <- flexsurvreg(formula=fitform,
-                               data = subset(ms_d_match_surv, trans == i),
-                               dist = "gamma")
-}
-#LOS ERRORES OCURREN CUANDO NO HAY COVARIABLES
-#In (function (q, shape, rate = 1, scale = 1/rate, lower.tail = TRUE,  ... :   NaNs produced
-#gamma no funcionó: NaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs produced
-for (i in 1:n_trans){
-  fits_ggam[[i]] <- flexsurvreg(formula=fitform,
-                               data = subset(ms_d_match_surv, trans == i),
-                               dist = "gengamma")
-}
-
-for (i in 1:n_trans){
-  fits_gomp[[i]] <- flexsurvreg(formula=fitform,
-                                data = subset(ms_d_match_surv, trans == i),
-                                dist = "gompertz")
-}
-
-
-for (i in 1:n_trans){
-  fits_logn[[i]] <- flexsurvreg(formula=fitform,
-                                data = subset(ms_d_match_surv, trans == i),
-                                dist = "lnorm")
-}
-
-for (i in 1:n_trans){
-  fits_exp[[i]] <- flexsurvreg(formula=fitform,
-                               data = subset(ms_d_match_surv, trans == i),
-                               dist = "exp")
-}
-
-no_attempts <- 20
-
-for (i in 1:n_trans){
-    r <- NULL
-    attempt <- 0
-    while( is.null(r) && attempt <= no_attempts ) {
-      attempt <- attempt + 1
-      try(
-        r <-  flexsurvreg(formula=fitform,
-                               data = subset(ms_d_match_surv, trans == i),
-                               dist = "genf")
-      )
-    }
-    fits_genf[[i]] <- r
-}  
-
-for (i in 1:n_trans){
-    r <- NULL
-    attempt <- 0
-    while( is.null(r) && attempt <= no_attempts ) {
-      attempt <- attempt + 1
-      try(
-        r <- flexsurvspline(formula=fitform,k=2,
-                               data = subset(ms_d_match_surv, trans == i))
-      )
-    }
-    fits_rp02[[i]] <- r
-}  
-for (i in 1:n_trans){
-    r <- NULL
-    attempt <- 0
-    while( is.null(r) && attempt <= no_attempts ) {
-      attempt <- attempt + 1
-      try(
-        r <- flexsurvspline(formula=fitform,k=3,
-                               data = subset(ms_d_match_surv, trans == i))
-      )
-    }
-    fits_rp03[[i]] <- r
-}
-for (i in 1:n_trans){
-    r <- NULL
-    attempt <- 0
-    while( is.null(r) && attempt <= no_attempts ) {
-      attempt <- attempt + 1
-      try(
-        r <- flexsurvspline(formula=fitform,k=4,
-                               data = subset(ms_d_match_surv, trans == i))
-      )
-    }
-    fits_rp04[[i]] <- r
-}
-for (i in 1:n_trans){
-    r <- NULL
-    attempt <- 0
-    while( is.null(r) && attempt <= no_attempts ) {
-      attempt <- attempt + 1
-      try(
-        r <- flexsurvspline(formula=fitform,k=5,
-                               data = subset(ms_d_match_surv, trans == i))
-      )
-    }
-    fits_rp05[[i]] <- r
-}
-for (i in 1:n_trans){
-    r <- NULL
-    attempt <- 0
-    while( is.null(r) && attempt <= no_attempts ) {
-      attempt <- attempt + 1
-      try(
-        r <- flexsurvspline(formula=fitform,k=6,
-                               data = subset(ms_d_match_surv, trans == i))
-      )
-    }
-    fits_rp06[[i]] <- r
-}
-for (i in 1:n_trans){
-    r <- NULL
-    attempt <- 0
-    while( is.null(r) && attempt <= no_attempts ) {
-      attempt <- attempt + 1
-      try(
-        r <- flexsurvspline(formula=fitform,k=7,
-                               data = subset(ms_d_match_surv, trans == i))
-      )
-    }
-    fits_rp07[[i]] <- r
-}
-for (i in 1:n_trans){
-    r <- NULL
-    attempt <- 0
-    while( is.null(r) && attempt <= no_attempts ) {
-      attempt <- attempt + 1
-      try(
-        r <- flexsurvspline(formula=fitform,k=8,
-                               data = subset(ms_d_match_surv, trans == i))
-      )
-    }
-    fits_rp08[[i]] <- r
-}
-for (i in 1:n_trans){
-    r <- NULL
-    attempt <- 0
-    while( is.null(r) && attempt <= no_attempts ) {
-      attempt <- attempt + 1
-      try(
-        r <- flexsurvspline(formula=fitform,k=9,
-                               data = subset(ms_d_match_surv, trans == i))
-      )
-    }
-    fits_rp09[[i]] <- r
-}
-for (i in 1:n_trans){
-    r <- NULL
-    attempt <- 0
-    while( is.null(r) && attempt <= no_attempts ) {
-      attempt <- attempt + 1
-      try(
-        r <- flexsurvspline(formula=fitform,k=10,
-                               data = subset(ms_d_match_surv, trans == i))
-      )
-    }
-    fits_rp10[[i]] <- r
-}
-
-for (i in 1:n_trans){
-km.lc[[i]] <- survfit(formula= fitform, data = subset(ms_d_match_surv, trans == i))
-}
-
-transition_label<- plots$title
-attr(transition_label,"names")<- plots$trans
-
-
-layout(matrix(1:15, nc = 3, byrow = F))
-for (i in 1:n_trans){
-plot(km.lc[[i]], col="red", conf.int=F);
-  lines(fits_wei[[i]], col="coral4", ci=F);
-  lines(fits_weiph[[i]], col="navyblue", ci=F);
-  lines(fits_gomp[[i]], col="lightpink", ci=F);
-  lines(fits_llogis[[i]], col="gray25", ci=F);#A0A36D
-  lines(fits_gam[[i]], col="darkorchid4", ci=F);
-  lines(fits_ggam[[i]], col="#496A72", ci=F);
-  lines(fits_logn[[i]], col="gray70", ci=F);
-  lines(fits_exp[[i]],col="#A0A36D", ci=F);
-  lines(fits_genf[[i]],col="aquamarine3", ci=F, lty = 2);
-  lines(fits_rp02[[i]],col="azure2", ci=F, lty = 2);
-  lines(fits_rp03[[i]],col="cornflowerblue", ci=F, lty = 2);
-  lines(fits_rp04[[i]],col="chartreuse4", ci=F, lty = 2);
-  lines(fits_rp05[[i]],col="darkorange", ci=F, lty = 2);
-  lines(fits_rp06[[i]],col="chartreuse1", ci=F, lty = 2);
-  lines(fits_rp07[[i]],col="azure2", ci=F, lty = 3);
-  lines(fits_rp08[[i]],col="cornflowerblue", ci=F, lty = 3);
-  lines(fits_rp09[[i]],col="chartreuse4", ci=F, lty = 3);
-  lines(fits_rp10[[i]],col="darkorange", ci=F, lty = 3)
-  
-legend("bottomleft", legend = c("Kaplan-Meier","Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
-                "Generalized gamma", "Lognormal", "Exponential", "Generalized F","RP2","RP3","RP4","RP5", "RP6","RP7", "RP8", "RP9", "RP10"), col = 
-         c("red","coral4","navyblue","lightpink","gray25",#"#A0A36D","#886894",
-           "darkorchid4","#496A72","gray70","#A0A36D", "aquamarine3", "azure2", "cornflowerblue", "chartreuse4","darkorange", "chartreuse1","azure2","cornflowerblue","chartreuse4","darkorange"), 
-       title = "Distributions", cex = .95, bty = "n", lty=c(rep(1,10),rep(2,6),rep(3,4)),lwd=3)# lty = 1:2, 
-title(main=transition_label[[i]])
-}
-endTime <- Sys.time()
-
-paste0("Time in process: ");endTime - tiempo_antes_fits
-#23 min aprox.
-
-#For more complicated models, users should specify what covariate values they want summaries for, rather than relying on the default
-#</div>
-options(warn=0)
-
-if(no_mostrar==1){
-jpeg(paste0(dta_path,"/_graphs_mult_state_ags/exp_surv_int_only.jpg"), height=30, width= 30, res= 600, units = "in")
-layout(matrix(1:15, nc = 3, byrow = F))
-for (i in 1:n_trans){
-plot(km.lc[[i]], col="red", conf.int=F);
-  lines(fits_wei[[i]], col="coral4", ci=F);
-  lines(fits_weiph[[i]], col="navyblue", ci=F);
-  lines(fits_gomp[[i]], col="lightpink", ci=F);
-  lines(fits_llogis[[i]], col="gray25", ci=F);#A0A36D
-  lines(fits_gam[[i]], col="darkorchid4", ci=F);
-  lines(fits_ggam[[i]], col="#496A72", ci=F);
-  lines(fits_logn[[i]], col="gray70", ci=F);
-  lines(fits_exp[[i]],col="#A0A36D", ci=F);
-  lines(fits_genf[[i]],col="aquamarine3", ci=F, lty = 2);
-  lines(fits_rp02[[i]],col="azure2", ci=F, lty = 2);
-  lines(fits_rp03[[i]],col="cornflowerblue", ci=F, lty = 2);
-  lines(fits_rp04[[i]],col="chartreuse4", ci=F, lty = 2);
-  lines(fits_rp05[[i]],col="darkorange", ci=F, lty = 2);
-  lines(fits_rp06[[i]],col="chartreuse1", ci=F, lty = 2);
-  lines(fits_rp07[[i]],col="azure2", ci=F, lty = 3);
-  lines(fits_rp08[[i]],col="cornflowerblue", ci=F, lty = 3);
-  lines(fits_rp09[[i]],col="chartreuse4", ci=F, lty = 3);
-  lines(fits_rp10[[i]],col="darkorange", ci=F, lty = 3)
-  
-legend("bottomleft", legend = c("Kaplan-Meier","Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
-                "Generalized gamma", "Lognormal", "Exponential", "Generalized F","RP2","RP3","RP4","RP5", "RP6","RP7", "RP8", "RP9", "RP10"), col = 
-         c("red","coral4","navyblue","lightpink","gray25",#"#A0A36D","#886894",
-           "darkorchid4","#496A72","gray70","#A0A36D", "aquamarine3", "azure2", "cornflowerblue", "chartreuse4","darkorange", "chartreuse1","azure2","cornflowerblue","chartreuse4","darkorange"), 
-       title = "Distributions", cex = .95, bty = "n", lty=c(rep(1,10),rep(2,6),rep(3,4)),lwd=3)# lty = 1:2, 
-title(main=transition_label[[i]])
-    }
-  dev.off()
-}
-```
-
-
-The following transitions deviated considerably from the models chosen. Consider specify transition parameters manually or check whether to transform the measure of time into an exponential or logarithmic time to event:
-
-- Readmission2 to DWCA3
-- Readmission2 to TD3
-- Readmission to DWCA2
-- Readmission to TD2
-- Admission to Readmission
-- Admission to DWCA
-- Admission to TD
-
-<br>
-
-<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
-```{r fit1_10s_a_pre, eval=T, echo=T, warning=T, paged.print=T, fig.align="center", dpi=320, warnings=F, error=T}
-#
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-fit_flexsurvreg0<-data.frame()
-fitted_flexsurvreg0<-data.frame()
-
-dists_no_covs_10s<-cbind.data.frame(covs=c(rep("fits_",(18)*n_trans)),
-              formal=rep(c("Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
-                "Generalized gamma", "Lognormal", "Exponential", "Generalized F", paste0("RP0",2:9),"RP10"),1*n_trans),
-              dist=c("weibull", "weibullph", "llogis", "gamma", "gengamma", "gompertz", "lnorm", "exp", "genf",rep("no dist",9)),
-              model=rep(c("wei", "weiph", "gomp", "llogis", "gam","ggam", "logn", "exp", "genf", paste0("rp0",2:9),"rp10"),1*n_trans),
-              trans=rep(1:n_trans, each=18))
-
-for (i in 1:nrow(dists_no_covs_10s)){  #
-  
-  cat(paste0("#### Flexible Survival Model (w/ covs): ",
-               dists_no_covs_10s[i,"formal"], "; transition: ",dists_no_covs_10s[i,"trans"], "\n \n"))  
-    
-  model<-paste0("fits_",dists_no_covs_10s[i,"model"])
-  
-  if(!is.null(get(model)[[dists_no_covs_10s[i,"trans"]]])){  
-     fitted_flexsurvreg0<- rbind(fitted_flexsurvreg0,cbind.data.frame(dist=rep(dists_no_covs_10s[i,"formal"],), 
-                            trans=rep(dists_no_covs_10s[i,"trans"],),
-                            data.table::data.table(summary(get(model)[[dists_no_covs_10s[i,"trans"]]], 
-                                                           #newdata= newdat2a, 
-                                                           #newtime=unique(fitted_km$time), 
-                                                           type = "survival", 
-                                                           tidy=T)))) 
-    # Generate fit indices
-    fit_flexsurvreg0<-rbind(fit_flexsurvreg0,
-       cbind(dist= dists_no_covs_10s[i,"formal"],
-             transition=dists_no_covs_10s[i,"trans"],
-             fitstats.flexsurvreg(get(model)[[dists_no_covs_10s[i,"trans"]]])))
-    #the BIC may not be appropriate if none of the candidate models are considered to be close to the ‘true’ model.     
-    } else {
-    cat(paste0("The model that assumed a ",dists_no_covs_10s[i,"formal"]," distribution for the transition number ",dists_no_covs_10s[i,"trans"]," did not converge \n\n"))
-    }
-}
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-if(no_mostrar==1){
-  fit_flexsurvreg0 %>% 
-    dplyr::group_by(transition) %>% 
-    summarise(mean(ucl,na.rm=T))
-  }
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
-km.lc0<-list()
-fitted_km0<-data.frame()
-
-for (i in 1:n_trans){
-  km.lc0[[i]] <- survfit(formula= fitform, data = subset(ms_d_match_surv, trans == i))
-  fitted_km0<-rbind(fitted_km0,cbind.data.frame(trans=i,fortify(km.lc0[[i]])))
-}
-
-#Calculate error
-#c("Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma","Generalized gamma", "Lognormal", "Exponential", "Generalized F")
-
-fitted_flexsurvreg_binned_mix0<-
-data.frame(fitted_flexsurvreg0)[,c("dist","trans","time","est","lcl","ucl")] %>% 
-  dplyr::left_join(fitted_km0, by=c("trans","time")) %>% 
-#there are many observations that was not available due to empirical missing data
-#dplyr::filter(!is.na(surv))
-  dplyr::group_by(dist,trans) %>% 
-  #dplyr::mutate(est= ifelse(is.na(est), mean(est, na.rm=TRUE), est)) %>% 
-  #dplyr::mutate(surv= ifelse(is.na(surv), mean(surv, na.rm=TRUE), surv)) %>% 
-  tidyr::fill(surv,.direction="updown") %>% 
-  tidyr::fill(est,.direction="updown") %>% 
-  ungroup()
-
-db_for_apply_rmse0<-
-  cbind.data.frame(
-      dist=rep(c("Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
-                "Generalized gamma", "Lognormal", "Exponential", "Generalized F", paste0("RP0",2:9),"RP10"),n_trans),
-      trans=rep(c(1:n_trans),each=18*2))
-   
-rmse_comp_fits0<- data.frame()
-for(i in 1:nrow(db_for_apply_rmse0)){
-  rmse<- Metrics::rmse(subset(fitted_flexsurvreg_binned_mix0, dist==db_for_apply_rmse0[i,"dist"] & 
-                       trans==db_for_apply_rmse0[i,"trans"])$est,
-              subset(fitted_flexsurvreg_binned_mix0, dist==db_for_apply_rmse0[i,"dist"] & 
-                       trans==db_for_apply_rmse0[i,"trans"])$surv)
-
-  rmse_comp_fits0<- rbind(rmse_comp_fits0,cbind(dist=db_for_apply_rmse0[i,"dist"],
-                                                  residential=db_for_apply_rmse0[i,"residential"],
-                                                  trans=db_for_apply_rmse0[i,"trans"],
-                                                  rmse=rmse))
-}
-
-rmse_comp_fits0_filter<-
-  rmse_comp_fits0 %>% 
-    dplyr::filter(rmse!="NaN") %>%  
-      dplyr::arrange(trans,dist, rmse)%>%
-      dplyr::mutate(rmse=round(as.numeric(rmse),4))
-
-setting_type_label<- c(`0`="Outpatient",`1`="Residential") 
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
-```
-</div>
-
-<br>
-
-<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:800px; overflow-x: scroll; width:100%">
-```{r fit1_10s_a, eval=T, echo=T, fig.cap="Figure 20. Vissual Assessment of Survival Curves (w/o covars)", fig.height=8, fig.width=15, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
-#load("C:/Users/CISS Fondecyt/OneDrive/Escritorio/mult_state_ags.RData")
-
-c26 <- c(
-  "dodgerblue2", # red
-  "green4",
-  "#6A3D9A", # purple
-  "#FF7F00", # orange
-  "gray16", "gold1",
-  "skyblue2", "#FB9A99", # lt pink
-  "palegreen2",
-  "#CAB2D6", # lt purple
-  "#FDBF6F", # lt orange
-  "gray70", "khaki2",
-  "maroon", "orchid1", "deeppink1", "blue1", "steelblue4",
-  "darkturquoise", "green1", "yellow4", "yellow3",
-  "darkorange4", "brown", "gray40")
-
-fitted_flexsurvreg_binned_mix0_plot<-
-fitted_flexsurvreg_binned_mix0 %>% 
-  dplyr::mutate(text=paste0("Distribution: ",dist,"<br>survival: ",sprintf("%1.2f",est),"<br>Time (in years): ",round(time/365.25,2), "<br>CIs: ",ifelse(!is.na(lcl),"CIs","no CIs"))) %>% 
-  dplyr::mutate(text2=paste0("Distribution: ",dist,"<br>survival: ",sprintf("%1.2f",est),"<br>Time (in years): ",round(time/365.25,2), "<br>CIs: ",ifelse(!is.na(lcl),"CIs","no CIs"))) %>% 
-ggplot()+
-    geom_line(aes(time, est, color=dist),size=1)+
-    geom_line(aes(time, surv), color="red",size=1)+
-    scale_color_manual(name="Distributions", values = c26[1:17])+
-                         #c("black",brewer.pal(n = 9, name = 'Paired')))+
-                         #c("#112A60","#085754","#D3A347","#4F3C91","red","#112A60","#085754","#8F630D","#251363")) +
-    facet_wrap(.~trans,labeller = labeller(trans = transition_label), ncol=3, scales = "free_y")+
-    sjPlot::theme_sjplot2()+
-    theme(legend.position="bottom",
-          strip.background = element_rect(fill = "white", colour = "white"))+
-  scale_x_continuous(breaks = seq(0, 365.25*12, 2*365.25), labels=seq(0,12,2))+
-  #ylim(0,1.25)+
-  #theme(axis.text.x = element_blank(), 
-  #      panel.grid.major = element_blank(), 
-  #      panel.grid.minor = element_blank()) +
-  labs(y="",x="")+
-  theme(legend.position='none')
-
-m <- list(
-  l = 80*1.05,
-  r = 80,
-  b = 80,
-  t = 80*1.05,
-  pad = 4
-)
-
-fitted_flexsurvreg_binned_mix0_plot$data %>% 
-  dplyr::mutate(years=round(time/365.25,0)) %>% 
-  dplyr::mutate(trans2=trans) %>% 
-  dplyr::left_join(cbind.data.frame(transition_label,trans2=1:15), by="trans2") %>% 
-group_by(trans) %>%
-group_map(~ plot_ly(data=., x = ~time, y = ~est, color = ~dist, type = "scatter", mode="lines", text=~text) %>% 
-            add_trace(y = ~surv, type = 'scatter', mode = 'lines', line = list(color = 'red', width = 1), text=~text2)%>% 
-  layout(annotations = list(list(x = 0.5 , y = 1.03, text = ~unique(transition_label), showarrow = F, xref='paper', yref='paper'))) %>% 
-  layout(
-    xaxis = list(
-      ticktext = list(1, 3, 5, 7, 9, 11), 
-      textangle = 0,
-      tickvals = list(365.25*1, 365.25*3, 365.25*5, 365.25*7, 365.25*9, 365.25*11),
-      tickmode = "array"
-  )), keep=TRUE) %>%    
-subplot(nrows = 3, shareX = T, shareY=T, titleX = F, titleY = F, margin = .05)%>% layout(showlegend = F) %>% #, margin = 0.05) %>% 
-  layout(annotations = list(
-                list(x = -0.03, y = 0.5, text = "Survival",
-                     font = list(color = "black",size = 15),
-                     textangle = 270,
-                     showarrow = F, xref='paper', yref='paper', size=48,margin =m)))
-                 #%>% 
-  #layout(annotations = list(
-  #              list(x = 0.5 , y = -0.03, text = "Survival",
-  #                   font = list(color = "black",size = 15),
-  #                   textangle = 0,
-  #                   showarrow = F, xref='paper', yref='paper', size=48,
-  #                   automargin = T)
-   #             ))
-
-```
-</div>
-
-
-```{r fit_flexsurvreg0_kable,eval=T, echo=T, paged.print=TRUE}                                 
-n_trans2 <- max(trans_matrix, na.rm = T)
-
-fit_flexurvreg0_kable<-
-fit_flexsurvreg0 %>% 
-  dplyr::arrange(transition, AIC) %>% 
-  dplyr::left_join(cbind.data.frame(transition_label,trans_nmb=1:n_trans2),by=c("transition"="trans_nmb")) %>% 
-  dplyr::mutate(trans_w_nmb=paste0(transition,")",transition_label)) %>% 
-  dplyr::select(trans_w_nmb, dist, Df, n2ll, AIC, AICc, BIC)  
-
-fit_flexurvreg0_kable %>%   
-      knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption = paste0("Table 11. Fit indices of the adjusted survival analyses (intercept-only)"),
-               col.names = c("Transition","Distribution", "DF","Negative 2 Log Likelihood","AIC","AICc","BIC"),
-               align =c("l",rep('c', 101))) %>%
-  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
-  #kableExtra::add_footnote("Note. NA= Null values", notation="none") %>% 
-  kableExtra::scroll_box(width = "100%", height = "375px") 
-```
-
-<br>
-
-```{r fit1_10s_b, eval=T, echo=T, fig.cap="Figure 21. Suvival RMSEs, Ten-states Model (w/o covars)",fig.align="center", error= T, fig.height=15, fig.width=11, dpi=320, paged.print=TRUE, warnings =F}
-rmse_plot0<-
-rmse_comp_fits0_filter %>% 
-  dplyr::mutate(trans=as.numeric(trans)) %>% 
-  dplyr::mutate(trans2=as.numeric(trans)) %>% 
-    dplyr::left_join(cbind.data.frame(transition_label,trans_nmb=1:n_trans2),by=c("trans"="trans_nmb")) %>% 
-  dplyr::mutate(trans_w_nmb=paste0(trans,")",transition_label), 
-        trans_w_nmb=factor(trans_w_nmb,levels=unique(fit_flexurvreg0_kable$trans_w_nmb))) %>% 
-   ggplot()+
-  geom_bar(aes(x=dist, y=rmse), position="dodge", stat="identity", alpha=0.4)+
-  sjPlot::theme_sjplot2()+
-  #geom_errorbar(aes(x=t, ymin=L, ymax=U, color=program), position="dodge", stat="identity", width=0.4,  alpha=0.9, size=1.3)+
-  facet_wrap(.~trans_w_nmb, ncol=3, scales="free_y", dir="h") + 
-  xlab("") + 
-  ylab("")+
-  #ylab("State occupancy probabilities") + 
-  theme_minimal()+
-  theme(legend.position="bottom")+
-    theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        strip.background = element_blank(),
-        panel.border = element_blank(),
-          legend.box.background = element_blank())+
-  theme(axis.text.x = element_text(angle = 90,hjust=0.95,vjust=0.2))#, vjust=0, hjust=0.3
-
-rmse_plot0
-
-```
-
-
-```{r fit2_10s, eval=F, echo=T, fig.cap="Figure 22 Vissual Assessment of Model Fits", fig.height=13, fig.width=10, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
-#install.packages("survHE")
-library(survHE)
-#First, defines the vector of models to be used
-mods <- c("weibull", "weibullph", "llogis", "gamma", "gengamma", "gompertz", "lnorm" ,"exp")#, "genf")
-
-# And then runs the models using MLE via flexsurv
-#m2 <- fit.models(formula = formula, data = data, distr = c("exp","wei","lno","llo"), method="inla")
-#m3 <- fit.models(formula = formula, data = subset(ms_d_match_surv, trans == 1), distr = mods, method="hmc")
-#Error in model.matrix(formula, data)[(mf %>% filter(event == 1))$ID, ] : 
-#  subíndice fuera de  los límites
-
-list_aics<-list()
-for (i in 1:n_trans){
-  m1 <- fit.models(formula = fitform, data = subset(ms_d_match_surv, trans == i), distr = mods)
-  model.fit.plot(MLE=m1, stacked = T, #HMC=m3, 
-               models = c("Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
-                "Generalized gamma", "Lognormal", "Exponential", "Generalized F"),
-               #lab.profile = c("Outpatient","Residential")
-               name_legend = "Inferential method")+ 
-  ggtitle("Model comparison based on AIC")+
-  labs(subtitle=plots[i,"title"])
-}
-```
-
-<br>
-
-
-<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
-```{r fit3_wcov_pre, eval=T, echo=T, error= T, paged.print=TRUE, warnings =T}
-tiempo_antes_fits2<-Sys.time()
-
-
-newtime0 = seq(from=round(min(ms_d_match_surv$time),0), to= round(max(ms_d_match_surv$time),0))
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_
-#covariates
-
-#Specify the formula
-fitform2 <- Surv(time, status) ~  factor(tipo_de_plan_res_1)
-
-
-kernel_haz_est2a<-list()
-kernel_haz_est2b<-list()
-kernel_haz2a<-list()
-kernel_haz2b<-list()
-for (i in 1:n_trans){
-library("muhaz")
-kernel_haz_est2a[[i]] <- muhaz(ms_d_match_surv[which(ms_d_match_surv$trans==i &
-                        ms_d_match_surv$tipo_de_plan_res_1==1),"time"],
-                        ms_d_match_surv[which(ms_d_match_surv$trans==i &
-                        ms_d_match_surv$tipo_de_plan_res_1==1),"status"])
-kernel_haz2a[[i]] <- data.table(time = kernel_haz_est2a[[i]]$est.grid,
-                         est = kernel_haz_est2a[[i]]$haz.est,
-                         dist = "Kernel density")
-kernel_haz_est2b[[i]] <- muhaz(ms_d_match_surv[which(ms_d_match_surv$trans==i &
-                        ms_d_match_surv$tipo_de_plan_res_1==0),"time"],
-                        ms_d_match_surv[which(ms_d_match_surv$trans==i &
-                        ms_d_match_surv$tipo_de_plan_res_1==0),"status"])
-kernel_haz2b[[i]] <- data.table(time = kernel_haz_est2b[[i]]$est.grid,
-                         est = kernel_haz_est2b[[i]]$haz.est,
-                         dist = "Kernel density")
-}
-
-haz_int_only2<-
-  rbind(cbind(trans=rep(1:n_trans,each=nrow(kernel_haz2a[[i]])),
-              tipo_de_plan_res_1=rep(1,nrow(kernel_haz2a[[i]])),
-      rbindlist(kernel_haz2a)),
-      cbind(trans=rep(1:n_trans,each=nrow(kernel_haz2b[[i]])),
-            tipo_de_plan_res_1=rep(0,nrow(kernel_haz2b[[i]])),
-      rbindlist(kernel_haz2b)))
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
-n_trans2 <- max(trans_matrix, na.rm = T)
-
-dists_w_covs_10s <- cbind.data.frame(covs=c(rep("fits_",9*n_trans2)),
-              formal=rep(c("Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
-                "Generalized gamma", "Lognormal", "Exponential", "Generalized F"),1*n_trans2),
-              dist=c("weibull", "weibullph", "llogis", "gamma", "gengamma", "gompertz", "lnorm", "exp", "genf"),
-              model=rep(c("wei2", "weiph2", "gomp2", "llogis2", "gam2","ggam2", "logn2", "exp2", "genf2"),1*n_trans2),
-              trans=rep(1:n_trans2, each=9))
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-no_attempts <- 20
-
-fits_wei2 <- vector(mode = "list", length = n_trans2)
-fits_weiph2 <- vector(mode = "list", length = n_trans2)
-fits_llogis2 <- vector(mode = "list", length = n_trans2)
-fits_gomp2 <- vector(mode = "list", length = n_trans2)
-fits_logn2 <- vector(mode = "list", length = n_trans2)
-fits_exp2 <- vector(mode = "list", length = n_trans2)
-fits_gam2 <- vector(mode = "list", length = n_trans2)
-fits_ggam2 <- vector(mode = "list", length = n_trans2)
-fits_genf2 <- vector(mode = "list", length = n_trans2)
-fits_c_wei2 <- vector(mode = "list", length = n_trans2)
-fits_c_weiph2 <- vector(mode = "list", length = n_trans2)
-fits_c_llogis2 <- vector(mode = "list", length = n_trans2)
-fits_c_gomp2 <- vector(mode = "list", length = n_trans2)
-fits_c_logn2 <- vector(mode = "list", length = n_trans2)
-fits_c_exp2 <- vector(mode = "list", length = n_trans2)
-fits_c_gam2 <- vector(mode = "list", length = n_trans2)
-fits_c_ggam2 <- vector(mode = "list", length = n_trans2)
-fits_c_genf2 <- vector(mode = "list", length = n_trans2)
-
-km.lc2a<-list()
-km.lc2b<-list()
-fits_cox2<-list()
-fits_c_cox2<-list()
-
-for (i in 1:n_trans2){
-  r <- NULL
-  attempt <- 0
-  while( is.null(r) && attempt <= no_attempts ) {
-    attempt <- attempt + 1
-    try(
-      r <- flexsurvreg(formula=fitform2,
-                                 data = subset(ms_d_match_surv, trans == i),
-                                 dist = "weibull")
-    )
-  } 
-  fits_wei2[[i]] <- r
-}
-
-for (i in 1:n_trans2){
-  r <- NULL
-  attempt <- 0
-  while( is.null(r) && attempt <= no_attempts ) {
-    attempt <- attempt + 1
-    try(
-      r <- flexsurvreg(formula=fitform2,
-                                 data = subset(ms_d_match_surv, trans == i),
-                                 dist = "weibullph")
-    )
-  } 
-  fits_weiph2[[i]] <- r
-}
-
-for (i in 1:n_trans2){
-  r <- NULL
-  attempt <- 0
-  while( is.null(r) && attempt <= no_attempts ) {
-    attempt <- attempt + 1
-    try(
-      r <- flexsurvreg(formula=fitform2,
-                                 data = subset(ms_d_match_surv, trans == i),
-                                 dist = "llogis")
-    )
-  } 
-  fits_llogis2[[i]] <- r
-}
-
-for (i in 1:n_trans2){
-  r <- NULL
-  attempt <- 0
-  while( is.null(r) && attempt <= no_attempts ) {
-    attempt <- attempt + 1
-    try(
-      r <- flexsurvreg(formula=fitform2,
-                                 data = subset(ms_d_match_surv, trans == i),
-                                 dist = "gamma")
-    )
-  } 
-  fits_gam2[[i]] <- r
-}
-
-for (i in 1:n_trans2){
-    r <- NULL
-    attempt <- 0
-    while( is.null(r) && attempt <= no_attempts ) {
-      attempt <- attempt + 1
-      try(
-        r <- flexsurvreg(formula=fitform2,
-                                   data = subset(ms_d_match_surv, trans == i),
-                                   dist = "gengamma")
-      )
-    }
-    fits_ggam2[[i]] <- r
-}
-
-for (i in 1:n_trans2){
-    r <- NULL
-    attempt <- 0
-    while( is.null(r) && attempt <= no_attempts ) {
-      attempt <- attempt + 1
-      try(
-        r <- flexsurvreg(formula=fitform2,
-                                   data = subset(ms_d_match_surv, trans == i), 
-                                   dist = "gompertz")
-      )
-    }
-    fits_gomp2[[i]] <- r
-}  
-
-for (i in 1:n_trans2){
-    r <- NULL
-    attempt <- 0
-    while( is.null(r) && attempt <= no_attempts ) {
-      attempt <- attempt + 1
-      try(
-        r <- flexsurvreg(formula=fitform2,
-                                   data = subset(ms_d_match_surv, trans == i),
-                                   dist = "lnorm")
-      )
-    }
-    fits_logn2[[i]] <- r
-}  
-
-for (i in 1:n_trans2){
-    r <- NULL
-    attempt <- 0
-    while( is.null(r) && attempt <= no_attempts ) {
-      attempt <- attempt + 1
-      try(
-        r <- flexsurvreg(formula=fitform2,
-                                   data = subset(ms_d_match_surv, trans == i),
-                                   dist = "exp")
-      )
-    }
-    fits_exp2[[i]] <- r
-}  
-
-
-for (i in 1:n_trans2){
-    r <- NULL
-    attempt <- 0
-    while( is.null(r) && attempt <= no_attempts ) {
-      attempt <- attempt + 1
-      try(
-        r <- flexsurvreg(formula=fitform2,
-                                   data = subset(ms_d_match_surv, trans == i),
-                                   dist = "genf")
-      )
-    }
-    fits_genf2[[i]] <- r
-}  
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
-fitted_km<-data.frame()
-for (i in 1:n_trans2){
-km.lc2a[[i]] <- survfit(formula= fitform, data = subset(ms_d_match_surv, trans == i & tipo_de_plan_res_1==1))
-km.lc2b[[i]] <- survfit(formula= fitform, data = subset(ms_d_match_surv, trans == i & tipo_de_plan_res_1==0))
-
-fitted_km<-rbind(fitted_km,cbind.data.frame(trans=i,residential=rep(1,), fortify(km.lc2a[[i]])))
-fitted_km<-rbind(fitted_km,cbind.data.frame(trans=i,residential=rep(0,), fortify(km.lc2b[[i]])))
-}
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
-newdat2a <- data.table::data.table(tipo_de_plan_res_1= factor(c(rep(1,1))))
-newdat2b <- data.table::data.table(tipo_de_plan_res_1= factor(c(rep(0,1))))
-
-fitted_flexsurvreg<-data.frame()
-fit_flexsurvreg<-data.frame()
-
-for (i in 1:nrow(dists_w_covs_10s)){  #
-  
-cat(paste0("#### Flexible Survival Model (w/ covs): ",
-             dists_w_covs_10s[i,"formal"], "; transition: ",dists_w_covs_10s[i,"trans"], "\n \n"))  
-  
-model<-paste0("fits_",dists_w_covs_10s[i,"model"])
-
-if(!is.null(get(model)[[dists_w_covs_10s[i,"trans"]]])){  
-  #Generate databases
- fitted_flexsurvreg<- rbind(fitted_flexsurvreg,cbind.data.frame(dist=rep(dists_w_covs_10s[i,"formal"],), 
-                            trans=rep(dists_w_covs_10s[i,"trans"],),
-                            residential=rep(1,),
-                            data.table::data.table(summary(get(model)[[dists_w_covs_10s[i,"trans"]]], newdata= newdat2a, newtime=unique(fitted_km$time), type = "survival", tidy=T)))) 
-  fitted_flexsurvreg<- rbind(fitted_flexsurvreg,cbind.data.frame(dist=rep(dists_w_covs_10s[i,"formal"],), 
-                            trans=rep(dists_w_covs_10s[i,"trans"],),
-                            residential=rep(0,),
-                            data.table::data.table(summary(get(model)[[dists_w_covs_10s[i,"trans"]]], newdata= newdat2b,  newtime=unique(fitted_km$time), type = "survival", tidy=T)))) 
- #t=newtime0, 
- 
-  # Generate fit indices
-  fit_flexsurvreg<-rbind(fit_flexsurvreg,
-     cbind(dist= dists_w_covs_10s[i,"formal"],
-           transition=dists_w_covs_10s[i,"trans"],
-           fitstats.flexsurvreg(get(model)[[dists_w_covs_10s[i,"trans"]]])))
-  #the BIC may not be appropriate if none of the candidate models are considered to be close to the ‘true’ model.     
-  } else {
-  cat(paste0("The model that assumed a ",dists_w_covs_10s[i,"formal"]," distribution for the transition number ",dists_w_covs_10s[i,"trans"]," did not converge \n\n"))
-  }
-}
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-if(no_mostrar==1){
-  fit_flexsurvreg %>% 
-    dplyr::group_by(trans) %>% 
-    summarise(mean(ucl,na.rm=T))
-  }
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
-#Calculate error
-#c("Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma","Generalized gamma", "Lognormal", "Exponential", "Generalized F")
-
-fitted_flexsurvreg_binned_mix<-
-data.frame(fitted_flexsurvreg)[,c("dist","trans","residential","time","est","lcl","ucl")] %>% 
-  dplyr::left_join(fitted_km, by=c("trans","residential","time")) %>% 
-#there are many observations that was not available due to empirical missing data
-#dplyr::filter(!is.na(surv))
-  dplyr::group_by(dist,trans,residential) %>% 
-  #dplyr::mutate(est= ifelse(is.na(est), mean(est, na.rm=TRUE), est)) %>% 
-  #dplyr::mutate(surv= ifelse(is.na(surv), mean(surv, na.rm=TRUE), surv)) %>% 
-  tidyr::fill(surv,.direction="updown") %>% 
-  tidyr::fill(est,.direction="updown") %>% 
-  ungroup()
-
-db_for_apply_rmse<-
-  cbind.data.frame(residential=rep(c("0","1"),each=9,n_trans2),
-      dist=rep(c("Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
-                "Generalized gamma", "Lognormal", "Exponential", "Generalized F"),2*n_trans2),
-      trans=rep(c(1:n_trans2),each=9*2))
-   
-rmse_comp_fits<- data.frame()
-for(i in 1:nrow(db_for_apply_rmse)){
-  rmse<- Metrics::rmse(subset(fitted_flexsurvreg_binned_mix,residential==db_for_apply_rmse[i,"residential"] & 
-                       dist==db_for_apply_rmse[i,"dist"] & 
-                       trans==db_for_apply_rmse[i,"trans"])$est,
-              subset(fitted_flexsurvreg_binned_mix,residential==db_for_apply_rmse[i,"residential"] & 
-                       dist==db_for_apply_rmse[i,"dist"] & 
-                       trans==db_for_apply_rmse[i,"trans"])$surv)
-
-  rmse_comp_fits<- rbind(rmse_comp_fits,cbind(dist=db_for_apply_rmse[i,"dist"],
-                                                  residential=db_for_apply_rmse[i,"residential"],
-                                                  trans=db_for_apply_rmse[i,"trans"],
-                                                  rmse=rmse))
-}
-
-rmse_comp_fits<-
-  rmse_comp_fits %>% 
-    dplyr::filter(rmse!="NaN") %>%  
-      tidyr::pivot_wider(names_from = residential, values_from = rmse) %>% 
-      dplyr::rename("out"="0","res"="1") %>% 
-      dplyr::mutate(out=as.numeric(out),res=as.numeric(res)) %>% 
-      dplyr::mutate(mean_rmse=rowSums(.[3:4],na.rm=T)/2) %>% 
-      dplyr::arrange(trans,dist, mean_rmse)%>%
-      dplyr::mutate(mean_rmse=round(mean_rmse,4))
-
-setting_type_label<- c(`0`="Outpatient",`1`="Residential") 
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-```
-</div>
-
-
-```{r fit3_wcov, eval=T, echo=T, fig.cap="Figure 22. Vissual Assessment of Suvival, Ten-states Model (w/Treatment Modality)",fig.align="center", error= T, fig.height=15, fig.width=15, dpi=320, paged.print=TRUE, warnings =F}
-
-#http://colorschemedesigner.com/csd-3.5/#
-#https://www.r-graph-gallery.com/42-colors-names.html
-
-plot_fitted_flexsurvreg<-
-    data.frame(fitted_flexsurvreg)[,c("dist","trans","residential","time","est","lcl","ucl")] %>% 
-      dplyr::mutate(residential=as.factor(residential)) %>% 
-    ggplot()+
-    geom_line(aes(x=time, y=est, color=dist),size=1)+
-    geom_line(data=fitted_km,aes(time, surv),color="red",size=1, linetype=4)+
-    #geom_ribbon(aes(x = time, ymin = lcl, ymax = ucl, fill = dist), alpha = 0.2)+
-    scale_color_manual(name="Distributions", values =                         c("gray60","gray20","darkseagreen3","#D3A347","#4F3C91","coral4","#085754","lightpink","turquoise","navyblue")) +
-    scale_fill_manual(name="Distributions", values = c("gray60","gray20","darkseagreen3","#D3A347","#4F3C91","coral4","#085754","lightpink","turquoise","navyblue")) +
-    facet_wrap(residential~trans,labeller = labeller(trans = transition_label, residential=setting_type_label))+
-    sjPlot::theme_sjplot2()+
-    #ylim(0,.3)+
-    scale_x_continuous(breaks = seq(0, max(newtime0,na.rm=T), 1000), limits=c(0,max(newtime0,na.rm=T)))+
-    theme(legend.position="bottom",
-          strip.background = element_rect(fill = "white", colour = "white"))+
-    labs(y="Survival",x="Time (days)",caption="Note. Kernel density, stratified by type of setting")
-
-
-plot_fitted_flexsurvreg
-
-## http://www.statistica.it/gianluca/teaching/r-hta-workshop/2019/Bullement.pdf
-tiempo_despues_fits2<-Sys.time()
-
-paste0("Time in process: ");tiempo_despues_fits2-tiempo_antes_fits2
-
-#13 minutos aprox. en DELL
-options(warn=0)
-
-if(no_mostrar==1){
-jpeg(paste0(dta_path,"_graphs_mult_state_ags/exp_surv_w_treat_modality.jpg"), height=30, width= 30, res= 600, units = "in")
-plot_fitted_flexsurvreg
-dev.off()
-}
-```
-
-
-```{r fit_flexsurvreg_kable,eval=T, echo=T, paged.print=TRUE}                                 
-
-fit_flexurvreg_kable<-
-fit_flexsurvreg %>% 
-  dplyr::arrange(transition, AIC) %>% 
-  dplyr::left_join(cbind.data.frame(transition_label,trans_nmb=1:n_trans2),by=c("transition"="trans_nmb")) %>% 
-  dplyr::mutate(trans_w_nmb=paste0(transition,")",transition_label)) %>% 
-  dplyr::select(trans_w_nmb,dist,Df,n2ll,AIC,AICc,BIC)  
-  
-fit_flexurvreg_kable %>%   
-      knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption = paste0("Table 12. Fit indices of the adjusted survival analyses"),
-               col.names = c("Transition","Distribution", "DF","Negative 2 Log Likelihood","AIC","AICc","BIC"),
-               align =c("l",rep('c', 101))) %>%
-  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
-  #kableExtra::add_footnote("Note. NA= Null values", notation="none") %>% 
-  kableExtra::scroll_box(width = "100%", height = "375px") 
-```
-
-<br>
-
-```{r fit4_wcov, eval=T, echo=T, fig.cap="Figure 23 Suvival RMSEs, Ten-states Model (w/ Treatment Modality)",fig.align="center", error= T, fig.height=15, fig.width=11, dpi=320, paged.print=TRUE, warnings =F}
-
-rmse_plot<-
-rmse_comp_fits %>% 
-  dplyr::mutate(trans=as.numeric(trans)) %>% 
-    dplyr::left_join(cbind.data.frame(transition_label,trans_nmb=1:n_trans2),by=c("trans"="trans_nmb")) %>% 
-  dplyr::mutate(trans_w_nmb=paste0(trans,")",transition_label), 
-        trans_w_nmb=factor(trans_w_nmb,levels=unique(fit_flexurvreg_kable$trans_w_nmb))) %>% 
-   ggplot()+
-  geom_bar(aes(x=dist, y=mean_rmse), position="dodge", stat="identity", alpha=0.4)+
-  sjPlot::theme_sjplot2()+
-  #geom_errorbar(aes(x=t, ymin=L, ymax=U, color=program), position="dodge", stat="identity", width=0.4,  alpha=0.9, size=1.3)+
-  facet_wrap(.~trans_w_nmb, ncol=3, scales="free_y", dir="h") + 
-  xlab("") + 
-  ylab("")+
-  #ylab("State occupancy probabilities") + 
-  theme_minimal()+
-  theme(legend.position="bottom")+
-    theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        strip.background = element_blank(),
-        panel.border = element_blank(),
-          legend.box.background = element_blank())+
-  theme(axis.text.x = element_text(angle = 90,hjust=0.95,vjust=0.2))#, vjust=0, hjust=0.3
-
-rmse_plot
-
-if(no_mostrar==1){
-    jpeg(paste0(dta_path,"eso42.jpg"), height=15, width= 10, res= 96, units = "in")
-    rmse_plot
-    dev.off()
-}
 ```
 
 <br>

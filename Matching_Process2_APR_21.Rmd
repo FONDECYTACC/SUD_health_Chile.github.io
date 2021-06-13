@@ -71,13 +71,13 @@ rm(list=ls());gc()
 path<-rstudioapi::getSourceEditorContext()$path
 #load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
 if (grepl("CISS Fondecyt",path)==T){
-    setwd("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state.RData")
+    setwd("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_15.RData")
   } else if (grepl("andre",path)==T){
-    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_15.RData")
   } else if (grepl("E:",path)==T){
-    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state.RData")
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_15.RData")
   } else {
-    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state.RData")
+    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_15.RData")
   }
 
 #getwd()
@@ -198,6 +198,7 @@ library(mstate)
 library(flexsurv)
 library(muhaz)
 library(Metrics)
+library(Rfast)
 #library(mstateutils)
 #remotes::install_github("chjackson/flexsurv-dev", upgrade = "never")
 #devtools::install_github("stulacy/multistateutils", build_vignettes=TRUE, upgrade = "never")
@@ -282,17 +283,50 @@ eval_fork <- function(..., timeout=60){
 library(gurobi)
 #"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)"
 #Sys.getenv("R_LIBS_USER")
+
+
+LMAJ2 <- function (msdata, tmat, id, s, h, j, weighted){
+  if (is.null(tmat)) 
+    stop("msdata object should have a \"trans\" attribute")
+  K <- nrow(tmat)
+  if (any(is.na(match(h, 1:K)))) 
+    stop("h should be subset of 1:K with K number of states")
+  attr(msdata, "trans") <- tmat
+  xss <- xsect(msdata, s)
+  infrom <- xss[xss$state %in% h,id]
+  msdatas <- cutLMms(msdata, LM = s)
+  msdatasfrom <- msdatas[msdatas[,id] %in% infrom, ]
+  c0 <- coxph(Surv(Tstart, Tstop, status) ~ strata(trans), 
+              data = msdatasfrom)
+  A0 <- msfit(c0, trans = tmat, variance=FALSE)
+  if(weighted==TRUE){
+    c0 <- coxph(Surv(Tstart, Tstop, status) ~ strata(trans), 
+                weights=(1/clust.size), data = msdatasfrom)
+    A.wt <- basehaz(c0, centered=FALSE)
+    A.wt$strata <- as.numeric(A.wt$strata)
+    for(trn in sort(unique(A.wt$strata))){
+      fun <- stepfun(A.wt[A.wt$strata==trn,"time"], 
+                     c(0,A.wt[A.wt$strata==trn,"hazard"]))
+      A0$Haz[A0$Haz$trans==trn,"Haz"] <- fun(A0$Haz[A0$Haz$trans==trn,"time"])
+    }
+  }
+  pt0 <- probtrans(A0, predt = s, variance=FALSE)[[h]][,c("time",
+                                                          paste("pstate", j, sep=""))]
+  return(pt0)
+}
 ```
 
 <br>
 
-# Cumulative Transition Hazards of Joint Models
+# Non-parametric
+
+## Cumulative Transition Hazards of Joint Models
 
 Cumulative baseline hazard can be estimated non-parametrically through a Breslow estimator. Must take note that we are assuming a semimarkov process in these transitions.
 
 <br>
 
-```{r msfit,eval=T, echo=T, paged.print=TRUE, fig.height=14, fig.width=12, fig.cap="Figure 1. Estimate of Cumulative Hazards (Semimarkov), Stratified by Setting", fig.align="center"}
+```{r msfit,eval=T, echo=T, paged.print=TRUE, fig.height=14, fig.width=12, fig.cap="Figure 1a. Estimate of Cumulative Hazards (Semimarkov), Stratified by Setting", fig.align="center"}
 if(no_mostrar==1){
   for(i in c(1:3)){
     print(survdiff(Surv(time,status==1)~tipo_de_programa_2,data=subset(ms_CONS_C1_SEP_2020_women_imputed, trans == i)))
@@ -319,6 +353,11 @@ c0 <- survival::coxph(Surv(time, status) ~ strata(trans), #Surv(time, status) ~ 
 c1 <- survival::coxph(Surv(time, status) ~ strata(trans), 
             data = pr1, method = "breslow")
 
+cx0 <- coxph(Surv(Tstart,Tstop,status)~strata(trans),
+        data=pr0,method="breslow")
+cx1 <- coxph(Surv(Tstart,Tstop,status)~strata(trans),
+        data=pr1,method="breslow")
+
 #The value of time is equal to Tstop−Tstart; it is of use in ’clock reset’-models, where the time t refers to the time spent in the current state
 
 #The alternative is to first apply the msfit function, which we also need when computing the transition
@@ -326,6 +365,9 @@ c1 <- survival::coxph(Surv(time, status) ~ strata(trans),
 # piece-wise constant estimates - because is cox
 msf0 <- mstate::msfit(object = c0, trans = trans_matrix, vartype ="aalen")
 msf1 <- mstate::msfit(object = c1,  trans = trans_matrix, vartype ="aalen")
+
+msfx0 <- mstate::msfit(object = cx0, trans = trans_matrix, vartype ="aalen")
+msfx1 <- mstate::msfit(object = cx1,  trans = trans_matrix, vartype ="aalen")
 
 #Haz contains the estimated cumulative hazard for each of the transitions for the particular patient
 #specified in newd, while varHaz contains the estimated variances of these cumulative hazards,
@@ -378,7 +420,7 @@ ggarrange(msf0_plot,msf1_plot,
 
 
  if(no_mostrar==1){
-jpeg("eso14.jpg", height=14, width= 12, res= 96, units = "in")
+jpeg("Cum_haz_semimarkov_setting.jpg", height=14, width= 12, res= 320, units = "in")
 
 ggarrange(msf0_plot,msf1_plot,
           labels = c("Outpatient", "Residential"),
@@ -392,446 +434,54 @@ dev.off()
 ```
 
 
-<br>
 
-```{r msfit2.0, eval=F, echo=T, paged.print=T, error=T}
-# Semi-parametric models
-#Since there are tied event times, we need to specify ties="breslow" in order to obtain the Aalen-Johansen estimator of
-#the transition probability
+```{r msfit1b,eval=T, echo=T, paged.print=TRUE, fig.height=14, fig.width=12, fig.cap="Figure 1b. Estimate of Cumulative Hazards (Markov), Stratified by Setting", fig.align="center"}
 
-formula3<-
-as.formula(paste0("Surv(time, status) ~", paste0(fitform2," + arrival + strata(trans)")[[3]]))
+msfx0_plot<-
+plot(msfx0, 
+     #cols=c()
+     type="single",
+     use.ggplot = TRUE)+
+  ggtitle("")+
+  #ylim(0,1.5)+
+  sjPlot::theme_sjplot2()+
+  scale_x_continuous("",breaks=seq(0,max(newtime0,na.rm=T),by=365.25), labels=(1:length(seq(0,max(newtime0,na.rm=T),by=365.25))-1)) +
+  theme(legend.position = "bottom")
+ # scale_y_continuous(breaks=seq(0,7.5,by=1.5/10),limits=c(0,2.5))
 
-formula3_mstate<-
-as.formula(paste0("Surv(time, status) ~", paste0(fitform2," + arrival")[[3]]))
-
-formula3_mstate_b<-
-as.formula(paste0("Surv(time, status) ~", paste0(fitform2," + arrival.1 + arrival.2 + arrival.3")[[3]]))
-
-paste0("We introduced the following Formula: ")
-formula3
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
-cox_fits0_prog0 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
-                            data = subset(ms_d_match_surv, tipo_de_plan_res_1==0), method = "breslow") 
-cox_fits0_prog1 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
-                            data = subset(ms_d_match_surv, tipo_de_plan_res_1==1), method = "breslow") 
-
-cox_fits <- survival::coxph(formula3, 
-                            data = ms_d_match_surv, method = "breslow") 
-
-cox_fits_4s <- survival::coxph(formula3, 
-                            data = ms_d_match_surv, method = "breslow") 
-```
-
-```{r msfit2.1, eval=F, echo=T, paged.print=T, error=T}
-# Semi-parametric models
-#Since there are tied event times, we need to specify ties="breslow" in order to obtain the Aalen-Johansen estimator of
-#the transition probability
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
-cox_fits0_prog0 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
-                            data = subset(ms_CONS_C1_SEP_2020_women_imputed, tipo_de_programa_2==0), method = "breslow") 
-cox_fits0_prog1 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
-                            data = subset(ms_CONS_C1_SEP_2020_women_imputed, tipo_de_programa_2==1), method = "breslow") 
-
-cox_fits0_4s_prog0 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
-                            data = subset(ms2_CONS_C1_SEP_2020_women_imputed, tipo_de_programa_2==0), method = "breslow") 
-cox_fits0_4s_prog1 <- survival::coxph(Surv(time, status==1) ~ strata(trans) , 
-                            data = subset(ms2_CONS_C1_SEP_2020_women_imputed, tipo_de_programa_2==1), method = "breslow") 
-
-cox_fits <- survival::coxph(formula3, 
-                            data = ms_CONS_C1_SEP_2020_women_imputed, method = "breslow") 
-
-cox_fits_4s <- survival::coxph(formula3, 
-                            data = ms2_CONS_C1_SEP_2020_women_imputed, method = "breslow") 
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-# Parametric models
-
-# Sin covs= Trans 1: Gompertz o Gen-gamma en visual y RMSE, sin covariables. Se repite en AIC; Trans 2: Gen-gamma y Gompertz en RMSE (gompertz, mejor extrapolaci´n); gen-gamma, mejor inicio. Le sigue Lognormal. En AIC, parte Gen-gamma, gompertz y lognormal; Trans 3: Gompertz, Log-logistic y Gen-gamma. En AIC, Log-logistic, Gen-gamma y Weibull. Gompertz se aleja mucho.
-# 
-# Con covs= Trans 1: Gen-gamma y Gompertz en RMSE. Visualmente mejor gompertz. AIC mejor Gompertz, pero seguido de Gen-gamma; Trans 2: Gen-gamma, Lognormal y Gompertz. Visualmente Lognormal no destaca. AIC, gen-gamma, lognorma y un poco más atrás Gompertz; Trans 3: Gen-gamma, Log-logistic y Gamma. Gompertz se ve mejor, pero ni uno en verdad. AIC, Log-logistic, Gen-gamma y Lognormal.
-    
-#Gompertz, Gen-gamma, Log-logistic
-#Gompertz, Gen-gamma, Gen-gamma
-#Gompertz, Gompertz, Log-logistic
-#Gommpertz, Gompertz, Gen-gamma
-#Gen-gamma, Gen-gamma, Log-logistic
-#Gen-gamma, Gen-gamma, Gen-gamma
-#Gen-gamma, Gompertz, Log-logistic
-#Gen-gamma, Gompertz, Gen-gamma
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_    
-
-#2021-04-10
-
-#AIC
-# 1.- GenF, Gompertz, Ggam
-# 2.- GenF, Ggam., Logn
-# 3.- Llogis, Weibull, Ggam, GenF -> Con covs: Gen F, LLogis, Ggam
-
-#RMSE
-# 1.- GenF, Gga,. Gompertz
-# 2.- GenF, Ggam, Lognormal
-# 3.- Lognormal, Ggam, GenF
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_    
-
-dists_w_covs_mstate<-
-cbind(
-formal= c("Gompertz", "Generalized gamma", "Log-logistic"),
-model= c("gomp", "ggam", "llogis"),
-dist= c("gompertz", "gengamma", "llogis"))
-#“genf”, “genf.orig”, “gengamma”, “gengamma.orig”, “exp”, “weibull”, “weibullph”, “lnorm”, “gamma”, “gompertz”, “llogis”, “exponential”, “lognormal”
-
-sel_param_fits_a <- vector(length = n_trans, mode = "list") 
-#for (i in 1:n_trans){
-#  sel_param_fits_a[[i]] <- flexsurvreg(formula3_mstate,#formula3_mstate_b #fitform2_t3 #fitform2
-#                       data = subset(ms_CONS_C1_SEP_2020_women_imputed, trans == i),#
-#                       dist = as.character(dists_w_covs_mstate[i,"dist"]))
-#}
-# If I use formula3_mstate (include arrival term in every transition):
-#Warning messages:
-#1: In flexsurvreg(formula3_mstate, data = subset(ms2_CONS_C1_SEP_2020_women_imputed,  :
-#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
-#2: In flexsurvreg(formula3_mstate, data = subset(ms2_CONS_C1_SEP_2020_women_imputed,  :
-#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
-#3: In flexsurvreg(formula3_mstate, data = subset(ms2_CONS_C1_SEP_2020_women_imputed,  :
-#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
-
-#If I use formula fitform2_t3:
-#Warning messages:
-#1: In flexsurvreg(fitform2_t3, data = subset(ms_CONS_C1_SEP_2020_women_imputed,  :
-#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
-#2: In flexsurvreg(fitform2_t3, data = subset(ms_CONS_C1_SEP_2020_women_imputed,  :
-#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
-
-#If I use the formula formula3_mstate_b and expand.covs(ms_CONS_C1_SEP_2020_women_imputed,"arrival"), i get:
-#Warning messages:
-#1: In flexsurvreg(formula3_mstate_b, data = subset(expand.covs(ms_CONS_C1_SEP_2020_women_imputed,  :
-#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
-#2: In flexsurvreg(formula3_mstate_b, data = subset(expand.covs(ms_CONS_C1_SEP_2020_women_imputed,  :
-#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
-#3: In flexsurvreg(formula3_mstate_b, data = subset(expand.covs(ms_CONS_C1_SEP_2020_women_imputed,  :
-#  Optimisation has probably not converged to the maximum likelihood - Hessian is not positive definite. 
-
-sel_param_fits_b <- vector(length = n_trans, mode = "list") 
-    sel_param_fits_b[[1]]<- fits_c_gomp[[1]] #fits_c_gomp, original. Al 2021-04-09 decidí probar otro modelo con fits_c_ggam
-    sel_param_fits_b[[2]]<- fits_c_ggam[[2]] #fits_c_ggam, original. Al 2021-04-09 decidí probar otro modelo con fits_c_gomp
-    sel_param_fits_b[[3]]<- fits_c_ggam[[3]] #fits_c_llogis, original.  Al 2021-04-09 decidí probar otro modelo con fits_c_ggam
-
-#"2021-04-10"
-sel_param_fits_b <- vector(length = n_trans, mode = "list") 
-    sel_param_fits_b[[1]]<- fits_c_gomp[[1]] 
-    sel_param_fits_b[[2]]<- fits_c_genf[[2]]
-    sel_param_fits_b[[3]]<- fits_c_ggam[[3]]
-            
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_    
-
-# Sin covs
-# Trans 1: Gompertz, Gen-gamma, Lognormal. Visualmente ninguno se ajusta   Gompertz tiene mejor progresión, Lognormal y Gen-gamma tienen buena guatita al principio. En AIC Gen-gamma, Lognormal y Log-logistic; Trans 2: Gompertz, Gen-gamma, Lognormal. Visualmente, Gompertz y Lognormal. AIC: Gompertz, Gen-gamma y Lognormal; Tans 3: Gen-gamma, Exponential y Lognormal. Visualmente, Gen-gamma y Exp. AIC: Gen-gammma y Lognormal; Trans 4: Log-logistic y Gen-gamma. Visualmente, Log-logistic parte bien, Gompertz también. AIC: Log-logistic, Weibull y Gen-gamma; Trans 5: Gompertz, Log-logistic y Gen-gamma. Visualemnte, Gompertz termina bien y Log-gistic parte bien. AIC: Gen-gamma, Lognormal y Log-logistic.
-    
-# Con covs
-#Gompertz, Gen-gamma, Lognormal. Visualmente, mejor extrapolación GOmpertz. AIC: Gen-gammma y Lognormal; Trans 2: Gompertz, Gen-gamma, Lognormal. AIC. Gompertz, Gen-gamma; Trans 3: Gen-gamma, Lognormal, Log-logistic. AIC: Gen-gamma, Lognormal, Log-logistic (como gen-gamma tuvo problemas cconvergiendo, log-logistic se ve mejor opción); Trans 4: Lognormal, Gen-gamma, Log-logistic. AIC: Log-logistic, Gen-gamma, Lognormal; Trans 5: Lognormal, Gen-gamma, Gompertz. Visualmente, GP Gompertz tiene mejor extrapolación. AIC: Gen-gamma, Lognormal, Log-logistic.
-    
-#32= 2^5
-# Gen-gamma, Gompertz, Log-logistic, Log-logistic, Lognormal
-# Gen-gamma, Gompertz, Log-logistic, Log-logistic, Gen-gamma
-# Gen-gamma, Gompertz, Log-logistic, Gen-gamma, Lognormal
-# Gen-gamma, Gompertz, Log-logistic, Gen-gamma, Gen-gamma
-
-# Gen-gamma, Gompertz, Lognormal, Log-logistic, Lognormal
-# Gen-gamma, Gompertz, Lognormal, Log-logistic, Gen-gamma
-# Gen-gamma, Gompertz, Lognormal, Gen-gamma, Lognormal
-# Gen-gamma, Gompertz, Lognormal, Gen-gamma, Gen-gamma
-
-# Gen-gamma, Gen-gamma, Log-logistic, Log-logistic, Lognormal
-# Gen-gamma, Gen-gamma, Log-logistic, Log-logistic, Gen-gamma
-# Gen-gamma, Gen-gamma, Log-logistic, Gen-gamma, Lognormal
-# Gen-gamma, Gen-gamma, Log-logistic, Gen-gamma, Gen-gamma
-
-# Gen-gamma, Gen-gamma, Lognormal, Log-logistic, Lognormal
-# Gen-gamma, Gen-gamma, Lognormal, Log-logistic, Gen-gamma
-# Gen-gamma, Gen-gamma, Lognormal, Gen-gamma, Lognormal
-# Gen-gamma, Gen-gamma, Lognormal, Gen-gamma, Gen-gamma
-
-# Lognormal, Gompertz, Log-logistic, Log-logistic, Lognormal
-# Lognormal, Gompertz, Log-logistic, Log-logistic, Gen-gamma
-# Lognormal, Gompertz, Log-logistic, Gen-gamma, Lognormal
-# Lognormal, Gompertz, Log-logistic, Gen-gamma, Gen-gamma
-
-# Lognormal, Gompertz, Lognormal, Log-logistic, Lognormal
-# Lognormal, Gompertz, Lognormal, Log-logistic, Gen-gamma
-# Lognormal, Gompertz, Lognormal, Gen-gamma, Lognormal
-# Lognormal, Gompertz, Lognormal, Gen-gamma, Gen-gamma
-
-# Lognormal, Gen-gamma, Log-logistic, Log-logistic, Lognormal
-# Lognormal, Gen-gamma, Log-logistic, Log-logistic, Gen-gamma
-# Lognormal, Gen-gamma, Log-logistic, Gen-gamma, Lognormal
-# Lognormal, Gen-gamma, Log-logistic, Gen-gamma, Gen-gamma
-
-# Lognormal, Gen-gamma, Lognormal, Log-logistic, Lognormal
-# Lognormal, Gen-gamma, Lognormal, Log-logistic, Gen-gamma
-# Lognormal, Gen-gamma, Lognormal, Gen-gamma, Lognormal
-# Lognormal, Gen-gamma, Lognormal, Gen-gamma, Gen-gamma
-
-    
-#Gompertz Gompertz Lognormal Lognormal Generalized gamma _ antes de 2021-04-08
-#Gen-gamma, Gompertz, Gen-gamma, Log-logistic, Lognormal _ 2021-04-08
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_    
-#2021-04-10
-
-#RMSE
-#1.- GenF, Gompertz, Ggam
-#2.- GenF, Gompertz, Ggam
-#3.- Ggam, Logn., Llogis
-#4.- Logn., Ggam., GenF
-#5.- Logn., Ggam., GenF, Gompertz
-
-#AIC
-#1.- GenF, Ggam., Logn.
-#2.- GenF, Gompertz, Ggam
-#3.- Ggam., Logn., Llogis
-#4.- GenF, Llogis, Ggam
-#5.- GenF, Ggam, Logn
-    
-#VISUAL
-#1.- GenF 2.- GenF 3.- NADA 4.- Genf Exp 5.- Gompertz
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_    
-
-dists_w_covs_mstate_4s<-
-cbind(
-formal= c("Generalized gamma", "Gompertz", "Lognormal", "Log-logistic", "Lognormal"),
-model= c("ggam", "gomp", "logn", "llogis", "logn"),
-dist= c("gengamma", "gompertz", "lognormal", "llogis", "lognormal"))
-#“genf”, “genf.orig”, “gengamma”, “gengamma.orig”, “exp”, “weibull”, “weibullph”, “lnorm”, “gamma”, “gompertz”, “llogis”, “exponential”, “lognormal”
-
-sel_param_fits_4s_a <- vector(length = n_trans2, mode = "list") 
-#for (i in 1:n_trans2){
-#  sel_param_fits_4s_a[[i]] <- flexsurvreg(formula3_mstate, #fitform2, used in the original definitions
-#                       data = subset(ms2_CONS_C1_SEP_2020_women_imputed, trans == i),
-#                       dist = as.character(dists_w_covs_mstate_4s[i,"dist"]))
-#}
-#Error in optim(method = "BFGS", par = c(mu = -0.556869719436473, sigma = 0.123040334180129,  :non-finite finite-difference value [1]
-#train_data$time_queued <- scale(train_data$time_queued, scale=F)    --> Generalized gamma did not work out well, required definition of starting values.
-
-sel_param_fits_4s_b <- vector(length = n_trans2, mode = "list") 
-    sel_param_fits_4s_b[[1]]<- fits_c_gomp2[[1]]#fits_c_ggam2 y fits_c_logn2. At 2021-04-09 decided to prove another model with  Gompertz. At 04-10, Gen F; 
-    sel_param_fits_4s_b[[2]]<- fits_c_gomp2[[2]]#
-    sel_param_fits_4s_b[[3]]<- fits_c_logn2[[3]]
-    sel_param_fits_4s_b[[4]]<- fits_c_ggam2[[4]]#fits_c_llogis2, At 2021-04-09 decided to prove another model with  fits_c_ggam2
-    sel_param_fits_4s_b[[5]]<- fits_c_logn2[[5]]# At 2020-04-12, I think that Gompertz extrapolates better
-
-#2020-04-10    
-sel_param_fits_4s_b <- vector(length = n_trans2, mode = "list") 
-    sel_param_fits_4s_b[[1]]<- fits_c_gomp2[[1]]
-    sel_param_fits_4s_b[[2]]<- fits_c_gomp2[[2]]
-    sel_param_fits_4s_b[[3]]<- fits_c_logn2[[3]]
-    sel_param_fits_4s_b[[4]]<- fits_c_ggam2[[4]]
-    sel_param_fits_4s_b[[5]]<- fits_c_logn2[[5]]    #2021-04-13, could be a Gompertz, but this model its too optimistic. Even could be an exponential, but does not fit well at the first 3 years.
-    
-# Database to contrast adjustments
-newdat3a <- data.table::data.table(tipo_de_programa_2= factor(c(rep(1,1*n_trans))),
-  #comp_status= factor(rep(c("Therapeutic discharge","Discharge without clinical advice"),2)),
-  edad_al_ing_grupos= factor(rep("50+",1*n_trans)),
-  escolaridad_rec= factor(rep("1-More than high school",1*n_trans)),
-  sus_principal_mod= factor(rep("Marijuana",1*n_trans)),
-  freq_cons_sus_prin= factor(rep("2 to 3 days a week",1*n_trans)),
-  compromiso_biopsicosocial= factor(rep("1-Mild",1*n_trans)),
-  tenencia_de_la_vivienda_mod= factor(rep("Owner/Transferred dwellings/Pays Dividends",1*n_trans)),
-  num_otras_sus_mod= factor(rep("No additional substance",1*n_trans)),
-  numero_de_hijos_mod_rec= factor(rep("No",1*n_trans)),
-  tipo_de_plan_res= factor(rep("Outpatient",1*n_trans)),
-  strata= rep(1:n_trans,1),
-  arrival=rep(0,)
-                       )
-newdat3b <- data.table::data.table(tipo_de_programa_2= factor(c(rep(0,1*n_trans))),
-  #comp_status= factor(rep(c("Therapeutic discharge","Discharge without clinical advice"),2)),
-  edad_al_ing_grupos= factor(rep("50+",1*n_trans)),
-  escolaridad_rec= factor(rep("1-More than high school",1*n_trans)),
-  sus_principal_mod= factor(rep("Marijuana",1*n_trans)),
-  freq_cons_sus_prin= factor(rep("2 to 3 days a week",1*n_trans)),
-  compromiso_biopsicosocial= factor(rep("1-Mild",1*n_trans)),
-  tenencia_de_la_vivienda_mod= factor(rep("Owner/Transferred dwellings/Pays Dividends",1*n_trans)),
-  num_otras_sus_mod= factor(rep("No additional substance",1*n_trans)),
-  numero_de_hijos_mod_rec= factor(rep("No",1*n_trans)),
-  tipo_de_plan_res= factor(rep("Outpatient",1*n_trans)),
-  strata= rep(1:n_trans,1),
-  arrival=rep(0,)
-                       )
-newdat5a <- data.table::data.table(tipo_de_programa_2= factor(c(rep(1,1*n_trans2))),
-  #comp_status= factor(rep(c("Therapeutic discharge","Discharge without clinical advice"),2)),
-  edad_al_ing_grupos= factor(rep("50+",1*n_trans2)),
-  escolaridad_rec= factor(rep("1-More than high school",1*n_trans2)),
-  sus_principal_mod= factor(rep("Marijuana",1*n_trans2)),
-  freq_cons_sus_prin= factor(rep("2 to 3 days a week",1*n_trans2)),
-  compromiso_biopsicosocial= factor(rep("1-Mild",1*n_trans2)),
-  tenencia_de_la_vivienda_mod= factor(rep("Owner/Transferred dwellings/Pays Dividends",1*n_trans2)),
-  num_otras_sus_mod= factor(rep("No additional substance",1*n_trans2)),
-  numero_de_hijos_mod_rec= factor(rep("No",1*n_trans2)),
-  tipo_de_plan_res= factor(rep("Outpatient",1*n_trans2)),
-  strata= rep(1:n_trans2,1),
-  arrival=rep(0,)
-                       )
-newdat5b <- data.table::data.table(tipo_de_programa_2= factor(c(rep(0,1*n_trans2))),
-  #comp_status= factor(rep(c("Therapeutic discharge","Discharge without clinical advice"),2)),
-  edad_al_ing_grupos= factor(rep("50+",1*n_trans2)),
-  escolaridad_rec= factor(rep("1-More than high school",1*n_trans2)),
-  sus_principal_mod= factor(rep("Marijuana",1*n_trans2)),
-  freq_cons_sus_prin= factor(rep("2 to 3 days a week",1*n_trans2)),
-  compromiso_biopsicosocial= factor(rep("1-Mild",1*n_trans2)),
-  tenencia_de_la_vivienda_mod= factor(rep("Owner/Transferred dwellings/Pays Dividends",1*n_trans2)),
-  num_otras_sus_mod= factor(rep("No additional substance",1*n_trans2)),
-  numero_de_hijos_mod_rec= factor(rep("No",1*n_trans2)),
-  tipo_de_plan_res= factor(rep("Outpatient",1*n_trans2)),
-  strata= rep(1:n_trans2,1),
-  arrival=rep(0,)
-                       )
-
-# Non-parametric
-cox_cumhaz_0_a_gp <- mstate::msfit(cox_fits0_prog0, 
-                            newdata = data.frame(strata = 1:n_trans),
-                            trans = mat_3_states, variance = FALSE)
-cox_cumhaz_0_a_we <- mstate::msfit(cox_fits0_prog1, 
-                            newdata = data.frame(strata = 1:n_trans),
-                            trans = mat_3_states, variance = FALSE)
-
-cox_cumhaz_0_c_gp <- mstate::msfit(cox_fits0_4s_prog0, 
-                            newdata = data.frame(strata = 1:n_trans2),
-                            trans = mat_4_states, variance = FALSE)
-
-cox_cumhaz_0_c_we <- mstate::msfit(cox_fits0_4s_prog1, 
-                            newdata = data.frame(strata = 1:n_trans2),
-                            trans = mat_4_states, variance = FALSE)
-```
-
-```{r msfit2.2.1, eval=F, echo=T, paged.print=TRUE, error=T}
-#Example by https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5868723/
-#library(mstate)
-# Semi-parametric 
-cox_cumhaz_a <- mstate::msfit(cox_fits, 
-                            newdata = newdat3a,
-                            trans = mat_3_states, variance = FALSE)
-```
-```{r msfit2.2.2, eval=F, echo=T, paged.print=TRUE, error=T}
-cox_cumhaz_b <- mstate::msfit(cox_fits, 
-                            newdata = newdat3b,
-                            trans = mat_3_states, variance = FALSE)
-```
-```{r msfit2.2.3, eval=F, echo=T, paged.print=TRUE, error=T}
-cox_cumhaz_c <- mstate::msfit(cox_fits_4s, 
-                            newdata = newdat5a,
-                            trans = mat_4_states, variance = FALSE)
-```
-```{r msfit2.2.4, eval=F, echo=T, paged.print=TRUE, error=T}
-cox_cumhaz_d <- mstate::msfit(cox_fits_4s, 
-                            newdata = newdat5b,
-                            trans = mat_4_states, variance = FALSE)
-```
-```{r max_time, eval=F, echo=T, paged.print=TRUE, error=T}
-max_time_a <- max(cox_cumhaz_0_a_gp$Haz$time) # Maximum follow-up time
-max_time_b <- max(cox_cumhaz_0_a_we$Haz$time) # Maximum follow-up time
-max_time_c <- max(cox_cumhaz_0_c_gp$Haz$time) # Maximum follow-up time
-max_time_d <- max(cox_cumhaz_0_c_we$Haz$time) # Maximum follow-up time
-#==== C stack trace ===============================
-```
-
-```{r msfit2.3, eval=F, echo=T, paged.print=TRUE, error=T}
-
-#https://rdrr.io/cran/flexsurv/man/msfit.flexsurvreg.html
-# Parametric
-
-flexsurv_cumhaz_a <- flexsurv::msfit.flexsurvreg(sel_param_fits_b,#sel_param_fits, 
-                                             newdata = newdat3a, 
-                                             t = seq(.001, max_time_a, by = .01),
-                                             B = n_iter,
-                                             trans = mat_3_states, variance = FALSE)
-flexsurv_cumhaz_b <- flexsurv::msfit.flexsurvreg(sel_param_fits_b,#sel_param_fits, 
-                                             newdata = newdat3b,
-                                             t = seq(.001, max_time_b, by = .01),
-                                             B = n_iter,
-                                             trans = mat_3_states, variance = FALSE)
-flexsurv_cumhaz_c <- flexsurv::msfit.flexsurvreg(sel_param_fits_4s_b, # sel_param_fits_4s_b,#sel_param_fits_4s, 
-                                             newdata = newdat5a,
-                                             t = seq(.001, max_time_c, by = .01),
-                                             B = n_iter,
-                                             trans = mat_4_states, variance = FALSE)
-flexsurv_cumhaz_d <- flexsurv::msfit.flexsurvreg(sel_param_fits_4s_b,#sel_param_fits_4s_b,#sel_param_fits_4s, #Alternatively, if the parameters (including covariate effects) are assumed to be different between different transitions, then a list of transition-specific models can be formed. This list has one component for each permitted transition in the multi-state model. This is more computationally efficient, particularly for larger models and datasets. See the example below, and the vignette.
-                                             newdata = newdat5b, #A data frame specifying the values of covariates in the fitted model, other than the transition number. This must be specified if there are other covariates. The variable names should be the same as those in the fitted model formula. There must be either one value per covariate (the typical situation) or n values per covariate, a different one for each of the n allowed transitions.
-                                             t = seq(.001, max_time_d, by = .01), #Vector of times. These do not need to be the same as the observed event times, and since the model is parametric, they can be outside the range of the data. A grid of more frequent times will provide a better approximation to the cumulative hazard trajectory for prediction with probtrans or mssample, at the cost of greater computational expense.
-                                             B = n_iter,#Number of simulations from the normal asymptotic distribution used to calculate variances. Decrease for greater speed at the expense of accuracy.
-                                             trans = mat_4_states, 
-                                             variance = FALSE)#Calculate the variances and covariances of the transition cumulative hazards (TRUE or FALSE). This is based on simulation from the normal asymptotic distribution of the estimates, which is computationally-expensive.
+msfx1_plot<-
+plot(msfx1, 
+     #cols=c()
+     type="single",
+     use.ggplot = TRUE)+
+  ggtitle("")+
+  #ylim(0,1.5)+
+  sjPlot::theme_sjplot2()+
+  scale_x_continuous("",breaks=seq(0,max(newtime0,na.rm=T),by=365.25), labels=(1:length(seq(0,max(newtime0,na.rm=T),by=365.25))-1)) +
+  theme(legend.position = "bottom")
+  #scale_y_continuous(breaks=seq(0,2.5,by=1.5/10),limits=c(0,2.5))
 
 
-# Definition of the database to Plot to compare
+ggarrange(msfx0_plot,msfx1_plot,
+          labels = c("Outpatient", "Residential"),
+          common.legend = TRUE, 
+          #label.y="Cumulative Baseline Hazards",
+         # label.x="Years",
+          legend = "bottom")
 
-# 3 states -General population
-cumhaz_data_a <- rbind(data.frame(cox_cumhaz_0_a_gp$Haz,
-                                model = "NP Cox"),
-                      #data.frame(cox_cumhaz_a$Haz,
-                      #          model = "Cox"),
-                      data.frame(flexsurv_cumhaz_a$Haz,
-                                model = "Parametric"))
 
-cumhaz_data_a$trans <- factor(cumhaz_data_a$trans,
-                            levels = seq(1, 3),
-                            labels = c("Adm -> Ther.Disch",
-                                       "Adm -> Readm",
-                                       "Ther.Disch -> Readm"))
+ if(no_mostrar==1){
+jpeg(paste0(gsub("SUD_CL/Matching_Process_APR_21.Rmd","",path),"_mult_state_ags/Cum_haz_markov_setting.jpg"), height=14, width= 12, res= 320, units = "in")
 
-# 3 states -Women specific
-cumhaz_data_b <- rbind(data.frame(cox_cumhaz_0_a_we$Haz,
-                                model = "NP Cox"),
-                      #data.frame(cox_cumhaz_b$Haz,
-                      #          model = "Cox"),
-                      data.frame(flexsurv_cumhaz_b$Haz,
-                                model = "Parametric"))
-cumhaz_data_b$trans <- factor(cumhaz_data_b$trans,
-                            levels = seq(1, 3),
-                            labels = c("Adm -> Ther.Disch",
-                                       "Adm -> Readm",
-                                       "Ther.Disch -> Readm"))
+ggarrange(msfx0_plot,msfx1_plot,
+          labels = c("Outpatient", "Residential"),
+          common.legend = TRUE, 
+          #label.y="Cumulative Baseline Hazards",
+         # label.x="Years",
+          legend = "bottom")
 
-## 4 states -General population
-cumhaz_data_c <- rbind(data.frame(cox_cumhaz_0_c_gp$Haz,
-                                model = "NP Cox"),
-                      #data.frame(cox_cumhaz_c$Haz,
-                      #          model = "Cox"),
-                      data.frame(flexsurv_cumhaz_c$Haz,
-                                model = "Parametric"))
-
-cumhaz_data_c$trans <- factor(cumhaz_data_c$trans,
-                            levels = seq(1, 5),
-                            labels = c("Adm -> Ther.Disch",
-                                       "Adm -> Disch.w/oClin.Adv.",
-                                       "Adm -> Readm",
-                                       "Ther.Disch -> Readm",
-                                       "Disch.w/oClin.Adv.-> Readm"
-                                       ))
-cumhaz_data_d <- rbind(data.frame(cox_cumhaz_0_c_we$Haz,
-                                model = "NP Cox"),
-                      #data.frame(cox_cumhaz_d$Haz,
-                      #          model = "Cox"),
-                      data.frame(flexsurv_cumhaz_d$Haz,
-                                model = "Parametric"))
-
-cumhaz_data_d$trans <- factor(cumhaz_data_d$trans,
-                            levels = seq(1, 5),
-                            labels = c("Adm -> Ther.Disch",
-                                       "Adm -> Disch.w/oClin.Adv.",
-                                       "Adm -> Readm",
-                                       "Ther.Disch -> Readm",
-                                       "Disch.w/oClin.Adv.-> Readm"
-                                       ))
+dev.off()
+}
 ```
 
 <br>
@@ -865,9 +515,8 @@ ggplot2::ggplot(aes(x = time, y = Haz, col = factor(setting), linetype = factor(
 plot_comp_mssurvfit2
 #plot_comp_mssurvfit2+ ggtitle("Figura 4 estados con Gompertz, Gen F y Gen-gamma")
 
-
 if(no_mostrar==1){
-jpeg("eso17.jpg", height=20, width= 10, res= 320, units = "in")
+jpeg("Cum_haz_ten_st.jpg", height=20, width= 10, res= 320, units = "in")
 plot_comp_mssurvfit2
 dev.off()
 }
@@ -896,7 +545,7 @@ paste0("Overall Effect of the type of plan in multistate model (COX): Mdn=",roun
 
 <br>
 
-# Transition Probabilites of the Joint Model
+## Transition Probabilites
 
 We also want to know the probability to be in each of the three states over time, not only the instantaneous transition rate reflected by the cumulative hazard. We need to create a data frame that represents an individual with Low risk score for reference. We need to compute the probability of readmission after being admitted to a treatment, with or without a therapeutic discharge, for the different periods.
 
@@ -1091,7 +740,7 @@ ggplot(ab_pmatrix, aes(time, value, color= start, linetype =setting))+
 fig_ab_pmatrix
 
 if(no_mostrar==1){
-jpeg("eso17.jpg", height=20, width= 10, res= 320, units = "in")
+jpeg(paste0(gsub("SUD_CL/Matching_Process_APR_21.Rmd","",path),"_mult_state_ags/pmatrix_probtrans_semimark.jpg"), height=20, width= 10, res= 320, units = "in")
 fig_ab_pmatrix
 dev.off()
 }
@@ -1099,9 +748,12 @@ dev.off()
 
 <br>
 
-## Landmark Aalen-Johansen
+### Landmark Aalen-Johansen
 
+The observation in a given state at a given time and estimate the state occupation. The idea is to select individuals that are under
+probabilities within this subset. Landmark approach uses less data than AJ.
 
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
 ```{r LMAJ, eval=T, echo=T, paged.print=TRUE, error=T}
 #devtools::install_github("hputter/mstate")
 invisible(c("For semi-Markov models, mstate provides the function mssample to produce both simulated trajectories and transition probability matrices from semi-Markov models, given the estimated piecewise-constant cumulative hazards (Fiocco et al. 2008), produced by msfit or msfit.flexsurvreg, though this is generally less efficient than pmatrix.simfs. In this example, 1000 samples from mssample give estimates of transition probabilities that are accurate to within around 0.02. However with pmatrix.simfs, greater precision is achieved by simulating 100 times as many trajectories in a shorter time"))
@@ -1655,9 +1307,930 @@ time_after_LMAJ<-Sys.time()
 
 paste0("Time in process: ");time_after_LMAJ-time_before_LMAJ
 ```
+</div>
 
 
-```{r lmaj_plot, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 4. State Occupancies, landmark Aalen-Johansen estimator", fig.align="center", error=T}
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r LMAJ2, eval=T, echo=T, paged.print=TRUE, error=T}
+LMAJ2<-function (msdata, s, from, method = c("aalen", "greenwood")) 
+{
+  tmat <- attr(msdata, "trans")
+  if (is.null(tmat)) 
+    stop("msdata object should have a \"trans\" attribute")
+  K <- nrow(tmat)
+  if (any(is.na(match(from, 1:K)))) 
+    stop("from should be subset of 1:K with K number of states")
+  xss <- xsect(msdata, s)
+  infrom <- xss$id[xss$state %in% from]
+  msdatas <- cutLMms(msdata, LM = s)
+  msdatasfrom <- msdatas[msdatas$id %in% infrom, ]
+  
+  c0 <- coxph(Surv(Tstart, Tstop, status) ~ strata(trans), 
+              data = msdatasfrom)
+  msf0 <- msfit2(c0, trans = tmat)
+  pt0 <- probtrans(msf0, predt = s, method = method)[from]
+  if (length(from) == 1) 
+    return(pt0[[1]])
+  else {
+    xsss <- xss[xss$state %in% from, ]
+    xsss$state <- factor(xsss$state, levels = from)
+    tbl <- table(xsss$state)
+    p <- tbl/sum(tbl)
+    varp <- (diag(p) - p %*% t(p))/sum(tbl)
+    res <- tmp1 <- tmp2 <- 0
+    for (j in 1:length(from)) {
+      ptj <- pt0[[j]]
+      res <- res + p[j] * ptj[, 1 + (1:K)]
+      tmp2 <- tmp2 + p[j] * (1 - p[j]) * (ptj[, K + 1 + 
+                                                (1:K)])^2
+      for (k in 1:length(from)) {
+        ptk <- pt0[[k]]
+        tmp1 <- tmp1 + varp[j, k] * ptj[, 1 + (1:K)] * 
+          ptk[, 1 + (1:K)]
+      }
+    }
+    ses <- sqrt(tmp1 + tmp2)
+    pt <- ptj
+    pt[, 1 + (1:K)] <- res
+    pt[, K + 1 + (1:K)] <- ses
+    return(pt)
+  }
+}
+
+msfit2<-function (object, newdata, variance = TRUE, vartype = c("aalen", 
+                                                                "greenwood"), trans)  
+{
+  if (!is.null((object$call)$weights) || !is.null(object$weights)) 
+    stop("msfit cannot (yet) compute the result for a weighted model")
+  Terms <- terms(object)
+  strat <- attr(Terms, "specials")$strata
+  cluster <- attr(Terms, "specials")$cluster
+  if (length(cluster)) 
+    stop("cluster terms are not supported")
+  if (!is.null(attr(object$terms, "specials")$tt)) 
+    stop("msfit cannot yet process coxph models with a tt term")
+  resp <- attr(Terms, "variables")[attr(Terms, "response")]
+  nvar <- length(object$coefficients)
+  score <- exp(object$linear.predictors)
+  vartype <- match.arg(vartype)
+  if (is.na(vartype)) 
+    stop("Invalid variance type specified")
+  has.strata <- !is.null(attr(object$terms, "specials")$strata)
+  if (is.null(object$y) || is.null(object[["x"]]) || 
+      !is.null(object$call$weights) || (has.strata && is.null(object$strata)) || 
+      !is.null(attr(object$terms, "offset"))) {
+    mf <- model.frame(object)
+  }
+  else mf <- NULL
+  if (is.null(mf)) 
+    y <- object[["y"]]
+  else {
+    y <- model.response(mf)
+    y2 <- object[["y"]]
+    if (!is.null(y2) && any(dim(y2) != dim(y))) 
+      stop("Could not reconstruct the y vector")
+  }
+  if (is.null(object[["x"]])) 
+    x <- model.matrix(object, data = mf)
+  else x <- object[["x"]]
+  n <- nrow(y)
+  if (n != object$n[1] || nrow(x) != n) 
+    stop("Failed to reconstruct the original data set")
+  type <- attr(y, "type")
+  if (type == "counting") 
+    lasty <- max(y[, 2])
+  else if (type == "right") 
+    lasty <- max(y[, 1])
+  else stop("Cannot handle \"", type, "\" type survival data")
+  if (is.null(mf)) 
+    offset <- 0
+  else {
+    offset <- model.offset(mf)
+    if (is.null(offset)) 
+      offset <- 0
+  }
+  Terms <- object$terms
+  if (!has.strata) 
+    strata <- rep(0L, n)
+  else {
+    stangle <- untangle.specials(Terms, "strata")
+    strata <- object$strata
+    if (is.null(strata)) {
+      if (length(stangle$vars) == 1) 
+        strata <- mf[[stangle$vars]]
+      else strata <- strata(mf[, stangle$vars], shortlabel = TRUE)
+    }
+  }
+  if (has.strata) {
+    temp <- attr(Terms, "specials")$strata
+    factors <- attr(Terms, "factors")[temp, ]
+    strata.interaction <- any(t(factors) * attr(Terms, "order") > 
+                                1)
+    if (strata.interaction) 
+      stop("Interaction terms with strata not supported")
+  }
+  if (vartype == "greenwood") {
+    if (missing(trans)) 
+      stop("argument trans missing; needed for vartype=\"greenwood\"")
+    labels <- attr(Terms, "term.labels")
+    if (length(labels) != 1) 
+      stop("Invalid formula for greenwood, ~strata(trans) needed, no covariates allowed")
+    if (attr(Terms, "term.labels") != "strata(trans)") 
+      stop("Invalid formula for greenwood, ~strata(trans) needed, no covariates allowed")
+    sf0 <- summary(survfit(object))
+    norisk <- sf0$n.risk
+    noevent <- sf0$n.event
+    
+    
+    if(is.null(sf0$strata)){
+      
+      sf0$strata<-rep(max(trans, na.rm = T),length(noevent))  
+      
+    }
+    
+    length(norisk)
+    length(noevent)
+    as.numeric(sf0$strata) 
+    
+    length(as.numeric(sf0$strata))
+    
+    
+    
+    sf0 <- data.frame(time = sf0$time, Haz = -log(sf0$surv), 
+                      norisk = norisk, noevent = noevent, trans = as.numeric(sf0$strata))
+    
+    
+    
+    allt <- sort(unique(c(sf0$time, lasty)))
+    nt <- length(allt)
+    K <- nrow(to.trans2(trans))
+    Haz <- data.frame(time = rep(allt, K), Haz = NA, trans = rep(1:K, 
+                                                                 rep(nt, K)))
+    if (variance) {
+      tr12 <- data.frame(trans1 = rep(1:K, rep(K, K)), 
+                         trans2 = rep(1:K, K))
+      tr12 <- tr12[tr12$trans1 <= tr12$trans2, ]
+      varHaz <- data.frame(time = rep(allt, K * (K + 1)/2), 
+                           varHaz = 0, trans1 = rep(tr12$trans1, rep(nt, 
+                                                                     K * (K + 1)/2)), trans2 = rep(tr12$trans2, 
+                                                                                                   rep(nt, K * (K + 1)/2)))
+    }
+    S <- nrow(trans)
+    for (s in 1:S) {
+      trs <- trans[s, ]
+      trs <- trs[!is.na(trs)]
+      ntrs <- length(trs)
+      if (ntrs > 0) {
+        for (i in 1:ntrs) {
+          trans1 <- trs[i]
+          sf1 <- sf0[sf0$trans == trans1, ]
+          Haz$Haz[(trans1 - 1) * nt + match(sf1$time, 
+                                            allt)] <- sf1$Haz
+          Haz$Haz[(trans1 - 1) * nt + 1:nt] <- NAfix2(Haz$Haz[(trans1 - 
+                                                                1) * nt + 1:nt], subst = 0)
+          if (variance) {
+            varHaz1 <- cumsum((sf1$norisk - sf1$noevent) * 
+                                sf1$noevent/sf1$norisk^3)
+            varHaz11 <- varHaz[varHaz$trans1 == trans1 & 
+                                 varHaz$trans2 == trans1, ]
+            varHaz11$varHaz <- NA
+            varHaz11$varHaz[match(sf1$time, allt)] <- varHaz1
+            varHaz11$varHaz <- NAfix2(varHaz11$varHaz, 
+                                     subst = 0)
+            varHaz[varHaz$trans1 == trans1 & varHaz$trans2 == 
+                     trans1, ] <- varHaz11
+            if (i < ntrs) {
+              for (j in ((i + 1):ntrs)) {
+                trans2 <- trs[j]
+                sf2 <- sf0[sf0$trans == trans2, ]
+                jointt <- intersect(sf1$time, sf2$time)
+                if (length(jointt) > 0) {
+                  varHazij <- rep(NA, length(jointt))
+                  ik <- match(jointt, sf1$time)
+                  jk <- match(jointt, sf2$time)
+                  varHazij <- cumsum(-sf1$noevent[ik] * 
+                                       sf2$noevent[jk]/sf1$norisk[ik]^3)
+                  varHaz12 <- varHaz[varHaz$trans1 == 
+                                       trans1 & varHaz$trans2 == trans2, 
+                                     ]
+                  varHaz12$varHaz <- NA
+                  varHaz12$varHaz[match(jointt, allt)] <- varHazij
+                  varHaz12$varHaz <- NAfix2(varHaz12$varHaz, 
+                                           subst = 0)
+                  varHaz[varHaz$trans1 == trans1 & varHaz$trans2 == 
+                           trans2, ] <- varHaz12
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  else {
+    labels <- attr(Terms, "term.labels")
+    if (length(labels) == 1) {
+      if (labels == "strata(trans)") {
+        sf0 <- summary(survfit(object))
+        norisk <- sf0$n.risk
+        noevent <- sf0$n.event
+        
+        if(is.null(sf0$strata)){
+          
+          sf0$strata<-rep(max(trans, na.rm = T),length(noevent))  
+          
+        }
+        
+        sf0 <- data.frame(time = sf0$time, Haz = -log(sf0$surv), 
+                          norisk = norisk, noevent = noevent, var = sf0$std.err^2/(sf0$surv)^2, 
+                          trans = as.numeric(sf0$strata))
+        allt <- sort(unique(c(sf0$time, lasty)))
+        nt <- length(allt)
+        K <- max(sf0$trans)
+        Haz <- data.frame(time = rep(allt, K), Haz = NA, 
+                          trans = rep(1:K, rep(nt, K)))
+        if (variance) {
+          tr12 <- data.frame(trans1 = rep(1:K, rep(K, 
+                                                   K)), trans2 = rep(1:K, K))
+          tr12 <- tr12[tr12$trans1 <= tr12$trans2, ]
+          varHaz <- data.frame(time = rep(allt, K * (K + 
+                                                       1)/2), varHaz = 0, trans1 = rep(tr12$trans1, 
+                                                                                       rep(nt, K * (K + 1)/2)), trans2 = rep(tr12$trans2, 
+                                                                                                                             rep(nt, K * (K + 1)/2)))
+        }
+        for (k in 1:K) {
+          sfk <- sf0[sf0$trans == k, ]
+          wht <- match(sfk$time, allt)
+          Hazk <- Haz[Haz$trans == k, ]
+          Hazk$Haz[wht] <- sfk$Haz
+          Hazk$Haz <- NAfix2(Hazk$Haz, subst = 0)
+          Haz[Haz$trans == k, ] <- Hazk
+          if (variance) {
+            varHazkk <- varHaz[varHaz$trans1 == k & varHaz$trans2 == 
+                                 k, ]
+            varHazkk$varHaz <- NA
+            varHazkk$varHaz[wht] <- sfk$var
+            varHazkk$varHaz <- NAfix2(varHazkk$varHaz, 
+                                     subst = 0)
+            varHaz[varHaz$trans1 == k & varHaz$trans2 == 
+                     k, ] <- varHazkk
+          }
+        }
+      }
+    }
+    else {
+      method <- object$method
+      if (method == "breslow") 
+        method <- 1
+      else if (method == "efron") 
+        method <- 2
+      else stop("Only \"efron\" and \"breslow\" methods for ties supported")
+      type <- attr(y, "type")
+      if (type == "counting") {
+        if (has.strata) 
+          ord <- order(mf[, strat], y[, 2], -y[, 3])
+        else ord <- order(y[, 2], -y[, 3])
+      }
+      else if (type == "right") {
+        if (has.strata) 
+          ord <- order(mf[, strat], y[, 1], -y[, 2])
+        else ord <- order(y[, 1], -y[, 2])
+        miny <- min(y[, 1])
+        if (miny < 0) 
+          y <- cbind(2 * miny - 1, y)
+        else y <- cbind(-1, y)
+      }
+      else stop("Cannot handle \"", type, "\" type survival data")
+      if (variance) 
+        x <- x[ord, ]
+      else x <- 0
+      if (has.strata) 
+        newstrat <- (as.numeric(mf[, strat]))[ord]
+      else newstrat <- rep(1, n)
+      newstrat <- cumsum(table(newstrat))
+      H <- length(newstrat)
+      subterms <- function(tt, i) {
+        dataClasses <- attr(tt, "dataClasses")
+        predvars <- attr(tt, "predvars")
+        oldnames <- dimnames(attr(tt, "factors"))[[1]]
+        tt <- tt[i]
+        index <- match(dimnames(attr(tt, "factors"))[[1]], 
+                       oldnames)
+        if (length(index) > 0) {
+          if (!is.null(predvars)) 
+            attr(tt, "predvars") <- predvars[c(1, 
+                                               index + 1)]
+          if (!is.null(dataClasses)) 
+            attr(tt, "dataClasses") <- dataClasses[index]
+        }
+        tt
+      }
+      if (has.strata) {
+        temp <- untangle.specials(Terms, "strata")
+        if (length(temp$vars)) 
+          Terms <- subterms(Terms, -temp$terms)
+      }
+      Terms2 <- delete.response(Terms)
+      if (has.strata) {
+        if (length(attr(Terms2, "specials")$strata)) 
+          Terms2 <- subterms(Terms2, -attr(Terms2, "specials")$strata)
+        if (!is.null(object$xlevels)) {
+          myxlev <- object$xlevels[match(attr(Terms2, 
+                                              "term.labels"), names(object$xlevels), 
+                                         nomatch = 0)]
+          if (length(myxlev) == 0) 
+            myxlev <- NULL
+        }
+        else myxlev <- NULL
+        mf2 <- model.frame(Terms2, data = newdata, xlev = myxlev)
+      }
+      else mf2 <- model.frame(Terms2, data = newdata, xlev = object$xlevels)
+      offset2 <- 0
+      if (!missing(newdata)) {
+        offset2 <- model.offset(mf2)
+        if (length(offset2) > 0) 
+          offset2 <- offset2 - mean(offset)
+        else offset2 <- 0
+        x2 <- model.matrix(Terms2, mf2)[, -1, drop = FALSE]
+      }
+      else stop("newdata missing")
+      if (has.strata & is.null(newdata$strata)) 
+        stop("no \"strata\" column present in newdata")
+      n2 <- nrow(x2)
+      coef <- ifelse(is.na(object$coefficients), 0, object$coefficients)
+      newrisk <- exp(c(x2 %*% coef) + offset2 - sum(coef * 
+                                                      object$means))
+      dimnames(y) <- NULL
+      storage.mode(y) <- "double"
+      ndead <- sum(y[, 3])
+      untimes <- sort(unique(y[, 2][y[, 3] == 1]))
+      nt <- length(untimes)
+      surv <- .C("agmssurv", sn = as.integer(n), 
+                 sp = as.integer(nvar), svar = as.integer(variance), 
+                 smethod = as.integer(method), sH = as.integer(H), 
+                 sK = as.integer(n2), snt = as.integer(nt), y = y[ord, 
+                                                                  ], score = as.double(score[ord]), xmat = as.double(x), 
+                 varcov = as.double(object$var), strata = as.integer(c(0, 
+                                                                       newstrat)), kstrata = as.integer(newdata$strata), 
+                 unt = as.double(untimes), newx = as.double(x2), 
+                 newrisk = as.double(newrisk), Haz = double(nt * 
+                                                              n2), varHaz = double(nt * n2 * (n2 + 1)/2), 
+                 d = double(3 * nvar), work = double(nt * n2 * 
+                                                       (nvar + 1)))
+      Haz <- data.frame(time = rep(untimes, n2), Haz = surv$Haz, 
+                        trans = rep(1:n2, rep(nt, n2)))
+      varHaz <- as.vector(t(matrix(surv$varHaz, ncol = nt)))
+      hlp <- matrix(c(rep(1:n2, rep(n2, n2)), rep(1:n2, 
+                                                  n2)), n2^2, 2)
+      hlp <- hlp[hlp[, 1] <= hlp[, 2], ]
+      varHaz <- data.frame(time = rep(untimes, n2 * (n2 + 
+                                                       1)/2), varHaz = varHaz, trans1 = rep(hlp[, 1], 
+                                                                                            rep(nt, n2 * (n2 + 1)/2)), trans2 = rep(hlp[, 
+                                                                                                                                        2], rep(nt, n2 * (n2 + 1)/2)))
+      if (lasty > max(untimes)) {
+        Hmat <- matrix(Haz$Haz, nrow = nt)
+        Hmat <- rbind(Hmat, Hmat[nt, ])
+        vHmat <- matrix(varHaz$varHaz, nrow = nt)
+        vHmat <- rbind(vHmat, vHmat[nt, ])
+        untimes <- c(untimes, lasty)
+        nt <- nt + 1
+        Haz <- data.frame(time = rep(untimes, n2), Haz = as.vector(Hmat), 
+                          trans = rep(1:n2, rep(nt, n2)))
+        varHaz <- data.frame(time = rep(untimes, n2 * 
+                                          (n2 + 1)/2), varHaz = as.vector(vHmat), trans1 = rep(hlp[, 
+                                                                                                   1], rep(nt, n2 * (n2 + 1)/2)), trans2 = rep(hlp[, 
+                                                                                                                                                   2], rep(nt, n2 * (n2 + 1)/2)))
+      }
+    }
+  }
+  if (variance) 
+    res <- list(Haz = Haz, varHaz = varHaz, trans = trans)
+  else res <- list(Haz = Haz, trans = trans)
+  class(res) <- "msfit"
+  return(res)
+}
+
+NAfix2 <- function(x, subst=-Inf) {
+  ### Written by Christian Hoffmann; propagate last known non-NA value
+  ### Input:
+  ###     x: numeric vector
+  ###     subst: scalar inidicating which value should replace NA
+  ###         if x starts with a series of NA's
+  ### Output:
+  ###     (numeric) vector, with NA's replaced by last known non-NA value,
+  ###         or 'subst'
+  spec <- max(x[!is.na(x)])+1
+  x <- c(spec,x)
+  while (any(is.na(x))) x[is.na(x)] <- x[(1:length(x))[is.na(x)]-1]
+  x[x==spec] <- subst
+  x <- x[-1]
+  x
+}
+#devtools::install_github("hputter/mstate")
+invisible(c("For semi-Markov models, mstate provides the function mssample to produce both simulated trajectories and transition probability matrices from semi-Markov models, given the estimated piecewise-constant cumulative hazards (Fiocco et al. 2008), produced by msfit or msfit.flexsurvreg, though this is generally less efficient than pmatrix.simfs. In this example, 1000 samples from mssample give estimates of transition probabilities that are accurate to within around 0.02. However with pmatrix.simfs, greater precision is achieved by simulating 100 times as many trajectories in a shorter time"))
+
+time_before_LMAJ2<-Sys.time()
+
+trans2_df<-cbind.data.frame(transition_label,trans=1:max(trans_matrix,na.rm=T))
+
+lmaj_df2<-data.frame()
+for (transo in 1:9){
+  if(tryCatch({LMAJ2(pr0,from=transo,s=1,method="aalen")}, error=function(e) {data.frame()}) %>% data.frame() %>% nrow()>0){
+  lmaj_df2<- rbind.data.frame(lmaj_df2,
+     cbind(pr="out",
+                  LMAJ2(pr0, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=transo, ##Either a single state or a set of states in the state space 1,...,S
+                  s=1,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  ),transo=transo))
+  } else if (tryCatch({LMAJ2(pr1,from=transo,s=1,method="aalen")}, error=function(e) {data.frame()}) %>% data.frame() %>% nrow()>0){
+    lmaj_df2<- rbind.data.frame(lmaj_df2,
+     cbind(pr="out",
+                  LMAJ2(pr1, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=transo, ##Either a single state or a set of states in the state space 1,...,S
+                  s=1,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  ),transo=transo))
+    } else {rep(0,21)
+  }
+}
+
+pr0_sel<-pr0[,c("id", "from", "to", "trans", "Tstart", "Tstop", "time", "status", "tipo_de_plan_res_1")]
+attr(pr0_sel,"trans")<-trans_matrix
+
+pr1_sel<-pr1[,c("id", "from", "to", "trans", "Tstart", "Tstop", "time", "status", "tipo_de_plan_res_1")]
+attr(pr1_sel,"trans")<-trans_matrix
+
+lmaj2_out_1<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_2<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_3<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_4<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_5<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_6<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_7<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_8<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_9<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+
+lmaj2_res_1<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_2<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_3<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_4<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_5<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_6<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_7<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_8<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_9<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+lmaj2_out_1_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_2_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_3_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_4_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_5_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_6_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_7_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_8_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_9_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+
+lmaj2_res_1_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_2_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_3_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_4_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_5_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_6_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_7_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_8_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_9_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+lmaj2_out_1_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_2_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_3_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_4_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_5_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_6_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_7_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_8_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_9_365<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+
+lmaj2_res_1_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_2_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_3_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_4_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_5_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_6_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_7_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_8_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_9_365<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+lmaj2_out_1_1095<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_2_1095<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_3_1095<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_4_1095<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_5_1095<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_6_1095<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_7_1095<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_8_1095<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_out_9_1095<-
+LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+
+lmaj2_res_1_1095<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=1, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_2_1095<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=2, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_3_1095<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=3, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_4_1095<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=4, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_5_1095<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=5, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_6_1095<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=6, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_7_1095<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=7, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_8_1095<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=8, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+lmaj2_res_9_1095<-
+LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
+                  from=9, ##Either a single state or a set of states in the state space 1,...,S
+                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen" #The method for calculating variances, as in probtrans
+                  )
+
+#if (nrow(mf) ==0) stop("No (non-missing) observations")
+time_after_LMAJ2<-Sys.time()
+
+#LMAJ(pr1,from=1,s=90,method="aalen")
+
+paste0("Time in process: ");time_after_LMAJ-time_before_LMAJ
+```
+</div>
+
+
+```{r lmaj_plot, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 4a. State Occupancies, landmark Aalen-Johansen estimator", fig.align="center", error=T}
 #A data frame containing estimates and associated standard errors of the transition probabilities P(X(t)=k | X(s) in from) with s and from the arguments of the function.
 
 #View(lmaj_df %>% dplyr::mutate_at(3:22,~round(.,2)) %>% dplyr::filter(time==90))
@@ -1698,8 +2271,56 @@ rbind(cbind(pr="res",lmaj_res_1,transo=1),
 lmaj_plot
 
 if(no_mostrar==1){
-jpeg("eso17.jpg", height=20, width= 10, res= 320, units = "in")
+jpeg(paste0(gsub("SUD_CL/Matching_Process_APR_21.Rmd","",path),"_mult_state_ags/lmaj_st_occ.jpg"), height=20, width= 10, res= 320, units = "in")
 lmaj_plot
+dev.off()
+}
+```
+
+
+```{r lmaj_plot, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 4b. State Occupancies, landmark Aalen-Johansen estimator", fig.align="center", error=T}
+#A data frame containing estimates and associated standard errors of the transition probabilities P(X(t)=k | X(s) in from) with s and from the arguments of the function.
+
+#View(lmaj_df %>% dplyr::mutate_at(3:22,~round(.,2)) %>% dplyr::filter(time==90))
+#View(lmaj_df %>% dplyr::mutate_at(3:22,~round(.,2)))
+
+lmaj_plot2<-
+rbind(cbind(pr="res",lmaj2_res_1,transo=1),
+      cbind(pr="out",lmaj2_out_1,transo=1)) %>% 
+  melt(id.vars=c("pr","transo","time")) %>% 
+  dplyr::rename("state_from"="transo") %>% 
+  dplyr::mutate(state_to=stri_sub(variable,-1,-1)) %>%
+    dplyr::mutate(setting= dplyr::case_when(grepl("out",pr)~"Outpatient",
+                                            grepl("res",pr)~"Residential",
+                                            T~NA_character_)) %>%
+      dplyr::mutate(measure= dplyr::case_when(grepl("se",variable)~"se",
+                                            grepl("pstate",variable)~"Estimate",
+                                            T~NA_character_)) %>%
+  dplyr::select(-pr,-variable) %>% 
+  tidyr::pivot_wider(names_from=measure,values_from = value) %>% 
+  dplyr::filter(state_from>0, state_to>0) %>% 
+  purrr::when(dplyr::group_by(.,time, state_from, state_to, setting) %>% summarise(n=n()) %>% dplyr::filter(n>1)%>% nrow()>0 ~ stop("There are cases with differences different than 0 days of a variable that should be equal"), 
+            ~.) %>%
+  dplyr::mutate(state_from=factor(state_from),state_to=factor(state_to), setting=factor(setting)) %>%  
+  ggplot(aes(time, Estimate, linetype =setting))+
+  geom_step(size=1, alpha=.65) + 
+  facet_wrap(state_to~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
+  scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
+  #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
+  scale_color_manual(name = "Starting from\nState", values=c("#54478C","#2C699A","#048BA8","#0DB39E",
+                                                      "#16DB93","#83E377","#EFEA5A","#F1C453","#F29E4C"), labels= as.character(c(1:9))) + # "#A65100" #"Cox",
+  scale_linetype_manual(name= "Type of\nprogram",values=c(1,4), labels=c("Outpatient","Residential")) +
+  scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11),
+                     label=round(seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11)/365.25,2))+
+  xlab("Years") + 
+  ylab("") + 
+  theme_minimal()
+
+lmaj_plot2
+
+if(no_mostrar==1){
+jpeg(paste0(gsub("SUD_CL/Matching_Process_APR_21.Rmd","",path),"_mult_state_ags/lmaj_st_occ.jpg"), height=20, width= 10, res= 320, units = "in")
+lmaj_plot2
 dev.off()
 }
 ```
@@ -1775,7 +2396,7 @@ lmaj_ci_df %>%
   dplyr::select(-time) %>% 
       #2021-04-27: drop from/actual state, readmission
   knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption = paste0("Table 1. Estimated transition probabilities, Ten-states model"),
+               caption = paste0("Table 1a. Estimated transition probabilities, Ten-states model"),
                col.names = c("State from","State to","Outpatient","Residential"),
                align =rep('l', 2),rep('c', 2)) %>%
   kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 13) %>%
@@ -1790,8 +2411,114 @@ lmaj_ci_df %>%
   kableExtra::scroll_box(width = "100%", height = "375px") 
 ```
 
-```{r lmaj_plot_ci95, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 4. State Occupancies & 95% CIs, landmark Aalen-Johansen estimator from Admission (state 1)", fig.align="center", error=T}
+
+```{r dfs_mstate,eval=T, echo=T, paged.print=TRUE, error=T}
+# Prob.occ5 <- data.frame(P=tmp.prob,
+# lci=tmp.prob-qnorm(0.975)*c(tmp$se1,tmp$se2,tmp$se3),
+# uci=tmp.prob+qnorm(0.975)*c(tmp$se1,tmp$se2,tmp$se3))
+
+lmaj_ci_df2<-
+rbind(cbind(pr="res",lmaj2_res_1,transo=1),
+      cbind(pr="out",lmaj2_out_1,transo=1)) %>% 
+  dplyr::mutate(lo_pstate1=pstate1-1.96*se1) %>% 
+  dplyr::mutate(lo_pstate2=pstate2-1.96*se2) %>% 
+  dplyr::mutate(lo_pstate3=pstate3-1.96*se3) %>% 
+  dplyr::mutate(lo_pstate4=pstate4-1.96*se4) %>% 
+  dplyr::mutate(lo_pstate5=pstate5-1.96*se5) %>% 
+  dplyr::mutate(lo_pstate6=pstate6-1.96*se6) %>% 
+  dplyr::mutate(lo_pstate7=pstate7-1.96*se7) %>% 
+  dplyr::mutate(lo_pstate8=pstate8-1.96*se8) %>% 
+  dplyr::mutate(lo_pstate9=pstate9-1.96*se9) %>% 
+  dplyr::mutate(lo_pstate10=pstate10-1.96*se10) %>% 
+  dplyr::mutate(up_pstate1=pstate1+1.96*se1) %>% 
+  dplyr::mutate(up_pstate2=pstate2+1.96*se2) %>% 
+  dplyr::mutate(up_pstate3=pstate3+1.96*se3) %>% 
+  dplyr::mutate(up_pstate4=pstate4+1.96*se4) %>% 
+  dplyr::mutate(up_pstate5=pstate5+1.96*se5) %>% 
+  dplyr::mutate(up_pstate6=pstate6+1.96*se6) %>% 
+  dplyr::mutate(up_pstate7=pstate7+1.96*se7) %>% 
+  dplyr::mutate(up_pstate8=pstate8+1.96*se8) %>% 
+  dplyr::mutate(up_pstate9=pstate9+1.96*se9) %>% 
+  dplyr::mutate(up_pstate10=pstate10+1.96*se10) %>% 
+  melt(id.vars=c("pr","transo","time")) %>% 
+  dplyr::rename("state_from"="transo") %>% 
+  dplyr::mutate(state_to=stri_sub(variable,-1,-1)) %>%
+  dplyr::mutate(setting= dplyr::case_when(grepl("out",pr)~"Outpatient",
+                                            grepl("res",pr)~"Residential",
+                                            T~NA_character_)) %>%
+  dplyr::mutate(measure= dplyr::case_when(grepl("se",variable)~"se",
+                                          grepl("lo",variable)~"l95ci",
+                                          grepl("up",variable)~"u95ci",
+                                          grepl("pstate",variable)~"Estimate",
+                                          T~NA_character_)) %>%
+  dplyr::select(-pr,-variable) %>% 
+  purrr::when(dplyr::group_by(.,state_from, time, state_to, setting, measure)%>% summarise(n=n())%>% dplyr::filter(n>1)%>% nrow()>0 ~ stop("There are cases with differences different than 0 days of a variable that should be equal"), 
+            ~.) %>% 
+  tidyr::pivot_wider(names_from=measure,values_from = value) %>% 
+  dplyr::mutate(state_from=ifelse(state_from==0,10,state_from)) %>% 
+  dplyr::mutate(state_to=ifelse(state_to==0,10,state_to)) %>% 
+  #dplyr::filter(state_from>0, state_to>0) %>% 
+  purrr::when(dplyr::group_by(.,time, state_from, state_to, setting) %>% summarise(n=n()) %>% dplyr::filter(n>1)%>% nrow()>0 ~ stop("There are cases with differences different than 0 days of a variable that should be equal"), 
+            ~.) %>%
+  dplyr::mutate(setting=factor(setting))  
+  
+  
+lmaj_ci_df2 %>% 
+    dplyr::select(time, state_from, state_to, setting, Estimate, l95ci, u95ci) %>% 
+    dplyr::arrange(state_from,state_to,setting,time) %>% 
+    dplyr::mutate(state_to=as.numeric(state_to)) %>% 
+    dplyr::filter(time %in% c(90, 365, 1095)) %>%
+    dplyr::mutate(time=factor(time, levels=c(90, 365, 1095),
+                  labels=c("~90days/3 months", "~1 year", "~3 years"),ordered=T)) %>% 
+    dplyr::mutate(comb=paste0(state_from,"_",state_to)) %>% 
+    dplyr::filter(comb %in% c("1_2","1_3","1_4","4_5","4_6","4_7","7_8","7_9","7_10")) %>% 
+  dplyr::left_join(cbind.data.frame(states_trans_lab,st=1:10), by=c("state_from"="st")) %>% 
+  dplyr::left_join(cbind.data.frame(states_trans_lab,st=1:10), by=c("state_to"="st")) %>% 
+  dplyr::select(-comb) %>% 
+  dplyr::rename("state_from_lab"="states_trans_lab.x","state_to_lab"="states_trans_lab.y") %>% 
+  dplyr::mutate(est_ci=paste0(sprintf("%1.3f",Estimate)," [",sprintf("%1.3f",abs(l95ci)),"-",sprintf("%1.3f",abs(u95ci)),"]")) %>%
+  dplyr::arrange(time, state_from,state_to) %>% 
+  dplyr::select(time, setting, state_from_lab, state_to_lab, est_ci) %>% 
+  tidyr::pivot_wider(names_from=setting,values_from = est_ci) %>% 
+  dplyr::select(-time) %>% 
+      #2021-04-27: drop from/actual state, readmission
+  knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption = paste0("Table 1b. Estimated transition probabilities, Ten-states model"),
+               col.names = c("State from","State to","Outpatient","Residential"),
+               align =rep('l', 2),rep('c', 2)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 13) %>%
+  kableExtra::add_footnote("Note. We removed Readmission because it was an absorbing state", notation="none") %>% 
+  #kableExtra::add_header_above(c(" ", "Women-specific: Transition to" = 4,"General Population: Transition to" = 4)) %>% 
+  kableExtra::pack_rows("At 90 days", 1, 3) %>% 
+  kableExtra::pack_rows("At ~1 year", 4, 6) %>% 
+  kableExtra::pack_rows("At ~3 years", 7, 9) %>%
+  #kableExtra::pack_rows("At 90 days", 1, 9) %>% 
+  #kableExtra::pack_rows("At ~1 year", 10, 18) %>% 
+  #kableExtra::pack_rows("At ~3 years", 19, 27) %>%
+  kableExtra::scroll_box(width = "100%", height = "375px") 
+```
+
+```{r lmaj_plot_ci95, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 4a. State Occupancies & 95% CIs, landmark Aalen-Johansen estimator from Admission (state 1)", fig.align="center", error=T}
 lmaj_ci_df %>% 
+  ggplot(aes(time, Estimate, color= setting, linetype =setting, fill=setting))+
+  geom_step(size=1, alpha=.65) + 
+  geom_ribbon(aes(ymin=l95ci, ymax=u95ci, fill=setting), alpha=.5)+
+  facet_wrap(state_to~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
+  scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
+  #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
+  scale_color_manual(name= "Type of\nprogram",values=c("gray65","gray35"), labels=c("Outpatient","Residential")) +
+  scale_fill_manual(name= "Type of\nprogram",values=c("gray65","gray35"), labels=c("Outpatient","Residential")) +
+  scale_linetype_manual(name= "Type of\nprogram",values=c(1,4), labels=c("Outpatient","Residential")) +
+  scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11),
+                     label=round(seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11)/365.25,2))+
+  xlab("Years") + 
+  ylab("") + 
+  theme_minimal()
+```
+
+
+```{r lmaj_plot_ci95, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 4b. State Occupancies & 95% CIs, landmark Aalen-Johansen estimator from Admission (state 1)", fig.align="center", error=T}
+lmaj_ci_df2 %>% 
   ggplot(aes(time, Estimate, color= setting, linetype =setting, fill=setting))+
   geom_step(size=1, alpha=.65) + 
   geom_ribbon(aes(ymin=l95ci, ymax=u95ci, fill=setting), alpha=.5)+
@@ -1810,11 +2537,590 @@ lmaj_ci_df %>%
 
 <br>
 
+## Transition Probabilities, Markov
 
 
+```{r probtrans_mark_ci951_mssample,eval=T, echo=T, paged.print=TRUE, error=T}
+#, fig.height=13, fig.width=10, fig.cap="Figure 12a. Aalen-Johansen estimator with confidence intervals", fig.align="center"
+#n_iter=1000
+
+set.seed(1234)
+pt_markov_0 <- probtrans(msfx0,
+                predt=0,#his is either the time at which the prediction is made (if direction= "forward")
+                direction="forward",#One of "forward" (default) or "fixedhorizon", indicating whether prediction is forward or for a fixed horizon
+                method="aalen",# character string specifying the type of variances to be computed (so only needed if either variance or covariance is TRUE). 
+                variance=T,#Logical value indicating whether standard errors are to be calculated (default is TRUE)
+                covariance=F)#Logical value indicating whether covariances of transition probabilities for different states are to be calculated (default is FALSE)
+                
+pt_markov_1 <- probtrans(msfx1,
+                predt=0,#his is either the time at which the prediction is made (if direction= "forward")
+                direction="forward",#One of "forward" (default) or "fixedhorizon", indicating whether prediction is forward or for a fixed horizon
+                method="aalen",# character string specifying the type of variances to be computed (so only needed if either variance or covariance is TRUE). 
+                variance=T,#Logical value indicating whether standard errors are to be calculated (default is TRUE)
+                covariance=F)#Logical value indicating whether covariances of transition probabilities for different states are to be calculated (default is FALSE)
+```
+
+<br>
+
+```{r probtrans_plot, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 5. Estimate of State Occupancies at Baseline, Ten-states model", fig.align="center", error=T}
+#states_trans_lab<-paste0(1:10,") ",states_trans)
+#attr(states_trans_lab,"names")<-1:10
+
+ab_pmatrix_probtrans<-
+  pt_markov_0[[1]] %>% 
+  dplyr::left_join(pt_markov_1[[1]], by="time", suffix=c("",".w_covs.res.s01")) %>%
+  dplyr::left_join(pt_markov_0[[2]], by="time", suffix=c("",".w_covs.out.s02")) %>% 
+  dplyr::left_join(pt_markov_1[[2]], by="time", suffix=c("",".w_covs.res.s02")) %>% 
+  dplyr::left_join(pt_markov_0[[3]], by="time", suffix=c("",".w_covs.out.s03")) %>% 
+  dplyr::left_join(pt_markov_1[[3]], by="time", suffix=c("",".w_covs.res.s03")) %>% 
+  dplyr::left_join(pt_markov_0[[4]], by="time", suffix=c("",".w_covs.out.s04")) %>% 
+  dplyr::left_join(pt_markov_1[[4]], by="time", suffix=c("",".w_covs.res.s04")) %>% 
+  dplyr::left_join(pt_markov_0[[5]], by="time", suffix=c("",".w_covs.out.s05")) %>% 
+  dplyr::left_join(pt_markov_1[[5]], by="time", suffix=c("",".w_covs.res.s05")) %>% 
+  dplyr::left_join(pt_markov_0[[6]], by="time", suffix=c("",".w_covs.out.s06")) %>% 
+  dplyr::left_join(pt_markov_1[[6]], by="time", suffix=c("",".w_covs.res.s06")) %>% 
+  dplyr::left_join(pt_markov_0[[7]], by="time", suffix=c("",".w_covs.out.s07")) %>% 
+  dplyr::left_join(pt_markov_1[[7]], by="time", suffix=c("",".w_covs.res.s07")) %>% 
+  dplyr::left_join(pt_markov_0[[8]], by="time", suffix=c("",".w_covs.out.s08")) %>% 
+  dplyr::left_join(pt_markov_1[[8]], by="time", suffix=c("",".w_covs.res.s08")) %>% 
+  dplyr::left_join(pt_markov_0[[9]], by="time", suffix=c("",".w_covs.out.s09")) %>% 
+  dplyr::left_join(pt_markov_1[[9]], by="time", suffix=c("",".w_covs.res.s09")) %>% 
+  dplyr::left_join(pt_markov_0[[10]], by="time", suffix=c("",".w_covs.out.s10")) %>% 
+  dplyr::left_join(pt_markov_1[[10]], by="time", suffix=c("",".w_covs.res.s10")) %>% 
+  dplyr::select(-starts_with("se")) %>% 
+  dplyr::rename("pstate1.w_covs.out.s1"="pstate1",
+                "pstate2.w_covs.out.s1"="pstate2",
+                "pstate3.w_covs.out.s1"="pstate3",
+                "pstate4.w_covs.out.s1"="pstate4",
+                "pstate5.w_covs.out.s1"="pstate5",
+                "pstate6.w_covs.out.s1"="pstate6",
+                "pstate7.w_covs.out.s1"="pstate7",
+                "pstate8.w_covs.out.s1"="pstate8",
+                "pstate9.w_covs.out.s1"="pstate9",
+                "pstate10.w_covs.out.s1"="pstate10") %>% 
+  #pstate1–pstate3 are close to the first rows of the matrices returned by pmatrix.fs
+  reshape2::melt(id.vars="time") %>% #janitor::tabyl(variable)
+  dplyr::mutate(start=stri_sub(variable,-1,-1)) %>% 
+  dplyr::mutate(state=stringi::stri_match_first_regex(variable, "(.*?)\\.")[,2]) %>%
+  dplyr::mutate(state=gsub("pstate", "", state), state=as.numeric(state)) %>% 
+  dplyr::mutate(setting= dplyr::case_when(grepl(".out",variable)~"Outpatient",
+                                               grepl(".res",variable)~"Residential",
+                                               T~NA_character_))
+
+fig_ab_pmatrix_probtrans<-
+  #janitor::tabyl(start)
+  ggplot(ab_pmatrix_probtrans, aes(time, value, color= start, linetype =setting))+
+    geom_step(size=1, alpha=.65) + 
+    scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
+    facet_wrap(state~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
+    #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
+    scale_color_manual(name = "Starting from\nState", values=c("#54478C","#2C699A","#048BA8","#0DB39E",
+                                                        "#16DB93","#83E377","#EFEA5A","#F1C453","#F29E4C","red"), labels= as.character(c(1:10))) + # "#A65100" #"Cox",
+    scale_linetype_manual(name= "Type of\nprogram",values=c(1,4), labels=c("Outpatient","Residential")) +
+    scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11),
+                       label=round(seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11)/365.25,2))+
+    xlab("Years") + 
+    ylab("") + 
+    theme_minimal()
+
+fig_ab_pmatrix_probtrans
+
+if(no_mostrar==1){
+jpeg(paste0(gsub("SUD_CL/Matching_Process_APR_21.Rmd","",path),"_mult_state_ags/probtrans_states.jpg"), height=20, width= 10, res= 320, units = "in")
+fig_ab_pmatrix_probtrans
+dev.off()
+}
+```
+
+```{r probtrans_plot2, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 6. Estimate of State Occupancies at Baseline, Ten-states model", fig.align="center", error=T}
+myplots<- vector("list")
+
+for (i in rep(1:7,2)){
+  myplots[[paste0("pt_0_",i)]]<- plot(pt_markov_0, from= i,type="single",use.ggplot= TRUE)
+  myplots[[paste0("pt_1_",i)]]<- plot(pt_markov_1, from= i,type="single",use.ggplot= TRUE)
+}
+
+for (i in rep(8:9,1)){
+  #myplots[[paste0("pt_0_",i)]]<- plot(pt_markov_0, from= i,type="single",use.ggplot= TRUE)
+  myplots[[paste0("pt_1_",i)]]<- plot(pt_markov_1, from= i,type="single",use.ggplot= TRUE)
+}
+
+probtrans_df<-
+rbind(cbind(subset(myplots$pt_0_1$data,state_num %in% c(2,3,4))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=1),
+      cbind(subset(myplots$pt_1_1$data,state_num %in% c(2,3,4))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=1),
+      cbind(subset(myplots$pt_0_2$data,state_num %in% c(4))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=2),
+      cbind(subset(myplots$pt_1_2$data,state_num %in% c(4))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=2),
+      cbind(subset(myplots$pt_0_3$data,state_num %in% c(4))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=3),
+      cbind(subset(myplots$pt_1_3$data,state_num %in% c(4))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=3),
+      cbind(subset(myplots$pt_0_4$data,state_num %in% c(5,6,7))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=4),
+      cbind(subset(myplots$pt_1_4$data,state_num %in% c(5,6,7))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=4),
+      cbind(subset(myplots$pt_0_5$data,state_num %in% c(7))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=5),
+      cbind(subset(myplots$pt_1_5$data,state_num %in% c(7))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=5),
+      cbind(subset(myplots$pt_0_5$data,state_num %in% c(7))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=6),
+      cbind(subset(myplots$pt_1_5$data,state_num %in% c(7))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=6),
+      cbind(subset(myplots$pt_0_5$data,state_num %in% c(8,9,10))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=7),
+      cbind(subset(myplots$pt_1_5$data,state_num %in% c(8,9,10))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=7)
+
+)
+
+probtrans_df_plot<-
+probtrans_df %>% 
+  dplyr::mutate(res=factor(res), state=factor(state)) %>% 
+ ggplot()+
+    geom_step(aes(time, prob, color= state, fill=state, linetype =res),size=1, alpha=.75) + 
+    geom_ribbon(aes(x=time, fill=state, color= state, linetype =res, ymin=CI_low, ymax=CI_upp), alpha=.35)+
+    scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
+    facet_wrap(st~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
+    #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
+    scale_color_manual(name = "Exit\nState", values=c26) +
+    scale_fill_manual(name = "Exit\nState", values=c26) +  
+    scale_linetype_manual(name= "Type of\nprogram",values=c(1,4), labels=c("Outpatient","Residential")) +
+    scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11),
+                       label=round(seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11)/365.25,2))+
+    xlab("Years") + 
+    ylab("") + 
+    theme_minimal()
+
+probtrans_df_plot
+
+if(no_mostrar==1){
+jpeg(paste0(gsub("SUD_CL/Matching_Process_APR_21.Rmd","",path),"_mult_state_ags/probtrans_states_trans.jpg"), height=20, width= 10, res= 320, units = "in")
+probtrans_df_plot
+dev.off()
+}
+```
+
+<br>
+
+## Clustered multistate
+
+```{r clus_mstate,eval=T, echo=T, paged.print=TRUE, error=T}
+## Function that calculates the working independence Aalen-Johansen estimator 
+## of the population-averaged transition probabilities. Standard errors and
+## and 95% confidence intervals and bands are also calculated.
+
+patp <- function(data, tmat, cid, id, h, j, s=0, weighted=FALSE,
+                 LMAJ=FALSE, B=100, cband=FALSE){
+  check.ic <- aggregate(data[,cid], by=list(data[,id]), 
+                        FUN=sd, na.rm=TRUE)$x
+  check.ic <- check.ic[!is.na(check.ic)]
+  if(length(check.ic)>0){
+    if(max(check.ic)>0){
+      stop("Same unit(s) in more than 1 cluster (violation of the independent clusters assumption)")
+    }
+  }
+  
+  if(B<=0 & cband==TRUE){
+    stop("Condidence bands cannot be caclulated based on <=0 bootstrap samples")
+  } else if (B<1000 & cband==TRUE){
+    warning("It is recommended to use at least 1000 bootstrap samples for confidence band calculation")
+  }
+  if(LMAJ==FALSE){
+    c0 <- coxph(Surv(Tstart, Tstop, status) ~ strata(trans), data=data,
+                method = "breslow")
+    
+    A0 <- msfit(object = c0, trans = tmat, variance=FALSE)
+    if(weighted==TRUE){
+      ## msfit does not currently support weights and thus
+      ## the weighted by cluster size cumulative transition
+      ## intensities need to be manually inserted into A0
+      M0 <- aggregate(rep(1,times=nrow(data)),
+                      by = list( data[,cid], data[,id]),
+                      FUN = mean)
+      
+      M <- aggregate(M0$x,
+                     by = list( M0$Group.1),
+                     FUN = sum)
+      colnames(M) <- c(cid, "clust.size")
+      data <- merge(data, M, by=cid)
+      data <- data[order(data[,cid],data[,id]),]
+      class(data) <- c("msdata", "data.frame")
+      
+      c0 <- coxph(Surv(Tstart, Tstop, status) ~ strata(trans), 
+                  weights=(1/clust.size), data=data,
+                  method = "breslow")
+      A.wt <- basehaz(c0, centered=FALSE)
+      A.wt$strata <- as.numeric(A.wt$strata)
+      for(trn in sort(unique(A.wt$strata))){
+        fun <- stepfun(A.wt[A.wt$strata==trn,"time"], 
+                       c(0,A.wt[A.wt$strata==trn,"hazard"]))
+        A0$Haz[A0$Haz$trans==trn,"Haz"] <- fun(A0$Haz[A0$Haz$trans==trn,"time"])
+      }
+    }
+    P0 <- probtrans(A0, predt = s, 
+                    variance=FALSE)[[h]][,c("time",
+                                            paste("pstate", j, sep=""))]
+  } else {
+    if(weighted==TRUE){
+      M0 <- aggregate(rep(1,times=nrow(data)),
+                      by = list( data[,cid], data[,id]),
+                      FUN = mean)
+      
+      M <- aggregate(M0$x,
+                     by = list( M0$Group.1),
+                     FUN = sum)
+      colnames(M) <- c(cid, "clust.size")
+      data <- merge(data, M, by=cid)
+      data <- data[order(data[,cid],data[,id]),]
+      class(data) <- c("msdata", "data.frame")
+    }
+    P0 <- LMAJ2(msdata=data, tmat=tmat, id=id, s=s, h=h, j=j, weighted=weighted)
+  }
+  
+  colnames(P0) <- c("time", paste("P", h, j, sep=""))
+  if(B==0){
+    return(P0)
+  } else {
+    n <- length(unique(data[,cid]))
+    boot <- msboot(patp_b, data=data, 
+                   id=cid, B=B, verbose=0,
+                   tmat=tmat, id2=id, h=h, j=j, s=s, times=P0$time,
+                   wiaj_hat=P0[,paste("P", h, j, sep="")],
+                   n=n, weighted=weighted, LMAJ=LMAJ)
+    sigma <- apply(boot, 1, sd)
+    se <- sigma/sqrt(n)
+    
+    ## cloglog transformation
+    ll <- exp(-exp(log(-log(P0[,paste("P", h, j, sep="")]))-qnorm(0.975)*se/
+                     (P0[,paste("P", h, j, sep="")]*
+                        log(P0[,paste("P", h, j, sep="")]))))
+    ul <- exp(-exp(log(-log(P0[,paste("P", h, j, sep="")]))+qnorm(0.975)*se/
+                     (P0[,paste("P", h, j, sep="")]*
+                        log(P0[,paste("P", h, j, sep="")]))))
+    
+    res <- cbind(P0, se, ll, ul)
+    
+    if(cband==TRUE){
+      q_t <- 1/(1+sigma^2)
+      
+      jump.times <- P0$time[diff(c(P0[1,paste("P", h, j, sep="")],
+                                   P0[,paste("P", h, j, sep="")]), lag=1)!=0]
+      quant <- quantile(jump.times, probs=c(.05,.95))
+      range <- (P0$time>=quant[1] & P0$time<=quant[2] & 
+                  P0[,paste("P", h, j, sep="")]>0)
+      
+      B_t <- q_t[range]*boot[range,]/(log(P0[range, paste("P", h, j, sep="")])*
+                                        P0[range, paste("P", h, j, sep="")])
+      B_t <- abs(B_t)
+      c_a <- apply(B_t, 2, max)
+      c_a <- quantile(c_a, probs=0.95)
+      
+      ## cloglog transformation
+      ll.band <- exp(-exp(log(-log(P0[,paste("P", h, j, sep="")]))+c_a/(sqrt(n)*q_t)))
+      ll.band[!range] <- NA
+      ul.band <- exp(-exp(log(-log(P0[,paste("P", h, j, sep="")]))-c_a/(sqrt(n)*q_t)))
+      ul.band[!range] <- NA
+      
+      res <- cbind(res, ll.band, ul.band)
+    }
+    return(res)
+  }
+}
+
+patp_b <- function(data, tmat, id2, h, j, s, times, wiaj_hat, n, weighted, LMAJ){
+  if(LMAJ==FALSE){
+    c0 <- coxph(Surv(Tstart, Tstop, status) ~ strata(trans), data=data,
+                method = "breslow")
+    
+    A0 <- msfit(object = c0, trans = tmat, variance=FALSE)
+    if(weighted==TRUE){
+      c0 <- coxph(Surv(Tstart, Tstop, status) ~ strata(trans), 
+                  weights=(1/clust.size), data=data,
+                  method = "breslow")
+      A.wt <- basehaz(c0, centered=FALSE)
+      A.wt$strata <- as.numeric(A.wt$strata)
+      for(trn in sort(unique(A.wt$strata))){
+        fun <- stepfun(A.wt[A.wt$strata==trn,"time"], 
+                       c(0,A.wt[A.wt$strata==trn,"hazard"]))
+        A0$Haz[A0$Haz$trans==trn,"Haz"] <- fun(A0$Haz[A0$Haz$trans==trn,"time"])
+      }
+    }
+    
+    P0 <- probtrans(A0, predt = s, 
+                    variance=FALSE)[[h]][,c("time",
+                                            paste("pstate", j, sep=""))]
+  } else {
+    P0 <- LMAJ2(msdata=data, tmat=tmat, id=id2, s=s, h=h, j=j, weighted=weighted)
+  }
+  
+  P0_t <-stepfun(P0$time, c(P0[1,paste("pstate", j, sep="")], 
+                            P0[,paste("pstate", j, sep="")]))                
+  
+  return(sqrt(n)*(P0_t(times)-wiaj_hat))
+}
+
+patp_test <- function(data, tmat, cid, id, group, h, j, s=0,
+                      weighted=FALSE, LMAJ=FALSE, B=1000){
+  check.ic <- aggregate(data[,cid], by=list(data[,id]), 
+                        FUN=sd, na.rm=TRUE)$x
+  check.ic <- check.ic[!is.na(check.ic)]
+  if(length(check.ic)>0){
+    if(max(check.ic)>0){
+      stop("Same unit(s) in more than 1 cluster (violation of the independent clusters assumption)")
+    }
+  }
+  
+  if(B<=0){
+    stop("Tests cannot be performed based on <=0 bootstrap samples")
+  } else if (B<1000){
+    warning("It is recommended to use at least 1000 bootstrap samples for two-sample testing")
+  }
+  n <- length(unique(data[,cid]))
+  groups <- unique(data[,group])
+  groups <- sort(groups[!is.na(groups)])
+  if(length(groups)!=2){
+    stop("Number of groups != 2")
+  }
+  
+  if(weighted==TRUE){
+    M0 <- aggregate(rep(1,times=nrow(data)),
+                    by = list(data[,cid],
+                              data[,group],
+                              data[,id]),
+                    FUN = mean)
+    
+    M <- aggregate(M0$x,
+                   by = list(M0$Group.1, M0$Group.2),
+                   FUN = sum)
+    colnames(M) <- c(cid, group, "clust.size")
+    data <- merge(data, M, by=c(cid,group))
+    data <- data[order(data[,cid],data[,id]),]
+    class(data) <- c("msdata", "data.frame")
+  }
+  
+  Pt <- list()
+  tms <- list()
+  for(g in groups){
+    if(LMAJ==FALSE){
+      c0 <- coxph(Surv(Tstart, Tstop, status) ~ strata(trans),
+                  data=data[data[,group]==g,], method = "breslow")
+      
+      A0 <- msfit(object = c0, trans = tmat, variance=FALSE)
+      if(weighted==TRUE){
+        c0 <- coxph(Surv(Tstart, Tstop, status) ~ strata(trans), 
+                    weights=(1/clust.size), data=data[data[,group]==g,], 
+                    method = "breslow")
+        A.wt <- basehaz(c0, centered=FALSE)
+        A.wt$strata <- as.numeric(A.wt$strata)
+        for(trn in sort(unique(A.wt$strata))){
+          fun <- stepfun(A.wt[A.wt$strata==trn,"time"], 
+                         c(0,A.wt[A.wt$strata==trn,"hazard"]))
+          A0$Haz[A0$Haz$trans==trn,"Haz"] <- fun(A0$Haz[A0$Haz$trans==trn,"time"])
+        }
+      }
+      
+      P0 <- probtrans(A0, predt = s, variance=FALSE)[[h]][,c("time",
+                                                             paste("pstate", j, sep=""))]
+    } else {
+      P0 <- LMAJ2(msdata=data[data[,group]==g,], tmat=tmat, 
+                  id=id, s=s, h=h, j=j, weighted=weighted)
+    }
+    if(length(Pt)==0){
+      Pt[[1]] <- stepfun(P0$time, c(P0[1,paste("pstate", j, sep="")], 
+                                    P0[,paste("pstate", j, sep="")]))
+      tms[[1]] <- P0$time[diff(c(P0[1,paste("pstate", j, sep="")],
+                                 P0[,paste("pstate", j, sep="")]), lag=1)!=0]
+    } else {
+      Pt[[2]] <- stepfun(P0$time, c(P0[1,paste("pstate", j, sep="")], 
+                                    P0[,paste("pstate", j, sep="")]))
+      tms[[2]] <- P0$time[diff(c(P0[1,paste("pstate", j, sep="")],
+                                 P0[,paste("pstate", j, sep="")]), lag=1)!=0]
+    }
+  }
+  
+  tms <- sort(unique(c(tms[[1]], tms[[2]])))
+  
+  if(nrow(data[data$from==j,])>0){
+    tS <- sort(unique(c(data[data$to==j,"from"],j)))
+  } else {
+    tS <- sort(unique(data[data$to==j,"from"]))
+  }
+  
+  EY <- NULL
+  EY.t <- function(t,dt){
+    sum(dt$Tstart<t & dt$Tstop>=t)/n
+  }
+  for(i in tS){
+    for(g in groups){
+      dat <- unique(data[data$from==i & data[,group]==g,
+                         c(id, "from", "Tstart", "Tstop")])
+      if(is.null(EY)){
+        EY <- sapply(tms, EY.t, dt=dat)
+      } else {
+        EY <- cbind(EY, sapply(tms, EY.t, dt=dat))
+      }
+    }
+  }
+  Wt <- rowprods(EY)/rowSums(EY)
+  tms <- tms[!is.na(Wt)]
+  if(length(tms)==0 | max(Wt, na.rm=TRUE)==0){
+    stop("Weights NA or 0 for all timepoints")
+  }
+  Wt <- Wt[!is.na(Wt)]
+  D_hat=(Pt[[1]](tms) - Pt[[2]](tms))
+  
+  Diff_boot <- msboot(patp_test_b, data=data, 
+                      id=cid, B=B, verbose=0,
+                      tmat=tmat, id2=id, group=group, h=h, j=j, s=s, 
+                      times=tms, D_hat=D_hat, Wt=Wt,
+                      n=n, weighted=weighted, LMAJ=LMAJ)
+  
+  KS <- max(abs(sqrt(n)*Wt*D_hat))
+  KS.b <- apply(abs(Diff_boot),2,max)
+  pval <- mean(KS.b >= KS)
+  names(pval) <- "p-value"
+  return(pval)
+}
+patp_test_b <- function(data, tmat, id2, h, j, s, group, times, D_hat, 
+                        Wt, n, weighted, LMAJ){
+  
+  groups <- unique(data[,group])
+  groups <- sort(groups[!is.na(groups)])
+  
+  Pt <- list()
+  for(g in groups){
+    if(LMAJ==FALSE){
+      c0 <- coxph(Surv(Tstart, Tstop, status) ~ strata(trans), 
+                  data=data[data[,group]==g,], method = "breslow")
+      
+      A0 <- msfit(object = c0, trans = tmat, variance=FALSE)
+      if(weighted==TRUE){
+        c0 <- coxph(Surv(Tstart, Tstop, status) ~ strata(trans), 
+                    weights=(1/clust.size), data=data[data[,group]==g,],
+                    method = "breslow")
+        A.wt <- basehaz(c0, centered=FALSE)
+        A.wt$strata <- as.numeric(A.wt$strata)
+        for(trn in sort(unique(A.wt$strata))){
+          fun <- stepfun(A.wt[A.wt$strata==trn,"time"], 
+                         c(0,A.wt[A.wt$strata==trn,"hazard"]))
+          A0$Haz[A0$Haz$trans==trn,"Haz"] <- fun(A0$Haz[A0$Haz$trans==trn,"time"])
+        }
+      }
+      P0 <- probtrans(A0, predt = s, variance=FALSE)[[h]][,c("time",
+                                                             paste("pstate", j, sep=""))]
+    } else {
+      P0 <- LMAJ2(msdata=data[data[,group]==g,], tmat=tmat, 
+                  id=id2, s=s, h=h, j=j, weighted=weighted)
+    }
+    if(length(Pt)==0){
+      Pt[[1]] <- stepfun(P0$time, c(P0[1,paste("pstate", j, sep="")], 
+                                    P0[,paste("pstate", j, sep="")]))
+    } else {
+      Pt[[2]] <- stepfun(P0$time, c(P0[1,paste("pstate", j, sep="")], 
+                                    P0[,paste("pstate", j, sep="")]))
+    }
+  }          
+  D_boot <- Pt[[1]](times) - Pt[[2]](times)
+  return(sqrt(n)*Wt*(D_boot-D_hat))
+}
 
 
-# semi-Markov and perform cost-effectiveness analysis (CEA)
+#data: a data.frame in the long format required by the mstate package.
+#tmat: a matrix of possible transitions between states of the process where different transitions are identified by a different integer. If a direct transition between two states is not possible it is indicated as NA. This matrix can be obtained via the mstate function transMat().
+#cid: variable name that identifies the clusters.
+#id: variable name that identifies the individual observations.
+#h: the state h in Pr(X(t) = j| X(s) = h).
+#j: the state j in Pr(X(t) = j| X(s) = h).
+#s: the time s in Pr(X(t) = j| X(s) = h). The default value is 0.
+#weighted: logical value. If TRUE, the estimator is weighted by the inverse of the cluster sizes. This is useful when cluster size is random and expected to be informative. The default value is FALSE.
+#LMAJ: logical value. If TRUE, the landmark version of the estimator is returned. This is useful when s>0 and the Markov assumption is not plausible. The default value is FALSE.
+#B: number of nonparametric cluster bootstrap replications. If B=0, no standard errors or confidence intervals/bands are returned. The default value is 100.
+#cband: logical value. If TRUE, the limits of the 95% simultaneous confidence band are returned. The default value is FALSE.
+
+#https://github.com/gbakoyannis/clustered-multistate/tree/master/R
+
+ms_d_match_surv$cid<-
+  as.numeric(unlist(ms_d_match_surv %>% #119356
+  dplyr::left_join(d_match_surv_msprep[,c("id","group_match")], by="id") %>% select(group_match)))#119356
+
+set.seed(2125)
+P12 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
+             h=1, j=2, s=0, B=1000, LMAJ=T, cband=T)
+set.seed(2125)
+P13 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
+             h=1, j=3, s=0, B=1000, LMAJ=T, cband=T)
+
+set.seed(2125)
+P24 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
+             h=2, j=4, s=0, B=1000, LMAJ=T, cband=T)
+set.seed(2125) 
+P34 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
+             h=3, j=4, s=0, B=1000, LMAJ=T, cband=T)
+
+set.seed(2125)
+P45 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
+             h=4, j=5, s=0, B=1000, LMAJ=T, cband=T)
+set.seed(2125) 
+P46 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
+             h=4, j=6, s=0, B=1000, LMAJ=T, cband=T)
+
+set.seed(2125)
+P57 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
+             h=5, j=7, s=0, B=1000, LMAJ=T, cband=T)
+set.seed(2125) 
+P67 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
+             h=6, j=7, s=0, B=1000, LMAJ=T, cband=T)
+
+set.seed(2125)
+P78 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
+             h=7, j=8, s=0, B=1000, LMAJ=T, cband=T)
+set.seed(2125) 
+P79 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
+             h=7, j=9, s=0, B=1000, LMAJ=T, cband=T)
+
+set.seed(2125)
+P810 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
+             h=8, j=10, s=0, B=1000, LMAJ=T, cband=T)
+set.seed(2125) 
+P910 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
+             h=9, j=10, s=0, B=1000, LMAJ=T, cband=T)
+```
+
+```{r clus_mstate_group,eval=T, echo=T, paged.print=TRUE, error=T}
+
+P12_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=1, j=2, s=365*3, B=1000, LMAJ=T)
+ 
+P13_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=1, j=3, s=365*3, B=1000, LMAJ=T)
+
+
+P24_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=2, j=4, s=365*3, B=1000, LMAJ=T)
+ 
+P34_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=3, j=4, s=365*3, B=1000, LMAJ=T)
+
+
+P45_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=4, j=5, s=365*3, B=1000, LMAJ=T)
+ 
+P46_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=4, j=6, s=365*3, B=1000, LMAJ=T)
+
+
+P57_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=5, j=7, s=365*3, B=1000, LMAJ=T)
+ 
+P67_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=6, j=7, s=365*3, B=1000, LMAJ=T)
+
+
+P78_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=7, j=8, s=365*3, B=1000, LMAJ=T)
+ 
+P79_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=7, j=9, s=365*3, B=1000, LMAJ=T)
+
+
+P810_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=8, j=10, s=365*3, B=1000, LMAJ=T)
+ 
+P910_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=9, j=10, s=365*3, B=1000, LMAJ=T)
+
+```
+
 
 
 # Session Info
