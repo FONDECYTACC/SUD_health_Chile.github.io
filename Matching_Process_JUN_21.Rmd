@@ -81,7 +81,7 @@ if (grepl("CISS Fondecyt",path)==T){
     setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
   }
 rm(list=setdiff(ls(), c("CONS_C1_df_dup_SEP_2020_match","CONS_C1_df_dup_SEP_2020","CONS_C1")))
-unlink('G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Matching_Process_cache', recursive = TRUE)
+unlink('G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/*_cache', recursive = TRUE)
 ```
 
 ```{r setup, include = FALSE, cache=T}
@@ -3756,7 +3756,7 @@ After matching, we selected `r d_match_surv %>% nrow() %>% format(big.mark=",")`
 
 <br>
 
-```{r fig5 mstate_models_3s, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 17. Tree Structure for the Multistate System, Ten-states model", error=T, fig.height=8, eval=T, dpi=320}
+```{r fig5 mstate_models_3s, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 17. Tree Structure for the Multistate System, Ten-states model", error=T, fig.height=6, fig.width=10, eval=T, dpi=320}
 library(Epi)
 #For censored state transitions it can be awkward having to replicate the censoring time for each non-visited state
 #https://github.com/stulacy/multistateutils
@@ -4015,16 +4015,22 @@ ms_d_match_surv_res<-
                                                   tipo_de_plan_res_2==1 & trans==2~1,
                                                   tipo_de_plan_res_3==1 & trans==3~1,
                                                   tipo_de_plan_res_4==1 & trans==4~1,
+                                                  T~0)) %>% 
+    dplyr::mutate(TD=dplyr::case_when(TD_1==1 & trans==1~1,
+                                                  TD_2==1 & trans==2~1,
+                                                  TD_3==1 & trans==3~1,
+                                                  TD_4==1 & trans==4~1,
                                                   T~0))
 
 ms_d_match_surv$tipo_de_plan_res<-ms_d_match_surv_res$tipo_de_plan_res
+ms_d_match_surv$TD<-ms_d_match_surv_res$TD
 ```
 
 ```{r frailty2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
-
+invisible(c("No afecta si las variables no están en formato factor"))
 frailty_a<-
-frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) + tipo_de_plan_res+ TD_1+ TD_2 + TD_3+ TD_4, 
-                          data = ms_d_match_surv,
+frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) + tipo_de_plan_res+ TD, 
+                          data = ms_d_match_surv_res,
                           RandDist="Gamma",
                           # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
                           recurrentAG = T, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
@@ -4034,8 +4040,8 @@ frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) + ti
                           )
 if(no_mostrar==1){
 frailty_b<-
-frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) + tipo_de_plan_res+ TD_1+ TD_2 + TD_3+ TD_4, 
-                          data = ms_d_match_surv,
+frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) +  tipo_de_plan_res+ TD, 
+                          data = ms_d_match_surv_res,
                           RandDist="LogN",
                           # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
                           recurrentAG = T, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
@@ -4045,10 +4051,9 @@ frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) + ti
                           )
 
 }
-invisible(c("Log normal gets stuck"))
 frailty_c<-
-frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) + tipo_de_plan_res_1+ TD_1+ TD_2 + TD_3+ TD_4, 
-                          data = ms_d_match_surv,
+frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id)+ tipo_de_plan_res+ TD_1+ TD_2+ TD_3+ TD_4, 
+                          data = ms_d_match_surv_res%>%  dplyr::mutate_at(vars("TD_1","TD_2","TD_3","TD_4"),~ifelse(!is.na(.),.,0)),
                           RandDist="Gamma",
                           # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
                           recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
@@ -4056,10 +4061,13 @@ frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) + ti
                           kappa = 1,
                           #hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
                           )
+invisible(c("Replacing missing values with 0 could lead to think that TD_3 or TD_4 would be a DWCA_3 or DWCA_4 instead"))
+invisible(c("Warning: Log normal gets stuck"))
+
 if(no_mostrar==1){
 frailty_d<-
-frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) + tipo_de_plan_res_1+ TD_1+ TD_2 + TD_3+ TD_4, 
-                          data = ms_d_match_surv,
+frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) +  tipo_de_plan_res+ TD, 
+                          data = ms_d_match_surv_res,
                           RandDist="LogN",
                           # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
                           recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
@@ -4073,6 +4081,9 @@ frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) + ti
 #The variance of the frailty term theta is significantly different from 0, meaning that there
 #is heterogeneity between subjects.
 # you will be violating the proportionality assumption and underestimating the treatment effect
+ms_d_match_surv_res_final<-
+ms_d_match_surv_res%>%  dplyr::mutate_at(vars("TD_1","TD_2","TD_3","TD_4"),~ifelse(!is.na(.),.,0))
+
 
 paste0("Frailty including residential as a dynamic covariate (Andersen-Gill model), Rand Effects: Gamma");summary(frailty_a, level = 0.95,len=3)
 paste0("Frailty including residential as a dynamic covariate (Andersen-Gill model), Rand Effects: Log-normal");summary(frailty_b, level = 0.95,len=3)
@@ -4518,7 +4529,7 @@ cox_markov_test_prueba12d<-
   cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1", tfrom=1 , tto=2, grid=tseq, trans=trans_matrix_etm, B=1000)
 
 cox_markov_test_prueba23d<-
-  cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1 + TD2", tfrom=2 , tto=3, grid=tseq, trans=trans_matrix_etm, B=1000)
+  cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1 + TD_2", tfrom=2 , tto=3, grid=tseq, trans=trans_matrix_etm, B=1000)
 
 cox_markov_test_prueba34d<-
   cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1+ TD_2+ TD_3", tfrom=3 , tto=4, grid=tseq, trans=trans_matrix_etm, B=1000)
@@ -4633,29 +4644,29 @@ plot.MarkovTest <- function(x, y, what=c("states", "overall"), idx=NULL, quantil
   }
 }
 
-plot.MarkovTest(cox_markov_test_prueba24, tseq, what="states",idx=1:50, 
+plot.MarkovTest(cox_markov_test_prueba12, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic")
+                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm-> Readm2")
+
+plot.MarkovTest(cox_markov_test_prueba23, tseq, what="states",idx=1:50, 
+                states=colnames(trans_matrix),
+                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm2-> Readm3")
 
 plot.MarkovTest(cox_markov_test_prueba34, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic")
+                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm3-> Readm4")
 
-plot.MarkovTest(cox_markov_test_prueba57, tseq, what="states",idx=1:50, 
+plot.MarkovTest(cox_markov_test_prueba12d, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic")
+                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm-> Readm2")
 
-plot.MarkovTest(cox_markov_test_prueba67, tseq, what="states",idx=1:50, 
+plot.MarkovTest(cox_markov_test_prueba23d, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic")
+                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm2-> Readm3")
 
-plot.MarkovTest(cox_markov_test_prueba810, tseq, what="states",idx=1:50, 
+plot.MarkovTest(cox_markov_test_prueba34d, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic")
-
-plot.MarkovTest(cox_markov_test_prueba910, tseq, what="states",idx=1:50, 
-                states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic")
+                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm3-> Readm4")
 
 ```
 

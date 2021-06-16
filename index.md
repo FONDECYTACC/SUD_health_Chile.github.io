@@ -26,13 +26,21 @@ This page is composed by the following main topics:
 
 2. Associations & Analytic Exercises
     
-    2a.1. [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 1)](Matching_Process_APR_21)
+    2a.1.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 1)](Matching_Process_APR_21)
+
+    2a.1.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 1)](Matching_Process_JUN_21)
+
+    2a.1.2.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 1.5)](Matching_Process15_APR_21)
     
-    2a.1.2. [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 1.5)](Matching_Process15_APR_21)
+    2a.1.2.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 1.5)](Matching_Process15_JUN_21)
     
-    2a.2a. [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 2)](Matching_Process2_APR_21)
+    2a.2a.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 2)](Matching_Process2_APR_21)
     
-    2a.2b. [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 2)](Matching_Process2_stata_APR_21)
+    2a.2a.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 2)](Matching_Process2_JUN_21)
+    
+    2a.2b.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 2)](Matching_Process2_stata_APR_21)
+    
+    2a.2b.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 2)](Matching_Process2_stata_JUN_21)
     
     2b.1. [Supplemental: Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile (Step 1)](Proyecto_carla3)
     

@@ -73,7 +73,7 @@ path<-rstudioapi::getSourceEditorContext()$path
 if (grepl("CISS Fondecyt",path)==T){
     setwd("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_jun.RData")
   } else if (grepl("andre",path)==T){
-    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_stat_jun.RData")
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_jun.RData")
   } else if (grepl("E:",path)==T){
     setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_jun.RData")
   } else {
@@ -321,14 +321,14 @@ The following plots  fitted survival curves from each model (colored lines), wit
 <br>
 
 <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
-```{r fit1_10s, eval=T, echo=T, fig.cap="Figure 19. Vissual Assessment of Survival Curves", fig.height=20, fig.width=10, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
+```{r fit1_10s_pre, eval=T, echo=T, warning=T, paged.print=T, fig.align="center", dpi=320, warnings=F, error=T}
 #options(warn=-1)
 
 n_iter<-10000
 
 tiempo_antes_fits<-Sys.time()
 
-#Weathers, Brandon and Cutler, Richard Dr., "Comparision of Survival Curves Between Cox Proportional 
+#Weathers, Brandon and Cutler, Richard Dr., "Comparison of Survival Curves Between Cox Proportional 
 #Hazards, Random Forests, and Conditional Inference Forests in Survival Analysis" (2017). All Graduate 
 #Plan B and other Reports. 927. 
 #https://digitalcommons.usu.edu/gradreports/927 
@@ -377,6 +377,7 @@ fits_c_rp07 <- vector(mode = "list", length = n_trans)
 fits_c_rp08 <- vector(mode = "list", length = n_trans)
 fits_c_rp09 <- vector(mode = "list", length = n_trans)
 fits_c_rp10 <- vector(mode = "list", length = n_trans)
+km.lc <-vector(mode = "list", length = n_trans)
 
 fits_cox<-list()
 fits_c_cox<-list()
@@ -618,10 +619,14 @@ get_distinct_hues <- function(ncolor,s=0.5,v=0.95,seed=2125) {
   }
   hsv(H,s=s,v=v)
 }
+```
+</div>
+
+```{r fit1_10s, eval=T, echo=T, fig.cap="Figure 19. Vissual Assessment of Survival Curves", fig.height=10, fig.width=10, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
 
 distinct_hues<-get_distinct_hues(20)
 
-layout(matrix(1:15, nc = 3, byrow = F))
+layout(matrix(1:n_trans, nc = 2, byrow = F))
 for (i in 1:n_trans){
 plot(km.lc[[i]], col="red", conf.int=F);
   lines(fits_wei[[i]], col=distinct_hues[1], ci=F);
@@ -662,7 +667,7 @@ options(warn=0)
 
 if(no_mostrar==1){
 jpeg(paste0(dta_path,"_mult_state_ags/exp_surv_int_only.jpg"), height=30, width= 30, res= 600, units = "in")
-layout(matrix(1:15, nc = 3, byrow = F))
+layout(matrix(1:n_trans, nc = 2, byrow = F))
 for (i in 1:n_trans){
 plot(km.lc[[i]], col="red", conf.int=F);
   lines(fits_wei[[i]], col=distinct_hues[1], ci=F);
@@ -695,7 +700,6 @@ title(main=transition_label[[i]])
   dev.off()
 }
 ```
-</div>
 
 
 The following transitions deviated considerably from the models chosen. Consider specify transition parameters manually or check whether to transform the measure of time into an exponential or logarithmic time to event:
@@ -872,11 +876,11 @@ m <- list(
   t = 80*1.05,
   pad = 4
 )
-
+p1<-
 fitted_flexsurvreg_binned_mix0_plot$data %>% 
   dplyr::mutate(years=round(time/365.25,0)) %>% 
   dplyr::mutate(trans2=trans) %>% 
-  dplyr::left_join(cbind.data.frame(transition_label,trans2=1:15), by="trans2") %>% 
+  dplyr::left_join(cbind.data.frame(transition_label,trans2=1:n_trans), by="trans2") %>% 
 group_by(trans) %>%
 group_map(~ plot_ly(data=., x = ~time, y = ~est, color = ~dist, type = "scatter", mode="lines", text=~text) %>% 
             add_trace(y = ~surv, type = 'scatter', mode = 'lines', line = list(color = 'red', width = 1), text=~text2)%>% 
@@ -893,9 +897,12 @@ subplot(nrows = 3, shareX = T, shareY=T, titleX = F, titleY = F, margin = .05)%>
                 list(x = -0.03, y = 0.5, text = "Survival",
                      font = list(color = "black",size = 15),
                      textangle = 270,
-                     showarrow = F, xref='paper', yref='paper', size=48,margin =m))) %>% 
-  partial_bundle(local=F)%>%
-  plotly_mod_dep()
+                     showarrow = F, xref='paper', yref='paper', size=48,margin =m)))
+
+p1
+
+  #htmlwidgets::saveWidget(as_widget(partial_bundle(p1, local=T)), "test1.html")
+
 #https://github.com/ropensci/plotly/issues/1586
 
                  #%>% 
@@ -919,8 +926,10 @@ fit_flexsurvreg0 %>%
   dplyr::arrange(transition, AIC) %>% 
   dplyr::left_join(cbind.data.frame(transition_label,trans_nmb=1:n_trans2),by=c("transition"="trans_nmb")) %>% 
   dplyr::mutate(trans_w_nmb=paste0(sprintf("%02d",transition),")",transition_label)) %>% 
-  dplyr::select(trans_w_nmb, dist, Df, n2ll, AIC, AICc, BIC)  
-
+  dplyr::select(trans_w_nmb, dist, Df, n2ll, AIC, AICc, BIC) %>%
+  dplyr::mutate_at(vars(n2ll, AIC, AICc, BIC),~ifelse(abs(.)>1e6,NA,format(round(.,2), scientific = FALSE)))
+  
+ 
 fit_flexurvreg0_kable %>%   
       knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption = paste0("Table 11. Fit indices of the adjusted survival analyses (intercept-only)"),
@@ -1391,7 +1400,7 @@ if(no_mostrar==1){
 
 
 <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:800px; overflow-x: scroll; width:100%">
-```{r fit3_wcov, eval=F, echo=T, fig.cap="Figure 22. Vissual Assessment of Suvival, Ten-states Model (w/Treatment Modality)",fig.align="center", error= T, fig.height=8, fig.width=15, dpi=320, paged.print=TRUE, warnings =F}
+```{r fit3_wcov, eval=T, echo=T, fig.cap="Figure 22. Vissual Assessment of Suvival, Ten-states Model (w/Treatment Modality)",fig.align="center", error= T, fig.height=8, fig.width=15, dpi=320, paged.print=TRUE, warnings =F}
 #load("C:/Users/CISS Fondecyt/OneDrive/Escritorio/mult_state_ags.RData")
 
 c26 <- c(
@@ -1441,10 +1450,11 @@ m <- list(
   pad = 4
 )
 
+p2<-
 fitted_flexsurvreg_plot$data %>% 
   dplyr::mutate(years=round(time/365.25,0)) %>% 
   dplyr::mutate(trans2=trans) %>% 
-  dplyr::left_join(cbind.data.frame(transition_label,trans2=1:15), by="trans2") %>% 
+  dplyr::left_join(cbind.data.frame(transition_label,trans2=1:n_trans2), by="trans2") %>% 
 group_by(trans) %>%
 group_map(~ plot_ly(data=., x = ~time, y = ~est, color = ~dist, type = "scatter", mode="lines", linetype = ~residential, text=~text) %>% 
             add_trace(y = ~surv, type = 'scatter', mode = 'lines', line = list(color = 'red', width = 1, linetype = ~residential), text=~text2)%>% 
@@ -1458,13 +1468,19 @@ group_map(~ plot_ly(data=., x = ~time, y = ~est, color = ~dist, type = "scatter"
   )), keep=TRUE) %>%    
 subplot(nrows = 3, shareX = T, shareY=T, titleX = F, titleY = F, margin = .05)%>% layout(showlegend = F) %>% #, margin = 0.05) %>% 
   layout(annotations = list(
-                list(x = -0.03, y = 0.5, text = "Survival",
+                list(x = -0.1, y = 0.5, text = "Survival",
                      font = list(color = "black",size = 15),
                      textangle = 270,
-                     showarrow = F, xref='paper', yref='paper', size=48,margin =m)))%>% 
-  partial_bundle(local=F)%>%
-  plotly_mod_dep()
+                     showarrow = F, xref='paper', yref='paper', size=48,margin =m)))
+
+#p2
+
+  htmlwidgets::saveWidget(as_widget(p2), "test2_jun.html")
+#https://docs.ropensci.org/plotly/reference/partial_bundle.html
 ```
+
+File is available in this [link](https://github.com/FONDECYTACC/SUD_health_Chile.github.io/raw/master/test2.html).
+
 </div>
 
 
@@ -1474,7 +1490,8 @@ fit_flexsurvreg %>%
   dplyr::arrange(transition, AIC) %>% 
   dplyr::left_join(cbind.data.frame(transition_label,trans_nmb=1:n_trans2),by=c("transition"="trans_nmb")) %>% 
   dplyr::mutate(trans_w_nmb=paste0(sprintf("%02d",transition),")",transition_label)) %>% 
-  dplyr::select(trans_w_nmb,dist,Df,n2ll,AIC,AICc,BIC)  
+  dplyr::select(trans_w_nmb,dist,Df,n2ll,AIC,AICc,BIC)%>%
+  dplyr::mutate_at(vars(n2ll, AIC, AICc, BIC),~ifelse(abs(.)>1e6,NA,format(round(.,2), scientific = FALSE)))  
   
 fit_flexurvreg_kable %>%   
       knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
