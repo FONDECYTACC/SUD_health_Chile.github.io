@@ -715,18 +715,18 @@ ab_pmatrix<-
   #pstate1–pstate3 are close to the first rows of the matrices returned by pmatrix.fs
   reshape2::melt(id.vars="time") %>% #janitor::tabyl(variable)
   dplyr::mutate(start=stri_sub(variable,-1,-1)) %>% 
-  dplyr::mutate(state=stringi::stri_match_first_regex(variable, "(.*?)\\.")[,2]) %>%
-  dplyr::mutate(state=gsub("pstate", "", state), state=as.numeric(state)) %>% 
+  dplyr::mutate(state_to=stringi::stri_match_first_regex(variable, "(.*?)\\.")[,2]) %>%
+  dplyr::mutate(state_to=gsub("pstate", "", state_to), state_to=as.numeric(state_to)) %>% 
   dplyr::mutate(setting= dplyr::case_when(grepl(".out",variable)~"Outpatient",
                                                grepl(".res",variable)~"Residential",
                                                T~NA_character_))
 
 fig_ab_pmatrix<-
   #janitor::tabyl(start)
-ggplot(ab_pmatrix, aes(time, value, color= start, linetype =setting))+
+ggplot(ab_pmatrix, aes(time, value, color= factor(start, levels=1:10), linetype =setting))+
   geom_step(size=1, alpha=.65) + 
-  scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
-  facet_wrap(state~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
+  scale_y_continuous(labels = scales::percent_format(accuracy = .1))+
+  facet_wrap(state_to~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
   #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
   scale_color_manual(name = "Starting from\nState", values=c("#54478C","#2C699A","#048BA8","#0DB39E",
                                                       "#16DB93","#83E377","#EFEA5A","#F1C453","#F29E4C"), labels= as.character(c(1:9))) + # "#A65100" #"Cox",
@@ -2257,7 +2257,7 @@ rbind(cbind(pr="res",lmaj_res_1,transo=1),
   ggplot(aes(time, Estimate, linetype =setting))+
   geom_step(size=1, alpha=.65) + 
   facet_wrap(state_to~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
-  scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
+  scale_y_continuous(labels = scales::percent_format(accuracy = .1))+
   #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
   scale_color_manual(name = "Starting from\nState", values=c("#54478C","#2C699A","#048BA8","#0DB39E",
                                                       "#16DB93","#83E377","#EFEA5A","#F1C453","#F29E4C"), labels= as.character(c(1:9))) + # "#A65100" #"Cox",
@@ -2305,7 +2305,7 @@ rbind(cbind(pr="res",lmaj2_res_1,transo=1),
   ggplot(aes(time, Estimate, linetype =setting))+
   geom_step(size=1, alpha=.65) + 
   facet_wrap(state_to~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
-  scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
+  scale_y_continuous(labels = scales::percent_format(accuracy = .1))+
   #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
   scale_color_manual(name = "Starting from\nState", values=c("#54478C","#2C699A","#048BA8","#0DB39E",
                                                       "#16DB93","#83E377","#EFEA5A","#F1C453","#F29E4C"), labels= as.character(c(1:9))) + # "#A65100" #"Cox",
@@ -2499,21 +2499,30 @@ lmaj_ci_df2 %>%
 ```
 
 ```{r lmaj_plot_ci95, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 4a. State Occupancies & 95% CIs, landmark Aalen-Johansen estimator from Admission (state 1)", fig.align="center", error=T}
+lmaj_plot_4a<-
 lmaj_ci_df %>% 
   ggplot(aes(time, Estimate, color= setting, linetype =setting, fill=setting))+
   geom_step(size=1, alpha=.65) + 
   geom_ribbon(aes(ymin=l95ci, ymax=u95ci, fill=setting), alpha=.5)+
-  facet_wrap(state_to~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
-  scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
-  #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
+  facet_wrap(factor(state_to, levels=c(1:10))~., ncol=3, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
+  scale_y_continuous(labels = scales::percent_format(accuracy = .1))+
   scale_color_manual(name= "Type of\nprogram",values=c("gray65","gray35"), labels=c("Outpatient","Residential")) +
   scale_fill_manual(name= "Type of\nprogram",values=c("gray65","gray35"), labels=c("Outpatient","Residential")) +
   scale_linetype_manual(name= "Type of\nprogram",values=c(1,4), labels=c("Outpatient","Residential")) +
-  scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11),
-                     label=round(seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11)/365.25,2))+
+  scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=365.25*2),
+                     label=seq(0,round(max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/365.25),by=2))+
   xlab("Years") + 
   ylab("") + 
-  theme_minimal()
+  theme_minimal()+
+  theme(legend.position=c(.8,.11))
+
+lmaj_plot_4a
+
+if(no_mostrar==1){
+jpeg(paste0(gsub("SUD_CL/Matching_Process_APR_21.Rmd","",path),"_mult_state_ags/lmaj_st_occ_4a_10s.jpg"), height=5, width= 13, res= 600, units = "in")
+lmaj_plot_4a
+dev.off()
+}
 ```
 
 
@@ -2523,7 +2532,7 @@ lmaj_ci_df2 %>%
   geom_step(size=1, alpha=.65) + 
   geom_ribbon(aes(ymin=l95ci, ymax=u95ci, fill=setting), alpha=.5)+
   facet_wrap(state_to~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
-  scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
+  scale_y_continuous(labels = scales::percent_format(accuracy = .1))+
   #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
   scale_color_manual(name= "Type of\nprogram",values=c("gray65","gray35"), labels=c("Outpatient","Residential")) +
   scale_fill_manual(name= "Type of\nprogram",values=c("gray65","gray35"), labels=c("Outpatient","Residential")) +
@@ -2601,8 +2610,8 @@ ab_pmatrix_probtrans<-
   #pstate1–pstate3 are close to the first rows of the matrices returned by pmatrix.fs
   reshape2::melt(id.vars="time") %>% #janitor::tabyl(variable)
   dplyr::mutate(start=stri_sub(variable,-1,-1)) %>% 
-  dplyr::mutate(state=stringi::stri_match_first_regex(variable, "(.*?)\\.")[,2]) %>%
-  dplyr::mutate(state=gsub("pstate", "", state), state=as.numeric(state)) %>% 
+  dplyr::mutate(state_to=stringi::stri_match_first_regex(variable, "(.*?)\\.")[,2]) %>%
+  dplyr::mutate(state_to=gsub("pstate", "", state_to), state_to=as.numeric(state_to)) %>% 
   dplyr::mutate(setting= dplyr::case_when(grepl(".out",variable)~"Outpatient",
                                                grepl(".res",variable)~"Residential",
                                                T~NA_character_))
@@ -2611,8 +2620,8 @@ fig_ab_pmatrix_probtrans<-
   #janitor::tabyl(start)
   ggplot(ab_pmatrix_probtrans, aes(time, value, color= start, linetype =setting))+
     geom_step(size=1, alpha=.65) + 
-    scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
-    facet_wrap(state~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
+    scale_y_continuous(labels = scales::percent_format(accuracy = .1))+
+    facet_wrap(state_to~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
     #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
     scale_color_manual(name = "Starting from\nState", values=c("#54478C","#2C699A","#048BA8","#0DB39E",
                                                         "#16DB93","#83E377","#EFEA5A","#F1C453","#F29E4C","red"), labels= as.character(c(1:10))) + # "#A65100" #"Cox",
@@ -2669,7 +2678,7 @@ probtrans_df %>%
  ggplot()+
     geom_step(aes(time, prob, color= state, fill=state, linetype =res),size=1, alpha=.75) + 
     geom_ribbon(aes(x=time, fill=state, color= state, linetype =res, ymin=CI_low, ymax=CI_upp), alpha=.35)+
-    scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
+    scale_y_continuous(labels = scales::percent_format(accuracy = .1))+
     facet_wrap(st~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
     #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
     scale_color_manual(name = "Exit\nState", values=c26) +

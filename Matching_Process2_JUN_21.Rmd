@@ -433,8 +433,6 @@ dev.off()
 }
 ```
 
-
-
 ```{r msfit1b,eval=T, echo=T, paged.print=TRUE, fig.height=14, fig.width=12, fig.cap="Figure 1b. Estimate of Cumulative Hazards (Markov), Stratified by Setting", fig.align="center"}
 
 msfx0_plot<-
@@ -484,9 +482,73 @@ dev.off()
 }
 ```
 
+
+
+```{r cum_haz12a, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap=Figure 2a. Estimate of Cumulative Hazards (Semi-Markov), Four-states", fig.align="center", error=T}
+
+trans_for_four_st<-c("Admission -> Readmission","Readmission -> 2nd Readmission","2nd Readmission -> 3rd Readmission","3rd Readmission -> 4th Readmission")
+abc_let<-c("A","B","C","D","E")
+st_plot<-list()
+
+for (i in 1:(length(trans_for_four_st))){
+  st_plot[[i]]<-
+ggplot()+
+  geom_step(data=msf0$Haz %>% dplyr::filter(trans==i), aes(time, Haz, linetype="dashed"),size=1, alpha=.65) + 
+  geom_step(data=msf1$Haz %>% dplyr::filter(trans==i), aes(time, Haz, linetype="solid"),size=1, alpha=.65) + 
+  scale_linetype_manual(name= "Treatment\nsetting",values=c("dashed","solid"), labels=c("Outpatient","Residential"))+
+  scale_x_continuous(breaks=seq(0, 11*365.25, by = 365.25), labels=seq(0, 11, by = 1))+
+  xlab("") + 
+  ylab("") + 
+  theme_minimal()+
+  theme(axis.title = element_blank())+
+  theme(legend.position="none",
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))+
+        ggtitle(paste0(abc_let[[i]],") ",trans_for_four_st[[i]]))
+}
+
+p3 <- ggplot()+
+  geom_step(data=msf0$Haz %>% dplyr::filter(trans==i), aes(time, Haz, linetype="dashed"),size=1, alpha=.65) + 
+  geom_step(data=msf1$Haz %>% dplyr::filter(trans==i), aes(time, Haz, linetype="solid"),size=1, alpha=.65) + 
+  scale_linetype_manual(name= "Treatment setting",values=c("dashed","solid"), labels=c("Outpatient","Residential"))+
+  lims(x = c(0,0), y = c(0,0))+
+  theme_void()+
+  theme(legend.position = c(0.5,0.5),
+        legend.key.size = unit(1, "cm"),
+        legend.text = element_text(size =  12),
+        legend.title = element_text(size = 15, face = "bold"))+
+  guides(colour = guide_legend(override.aes = list(size=9)))
+
+fig_cox_abcd<-
+ggarrange(
+  st_plot[[1]] + theme(plot.title = element_text(size = 10, face = "bold"))+ylim(0,.8),
+  st_plot[[2]] + theme(plot.title = element_text(size = 10, face = "bold"))+ylim(0,.8),
+  st_plot[[3]] + theme(plot.title = element_text(size = 10, face = "bold"))+ylim(0,.8),
+  st_plot[[4]] + theme(plot.title = element_text(size = 10, face = "bold"))+ylim(0,.8),
+  common.legend	=T, legend="right"
+          )
+
+
+fig_cox_abcd_lab<-
+annotate_figure(fig_cox_abcd, left = textGrob("Cumulative hazards", rot = 90, vjust = 1, gp = gpar(cex = 1.1)),
+                    bottom = textGrob("Years", gp = gpar(cex = 1.1)))
+
+fig_cox_abcd_lab
+
+
+if(no_mostrar==1){
+ggsave(paste0(dta_path,"Fig2_alt.jpg"), fig_cox_abcd_three_states_lab, width = 10, height = 11.5, dpi = 600, units= "in")
+ggsave(paste0(dta_path,"Fig2_alt.eps"), fig_cox_abcd_three_states_lab, width = 10, height = 11.5, dpi = 600, units= "in")
+ggsave(paste0(dta_path,"Fig2_alt.ps"), fig_cox_abcd_three_states_lab, width = 10, height = 11.5, dpi = 600, units= "in")
+ggsave(paste0(dta_path,"Fig2_alt.pdf"), fig_cox_abcd_three_states_lab, width = 10, height = 11.5, dpi = 600, units= "in")
+}
+```
+
+
 <br>
 
-```{r msfit2.5_4s, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 2. Estimate of Cumulative Hazards (Semi-Markov), Ten-states", fig.align="center", error=T, dpi=320}
+```{r msfit2.5_4s, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 2b. Estimate of Cumulative Hazards (Semi-Markov), Four-states", fig.align="center", error=T, dpi=320}
 
 #Son distintos, por mas que parezcan iguales.
 #plot(cumhaz_data_a$time[which(cumhaz_data_a$trans=="Adm -> Ther.Disch")],round(cumhaz_data_a$Haz[which(cumhaz_data_a$trans=="Adm -> Ther.Disch")]-cumhaz_data_b$Haz[which(cumhaz_data_b$trans=="Adm -> Ther.Disch")],3))
@@ -594,7 +656,6 @@ set.seed(1234)
 pmatrix_cox_b_0<-
 mstate::mssample(msf1$Haz, trans = trans_matrix, clock = "reset", M = n_iter/2, tvec = seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/500),do.trace=500)
 
-	
 #A list with elements state, specifying the starting state(s), time, the starting time(s), and tstate, a numeric vector of length the number of states, specifying at what times states have been visited, if appropriate. The default of tstate is NULL; more information can be found under Details.
 #The elements state and time may either be scalars or vectors, in which case different sampled paths may start from different states or at different times. By default, all sampled paths start from state 1 at time 0.
 set.seed(1234)
@@ -624,50 +685,7 @@ pmatrix_cox_b_0_s4<-
 mstate::mssample(msf1$Haz, trans = trans_matrix, clock = "reset", M = n_iter/2, tvec = seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/500),do.trace=500,
                  history=list(state = 4, time = 0, tstate = NULL))
 #cens=An independent censoring distribution, given as a data frame with time and Haz
-set.seed(1234)
-pmatrix_cox_a_0_s5<-
-mstate::mssample(msf0$Haz, trans = trans_matrix, clock = "reset", M = n_iter/2, tvec = seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/500),do.trace=500,
-                 history=list(state = 5, time = 0, tstate = NULL))
-set.seed(1234)
-pmatrix_cox_b_0_s5<-
-mstate::mssample(msf1$Haz, trans = trans_matrix, clock = "reset", M = n_iter/2, tvec = seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/500),do.trace=500,
-                 history=list(state = 5, time = 0, tstate = NULL))
-#cens=An independent censoring distribution, given as a data frame with time and Haz
-set.seed(1234)
-pmatrix_cox_a_0_s6<-
-mstate::mssample(msf0$Haz, trans = trans_matrix, clock = "reset", M = n_iter/2, tvec = seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/500),do.trace=500,
-                 history=list(state = 6, time = 0, tstate = NULL))
-set.seed(1234)
-pmatrix_cox_b_0_s6<-
-mstate::mssample(msf1$Haz, trans = trans_matrix, clock = "reset", M = n_iter/2, tvec = seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/500),do.trace=500,
-                 history=list(state = 6, time = 0, tstate = NULL))
-#cens=An independent censoring distribution, given as a data frame with time and Haz
-set.seed(1234)
-pmatrix_cox_a_0_s7<-
-mstate::mssample(msf0$Haz, trans = trans_matrix, clock = "reset", M = n_iter/2, tvec = seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/500),do.trace=500,
-                 history=list(state = 7, time = 0, tstate = NULL))
-set.seed(1234)
-pmatrix_cox_b_0_s7<-
-mstate::mssample(msf1$Haz, trans = trans_matrix, clock = "reset", M = n_iter/2, tvec = seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/500),do.trace=500,
-                 history=list(state = 7, time = 0, tstate = NULL))
-#cens=An independent censoring distribution, given as a data frame with time and Haz
-set.seed(1234)
-pmatrix_cox_a_0_s8<-
-mstate::mssample(msf0$Haz, trans = trans_matrix, clock = "reset", M = n_iter/2, tvec = seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/500),do.trace=500,
-                 history=list(state = 8, time = 0, tstate = NULL))
-set.seed(1234)
-pmatrix_cox_b_0_s8<-
-mstate::mssample(msf1$Haz, trans = trans_matrix, clock = "reset", M = n_iter/2, tvec = seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/500),do.trace=500,
-                 history=list(state = 8, time = 0, tstate = NULL))
-#cens=An independent censoring distribution, given as a data frame with time and Haz
-set.seed(1234)
-pmatrix_cox_a_0_s9<-
-mstate::mssample(msf0$Haz, trans = trans_matrix, clock = "reset", M = n_iter/2, tvec = seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/500),do.trace=500,
-                 history=list(state = 9, time = 0, tstate = NULL))
-set.seed(1234)
-pmatrix_cox_b_0_s9<-
-mstate::mssample(msf1$Haz, trans = trans_matrix, clock = "reset", M = n_iter/2, tvec = seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/500),do.trace=500,
-                 history=list(state = 9, time = 0, tstate = NULL))
+
 invisible("See cens")
 #cens = data.frame(time=c(0,3000),surv=c(1,0)))    #Adm censoring at t=3000
 
@@ -681,8 +699,8 @@ invisible("See cens")
 ```{r mssample_plot, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 3. Estimate of State Occupancies at Baseline, Ten-states model", fig.align="center", error=T}
 #pmatrix_t_a_df_final pmatrix_t_b_df_final pmatrix_4s_t_a_df_final pmatrix_4s_t_b_df_final
 
-states_trans_lab<-paste0(1:10,") ",states_trans)
-attr(states_trans_lab,"names")<-1:10
+states_trans_lab<-paste0(1:5,") ",states_trans)
+attr(states_trans_lab,"names")<-1:5
 
 ab_pmatrix<-
   pmatrix_cox_a_0 %>% 
@@ -693,41 +711,26 @@ ab_pmatrix<-
   dplyr::left_join(pmatrix_cox_b_0_s3, by="time", suffix=c("",".w_covs.res.s3")) %>% 
   dplyr::left_join(pmatrix_cox_a_0_s4, by="time", suffix=c("",".w_covs.out.s4")) %>% 
   dplyr::left_join(pmatrix_cox_b_0_s4, by="time", suffix=c("",".w_covs.res.s4")) %>% 
-  dplyr::left_join(pmatrix_cox_a_0_s5, by="time", suffix=c("",".w_covs.out.s5")) %>% 
-  dplyr::left_join(pmatrix_cox_b_0_s5, by="time", suffix=c("",".w_covs.res.s5")) %>% 
-  dplyr::left_join(pmatrix_cox_a_0_s6, by="time", suffix=c("",".w_covs.out.s6")) %>% 
-  dplyr::left_join(pmatrix_cox_b_0_s6, by="time", suffix=c("",".w_covs.res.s6")) %>% 
-  dplyr::left_join(pmatrix_cox_a_0_s7, by="time", suffix=c("",".w_covs.out.s7")) %>% 
-  dplyr::left_join(pmatrix_cox_b_0_s7, by="time", suffix=c("",".w_covs.res.s7")) %>% 
-  dplyr::left_join(pmatrix_cox_a_0_s8, by="time", suffix=c("",".w_covs.out.s8")) %>% 
-  dplyr::left_join(pmatrix_cox_b_0_s8, by="time", suffix=c("",".w_covs.res.s8")) %>% 
-  dplyr::left_join(pmatrix_cox_a_0_s9, by="time", suffix=c("",".w_covs.out.s9")) %>% 
-  dplyr::left_join(pmatrix_cox_b_0_s9, by="time", suffix=c("",".w_covs.res.s9")) %>% 
   dplyr::rename("pstate1.w_covs.out.s1"="pstate1",
                 "pstate2.w_covs.out.s1"="pstate2",
                 "pstate3.w_covs.out.s1"="pstate3",
                 "pstate4.w_covs.out.s1"="pstate4",
-                "pstate5.w_covs.out.s1"="pstate5",
-                "pstate6.w_covs.out.s1"="pstate6",
-                "pstate7.w_covs.out.s1"="pstate7",
-                "pstate8.w_covs.out.s1"="pstate8",
-                "pstate9.w_covs.out.s1"="pstate9",
-                "pstate10.w_covs.out.s1"="pstate10") %>% 
+                "pstate5.w_covs.out.s1"="pstate5") %>% 
   #pstate1–pstate3 are close to the first rows of the matrices returned by pmatrix.fs
   reshape2::melt(id.vars="time") %>% #janitor::tabyl(variable)
   dplyr::mutate(start=stri_sub(variable,-1,-1)) %>% 
-  dplyr::mutate(state=stringi::stri_match_first_regex(variable, "(.*?)\\.")[,2]) %>%
-  dplyr::mutate(state=gsub("pstate", "", state), state=as.numeric(state)) %>% 
+  dplyr::mutate(state_to=stringi::stri_match_first_regex(variable, "(.*?)\\.")[,2]) %>%
+  dplyr::mutate(state_to=gsub("pstate", "", state_to), state_to=as.numeric(state_to)) %>% 
   dplyr::mutate(setting= dplyr::case_when(grepl(".out",variable)~"Outpatient",
                                                grepl(".res",variable)~"Residential",
                                                T~NA_character_))
 
 fig_ab_pmatrix<-
   #janitor::tabyl(start)
-ggplot(ab_pmatrix, aes(time, value, color= start, linetype =setting))+
+ggplot(ab_pmatrix, aes(time, value, color= factor(state_to), linetype =setting))+
   geom_step(size=1, alpha=.65) + 
   scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
-  facet_wrap(state~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
+  facet_wrap(start~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
   #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
   scale_color_manual(name = "Starting from\nState", values=c("#54478C","#2C699A","#048BA8","#0DB39E",
                                                       "#16DB93","#83E377","#EFEA5A","#F1C453","#F29E4C"), labels= as.character(c(1:9))) + # "#A65100" #"Cox",
@@ -2563,7 +2566,7 @@ pt_markov_1 <- probtrans(msfx1,
 
 <br>
 
-```{r probtrans_plot, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 5. Estimate of State Occupancies at Baseline, Ten-states model", fig.align="center", error=T}
+```{r probtrans_plot, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 5. Estimate of State Occupancies at Baseline, Ten-states model (Markov)", fig.align="center", error=T}
 #states_trans_lab<-paste0(1:10,") ",states_trans)
 #attr(states_trans_lab,"names")<-1:10
 
@@ -2576,53 +2579,37 @@ ab_pmatrix_probtrans<-
   dplyr::left_join(pt_markov_1[[3]], by="time", suffix=c("",".w_covs.res.s03")) %>% 
   dplyr::left_join(pt_markov_0[[4]], by="time", suffix=c("",".w_covs.out.s04")) %>% 
   dplyr::left_join(pt_markov_1[[4]], by="time", suffix=c("",".w_covs.res.s04")) %>% 
-  dplyr::left_join(pt_markov_0[[5]], by="time", suffix=c("",".w_covs.out.s05")) %>% 
-  dplyr::left_join(pt_markov_1[[5]], by="time", suffix=c("",".w_covs.res.s05")) %>% 
-  dplyr::left_join(pt_markov_0[[6]], by="time", suffix=c("",".w_covs.out.s06")) %>% 
-  dplyr::left_join(pt_markov_1[[6]], by="time", suffix=c("",".w_covs.res.s06")) %>% 
-  dplyr::left_join(pt_markov_0[[7]], by="time", suffix=c("",".w_covs.out.s07")) %>% 
-  dplyr::left_join(pt_markov_1[[7]], by="time", suffix=c("",".w_covs.res.s07")) %>% 
-  dplyr::left_join(pt_markov_0[[8]], by="time", suffix=c("",".w_covs.out.s08")) %>% 
-  dplyr::left_join(pt_markov_1[[8]], by="time", suffix=c("",".w_covs.res.s08")) %>% 
-  dplyr::left_join(pt_markov_0[[9]], by="time", suffix=c("",".w_covs.out.s09")) %>% 
-  dplyr::left_join(pt_markov_1[[9]], by="time", suffix=c("",".w_covs.res.s09")) %>% 
-  dplyr::left_join(pt_markov_0[[10]], by="time", suffix=c("",".w_covs.out.s10")) %>% 
-  dplyr::left_join(pt_markov_1[[10]], by="time", suffix=c("",".w_covs.res.s10")) %>% 
-  dplyr::select(-starts_with("se")) %>% 
+    dplyr::select(-starts_with("se")) %>% 
   dplyr::rename("pstate1.w_covs.out.s1"="pstate1",
                 "pstate2.w_covs.out.s1"="pstate2",
                 "pstate3.w_covs.out.s1"="pstate3",
                 "pstate4.w_covs.out.s1"="pstate4",
-                "pstate5.w_covs.out.s1"="pstate5",
-                "pstate6.w_covs.out.s1"="pstate6",
-                "pstate7.w_covs.out.s1"="pstate7",
-                "pstate8.w_covs.out.s1"="pstate8",
-                "pstate9.w_covs.out.s1"="pstate9",
-                "pstate10.w_covs.out.s1"="pstate10") %>% 
+                "pstate5.w_covs.out.s1"="pstate5") %>% 
   #pstate1–pstate3 are close to the first rows of the matrices returned by pmatrix.fs
   reshape2::melt(id.vars="time") %>% #janitor::tabyl(variable)
   dplyr::mutate(start=stri_sub(variable,-1,-1)) %>% 
-  dplyr::mutate(state=stringi::stri_match_first_regex(variable, "(.*?)\\.")[,2]) %>%
-  dplyr::mutate(state=gsub("pstate", "", state), state=as.numeric(state)) %>% 
+  dplyr::mutate(state_to=stringi::stri_match_first_regex(variable, "(.*?)\\.")[,2]) %>%
+  dplyr::mutate(state_to=gsub("pstate", "", state_to), state_to=as.numeric(state_to)) %>% 
   dplyr::mutate(setting= dplyr::case_when(grepl(".out",variable)~"Outpatient",
                                                grepl(".res",variable)~"Residential",
                                                T~NA_character_))
 
 fig_ab_pmatrix_probtrans<-
   #janitor::tabyl(start)
-  ggplot(ab_pmatrix_probtrans, aes(time, value, color= start, linetype =setting))+
+  ggplot(ab_pmatrix_probtrans, aes(time, value, color= factor(state_to), linetype =setting))+
     geom_step(size=1, alpha=.65) + 
     scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
-    facet_wrap(state~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
+    facet_wrap(start~., ncol=3, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
     #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
-    scale_color_manual(name = "Starting from\nState", values=c("#54478C","#2C699A","#048BA8","#0DB39E",
-                                                        "#16DB93","#83E377","#EFEA5A","#F1C453","#F29E4C","red"), labels= as.character(c(1:10))) + # "#A65100" #"Cox",
+    scale_color_manual(name = "Starting from\nState", values=c26, labels= as.character(c(1:10))) + # "#A65100" #"Cox",
     scale_linetype_manual(name= "Type of\nprogram",values=c(1,4), labels=c("Outpatient","Residential")) +
-    scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11),
-                       label=round(seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11)/365.25,2))+
+   scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=365.25),
+                     label=seq(0,round(max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/365.25),by=1))+
     xlab("Years") + 
     ylab("") + 
-    theme_minimal()
+    theme_minimal()+
+    theme(legend.position=c(.7,.2))+
+  guides(color=guide_legend(ncol=5)) 
 
 fig_ab_pmatrix_probtrans
 
@@ -2636,45 +2623,33 @@ dev.off()
 ```{r probtrans_plot2, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 6. Estimate of State Occupancies at Baseline, Ten-states model", fig.align="center", error=T}
 myplots<- vector("list")
 
-for (i in rep(1:7,2)){
+for (i in rep(1:5,2)){
   myplots[[paste0("pt_0_",i)]]<- plot(pt_markov_0, from= i,type="single",use.ggplot= TRUE)
   myplots[[paste0("pt_1_",i)]]<- plot(pt_markov_1, from= i,type="single",use.ggplot= TRUE)
 }
 
-for (i in rep(8:9,1)){
-  #myplots[[paste0("pt_0_",i)]]<- plot(pt_markov_0, from= i,type="single",use.ggplot= TRUE)
-  myplots[[paste0("pt_1_",i)]]<- plot(pt_markov_1, from= i,type="single",use.ggplot= TRUE)
-}
-
 probtrans_df<-
-rbind(cbind(subset(myplots$pt_0_1$data,state_num %in% c(2,3,4))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=1),
-      cbind(subset(myplots$pt_1_1$data,state_num %in% c(2,3,4))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=1),
-      cbind(subset(myplots$pt_0_2$data,state_num %in% c(4))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=2),
-      cbind(subset(myplots$pt_1_2$data,state_num %in% c(4))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=2),
+rbind(cbind(subset(myplots$pt_0_1$data,state_num %in% c(2))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=1),
+      cbind(subset(myplots$pt_1_1$data,state_num %in% c(2))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=1),
+      cbind(subset(myplots$pt_0_2$data,state_num %in% c(3))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=2),
+      cbind(subset(myplots$pt_1_2$data,state_num %in% c(3))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=2),
       cbind(subset(myplots$pt_0_3$data,state_num %in% c(4))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=3),
       cbind(subset(myplots$pt_1_3$data,state_num %in% c(4))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=3),
-      cbind(subset(myplots$pt_0_4$data,state_num %in% c(5,6,7))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=4),
-      cbind(subset(myplots$pt_1_4$data,state_num %in% c(5,6,7))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=4),
-      cbind(subset(myplots$pt_0_5$data,state_num %in% c(7))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=5),
-      cbind(subset(myplots$pt_1_5$data,state_num %in% c(7))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=5),
-      cbind(subset(myplots$pt_0_5$data,state_num %in% c(7))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=6),
-      cbind(subset(myplots$pt_1_5$data,state_num %in% c(7))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=6),
-      cbind(subset(myplots$pt_0_5$data,state_num %in% c(8,9,10))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=7),
-      cbind(subset(myplots$pt_1_5$data,state_num %in% c(8,9,10))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=7)
-
+      cbind(subset(myplots$pt_0_4$data,state_num %in% c(5))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=4),
+      cbind(subset(myplots$pt_1_4$data,state_num %in% c(5))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=4)
 )
 
 probtrans_df_plot<-
 probtrans_df %>% 
   dplyr::mutate(res=factor(res), state=factor(state)) %>% 
  ggplot()+
-    geom_step(aes(time, prob, color= state, fill=state, linetype =res),size=1, alpha=.75) + 
-    geom_ribbon(aes(x=time, fill=state, color= state, linetype =res, ymin=CI_low, ymax=CI_upp), alpha=.35)+
+    geom_step(aes(time, prob, color= res, fill=res, linetype =res),size=1, alpha=.75) + 
+    geom_ribbon(aes(x=time, fill=res, color= res, linetype =res, ymin=CI_low, ymax=CI_upp), alpha=.35)+
     scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
     facet_wrap(st~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
     #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
-    scale_color_manual(name = "Exit\nState", values=c26) +
-    scale_fill_manual(name = "Exit\nState", values=c26) +  
+    scale_color_manual(name = "Exit\nState", values=c("gray30","gray70"), labels=c("Outpatient","Residential")) +
+    scale_fill_manual(name = "Exit\nState", values=c("gray30","gray70"), labels=c("Outpatient","Residential")) +  
     scale_linetype_manual(name= "Type of\nprogram",values=c(1,4), labels=c("Outpatient","Residential")) +
     scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11),
                        label=round(seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11)/365.25,2))+
@@ -2695,6 +2670,7 @@ dev.off()
 
 ## Clustered multistate
 
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
 ```{r clus_mstate,eval=T, echo=T, paged.print=TRUE, error=T}
 ## Function that calculates the working independence Aalen-Johansen estimator 
 ## of the population-averaged transition probabilities. Standard errors and
@@ -3038,90 +3014,49 @@ set.seed(2125)
 P12 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
              h=1, j=2, s=0, B=1000, LMAJ=T, cband=T)
 set.seed(2125)
-P13 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=1, j=3, s=0, B=1000, LMAJ=T, cband=T)
-
-set.seed(2125)
-P24 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=2, j=4, s=0, B=1000, LMAJ=T, cband=T)
+P23 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
+             h=2, j=3, s=0, B=1000, LMAJ=T, cband=T)
 set.seed(2125) 
 P34 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
              h=3, j=4, s=0, B=1000, LMAJ=T, cband=T)
-
 set.seed(2125)
 P45 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
              h=4, j=5, s=0, B=1000, LMAJ=T, cband=T)
-set.seed(2125) 
-P46 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=4, j=6, s=0, B=1000, LMAJ=T, cband=T)
 
-set.seed(2125)
-P57 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=5, j=7, s=0, B=1000, LMAJ=T, cband=T)
-set.seed(2125) 
-P67 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=6, j=7, s=0, B=1000, LMAJ=T, cband=T)
-
-set.seed(2125)
-P78 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=7, j=8, s=0, B=1000, LMAJ=T, cband=T)
-set.seed(2125) 
-P79 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=7, j=9, s=0, B=1000, LMAJ=T, cband=T)
-
-set.seed(2125)
-P810 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=8, j=10, s=0, B=1000, LMAJ=T, cband=T)
-set.seed(2125) 
-P910 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=9, j=10, s=0, B=1000, LMAJ=T, cband=T)
 ```
+</div>
 
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
 ```{r clus_mstate_group,eval=T, echo=T, paged.print=TRUE, error=T}
 
-P12_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+P12_clus_3 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
              h=1, j=2, s=365*3, B=1000, LMAJ=T)
  
-P13_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=1, j=3, s=365*3, B=1000, LMAJ=T)
+P23_clus_3 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=2, j=3, s=365*3, B=1000, LMAJ=T)
 
+P34_clus_3 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=3, j=4, s=365, B=1000, LMAJ=T)
 
-P24_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=2, j=4, s=365*3, B=1000, LMAJ=T)
- 
-P34_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=3, j=4, s=365*3, B=1000, LMAJ=T)
-
-
-P45_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+P45_clus_3 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
              h=4, j=5, s=365*3, B=1000, LMAJ=T)
+
+P12_clus_2 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=1, j=2, s=365, B=1000, LMAJ=T)
  
-P46_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=4, j=6, s=365*3, B=1000, LMAJ=T)
+P23_clus_2 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=2, j=3, s=365, B=1000, LMAJ=T)
 
+P34_clus_2 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=3, j=4, s=365, B=1000, LMAJ=T)
 
-P57_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=5, j=7, s=365*3, B=1000, LMAJ=T)
- 
-P67_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=6, j=7, s=365*3, B=1000, LMAJ=T)
-
-
-P78_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=7, j=8, s=365*3, B=1000, LMAJ=T)
- 
-P79_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=7, j=9, s=365*3, B=1000, LMAJ=T)
-
-
-P810_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=8, j=10, s=365*3, B=1000, LMAJ=T)
- 
-P910_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=9, j=10, s=365*3, B=1000, LMAJ=T)
+P45_clus_2 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=4, j=5, s=365, B=1000, LMAJ=T)
 
 ```
 
+</div>
 
 
 # Session Info

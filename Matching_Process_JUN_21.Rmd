@@ -2454,10 +2454,13 @@ Considering that some missing values were not able to imputation (due to ties in
 <br>
 
 ```{r bal1,eval=T, echo=T, paged.print=TRUE}                                 
-kableone <- function(x, ...) {
-  capture.output(x <- print(x,...))
-  knitr::kable(x,format= "html", format.args= list(decimal.mark= ".", big.mark= ","))
+kableone <- function(x, caption=NULL, col.names=NA, smd=T, test=T, varLabels=T, noSpaces=T, printToggle=T, dropEqual=F, ...) {
+  capture.output(x <- print(x, smd=T, test=test, varLabels=varLabels,noSpaces=noSpaces, printToggle=printToggle, dropEqual=dropEqual, ...))
+  
+  knitr::kable(x,format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption= caption, col.names= col.names)
 }
+
 match.on.sel<-c("sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","edad_ini_cons","freq_cons_sus_prin","origen_ingreso_mod","dg_cie_10_rec","nombre_region","dg_trs_cons_sus_or", "tipo_centro_pub","sexo_2","edad_al_ing","fech_ing_num","condicion_ocupacional_corr")
 catVars<-
 c("sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","tipo_centro_pub","freq_cons_sus_prin","origen_ingreso_mod","dg_cie_10_rec","dg_trs_cons_sus_or","nombre_region","tipo_de_plan_res","sexo_2","condicion_ocupacional_corr")
@@ -2505,7 +2508,7 @@ diff_time_tab1=post_tab1-pre_tab1
 
 kableone(tab1, 
          caption = paste0("Table 5. Covariate Balance in the Variables of Interest"),
-         col.names= c("Variables","Ambulatory","Residential", "p-values","test","SMD"),
+         col.names= c("Ambulatory","Residential", "p-values","test","SMD"),
          nonnormal= c("edad_ini_cons","edad_al_ing","fech_ing_num"),#"\\hline",
                        smd=T, test=T, varLabels=T,noSpaces=T, printToggle=T, dropEqual=F) %>% 
     kableExtra::kable_styling(bootstrap_options = c("striped", "hover","condensed"),font_size= 10) %>%
@@ -3004,7 +3007,7 @@ data.table::data.table(bal1_nomatch$Balance[,1:6],keep.rownames = T) %>%
 
 pre_matched_matched%>% 
     knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption = paste0("Table 5. Covariate Balance in the Variables of Interest"),
+               caption = paste0("Table 5a. Covariate Balance in the Variables of Interest"),
                col.names = c("Variables","Nature of Variables", "SMDs","Threshold","Variance Ratios","Threshold","KS","SMDs","Threshold","Variance Ratios","Threshold","KS"),
                align =c('l',rep('c', 101))) %>%
   add_header_above(c(" "," ","Unadjusted" = 5, "Adjusted" = 5)) %>% 
@@ -3016,6 +3019,38 @@ pre_matched_matched%>%
 
 <br>
 
+```{r  tab3_match1b, warning=FALSE, fig.align = "center", message=F, fig.height=10, cache=T, eval=T}
+tab2<-
+  CreateTableOne(vars = match.on.sel, strata = "tipo_de_plan_res", 
+                 data = d_match, factorVars = catVars, smd=T)
+
+
+kableone <- function(x, caption=NULL, col.names=NA, smd=T, test=T, varLabels=T, noSpaces=T, printToggle=T, dropEqual=F, ...) {
+  capture.output(x <- print(x, smd=T, test=test, varLabels=varLabels,noSpaces=noSpaces, printToggle=printToggle, dropEqual=dropEqual, ...))
+  
+  knitr::kable(x,format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption= caption, col.names= col.names)
+}
+
+#
+#
+kableone(tab2, 
+         caption = paste0("Table 5b. Covariate Balance in the Variables of Interest"),
+         col.names= c("Ambulatory","Residential", "p-value", "class","SMD"),
+         nonnormal= c("edad_ini_cons","edad_al_ing","fech_ing_num")#"\\hline",
+         ) %>% 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover","condensed"),font_size= 10) %>%
+  #()
+  row_spec(1, bold = T, italic =T,color ="black",hline_after=T,extra_latex_after="\\arrayrulecolor{white}",font_size= 10) %>%
+  #footnote(general = "Here is a general comments of the table. ",
+  #        number = c("Footnote 1; ", "Footnote 2; "),
+  #         alphabet = c("Footnote A; ", "Footnote B; "),
+  #         symbol = c("Footnote Symbol 1; ", "Footnote Symbol 2")
+  #         )%>%
+  scroll_box(width = "100%", height = "400px") 
+```
+
+<br>
 
 ```{r  smds_comp, warning=FALSE, fig.align = "center", results='hide', message=F, fig.height=10, cache=T, eval=T}
 #covs0_match_disc<-data.table::data.table(covs0_match_disc)
@@ -4643,6 +4678,12 @@ plot.MarkovTest <- function(x, y, what=c("states", "overall"), idx=NULL, quantil
            xlab=xlab, ylab=ylab, main=main)
   }
 }
+```
+
+
+```{r fig19_semimark_a, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 19. Log-rank test with therapeutic discharge and Treatment Setting in the baseline treatment as covariates", fig.height=10, error=T, eval=T}
+#$    tipo_de_plan_res + TD_1 - "tipo_de_plan_res_1 + TD_1"
+
 
 plot.MarkovTest(cox_markov_test_prueba12, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
@@ -4655,6 +4696,12 @@ plot.MarkovTest(cox_markov_test_prueba23, tseq, what="states",idx=1:50,
 plot.MarkovTest(cox_markov_test_prueba34, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
                 xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm3-> Readm4")
+
+```
+
+
+```{r fig20_semimark_b, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 20. Log-rank test with therapeutic discharge and Treatment Setting as dynamic covariates", fig.height=10, error=T, eval=T}
+#$    tipo_de_plan_res + TD_1 - "tipo_de_plan_res_1 + TD_1"
 
 plot.MarkovTest(cox_markov_test_prueba12d, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
@@ -4684,7 +4731,7 @@ ms_d_match_surv <- expand.covs(ms_d_match_surv_res, "arrival", append = TRUE, lo
 
 # Session Info
 
-```{r session_info, echo=T, paged.print=TRUE}
+```{r session_info, echo=T, paged.print=TRUE, error=T}
 path<-rstudioapi::getSourceEditorContext()$path
 
 Sys.getenv("R_LIBS_USER")
