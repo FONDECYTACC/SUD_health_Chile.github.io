@@ -2458,6 +2458,28 @@ kableone(tab1,
     row_spec(1, bold = T, italic =T,color ="black",hline_after=T,extra_latex_after="\\arrayrulecolor{white}",font_size= 11) %>%
     #kableExtra::pack_rows("", 2, 2) %>% 
     scroll_box(width = "100%", height = "400px") 
+
+if(no_mostrar==1){
+CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados %>% 
+    dplyr::select(tipo_de_programa_2, catVars_after_imp) %>% 
+    tidyr::gather(variable,measure, -tipo_de_programa_2) %>% 
+    group_by(variable) %>%
+    do(chisq.test(.$tipo_de_programa_2, .$measure) %>% broom::tidy()) %>%
+    dplyr::mutate(p.value=ifelse(p.value<.001,"<0.001",sprintf("%1.3f",p.value))) %>% 
+    dplyr::mutate(statistic=sprintf("%2.2f",statistic)) %>% 
+    dplyr::mutate(report=paste0("X²(",parameter,", N=",nrow(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados),")=",statistic,ifelse(p.value=="<0.001",p.value, paste0("=",p.value)))) %>% copiar_nombres()
+}
+
+if(no_mostrar==1){
+broom::tidy(wilcox.test(dias_treat_imp_sin_na ~ tipo_de_programa_2, data=CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados)) %>% dplyr::mutate(report=paste0("W"))
+  
+#effect size
+broom::tidy(wilcox.test(dias_treat_imp_sin_na ~ tipo_de_programa_2, data=CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados))$statistic/sqrt(nrow(CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados))
+  
+broom::tidy(t.test(dias_treat_imp_sin_na ~ tipo_de_programa_2, data=CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados)) %>% 
+  dplyr::mutate(report=paste0("t(",round(parameter,0),")=",sprintf("%1.2f",statistic),",",ifelse(p.value<0.001,"<0.001", paste0("=",sprinf("f1.3f",p.value)))))
+  # t(19) = 3.1, p = .006.
+}
 #"tipo_de_plan_ambulatorio",
 #https://cran.r-project.org/web/packages/tableone/vignettes/smd.html
 #http://rstudio-pubs-static.s3.amazonaws.com/405765_2ce448f9bde24148a5f94c535a34b70e.html
