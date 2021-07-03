@@ -1,0 +1,506 @@
+---
+title: "Ambulatory or residential? a multi-state analysis of treatments for substance use disorders (Step 4)"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: hide  
+    toc: true # table of content true
+    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_float: true
+---
+
+```{css zoom-lib-src, echo = FALSE}
+script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+```
+
+```{js zoom-jquery, echo = FALSE}
+ $(document).ready(function() {
+    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
+    // onClick function for all plots (img's)
+    $('img:not(.zoomImg)').click(function() {
+      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
+      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
+    });
+    // onClick function for zoomImg
+    $('img.zoomImg').click(function() {
+      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
+    });
+  });
+```
+
+```{=html}
+<style type="text/css">
+.tablelines table, .tablelines td, .tablelines th {
+        border: 1px solid black;
+        }
+.centrado {
+    text-align: center;
+}
+.table.center {
+    margin-left:auto; 
+    margin-right:auto;
+  }
+.table_wrapper{
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+code.r{
+  font-size: 8px;
+}
+body{ /* Normal  */
+      text-align: justify;
+  }
+.superbigimage{
+    overflow-y:scroll;
+    white-space: nowrap;
+}
+.superbigimage img{
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+</style>
+```
+```{=html}
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
+</style>
+```
+```{r prev_setup, include = FALSE, cache=T}
+rm(list=ls());gc()
+path<-rstudioapi::getSourceEditorContext()$path
+#load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+if (grepl("CISS Fondecyt",path)==T){
+    setwd("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_3_jun.RData")
+  } else if (grepl("andre",path)==T){
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_3_jun.RData")
+  } else if (grepl("E:",path)==T){
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_3_jun.RData")
+  } else {
+    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_3_jun.RData")
+  }
+
+#getwd()
+#knitr::opts_knit$get()
+#devtools::install_github("hputter/mstate")
+
+```
+
+```{r setup, include = FALSE, cache=T}
+#Libraries used in the routine. Dont change the order
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
+  if(class(ungroup(x))[1]=="tbl_df"){
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)    
+        }
+  } else {
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)       
+  }
+ }
+}  
+#packageVersion("codebook")
+#https://github.com/RevolutionAnalytics/checkpoint
+#if(!require(checkpoint)){install.packages("checkpoint")}
+#if(!require(here)){install.packages("here")}
+#checkpoint::checkpoint("2020-02-19",project=here::here(),checkpointLocation=paste0(here::here(),"/dedup"), use.lock=F, use.knitr=T, auto.install.knitr = T,scan.rnw.with.knitr=T, forceInstall=T,scanForPackages = TRUE)
+#checkpointArchives(tempdir(), full.names = TRUE)
+
+#if(!require(tidyr)){install.packages("tidyr")}
+#if(!require(DataExplorer)){install.packages("DataExplorer")}
+#if(!require(stringi)){install.packages("stringi")}
+#if(!require(stringr)){install.packages("stringr")}
+#if(!require(ggplot2)){install.packages("ggplot2")}
+#if(!require(Hmisc)){install.packages("Hmisc")}
+#if(!require(kableExtra)){install.packages("kableExtra")}
+#if(!require(plotly)){install.packages("plotly")}
+#if(!require(rbokeh)){install.packages("rbokeh")}
+#if(!require(altair)){install.packages("altair")}
+#if(!require(zoo)){install.packages("zoo")}
+#if(!require(codebook)){install.packages("codebook")}
+#if(!require(broom)){install.packages("broom")}
+#if(!require(sqldf)){install.packages("sqldf")} 
+#if(!require(devtools)){install.packages("devtools")}
+#if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
+#if(!require(data.table)){install.packages("data.table")}
+#if(!require(dplyr)){install.packages("dplyr")}
+
+#if(!require(boot)){install.packages("boot")}
+#if(!require(plyr)){install.packages("plyr")}
+#if(!require(matrixStats)){install.packages("matrixStats")}
+#if(!require(radiant)){install.packages("radiant", repos = "https://radiant-rstats.github.io/minicran/")}
+
+try(library(boot))
+library(matrixStats)
+library(knitr)
+library(tidyr)
+library(stringi)
+library(stringr)
+library(ggplot2)
+library(Hmisc)
+library(kableExtra)
+library(plotly)
+library(janitor)
+library(rbokeh)
+library(zoo)
+library(broom)
+library(sqldf)
+library(devtools)
+library(codebook)
+library(data.table)
+library(panelr)
+library(RColorBrewer)
+library(lsmeans)
+library(finalfit)
+suppressPackageStartupMessages(library(ggiraph))
+suppressPackageStartupMessages(library(sf))
+library(treemapify)
+library(dplyr)
+library(tidyverse)
+library(epiR)
+library(survminer)
+library(ggfortify)
+library(survMisc)
+
+library(foreign)
+library(Hmisc)
+library(gridExtra)
+library(reshape2)
+library(stargazer)
+library(tableone)
+library(MatchIt)
+library(cobalt)
+library(eha)
+library(igraph)
+library(Amelia)
+library(DiagrammeR) 
+library(mstate)
+library(flexsurv)
+library(muhaz)
+library(Metrics)
+library(hesim)
+#library(mstateutils)
+#remotes::install_github("chjackson/flexsurv-dev", upgrade = "never")
+#devtools::install_github("stulacy/multistateutils", build_vignettes=TRUE, upgrade = "never")
+#devtools::install_github("hputter/mstate", upgrade = "never")
+#unlink("C:/Users/CISS Fondecyt/OneDrive/Documentos/R/win-library/4.0/mstate", recursive=T, force=T)
+
+if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
+#install.packages( repos = "https://radiant-rstats.github.io/minicran/")
+#install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")
+
+#tryCatch(source("https://raw.githubusercontent.com/radiant-rstats/minicran/gh-pages/update.R"), error = function(e) print("updated package, radiant"))
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+try_with_time_limit <- function(expr, cpu = Inf, elapsed = Inf)
+{
+  y <- try({setTimeLimit(cpu, elapsed); expr}, silent = TRUE) 
+  if(inherits(y, "try-error")) NULL else y 
+}
+eval_fork <- function(..., timeout=60){
+
+  #this limit must always be higher than the timeout on the fork!
+  setTimeLimit(timeout+5);      
+
+  #dispatch based on method
+  ##NOTE!!!!! Due to a bug in mcparallel, we cannot use silent=TRUE for now.
+  myfork <- parallel::mcparallel({
+    eval(...)
+  }, silent=FALSE);
+
+  #wait max n seconds for a result.
+  myresult <- parallel::mccollect(myfork, wait=FALSE, timeout=timeout);
+
+  #try to avoid bug/race condition where mccollect returns null without waiting full timeout.
+  #see https://github.com/jeroenooms/opencpu/issues/131
+  #waits for max another 2 seconds if proc looks dead 
+  while(is.null(myresult) && totaltime < timeout && totaltime < 2) {
+     Sys.sleep(.1)
+     enddtime <- Sys.time();
+     totaltime <- as.numeric(enddtime - starttime, units="secs")
+     myresult <- parallel::mccollect(myfork, wait = FALSE, timeout = timeout);
+  }
+
+  #kill fork after collect has returned
+  tools::pskill(myfork$pid, tools::SIGKILL);    
+  tools::pskill(-1 * myfork$pid, tools::SIGKILL);  
+
+  #clean up:
+  parallel::mccollect(myfork, wait=FALSE);
+
+  #timeout?
+  if(is.null(myresult)){
+    stop("R call did not return within ", timeout, " seconds. Terminating process.", call.=FALSE);      
+  }
+
+  #move this to distinguish between timeout and NULL returns
+  myresult <- myresult[[1]];
+
+  #reset timer
+  setTimeLimit();     
+
+  #forks don't throw errors themselves
+  if(inherits(myresult,"try-error")){
+    #stop(myresult, call.=FALSE);
+    stop(attr(myresult, "condition"));
+  }
+
+  #send the buffered response
+  return(myresult);  
+}
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#GET LOCAL
+#dir.create(paste0(getwd(),"/renv_local"))
+#Sys.setenv(RENV_PATHS_LOCAL = paste0(getwd(),"/renv_local"))
+#install.packages(paste0(getwd(),"/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+#install.packages(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+library(gurobi)
+#"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)"
+#Sys.getenv("R_LIBS_USER")
+```
+
+<br>
+
+# Probability Matrix
+
+
+```{r pat1_pmatrix,eval=F, echo=T, paged.print=TRUE, error=T}
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#_#_#_#_#_#_#_#_#_#_PMATRIX
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#n_iter=10
+time_before_transprob2<-Sys.time()
+
+invisible(c("Me faltó. Sólo hice el con newdat_a y sel_param_fits_a llamado pmatrix2_t_"))
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(1234)
+  flexsurv::pmatrix.simfs(x = sel_param_fits_a,
+                        t = i, #Must be a single number unlike pmatrix.fs
+                        ci = T,
+                        B= n_iter/20, #Increasing B is usually more expensive than increasing M. NUmber of simulations from the normal asymptotic distribution. MOre, more accuracy
+                        newdat= newdat_b,
+                        tvar="trans",
+                        #tcovs= "arrival",# Predicatable time-dependent covariates such as age
+                        cores= 8,
+                        M = 1e5,#Number of individual trajectories to simulate.
+                        trans = trans_matrix) %>% 
+  assign(paste0("pmatrix1_t_b_",i),.,envir=.GlobalEnv)
+}
+
+invisible(c("Me faltó. Sólo hice el con newdat_b y sel_param_fits_b llamado pmatrix1_t_rp_"))
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(1234)
+  flexsurv::pmatrix.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        B= n_iter/20,
+                        newdat= newdat_a,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8,#N of processor cores
+                        trans = trans_matrix) %>% 
+  assign(paste0("pmatrix1_t_rp_a_",i),.,envir=.GlobalEnv)
+}
+
+invisible(c("Me faltó. Sólo hice el con newdat_a_1096 y sel_param_fits_a llamado pmatrix1_t_a_1096_"))
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(1234)
+  flexsurv::pmatrix.simfs(x = sel_param_fits_a,
+                        t = i, #Must be a single number unlike pmatrix.fs
+                        ci = T,
+                        B= n_iter/20, #Increasing B is usually more expensive than increasing M. NUmber of simulations from the normal asymptotic distribution. MOre, more accuracy
+                        newdat= newdat_b_1096,
+                        tvar="trans",
+                        #tcovs= "arrival",# Predicatable time-dependent covariates such as age
+                        cores= 8,
+                        M = 1e5,#Number of individual trajectories to simulate.
+                        trans = trans_matrix) %>% 
+  assign(paste0("pmatrix1_t_a_1096_b_",i),.,envir=.GlobalEnv)
+}
+
+invisible(c("Me faltó. Sólo hice el con newdat_b_1096 y sel_param_fits_b llamado pmatrix1_t_b_1096_"))
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(1234)
+  flexsurv::pmatrix.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        B= n_iter/20,
+                        newdat= newdat_a_1096,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = 1e5,#Number of individual trajectories to simulate.
+                        cores= 8,#N of processor cores
+                        trans = trans_matrix) %>% 
+  assign(paste0("pmatrix2_t_b_1096_a_",i),.,envir=.GlobalEnv)
+}
+
+time_after_transprob2<-Sys.time()
+
+paste0("Time in process: ");time_after_transprob2-time_before_transprob2
+```
+
+
+
+```{r pat1_pmatrix_to_df,eval=T, echo=T, paged.print=TRUE, error=T}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#pmatrix1_t_ pmatrix1_t_b_ pmatrix1_t_rp_a_ pmatrix1_t_rp_ pmatrix1_t_a_1096_ pmatrix1_t_a_1096_b_ pmatrix2_t_b_1096_a_ pmatrix1_t_b_1096_ 
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+pmatrix2_t_b_lo<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix1_t_",t)),"lower")
+    }))
+
+pmatrix2_t_a_up<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix1_t_",t)),"upper")
+    }))
+
+pmatrix2_t_b<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    get(paste0("pmatrix1_t_",t))
+    }))
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+pmatrix2_t_a_df_final<-
+cbind.data.frame(t=rep(c(.25,1,3),each=dim(mat_3_states)[2]),
+  trans=rep(1:dim(mat_3_states)[2]),
+                  pmatrix2_t_a,pmatrix2_t_a_lo,pmatrix2_t_a_up) %>% 
+  data.frame() %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2") %>% 
+  dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
+                                   sprintf("%1.2f",Trans_1_lo),"-",
+                                   sprintf("%1.2f",Trans_1_up),"]")) %>% 
+  dplyr::mutate(Trans_2_cis=paste0(sprintf("%1.2f",Trans_2)," [",
+                                   sprintf("%1.2f",Trans_2_lo),"-",
+                                   sprintf("%1.2f",Trans_2_up),"]")) %>% 
+  dplyr::mutate(Trans_3_cis=paste0(sprintf("%1.2f",Trans_3)," [",
+                                   sprintf("%1.2f",Trans_3_lo),"-",
+                                   sprintf("%1.2f",Trans_3_up),"]"))
+
+pmatrix2_t_b_df_final<-
+cbind.data.frame(t=rep(c(.25,1,3),each=dim(mat_3_states)[2]),
+  trans=rep(1:dim(mat_3_states)[2]),
+                  pmatrix2_t_b,pmatrix2_t_b_lo,pmatrix2_t_b_up) %>% 
+    data.frame() %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2") %>% 
+  dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
+                                   sprintf("%1.2f",Trans_1_lo),"-",
+                                   sprintf("%1.2f",Trans_1_up),"]")) %>% 
+  dplyr::mutate(Trans_2_cis=paste0(sprintf("%1.2f",Trans_2)," [",
+                                   sprintf("%1.2f",Trans_2_lo),"-",
+                                   sprintf("%1.2f",Trans_2_up),"]")) %>% 
+  dplyr::mutate(Trans_3_cis=paste0(sprintf("%1.2f",Trans_3)," [",
+                                   sprintf("%1.2f",Trans_3_lo),"-",
+                                   sprintf("%1.2f",Trans_3_up),"]"))
+
+pmatrix2_4s_t_a_df_final<-
+cbind.data.frame(t=rep(c(.25,1,3),each=dim(mat_4_states)[2]),
+  trans=rep(1:dim(mat_4_states)[2]),
+                  pmatrix2_4s_t_a,pmatrix2_4s_t_a_lo,pmatrix2_4s_t_a_up) %>% 
+    data.frame() %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3","Trans_4"="X4",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1","Trans_4_lo"="X4.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2","Trans_4_up"="X4.2") %>% 
+  dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
+                                   sprintf("%1.2f",Trans_1_lo),"-",
+                                   sprintf("%1.2f",Trans_1_up),"]")) %>% 
+  dplyr::mutate(Trans_2_cis=paste0(sprintf("%1.2f",Trans_2)," [",
+                                   sprintf("%1.2f",Trans_2_lo),"-",
+                                   sprintf("%1.2f",Trans_2_up),"]")) %>% 
+  dplyr::mutate(Trans_3_cis=paste0(sprintf("%1.2f",Trans_3)," [",
+                                   sprintf("%1.2f",Trans_3_lo),"-",
+                                   sprintf("%1.2f",Trans_3_up),"]")) %>% 
+  dplyr::mutate(Trans_4_cis=paste0(sprintf("%1.2f",Trans_4)," [",
+                                   sprintf("%1.2f",Trans_4_lo),"-",
+                                   sprintf("%1.2f",Trans_4_up),"]"))
+
+pmatrix2_4s_t_b_df_final<-
+cbind.data.frame(t=rep(c(.25,1,3),each=dim(mat_4_states)[2]),
+  trans=rep(1:dim(mat_4_states)[2]),
+                  pmatrix2_4s_t_b,pmatrix2_4s_t_b_lo,pmatrix2_4s_t_b_up) %>% 
+    data.frame() %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3","Trans_4"="X4",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1","Trans_4_lo"="X4.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2","Trans_4_up"="X4.2") %>% 
+  dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
+                                   sprintf("%1.2f",Trans_1_lo),"-",
+                                   sprintf("%1.2f",Trans_1_up),"]")) %>% 
+  dplyr::mutate(Trans_2_cis=paste0(sprintf("%1.2f",Trans_2)," [",
+                                   sprintf("%1.2f",Trans_2_lo),"-",
+                                   sprintf("%1.2f",Trans_2_up),"]")) %>% 
+  dplyr::mutate(Trans_3_cis=paste0(sprintf("%1.2f",Trans_3)," [",
+                                   sprintf("%1.2f",Trans_3_lo),"-",
+                                   sprintf("%1.2f",Trans_3_up),"]")) %>% 
+  dplyr::mutate(Trans_4_cis=paste0(sprintf("%1.2f",Trans_4)," [",
+                                   sprintf("%1.2f",Trans_4_lo),"-",
+                                   sprintf("%1.2f",Trans_4_up),"]"))
+```
+
+
+# Simulate Final State
+
+#simfinal_fmsm_1096d simfinal_fmsm_1826d simfinal_fmsm_1096d_rp simfinal_fmsm_1826d_rp simfinal_fmsm_1096d_1096 simfinal_fmsm_1826d_1096 simfinal_fmsm_1096d_rp_1096 simfinal_fmsm_1826d_rp_1096
+
+# Length of Stay
+
+#tolos_t_a_ tolos_t_b_ tolos_t_a_rp_ tolos_t_b_rp_ tolos_t_a_1096_ tolos_t_b_1096_ tolos_t_a_rp_1096_ tolos_t_b_rp_1096_ tolos_t_a_str2_ tolos_t_b_str2_ tolos_t_a_rp_str2_ tolos_t_b_rp_str2_ tolos_t_a_str3_ tolos_t_b_str3_ tolos_t_a_rp_str3_ tolos_t_b_rp_str3_ tolos_t_a_str4_ tolos_t_b_str4_ tolos_t_a_rp_str4_ tolos_t_b_rp_str4_ tolos_t_a_str2_1096_ tolos_t_b_str2_1096_ tolos_t_a_rp_str2_1096_ tolos_t_b_rp_str2_1096_ tolos_t_a_str3_1096_ tolos_t_b_str3_1096_ tolos_t_a_rp_str3_1096_ tolos_t_b_rp_str3_1096_ tolos_t_a_str4_1096_ tolos_t_b_str4_1096_ tolos_t_a_rp_str4_1096_ tolos_t_b_rp_str4_1096_
+
+
+# Session Info
+
+```{r session_info, echo=T, error=T, paged.print=TRUE}
+Sys.getenv("R_LIBS_USER")
+
+rstudioapi::getSourceEditorContext()
+#save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+
+if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/mult_state_4_jun.RData")
+  } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/andre/Desktop/SUD_CL/mult_state_4_jun.RData")
+  } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_4_jun.RData")
+  } else {
+    save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_4_jun.RData")
+  }
+
+sessionInfo()
+```

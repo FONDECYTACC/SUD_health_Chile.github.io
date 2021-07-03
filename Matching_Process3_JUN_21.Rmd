@@ -289,6 +289,8 @@ library(gurobi)
 
 # Cumulative Transition Hazards of Joint Models
 
+## Parametric
+
 Cumulative baseline hazard can be estimated non-parametrically through a Breslow estimator. Must take note that we are assuming a semimarkov process in these transitions.
 
 <br>
@@ -715,40 +717,22 @@ newdat_b <- data.table::data.table(tipo_de_plan_res_1= factor(c(rep(0,1*n_trans2
   arrival=rep(0,),
   strata= rep(1:n_trans2,1)
                        )
-newdat_c <- data.table::data.table(tipo_de_plan_res_1= factor(c(rep(1,1*n_trans2))),
+newdat_a_1096 <- data.table::data.table(tipo_de_plan_res_1= factor(c(rep(1,1*n_trans2))),
   #comp_status= factor(rep(c("Therapeutic discharge","Discharge without clinical advice"),2)),
     TD_1=rep(0,), 
   TD_2=rep(0,), 
   TD_3=rep(0,),
   TD_4=rep(0,),
-  arrival.2=rep(90,),
+  arrival=rep(round((365.25*3),0),),
   strata= rep(1:n_trans2,1)
                        )
-newdat_d <- data.table::data.table(tipo_de_plan_res_1= factor(c(rep(0,1*n_trans2))),
+newdat_b_1096 <- data.table::data.table(tipo_de_plan_res_1= factor(c(rep(0,1*n_trans2))),
   #comp_status= factor(rep(c("Therapeutic discharge","Discharge without clinical advice"),2)),
     TD_1=rep(0,), 
   TD_2=rep(0,), 
   TD_3=rep(0,),
   TD_4=rep(0,),
-  arrival.2=rep(90,),
-  strata= rep(1:n_trans2,1)
-                       )
-newdat_e <- data.table::data.table(tipo_de_plan_res_1= factor(c(rep(1,1*n_trans2))),
-  #comp_status= factor(rep(c("Therapeutic discharge","Discharge without clinical advice"),2)),
-    TD_1=rep(0,), 
-  TD_2=rep(0,), 
-  TD_3=rep(0,),
-  TD_4=rep(0,),
-  arrival.2=rep(1095,),
-  strata= rep(1:n_trans2,1)
-                       )
-newdat_f <- data.table::data.table(tipo_de_plan_res_1= factor(c(rep(0,1*n_trans2))),
-  #comp_status= factor(rep(c("Therapeutic discharge","Discharge without clinical advice"),2)),
-    TD_1=rep(0,), 
-  TD_2=rep(0,), 
-  TD_3=rep(0,),
-  TD_4=rep(0,),
-  arrival.2=rep(1095,),
+  arrival=rep(round((365.25*3),0),),
   strata= rep(1:n_trans2,1)
                        )
 
@@ -820,7 +804,31 @@ invisible(c("No hay intervalos de confianza en TDs "))
 ```
 </div>
 
-```{r sel_model, eval=T, echo=T, paged.print=T, error=T}
+```{r sel_model, eval=F, echo=T, paged.print=T, error=T}
+invisible(c("Intercept-only"))
+fitted_flexsurvreg_binned_mix0 %>% 
+    dplyr::mutate(abs((est-surv)/surv)) %>% group_by(dist,trans) %>% dplyr::mutate(cumsum_error=cumsum(`abs((est - surv)/surv)`)) %>% 
+    group_by(trans) %>% 
+    dplyr::slice_max(time) %>% 
+    mutate(rank = dense_rank(cumsum_error)) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::arrange(trans,rank) %>%
+    dplyr::select(dist, trans, time, lcl, cumsum_error,rank) %>% 
+    copiar_nombres()
+
+fitted_flexsurvreg_binned_mix0 %>% 
+    dplyr::mutate(abs((est-surv)/surv)) %>% group_by(dist,trans) %>% dplyr::mutate(cumsum_error=cumsum(`abs((est - surv)/surv)`)) %>% 
+    dplyr::filter(time>=365.25*3) %>% 
+    group_by(trans) %>% 
+    dplyr::slice_min(time) %>% 
+    mutate(rank = dense_rank(cumsum_error)) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::arrange(trans,rank) %>%
+    dplyr::select(dist, trans, time, lcl, cumsum_error,rank) %>% 
+    copiar_nombres()
+#_#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:#_#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:
+#_#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:#_#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:
+
 fitted_flexsurvreg %>% 
     dplyr::left_join(fitted_km, by=c("time", "trans", "residential")) %>% 
     group_by(trans,dist,residential) %>% 
@@ -894,10 +902,10 @@ fitted_flexsurvreg %>%
     dplyr::arrange(trans,rank) %>%
     dplyr::select(dist, trans, residential,time, lcl, cumsum_error,rank) %>% 
     dplyr::filter(residential==0) %>% 
-    copiar_nombres
-
-
+    copiar_nombres()
 ```
+
+## Cox
 
 ```{r msfit2.1, eval=T, echo=T, paged.print=T, error=T}
 # Semi-parametric models
@@ -914,24 +922,26 @@ cox.zph(cox_fits)
 invisible(c("Not-proportional hazards"))
 
 # fits_c_ggam2 fits_c_rp032/fits_c_logn2 fits_c_rp022/fits_c_logn2 fits_c_genf2/fits_c_rp022
+#dists_w_covs_4s_w_arrival
+
+invisible(c("dists_w_covs_4s_w_arrival ver para ver la distribución"))
+#1° TRANS, un modelo con splines cúblicos restringidos a 4 nudos (RP05) y la distribución F generalizado (después G-gamma en STATA) obtuvieron un mejor ajuste. En R, el único que Gen-F es peor que RP
+#2° TRANS, un modelo con splines cúblicos restringidos a 3 nudos (RP04) y la distribución F generalizado (después G-gamma en STATA) obtuvieron un mejor ajuste.
+#3° TRANS, un modelo con splines cúblicos restringidos a 2 nudos (RP03) y la distribución F generalizado (Lognormal en STATA) obtuvieron un mejor ajuste.
+#4° TRANS, un modelo con splines cúblicos restringidos a 2 nudos (RP03) y la distribución F generalizado (Lognormal en STATA) obtuvieron un mejor ajuste.
+#EN STATA, todos los RPs son mejores que los paramétricos. En R, sólo la transición 3 y 4 tienen menor error en  Gen-F en el max time
 
 sel_param_fits_a <- vector(length = n_trans, mode = "list") 
-    sel_param_fits_a[[1]]<- fits_c_ggam2[[1]] #fits_c_genf2[[1]] 
-    sel_param_fits_a[[2]]<- fits_c_logn2[[2]]
-    sel_param_fits_a[[3]]<- fits_c_logn2[[3]]
-    sel_param_fits_a[[4]]<- fits_c_logn2[[4]]
-
-sel_param_fits_a2 <- vector(length = n_trans, mode = "list") 
-    sel_param_fits_a2[[1]]<- fits_c_ggam2[[1]] #fits_c_genf2[[1]] 
-    sel_param_fits_a2[[2]]<- fits_c_rp032[[2]]
-    sel_param_fits_a2[[3]]<- fits_c_rp022[[3]]
-    sel_param_fits_a2[[4]]<- fits_c_genf2[[4]]
+    sel_param_fits_a[[1]]<- fits_c_genf2[[1]] #fits_c_genf2[[1]] 
+    sel_param_fits_a[[2]]<- fits_c_genf2[[2]]
+    sel_param_fits_a[[3]]<- fits_c_logn2[[3]] #Porque gen gamma y gen f no convergen
+    sel_param_fits_a[[4]]<- fits_c_logn2[[4]] #Porque gen gamma y gen f no convergen
 
 sel_param_fits_b <- vector(length = n_trans, mode = "list") 
-    sel_param_fits_b[[1]]<- fits_c_genf2[[1]] 
-    sel_param_fits_b[[2]]<- fits_c_genf2[[2]]
-    sel_param_fits_b[[3]]<- fits_c_rp062[[3]]
-    sel_param_fits_b[[4]]<- fits_c_rp052[[4]]
+    sel_param_fits_b[[1]]<- fits_c_rp052[[1]] 
+    sel_param_fits_b[[2]]<- fits_c_rp042[[2]]
+    sel_param_fits_b[[3]]<- fits_c_rp032[[3]]
+    sel_param_fits_b[[4]]<- fits_c_rp032[[4]]
 ```
 
 ```{r msfit2.2.1, eval=T, echo=T, paged.print=TRUE, error=T}
@@ -948,23 +958,13 @@ cox_cumhaz_b <- mstate::msfit(cox_fits,
                             trans = trans_matrix, variance = T)
 ```
 ```{r msfit2.2.3, eval=T, echo=T, paged.print=TRUE, error=T}
-cox_cumhaz_c <- mstate::msfit(cox_fits, 
-                            newdata = newdat_c,
+cox_cumhaz_a_1096 <- mstate::msfit(cox_fits, 
+                            newdata = newdat_a_1096,
                             trans = trans_matrix, variance = T)
 ```
 ```{r msfit2.2.4, eval=T, echo=T, paged.print=TRUE, error=T}
-cox_cumhaz_d <- mstate::msfit(cox_fits, 
-                            newdata = newdat_d,
-                            trans = trans_matrix, variance = T)
-```
-```{r msfit2.2.5, eval=T, echo=T, paged.print=TRUE, error=T}
-cox_cumhaz_e <- mstate::msfit(cox_fits, 
-                            newdata = newdat_e,
-                            trans = trans_matrix, variance = T)
-```
-```{r msfit2.2.6, eval=T, echo=T, paged.print=TRUE, error=T}
-cox_cumhaz_f <- mstate::msfit(cox_fits, 
-                            newdata = newdat_f,
+cox_cumhaz_b_1096 <- mstate::msfit(cox_fits, 
+                            newdata = newdat_b_1096,
                             trans = trans_matrix, variance = T)
 ```
 
@@ -975,230 +975,127 @@ cox_cumhaz_f <- mstate::msfit(cox_fits,
 
 flexsurv_cumhaz_a <- flexsurv::msfit.flexsurvreg(sel_param_fits_a,#sel_param_fits, 
                                              newdata = newdat_a,
-                                             t = seq(.001, max(ms_d_match_surv$time,na.rm=T), by = .01),
-                                             B = n_iter,
-                                             trans = trans_matrix, variance = T)
+                                             t = seq(0, max(ms_d_match_surv$time,na.rm=T)),
+                                             #B = n_iter/50,
+                                             trans = trans_matrix, variance = F)
+
+invisible(c("Not allowed to include variance =T : Error in boot[, , i] <- if (is.flexsurvlist(object)) normbootfn.flexsurvreg(object[[i]],  : 
+  number of items to replace is not a multiple of replacement length"))
 
 flexsurv_cumhaz_b <- flexsurv::msfit.flexsurvreg(sel_param_fits_a,#sel_param_fits_4s_b,#sel_param_fits_4s, #Alternatively, if the parameters (including covariate effects) are assumed to be different between different transitions, then a list of transition-specific models can be formed. This list has one component for each permitted transition in the multi-state model. This is more computationally efficient, particularly for larger models and datasets. See the example below, and the vignette.
                                              newdata = newdat_b, #A data frame specifying the values of covariates in the fitted model, other than the transition number. This must be specified if there are other covariates. The variable names should be the same as those in the fitted model formula. There must be either one value per covariate (the typical situation) or n values per covariate, a different one for each of the n allowed transitions.
-                                             t = seq(.001, max(ms_d_match_surv$time,na.rm=T), by = .01), #Vector of times. These do not need to be the same as the observed event times, and since the model is parametric, they can be outside the range of the data. A grid of more frequent times will provide a better approximation to the cumulative hazard trajectory for prediction with probtrans or mssample, at the cost of greater computational expense.
-                                             B = n_iter,#Number of simulations from the normal asymptotic distribution used to calculate variances. Decrease for greater speed at the expense of accuracy.
+                                             t = seq(0, max(ms_d_match_surv$time,na.rm=T)), #Vector of times. These do not need to be the same as the observed event times, and since the model is parametric, they can be outside the range of the data. A grid of more frequent times will provide a better approximation to the cumulative hazard trajectory for prediction with probtrans or mssample, at the cost of greater computational expense.
+                                             #B = n_iter/20,#Number of simulations from the normal asymptotic distribution used to calculate variances. Decrease for greater speed at the expense of accuracy.
                                              trans = trans_matrix, 
-                                             variance = T)#Calculate the variances and covariances of the transition cumulative hazards (TRUE or FALSE). This is based on simulation from the normal asymptotic distribution of the estimates, which is computationally-expensive.
+                                             variance = F)#Calculate the variances and covariances of the transition cumulative hazards (TRUE or FALSE). This is based on simulation from the normal asymptotic distribution of the estimates, which is computationally-expensive.
+
+flexsurv_cumhaz_a_1096 <- flexsurv::msfit.flexsurvreg(sel_param_fits_a,#sel_param_fits, 
+                                             newdata = newdat_a_1096,
+                                             t = seq(0, max(ms_d_match_surv$time,na.rm=T)),
+                                             #B = n_iter/20,
+                                             trans = trans_matrix, variance = F)
 
 
-flexsurv_cumhaz_c <- flexsurv::msfit.flexsurvreg(sel_param_fits_a,#sel_param_fits, 
-                                             newdata = newdat_c,
-                                             t = seq(.001, max(ms_d_match_surv$time,na.rm=T), by = .01),
-                                             B = n_iter,
-                                             trans = trans_matrix, variance = T)
+flexsurv_cumhaz_b_1096 <- flexsurv::msfit.flexsurvreg(sel_param_fits_a,#sel_param_fits, 
+                                             newdata = newdat_b_1096,
+                                             t = seq(0, max(ms_d_match_surv$time,na.rm=T)),
+                                             #B = n_iter/20,
+                                             trans = trans_matrix, variance = F)
 
-
-flexsurv_cumhaz_d <- flexsurv::msfit.flexsurvreg(sel_param_fits_a,#sel_param_fits, 
-                                             newdata = newdat_d,
-                                             t = seq(.001, max(ms_d_match_surv$time,na.rm=T), by = .01),
-                                             B = n_iter,
-                                             trans = trans_matrix, variance = T)
-
-flexsurv_cumhaz_e <- flexsurv::msfit.flexsurvreg(sel_param_fits_a,#sel_param_fits, 
-                                             newdata = newdat_e,
-                                             t = seq(.001, max(ms_d_match_surv$time,na.rm=T), by = .01),
-                                             B = n_iter,
-                                             trans = trans_matrix, variance = T)
-
-
-flexsurv_cumhaz_f <- flexsurv::msfit.flexsurvreg(sel_param_fits_a,#sel_param_fits, 
-                                             newdata = newdat_f,
-                                             t = seq(.001, max(ms_d_match_surv$time,na.rm=T), by = .01),
-                                             B = n_iter,
-                                             trans = trans_matrix, variance = T)
-```
-
-
-```{r msfit2.3.2, eval=T, echo=T, paged.print=TRUE, error=T}
-
-#https://rdrr.io/cran/flexsurv/man/msfit.flexsurvreg.html
-# Parametric
-
-flexsurv_cumhaz_a2 <- flexsurv::msfit.flexsurvreg(sel_param_fits_a2,#sel_param_fits, 
+flexsurv_cumhaz_rp_a <- flexsurv::msfit.flexsurvreg(sel_param_fits_b,#sel_param_fits, 
                                              newdata = newdat_a,
-                                             t = seq(.001, max(ms_d_match_surv$time,na.rm=T), by = .01),
-                                             B = n_iter,
-                                             trans = trans_matrix, variance = T)
-
-flexsurv_cumhaz_b2 <- flexsurv::msfit.flexsurvreg(sel_param_fits_a2,#sel_param_fits_4s_b,#sel_param_fits_4s, #Alternatively, if the parameters (including covariate effects) are assumed to be different between different transitions, then a list of transition-specific models can be formed. This list has one component for each permitted transition in the multi-state model. This is more computationally efficient, particularly for larger models and datasets. See the example below, and the vignette.
-                                             newdata = newdat_b, #A data frame specifying the values of covariates in the fitted model, other than the transition number. This must be specified if there are other covariates. The variable names should be the same as those in the fitted model formula. There must be either one value per covariate (the typical situation) or n values per covariate, a different one for each of the n allowed transitions.
-                                             t = seq(.001, max(ms_d_match_surv$time,na.rm=T), by = .01), #Vector of times. These do not need to be the same as the observed event times, and since the model is parametric, they can be outside the range of the data. A grid of more frequent times will provide a better approximation to the cumulative hazard trajectory for prediction with probtrans or mssample, at the cost of greater computational expense.
-                                             B = n_iter,#Number of simulations from the normal asymptotic distribution used to calculate variances. Decrease for greater speed at the expense of accuracy.
-                                             trans = trans_matrix, 
-                                             variance = T)#Calculate the variances and covariances of the transition cumulative hazards (TRUE or FALSE). This is based on simulation from the normal asymptotic distribution of the estimates, which is computationally-expensive.
+                                             t = seq(0, max(ms_d_match_surv$time,na.rm=T)),
+                                             #B = n_iter/20,
+                                             trans = trans_matrix, variance = F)
 
 
-flexsurv_cumhaz_c2 <- flexsurv::msfit.flexsurvreg(sel_param_fits_a2,#sel_param_fits, 
-                                             newdata = newdat_c,
-                                             t = seq(.001, max(ms_d_match_surv$time,na.rm=T), by = .01),
-                                             B = n_iter,
-                                             trans = trans_matrix, variance = T)
+flexsurv_cumhaz_rp_b <- flexsurv::msfit.flexsurvreg(sel_param_fits_b,#sel_param_fits, 
+                                             newdata = newdat_b,
+                                             t = seq(0, max(ms_d_match_surv$time,na.rm=T)),
+                                             #B = n_iter/20,
+                                             trans = trans_matrix, variance = F)
 
+flexsurv_cumhaz_rp_a_1096 <- flexsurv::msfit.flexsurvreg(sel_param_fits_b,#sel_param_fits, 
+                                             newdata = newdat_a_1096,
+                                             t = seq(0, max(ms_d_match_surv$time,na.rm=T)),
+                                             #B = n_iter/20,
+                                             trans = trans_matrix, variance = F)
 
-flexsurv_cumhaz_d2 <- flexsurv::msfit.flexsurvreg(sel_param_fits_a2,#sel_param_fits, 
-                                             newdata = newdat_d,
-                                             t = seq(.001, max(ms_d_match_surv$time,na.rm=T), by = .01),
-                                             B = n_iter,
-                                             trans = trans_matrix, variance = T)
-
-flexsurv_cumhaz_e2 <- flexsurv::msfit.flexsurvreg(sel_param_fits_a2,#sel_param_fits, 
-                                             newdata = newdat_e,
-                                             t = seq(.001, max(ms_d_match_surv$time,na.rm=T), by = .01),
-                                             B = n_iter,
-                                             trans = trans_matrix, variance = T)
-
-
-flexsurv_cumhaz_f2 <- flexsurv::msfit.flexsurvreg(sel_param_fits_a2,#sel_param_fits, 
-                                             newdata = newdat_f,
-                                             t = seq(.001, max(ms_d_match_surv$time,na.rm=T), by = .01),
-                                             B = n_iter,
-                                             trans = trans_matrix, variance = T)
-
+flexsurv_cumhaz_rp_b_1096 <- flexsurv::msfit.flexsurvreg(sel_param_fits_b,#sel_param_fits, 
+                                             newdata = newdat_b_1096,
+                                             t = seq(0, max(ms_d_match_surv$time,na.rm=T)),
+                                             #B = n_iter/20,
+                                             trans = trans_matrix, variance = F)
 ```
-
 
 ```{r msfit2.4, eval=T, echo=T, paged.print=TRUE, error=T}
-trans_lab_ten_st<-
+trans_lab_four_st<-
 cbind.data.frame(transition_label,trans_nmb=sprintf("%02d",1:n_trans2)) %>% 
     dplyr::mutate(paste=paste0(trans_nmb,") ",transition_label))
-trans_lab_ten_st_vec<-trans_lab_ten_st$paste
-attr(trans_lab_ten_st_vec, "names")<-1:15
+trans_lab_four_st_vec<-trans_lab_four_st$paste
+attr(trans_lab_four_st_vec, "names")<-1:max(trans_matrix,na.rm=t)
 
-
-# Definition of the database to Plot to compare
-#rbind(cbind.data.frame(msf0$Haz,setting="Outpatient"), 
-#      cbind.data.frame(msf1$Haz,setting="Residential")) %>%
-# 
+#msf1 tipo de plan 1 ==1
+#msf0 tipo de plan 1 ==0
 cumhaz_data_a <- rbind(data.frame(msf1$Haz,
                                 model = "NP Cox"),
                       data.frame(cox_cumhaz_a$Haz,
                                 model = "Cox"),
                       data.frame(flexsurv_cumhaz_a$Haz,
-                                model = "Parametric"))
+                                model = "Parametric"),
+                      data.frame(flexsurv_cumhaz_rp_a$Haz,
+                                model = "Parametric (RP)"))
 cumhaz_data_a$trans <- factor(cumhaz_data_a$trans,
-                            levels = seq(1, 15),
-                            labels = trans_lab_ten_st$paste)
+                            levels = seq(1, 4),
+                            labels = trans_lab_four_st$paste)
 cumhaz_data_b <- rbind(data.frame(msf0$Haz,
                                 model = "NP Cox"),
                       data.frame(cox_cumhaz_b$Haz,
                                 model = "Cox"),
                       data.frame(flexsurv_cumhaz_b$Haz,
-                                model = "Parametric"))
+                                model = "Parametric"),
+                      data.frame(flexsurv_cumhaz_rp_b$Haz,
+                                model = "Parametric (RP)"))
 cumhaz_data_b$trans <- factor(cumhaz_data_b$trans,
-                            levels = seq(1, 15),
-                            labels = trans_lab_ten_st$paste)
+                            levels = seq(1, 4),
+                            labels = trans_lab_four_st$paste)
 
-cumhaz_data_c <- rbind(data.frame(msf1$Haz,
+cumhaz_data_a_1096 <- rbind(data.frame(msf1$Haz,
                                 model = "NP Cox"),
-                      data.frame(cox_cumhaz_c$Haz,
+                      data.frame(cox_cumhaz_a_1096$Haz,
                                 model = "Cox"),
-                      data.frame(flexsurv_cumhaz_c$Haz,
-                                model = "Parametric"))
-cumhaz_data_c$trans <- factor(cumhaz_data_c$trans,
-                            levels = seq(1, 15),
-                            labels = trans_lab_ten_st$paste)
-cumhaz_data_d <- rbind(data.frame(msf0$Haz,
-                                model = "NP Cox"),
-                      data.frame(cox_cumhaz_d$Haz,
-                                model = "Cox"),
-                      data.frame(flexsurv_cumhaz_d$Haz,
-                                model = "Parametric"))
-cumhaz_data_d$trans <- factor(cumhaz_data_d$trans,
-                            levels = seq(1, 15),
-                            labels = trans_lab_ten_st$paste)
-
-cumhaz_data_e <- rbind(data.frame(msf1$Haz,
-                                model = "NP Cox"),
-                      data.frame(cox_cumhaz_e$Haz,
-                                model = "Cox"),
-                      data.frame(flexsurv_cumhaz_e$Haz,
-                                model = "Parametric"))
-cumhaz_data_e$trans <- factor(cumhaz_data_e$trans,
-                            levels = seq(1, 15),
-                            labels = trans_lab_ten_st$paste)
-cumhaz_data_f <- rbind(data.frame(msf0$Haz,
-                                model = "NP Cox"),
-                      data.frame(cox_cumhaz_f$Haz,
-                                model = "Cox"),
-                      data.frame(flexsurv_cumhaz_f$Haz,
-                                model = "Parametric"))
-cumhaz_data_f$trans <- factor(cumhaz_data_f$trans,
-                            levels = seq(1, 15),
-                            labels = trans_lab_ten_st$paste)
-cumhaz_data_a2 <- rbind(data.frame(msf1$Haz,
-                                model = "NP Cox"),
-                      data.frame(cox_cumhaz_a$Haz,
-                                model = "Cox"),
-                      data.frame(flexsurv_cumhaz_a2$Haz,
-                                model = "Parametric"))
-cumhaz_data_a2$trans <- factor(cumhaz_data_a2$trans,
-                            levels = seq(1, 15),
-                            labels = trans_lab_ten_st$paste)
-cumhaz_data_b2 <- rbind(data.frame(msf0$Haz,
+                      data.frame(flexsurv_cumhaz_a_1096$Haz,
+                                model = "Parametric"),
+                      data.frame(flexsurv_cumhaz_rp_a_1096$Haz,
+                                model = "Parametric (RP)"))
+cumhaz_data_a_1096$trans <- factor(cumhaz_data_a_1096$trans,
+                            levels = seq(1, 4),
+                            labels = trans_lab_four_st$paste)
+cumhaz_data_b_1096 <- rbind(data.frame(msf0$Haz,
                                 model = "NP Cox"),
                       data.frame(cox_cumhaz_b$Haz,
                                 model = "Cox"),
-                      data.frame(flexsurv_cumhaz_b2$Haz,
-                                model = "Parametric"))
-cumhaz_data_b2$trans <- factor(cumhaz_data_b2$trans,
-                            levels = seq(1, 15),
-                            labels = trans_lab_ten_st$paste)
-
-cumhaz_data_c2 <- rbind(data.frame(msf1$Haz,
-                                model = "NP Cox"),
-                      data.frame(cox_cumhaz_c$Haz,
-                                model = "Cox"),
-                      data.frame(flexsurv_cumhaz_c2$Haz,
-                                model = "Parametric"))
-cumhaz_data_c2$trans <- factor(cumhaz_data_c2$trans,
-                            levels = seq(1, 15),
-                            labels = trans_lab_ten_st$paste)
-cumhaz_data_d2 <- rbind(data.frame(msf0$Haz,
-                                model = "NP Cox"),
-                      data.frame(cox_cumhaz_d$Haz,
-                                model = "Cox"),
-                      data.frame(flexsurv_cumhaz_d2$Haz,
-                                model = "Parametric"))
-cumhaz_data_d2$trans <- factor(cumhaz_data_d2$trans,
-                            levels = seq(1, 15),
-                            labels = trans_lab_ten_st$paste)
-
-cumhaz_data_e2 <- rbind(data.frame(msf1$Haz,
-                                model = "NP Cox"),
-                      data.frame(cox_cumhaz_e$Haz,
-                                model = "Cox"),
-                      data.frame(flexsurv_cumhaz_e2$Haz,
-                                model = "Parametric"))
-cumhaz_data_e2$trans <- factor(cumhaz_data_e2$trans,
-                            levels = seq(1, 15),
-                            labels = trans_lab_ten_st$paste)
-cumhaz_data_f2 <- rbind(data.frame(msf0$Haz,
-                                model = "NP Cox"),
-                      data.frame(cox_cumhaz_f$Haz,
-                                model = "Cox"),
-                      data.frame(flexsurv_cumhaz_f2$Haz,
-                                model = "Parametric"))
-cumhaz_data_f2$trans <- factor(cumhaz_data_f2$trans,
-                            levels = seq(1, 15),
-                            labels = trans_lab_ten_st$paste)
+                      data.frame(flexsurv_cumhaz_b$Haz,
+                                model = "Parametric"),
+                      data.frame(flexsurv_cumhaz_rp_b_1096$Haz,
+                                model = "Parametric (RP)"))
+cumhaz_data_b_1096$trans <- factor(cumhaz_data_b_1096$trans,
+                            levels = seq(1, 4),
+                            labels = trans_lab_four_st$paste)
 ```
 
+## Plots
 
 ```{r haz_df, eval=T, echo=T, paged.print=TRUE, error=T}
 
 #states_trans_lab
 fig_diff_mod_ab<-
 ggplot()+
-  geom_step(data=reshape2::melt(cumhaz_data_a,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="dashed"),size=1, alpha=.65) + 
-  geom_step(data=reshape2::melt(cumhaz_data_b,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="solid"),size=1, alpha=.65) + 
+  geom_step(data=reshape2::melt(cumhaz_data_a,id.vars=c("time","trans","model"))%>% dplyr::filter(model!="Cox"), aes(time, value, color= model,linetype="dashed"),size=1, alpha=.65) + 
+  geom_step(data=reshape2::melt(cumhaz_data_b,id.vars=c("time","trans","model"))%>% dplyr::filter(model!="Cox"), aes(time, value, color= model,linetype="solid"),size=1, alpha=.65) + 
   facet_wrap(trans~., ncol=1, scales="free_y") + 
-  scale_color_manual(name ="Model",values=c("#0E53A7","#200772","#BF8830"),labels= c("Cox","NP Cox","Par"))+
+  scale_color_manual(name ="Model",values=c("#e66101","#fdb863","#b2abd2", "#5e3c99"),labels= c("NP Cox","Par","Par(RP)"))+
+  #"Cox",
   scale_linetype_manual(name= "Modality",values=c("dashed","solid"), labels=c("Residential","Outpatient"))+
   scale_x_continuous(breaks=seq(0, 365.25*11, by = 365.25), labels=seq(0, 11, by = 1), minor_breaks = seq(0, 365.25*11, by = 365.25*.5))+
   xlab("Years") + 
@@ -1208,27 +1105,14 @@ ggplot()+
         legend.background = element_rect(fill="white",
                                   size=0.5, linetype="solid", 
                                   colour ="black"))
-fig_diff_mod_cd<-
+
+fig_diff_mod_ab_1096<-
 ggplot()+
-  geom_step(data=reshape2::melt(cumhaz_data_c,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="dashed"),size=1, alpha=.65) + 
-  geom_step(data=reshape2::melt(cumhaz_data_d,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="solid"),size=1, alpha=.65) + 
+  geom_step(data=reshape2::melt(cumhaz_data_a_1096 %>% dplyr::filter(model!="Cox"),id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="dashed"),size=1, alpha=.65) + 
+  geom_step(data=reshape2::melt(cumhaz_data_b_1096%>% dplyr::filter(model!="Cox"),id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="solid"),size=1, alpha=.65) + 
   facet_wrap(trans~., ncol=1, scales="free_y") + 
-  scale_color_manual(name ="Model",values=c("#0E53A7","#200772","#BF8830"),labels= c("Cox","NP Cox","Par"))+
-  scale_linetype_manual(name= "Modality",values=c("dashed","solid"), labels=c("Residential","Outpatient"))+
-  scale_x_continuous(breaks=seq(0, 365.25*11, by = 365.25), labels=seq(0, 11, by = 1), minor_breaks = seq(0, 365.25*11, by = 365.25*.5))+
-  xlab("Years") + 
-  ylab("Cumulative") + 
-  theme_minimal()+
-  theme(legend.position=c(.9,.6),
-        legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"))
-fig_diff_mod_ef<-
-ggplot()+
-  geom_step(data=reshape2::melt(cumhaz_data_e,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="dashed"),size=1, alpha=.65) + 
-  geom_step(data=reshape2::melt(cumhaz_data_f,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="solid"),size=1, alpha=.65) + 
-  facet_wrap(trans~., ncol=1, scales="free_y") + 
-  scale_color_manual(name ="Model",values=c("#0E53A7","#200772","#BF8830"),labels= c("Cox","NP Cox","Par"))+
+  scale_color_manual(name ="Model",values=c("#e66101","#fdb863","#b2abd2", "#5e3c99"),labels= c("NP Cox","Par","Par(RP)"))+
+  #"Cox"
   scale_linetype_manual(name= "Modality",values=c("dashed","solid"), labels=c("Residential","Outpatient"))+
   scale_x_continuous(breaks=seq(0, 365.25*11, by = 365.25), labels=seq(0, 11, by = 1), minor_breaks = seq(0, 365.25*11, by = 365.25*.5))+
   xlab("Years") + 
@@ -1239,51 +1123,6 @@ ggplot()+
                                   size=0.5, linetype="solid", 
                                   colour ="black"))
 
-fig_diff_mod_ab2<-
-ggplot()+
-  geom_step(data=reshape2::melt(cumhaz_data_a2,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="dashed"),size=1, alpha=.65) + 
-  geom_step(data=reshape2::melt(cumhaz_data_b2,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="solid"),size=1, alpha=.65) + 
-  facet_wrap(trans~., ncol=1, scales="free_y") + 
-  scale_color_manual(name ="Model",values=c("#0E53A7","#200772","#BF8830"),labels= c("Cox","NP Cox","Par"))+
-  scale_linetype_manual(name= "Modality",values=c("dashed","solid"), labels=c("Residential","Outpatient"))+
-  scale_x_continuous(breaks=seq(0, 365.25*11, by = 365.25), labels=seq(0, 11, by = 1), minor_breaks = seq(0, 365.25*11, by = 365.25*.5))+
-  xlab("Years") + 
-  ylab("Cumulative") + 
-  theme_minimal()+
-  theme(legend.position=c(.9,.59),
-        legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"))
-fig_diff_mod_cd2<-
-ggplot()+
-  geom_step(data=reshape2::melt(cumhaz_data_c2,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="dashed"),size=1, alpha=.65) + 
-  geom_step(data=reshape2::melt(cumhaz_data_d2,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="solid"),size=1, alpha=.65) + 
-  facet_wrap(trans~., ncol=1, scales="free_y") + 
-  scale_color_manual(name ="Model",values=c("#0E53A7","#200772","#BF8830"),labels= c("Cox","NP Cox","Par"))+
-  scale_linetype_manual(name= "Modality",values=c("dashed","solid"), labels=c("Residential","Outpatient"))+
-  scale_x_continuous(breaks=seq(0, 365.25*11, by = 365.25), labels=seq(0, 11, by = 1), minor_breaks = seq(0, 365.25*11, by = 365.25*.5))+
-  xlab("Years") + 
-  ylab("Cumulative") + 
-  theme_minimal()+
-  theme(legend.position=c(.9,.6),
-        legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"))
-fig_diff_mod_ef2<-
-ggplot()+
-  geom_step(data=reshape2::melt(cumhaz_data_e2,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="dashed"),size=1, alpha=.65) + 
-  geom_step(data=reshape2::melt(cumhaz_data_f2,id.vars=c("time","trans","model")), aes(time, value, color= model,linetype="solid"),size=1, alpha=.65) + 
-  facet_wrap(trans~., ncol=1, scales="free_y") + 
-  scale_color_manual(name ="Model",values=c("#0E53A7","#200772","#BF8830"),labels= c("Cox","NP Cox","Par"))+
-  scale_linetype_manual(name= "Modality",values=c("dashed","solid"), labels=c("Residential","Outpatient"))+
-  scale_x_continuous(breaks=seq(0, 365.25*11, by = 365.25), labels=seq(0, 11, by = 1), minor_breaks = seq(0, 365.25*11, by = 365.25*.5))+
-  xlab("Years") + 
-  ylab("Cumulative") + 
-  theme_minimal()+
-  theme(legend.position=c(.9,.6),
-        legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"))
 
 if(no_mostrar==1){
 jpeg(paste0(dta_path,"_mult_state_ags/cum_haz_pat1.jpg"), height=30, width= 10, res= 600, units = "in")
@@ -1308,15 +1147,11 @@ fig_diff_mod_ef2
 ```
 
 ```{r cum_haz21, eval=T, echo=T, paged.print=TRUE, fig.height=30, fig.width=10, fig.cap="Figure 1b. Estimate of Cumulative Hazards, Ten States Model, 1st Patient", fig.align="center", error=T}
-fig_diff_mod_ab2+ theme(legend.position=c(.9,.585))
+fig_diff_mod_ab+ theme(legend.position=c(.9,.585))
 ```
 
 ```{r cum_haz22, eval=T, echo=T, paged.print=TRUE, fig.height=30, fig.width=10, fig.cap="Figure 1b. Estimate of Cumulative Hazards, Ten States Model, 2nd Patient", fig.align="center", error=T}
-fig_diff_mod_cd2+ theme(legend.position=c(.9,.585))
-```
-
-```{r cum_haz23, eval=T, echo=T, paged.print=TRUE, fig.height=30, fig.width=10, fig.cap="Figure 1b. Estimate of Cumulative Hazards, Ten States Model, 3rd Patient", fig.align="center", error=T}
-fig_diff_mod_ef2+ theme(legend.position=c(.9,.485))#+ ylim(0,2)
+fig_diff_mod_ab_1096+ theme(legend.position=c(.9,.585))
 ```
 
 <br>
@@ -1329,52 +1164,894 @@ For mstate package, it is possible to use simulation to calculate transition pro
 
 In semi-Markov models, solving the Kolmogorov forward equation numerically is not feasible because the transition is no longer a deterministic function of t, depending on the transition history to estimate differences. Considering the abovementioned, we calculated the transition probabilities not through a deterministic approach, but following a probabilistic one through resamples.
 
-The cumulative hazards obtained are used to simulate the times at which patients transition between health states,  that is,  state occupancy probabilities with a “clock-reset” model at the times specified by 500 points.
+The cumulative hazards obtained are used to simulate the times at which patients transition between health states, that is,  state occupancy probabilities with a “clock-reset” model at the times specified by `r length(seq(0, max(ms_d_match_surv$time,na.rm=T))) %>% format(big.mark=",")` points.
 
-We used a number of `r format(n_iter/2, big.mark=",")` resamples of trajectories.
+We used a number of `r format(n_iter/20, big.mark=",")` resamples of trajectories.
 
 <br>
 
 ```{r pat1_pmatrix,eval=T, echo=T, paged.print=TRUE, error=T}
-
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 #_#_#_#_#_#_#_#_#_#_PMATRIX
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
-
 #n_iter=10
+time_before_transprob<-Sys.time()
 
-for(i in c(.25,.5,1,3)){
+for(i in c(90,183,365,1096,1826)){
   set.seed(1234)
   flexsurv::pmatrix.simfs(x = sel_param_fits_a,
                         t = i, #Must be a single number unlike pmatrix.fs
                         ci = T,
-                        B= n_iter/2, #Increasing B is usually more expensive than increasing M. NUmber of simulations from the normal asymptotic distribution. MOre, more accuracy
+                        B= n_iter/20, #Increasing B is usually more expensive than increasing M. NUmber of simulations from the normal asymptotic distribution. MOre, more accuracy
                         newdat= newdat_a,
                         tvar="trans",
                         #tcovs= "arrival",# Predicatable time-dependent covariates such as age
                         cores= 8,
                         M = 1e5,#Number of individual trajectories to simulate.
                         trans = trans_matrix) %>% 
-  assign(paste0("pmatrix1_t_a_",i),.,envir=.GlobalEnv)
+  assign(paste0("pmatrix1_t_",i),.,envir=.GlobalEnv)
 }
 
-for(i in c(.25,.5,1,3)){
+for(i in c(90,183,365,1096,1826)){
   set.seed(1234)
-  flexsurv::pmatrix.simfs(x = sel_param_fits_a2,
+  flexsurv::pmatrix.simfs(x = sel_param_fits_b,
                         t = i,
                         ci = T,
-                       # B= n_iter/5000,
-                        newdat= newdat5b_2,
+                        B= n_iter/20,
+                        newdat= newdat_b,
                         tvar="trans",
                         #tcovs= "arrival",
                         #M = 1,#Number of individual trajectories to simulate.
                         cores= 8,#N of processor cores
                         trans = trans_matrix) %>% 
-  assign(paste0("pmatrix1_t_b_",i),.,envir=.GlobalEnv)
+  assign(paste0("pmatrix1_t_rp_",i),.,envir=.GlobalEnv)
 }
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(1234)
+  flexsurv::pmatrix.simfs(x = sel_param_fits_a,
+                        t = i, #Must be a single number unlike pmatrix.fs
+                        ci = T,
+                        B= n_iter/20, #Increasing B is usually more expensive than increasing M. NUmber of simulations from the normal asymptotic distribution. MOre, more accuracy
+                        newdat= newdat_a_1096,
+                        tvar="trans",
+                        #tcovs= "arrival",# Predicatable time-dependent covariates such as age
+                        cores= 8,
+                        M = 1e5,#Number of individual trajectories to simulate.
+                        trans = trans_matrix) %>% 
+  assign(paste0("pmatrix1_t_a_1096_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(1234)
+  flexsurv::pmatrix.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        B= n_iter/20,
+                        newdat= newdat_b_1096,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = 1e5,#Number of individual trajectories to simulate.
+                        cores= 8,#N of processor cores
+                        trans = trans_matrix) %>% 
+  assign(paste0("pmatrix1_t_b_1096_",i),.,envir=.GlobalEnv)
+}
+
+time_after_transprob<-Sys.time()
+
+paste0("Time in process: ");time_after_transprob-time_before_transprob
 ```
 
 <br>
+
+
+# Simulate Final State
+
+We estimated the median of stay, percentiles 25, 75 and confidence intervals based on `r (n_iter/20) %>%  format(big.mark=",")` resamples, by simulating a large sample of individuals from the model depending on the type of program they were admitted at baseline.
+
+```{r sim_medians, eval=T, echo=T, paged.print=TRUE, error=T}
+time_before_sim_medians<-Sys.time()
+#Estimates the probability of each final outcome ("absorbing" state), and the mean and quantiles of the time to that outcome for people who experience it, by simulating a large sample of individuals from the model. This can be used for both Markov and semi-Markov models.C
+#n_iter=12
+fmsm_sel_param_fits_a<-
+    fmsm(sel_param_fits_a[[1]],sel_param_fits_a[[2]],sel_param_fits_a[[3]],sel_param_fits_a[[4]], trans=trans_matrix)
+
+fmsm_sel_param_fits_b<-
+    fmsm(sel_param_fits_b[[1]],sel_param_fits_b[[2]],sel_param_fits_b[[3]],sel_param_fits_b[[4]], trans=trans_matrix)
+
+#(90,183,365,1096,1826
+
+set.seed(1234)
+simfinal_fmsm_90d<-
+simfinal_fmsm(fmsm_sel_param_fits_a, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a[1,],newdat_b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 90, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+### Error in do.call("rbind", quants): second argument must be a list
+invisible(c("Error"))
+set.seed(1234)
+simfinal_fmsm_183d<-
+simfinal_fmsm(fmsm_sel_param_fits_a, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a[1,],newdat_b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 183, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+invisible(c("Error"))
+set.seed(1234)
+simfinal_fmsm_365d<-
+simfinal_fmsm(fmsm_sel_param_fits_a, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a[1,],newdat_b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 365, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+invisible(c("Error"))
+set.seed(1234)
+simfinal_fmsm_1096d<-
+simfinal_fmsm(fmsm_sel_param_fits_a, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a[1,],newdat_b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1096, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+
+  set.seed(1234)
+simfinal_fmsm_1826d<-
+simfinal_fmsm(fmsm_sel_param_fits_a, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a[1,],newdat_b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1826, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+
+set.seed(1234)
+simfinal_fmsm_90d_rp<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a[1,],newdat_b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 90, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+invisible(c("Error"))
+set.seed(1234)
+simfinal_fmsm_183d_rp<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a[1,],newdat_b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 183, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+invisible(c("Error"))
+  set.seed(1234)
+simfinal_fmsm_365d_rp<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a[1,],newdat_b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 365, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+invisible(c("Error"))
+  set.seed(1234)
+simfinal_fmsm_1096d_rp<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a[1,],newdat_b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1096, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+
+  set.seed(1234)
+simfinal_fmsm_1826d_rp<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a[1,],newdat_b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1826, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+
+set.seed(1234)
+simfinal_fmsm_90d_1096<-
+simfinal_fmsm(fmsm_sel_param_fits_a, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a_1096[1,],newdat_b_1096[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 90, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+invisible(c("Error"))
+set.seed(1234)
+simfinal_fmsm_183d_1096<-
+simfinal_fmsm(fmsm_sel_param_fits_a, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a_1096[1,],newdat_b_1096[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 183, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+invisible(c("Error"))
+set.seed(1234)
+simfinal_fmsm_365d_1096<-
+simfinal_fmsm(fmsm_sel_param_fits_a, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a_1096[1,],newdat_b_1096[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 365, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+invisible(c("Error"))
+set.seed(1234)
+simfinal_fmsm_1096d_1096<-
+simfinal_fmsm(fmsm_sel_param_fits_a, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a_1096[1,],newdat_b_1096[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1096, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+  set.seed(1234)
+simfinal_fmsm_1826d_1096<-
+simfinal_fmsm(fmsm_sel_param_fits_a, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a_1096[1,],newdat_b_1096[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1826, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+set.seed(1234)
+simfinal_fmsm_90d_rp_1096<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a_1096[1,],newdat_b_1096[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 90, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+invisible(c("Error"))
+set.seed(1234)
+simfinal_fmsm_183d_rp_1096<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a_1096[1,],newdat_b_1096[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 183, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+invisible(c("Error"))
+set.seed(1234)
+simfinal_fmsm_365d_rp_1096<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a_1096[1,],newdat_b_1096[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 365, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+invisible(c("Error"))
+set.seed(1234)
+simfinal_fmsm_1096d_rp_1096<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a_1096[1,],newdat_b_1096[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1096, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+  set.seed(1234)
+simfinal_fmsm_1826d_rp_1096<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat_a_1096[1,],newdat_b_1096[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1826, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+
+time_after_sim_medians<-Sys.time()
+
+paste0("Time in process: ");time_after_sim_medians-time_before_sim_medians
+
+# probability of each final outcome
+# mean and quantiles of the time to that outcome for people who experience it
+```
+
+<br>
+
+# Length of Stay
+
+```{r los,eval=T, echo=T, paged.print=TRUE, error=T}
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#_#_#_#_#_#_#_#_#_#_LOS
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+time_before_los<-Sys.time()
+
+for(i in c(90,183,365,1096,1826)){
+set.seed(2125)
+flexsurv::totlos.simfs(sel_param_fits_a, 
+             t = i, #Maximum time to predict to.
+            # start = 1, #Starting state.
+             newdata = newdat_a, 
+             trans= trans_matrix, 
+             ci = T, #Return a confidence interval calculated by simulating from the asymptotic normal distribution of the maximum likelihood estimates. This is turned off by default, since two levels of simulation are required. If turned on, users should adjust B and/or M until the results reach the desired precision. The simulation over M is generally vectorised, therefore increasing B is usually more expensive than increasing M.
+             tvar = "trans", #Variable in the data representing the transition type. Not required if x is a list of models.
+             #tcovs = "arrival", #Predictable time-dependent covariates such as age, see sim.fmsm.
+             group = NULL, #Optional grouping for the states. For example, if there are four states, and group=c(1,1,2,2), then totlos.simfs returns the expected total time in states 1 and 2 combined, and states 3 and 4 combined
+             #M = 1, #Number of individuals to simulate in order to approximate the transition probabilities. Users should adjust this to obtain the required precision.
+             #B = 1, #Number of simulations from the normal asymptotic distribution used to calculate variances. Decrease for greater speed at the expense of accuracy.
+  cl = 0.95)%>% 
+  assign(paste0("tolos_t_a_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        #B= n_iter/5000,
+                        newdat= newdat_b,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        #B= n_iter/5000,
+                        newdat= newdat_a,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_rp_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        #B= n_iter/5000,
+                        newdat= newdat_b,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_rp_",i),.,envir=.GlobalEnv)
+}
+
+
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        #B= n_iter/5000,
+                        newdat= newdat_a_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_1096_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        #B= n_iter/5000,
+                        newdat= newdat_b_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_1096_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        #B= n_iter/5000,
+                        newdat= newdat_a_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_rp_1096_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        #B= n_iter/5000,
+                        newdat= newdat_b_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_rp_1096_",i),.,envir=.GlobalEnv)
+}
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+invisible(c(
+"## For intermediate states"
+))
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#start= 2,  tolos2_4s_t_a_str2_
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 2,
+                        #B= n_iter/5000,
+                        newdat= newdat_a,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_str2_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 2,
+                        #B= n_iter/5000,
+                        newdat= newdat_b,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_str2_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 2,
+                        #B= n_iter/5000,
+                        newdat= newdat_a,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_rp_str2_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 2,
+                        #B= n_iter/5000,
+                        newdat= newdat_b,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_rp_str2_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 3,
+                        #B= n_iter/5000,
+                        newdat= newdat_a,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_str3_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 3,
+                        #B= n_iter/5000,
+                        newdat= newdat_b,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_str3_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 3,
+                        #B= n_iter/5000,
+                        newdat= newdat_a,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_rp_str3_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 3,
+                        #B= n_iter/5000,
+                        newdat= newdat_b,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_rp_str3_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 4,
+                        #B= n_iter/5000,
+                        newdat= newdat_a,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_str4_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 4,
+                        #B= n_iter/5000,
+                        newdat= newdat_b,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_str4_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 4,
+                        #B= n_iter/5000,
+                        newdat= newdat_a,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_rp_str4_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 4,
+                        #B= n_iter/5000,
+                        newdat= newdat_b,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_rp_str4_",i),.,envir=.GlobalEnv)
+}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#start= 2,  tolos2_4s_t_a_str2_
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 2,
+                        #B= n_iter/5000,
+                        newdat= newdat_a_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_str2_1096_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 2,
+                        #B= n_iter/5000,
+                        newdat= newdat_b_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_str2_1096_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 2,
+                        #B= n_iter/5000,
+                        newdat= newdat_a_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_rp_str2_1096_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 2,
+                        #B= n_iter/5000,
+                        newdat= newdat_b_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_rp_str2_1096_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 3,
+                        #B= n_iter/5000,
+                        newdat= newdat_a_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_str3_1096_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 3,
+                        #B= n_iter/5000,
+                        newdat= newdat_b_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_str3_1096_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 3,
+                        #B= n_iter/5000,
+                        newdat= newdat_a_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_rp_str3_1096_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 3,
+                        #B= n_iter/5000,
+                        newdat= newdat_b_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_rp_str3_1096_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 4,
+                        #B= n_iter/5000,
+                        newdat= newdat_a_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_str4_1096_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 4,
+                        #B= n_iter/5000,
+                        newdat= newdat_b_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_str4_1096_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 4,
+                        #B= n_iter/5000,
+                        newdat= newdat_a_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_rp_str4_1096_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,183,365,1096,1826)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 4,
+                        #B= n_iter/5000,
+                        newdat= newdat_b_1096,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        #M = 1,#Number of individual trajectories to simulate.
+                        cores= 8#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_rp_str4_1096_",i),.,envir=.GlobalEnv)
+}
+time_after_los<-Sys.time()
+
+paste0("Time in process: ");time_after_los-time_before_los
+```
+
 
 # Session Info
 
@@ -1385,13 +2062,13 @@ rstudioapi::getSourceEditorContext()
 #save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
 
 if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
-    save.image("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/mult_state_2.RData")
+    save.image("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/mult_state_3_jun.RData")
   } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
-    save.image("C:/Users/andre/Desktop/SUD_CL/mult_state_2.RData")
+    save.image("C:/Users/andre/Desktop/SUD_CL/mult_state_3_jun.RData")
   } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
-    save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_2.RData")
+    save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_3_jun.RData")
   } else {
-    save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_2.RData")
+    save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_3_jun.RData")
   }
 
 sessionInfo()
