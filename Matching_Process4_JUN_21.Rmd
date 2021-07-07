@@ -71,13 +71,13 @@ rm(list=ls());gc()
 path<-rstudioapi::getSourceEditorContext()$path
 #load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
 if (grepl("CISS Fondecyt",path)==T){
-    setwd("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_3_jun.RData")
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_3_jun.RData")
   } else if (grepl("andre",path)==T){
     setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_3_jun.RData")
   } else if (grepl("E:",path)==T){
     setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_3_jun.RData")
   } else {
-    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_3_jun.RData")
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_3_jun.RData")
   }
 
 #getwd()
@@ -290,11 +290,11 @@ library(gurobi)
 # Probability Matrix
 
 
-```{r pat1_pmatrix,eval=F, echo=T, paged.print=TRUE, error=T}
+```{r pat1_pmatrix,eval=T, echo=T, paged.print=TRUE, error=T}
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 #_#_#_#_#_#_#_#_#_#_PMATRIX
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
-#n_iter=10
+#n_iter=40
 time_before_transprob2<-Sys.time()
 
 invisible(c("Me faltó. Sólo hice el con newdat_a y sel_param_fits_a llamado pmatrix2_t_"))
@@ -304,7 +304,7 @@ for(i in c(90,183,365,1096,1826)){
   flexsurv::pmatrix.simfs(x = sel_param_fits_a,
                         t = i, #Must be a single number unlike pmatrix.fs
                         ci = T,
-                        B= n_iter/20, #Increasing B is usually more expensive than increasing M. NUmber of simulations from the normal asymptotic distribution. MOre, more accuracy
+                        B= n_iter/20, 
                         newdat= newdat_b,
                         tvar="trans",
                         #tcovs= "arrival",# Predicatable time-dependent covariates such as age
@@ -313,6 +313,12 @@ for(i in c(90,183,365,1096,1826)){
                         trans = trans_matrix) %>% 
   assign(paste0("pmatrix1_t_b_",i),.,envir=.GlobalEnv)
 }
+invisible(c("No incluir tcovs"))
+#Error in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE,  : 
+#  arguments imply differing number of rows: 4, 7
+#In addition: Warning message:
+#In dat[[i]] + t :
+#  longer object length is not a multiple of shorter object length
 
 invisible(c("Me faltó. Sólo hice el con newdat_b y sel_param_fits_b llamado pmatrix1_t_rp_"))
 
@@ -324,7 +330,7 @@ for(i in c(90,183,365,1096,1826)){
                         B= n_iter/20,
                         newdat= newdat_a,
                         tvar="trans",
-                        #tcovs= "arrival",
+                        #tcovs= "arrival", 
                         #M = 1,#Number of individual trajectories to simulate.
                         cores= 8,#N of processor cores
                         trans = trans_matrix) %>% 
@@ -338,7 +344,7 @@ for(i in c(90,183,365,1096,1826)){
   flexsurv::pmatrix.simfs(x = sel_param_fits_a,
                         t = i, #Must be a single number unlike pmatrix.fs
                         ci = T,
-                        B= n_iter/20, #Increasing B is usually more expensive than increasing M. NUmber of simulations from the normal asymptotic distribution. MOre, more accuracy
+                        B= n_iter/20, 
                         newdat= newdat_b_1096,
                         tvar="trans",
                         #tcovs= "arrival",# Predicatable time-dependent covariates such as age
@@ -368,6 +374,9 @@ for(i in c(90,183,365,1096,1826)){
 time_after_transprob2<-Sys.time()
 
 paste0("Time in process: ");time_after_transprob2-time_before_transprob2
+
+#Time difference of 11.09199 hours , without bootstrap
+
 ```
 
 
@@ -376,33 +385,156 @@ paste0("Time in process: ");time_after_transprob2-time_before_transprob2
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #pmatrix1_t_ pmatrix1_t_b_ pmatrix1_t_rp_a_ pmatrix1_t_rp_ pmatrix1_t_a_1096_ pmatrix1_t_a_1096_b_ pmatrix2_t_b_1096_a_ pmatrix1_t_b_1096_ 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
-pmatrix2_t_b_lo<-
+#pmatrix1_t_
+pmatrix2_a_t_lo<-
 do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
     attr(get(paste0("pmatrix1_t_",t)),"lower")
     }))
 
-pmatrix2_t_a_up<-
+pmatrix2_a_t_up<-
 do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
     attr(get(paste0("pmatrix1_t_",t)),"upper")
     }))
 
-pmatrix2_t_b<-
+pmatrix2_a_t<-
 do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
     get(paste0("pmatrix1_t_",t))
+    }))
+
+#_#_#_#_#_#_#_#_#_#_
+#pmatrix1_t_b_
+pmatrix2_b_t_lo<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix1_t_b_",t)),"lower")
+    }))
+
+pmatrix2_b_t_up<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix1_t_b_",t)),"upper")
+    }))
+
+pmatrix2_b_t<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    get(paste0("pmatrix1_t_b_",t))
+    }))
+
+#_#_#_#_#_#_#_#_#_#_
+#pmatrix1_t_rp_a_
+pmatrix2_t_a_rp_lo<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix1_t_rp_a_",t)),"lower")
+    }))
+
+pmatrix2_t_a_rp_up<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix1_t_rp_a_",t)),"upper")
+    }))
+
+pmatrix2_t_a_rp<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    get(paste0("pmatrix1_t_rp_a_",t))
+    }))
+
+#_#_#_#_#_#_#_#_#_#_
+#pmatrix1_t_rp_
+pmatrix2_t_b_rp_lo<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix1_t_rp_",t)),"lower")
+    }))
+
+pmatrix2_t_b_rp_up<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix1_t_rp_",t)),"upper")
+    }))
+
+pmatrix2_t_b_rp<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    get(paste0("pmatrix1_t_rp_",t))
+    }))
+
+#_#_#_#_#_#_#_#_#_#_
+#pmatrix1_t_a_1096_
+pmatrix2_t_a_1096_lo<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix1_t_a_1096_",t)),"lower")
+    }))
+
+pmatrix2_t_a_1096_up<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix1_t_a_1096_",t)),"upper")
+    }))
+
+pmatrix2_t_a_1096<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    get(paste0("pmatrix1_t_a_1096_",t))
+    }))
+
+#_#_#_#_#_#_#_#_#_#_
+#pmatrix1_t_a_1096_b_invisible(c("Me faltó. Sólo hice el con newdat_a_1096 y sel_param_fits_a llamado pmatrix1_t_a_1096_; este es el pmatrix1_t_a_1096_b, que tiene newdat_b_1096 y sel_param_fits_a"))
+
+pmatrix2_t_b_1096_lo<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix1_t_a_1096_b_",t)),"lower")
+    }))
+
+pmatrix2_t_b_1096_up<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix1_t_a_1096_b_",t)),"upper")
+    }))
+
+pmatrix2_t_b_1096<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    get(paste0("pmatrix1_t_a_1096_b_",t))
+    }))
+
+#_#_#_#_#_#_#_#_#_#_
+#pmatrix2_t_b_1096_a_ 
+#invisible(c("Me faltó. Sólo hice el con newdat_b_1096 y sel_param_fits_b llamado pmatrix1_t_b_1096_; ahora hice pmatrix2_t_b_1096_a_, que son RP (sel_param_fits_b), pero con a en data (newdat_a_1096)"))
+
+pmatrix2_t_a_rp_1096_lo<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix2_t_b_1096_a_",t)),"lower")
+    }))
+
+pmatrix2_t_a_rp_1096_up<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix2_t_b_1096_a_",t)),"upper")
+    }))
+
+pmatrix2_t_a_rp_1096<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    get(paste0("pmatrix2_t_b_1096_a_",t))
+    }))
+
+#_#_#_#_#_#_#_#_#_#_
+#pmatrix1_t_b_1096_ 
+
+pmatrix2_t_b_rp_1096_lo<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix1_t_b_1096_",t)),"lower")
+    }))
+
+pmatrix2_t_b_rp_1096_up<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    attr(get(paste0("pmatrix1_t_b_1096_",t)),"upper")
+    }))
+
+pmatrix2_t_b_rp_1096<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    get(paste0("pmatrix1_t_b_1096_",t))
     }))
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
 pmatrix2_t_a_df_final<-
-cbind.data.frame(t=rep(c(.25,1,3),each=dim(mat_3_states)[2]),
-  trans=rep(1:dim(mat_3_states)[2]),
-                  pmatrix2_t_a,pmatrix2_t_a_lo,pmatrix2_t_a_up) %>% 
+cbind.data.frame(t=rep(c(90,183,365,1096,1826),each=dim(trans_matrix)[2]),
+  trans=rep(1:dim(trans_matrix)[2]),
+                  pmatrix2_a_t,pmatrix2_a_t_lo,pmatrix2_a_t_up) %>% 
   data.frame() %>% 
-  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3",
-                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1",
-                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2") %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3","Trans_4"="X4","Trans_5"="X5",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1","Trans_4_lo"="X4.1","Trans_5_lo"="X5.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2","Trans_4_up"="X4.2","Trans_5_up"="X5.2") %>% 
   dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
                                    sprintf("%1.2f",Trans_1_lo),"-",
                                    sprintf("%1.2f",Trans_1_up),"]")) %>% 
@@ -411,34 +543,21 @@ cbind.data.frame(t=rep(c(.25,1,3),each=dim(mat_3_states)[2]),
                                    sprintf("%1.2f",Trans_2_up),"]")) %>% 
   dplyr::mutate(Trans_3_cis=paste0(sprintf("%1.2f",Trans_3)," [",
                                    sprintf("%1.2f",Trans_3_lo),"-",
-                                   sprintf("%1.2f",Trans_3_up),"]"))
-
+                                   sprintf("%1.2f",Trans_3_up),"]")) %>% 
+  dplyr::mutate(Trans_4_cis=paste0(sprintf("%1.2f",Trans_4)," [",
+                                   sprintf("%1.2f",Trans_4_lo),"-",
+                                   sprintf("%1.2f",Trans_4_up),"]")) %>% 
+  dplyr::mutate(Trans_5_cis=paste0(sprintf("%1.2f",Trans_5)," [",
+                                   sprintf("%1.2f",Trans_5_lo),"-",
+                                   sprintf("%1.2f",Trans_5_up),"]"))
 pmatrix2_t_b_df_final<-
-cbind.data.frame(t=rep(c(.25,1,3),each=dim(mat_3_states)[2]),
-  trans=rep(1:dim(mat_3_states)[2]),
-                  pmatrix2_t_b,pmatrix2_t_b_lo,pmatrix2_t_b_up) %>% 
-    data.frame() %>% 
-  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3",
-                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1",
-                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2") %>% 
-  dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
-                                   sprintf("%1.2f",Trans_1_lo),"-",
-                                   sprintf("%1.2f",Trans_1_up),"]")) %>% 
-  dplyr::mutate(Trans_2_cis=paste0(sprintf("%1.2f",Trans_2)," [",
-                                   sprintf("%1.2f",Trans_2_lo),"-",
-                                   sprintf("%1.2f",Trans_2_up),"]")) %>% 
-  dplyr::mutate(Trans_3_cis=paste0(sprintf("%1.2f",Trans_3)," [",
-                                   sprintf("%1.2f",Trans_3_lo),"-",
-                                   sprintf("%1.2f",Trans_3_up),"]"))
-
-pmatrix2_4s_t_a_df_final<-
-cbind.data.frame(t=rep(c(.25,1,3),each=dim(mat_4_states)[2]),
-  trans=rep(1:dim(mat_4_states)[2]),
-                  pmatrix2_4s_t_a,pmatrix2_4s_t_a_lo,pmatrix2_4s_t_a_up) %>% 
-    data.frame() %>% 
-  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3","Trans_4"="X4",
-                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1","Trans_4_lo"="X4.1",
-                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2","Trans_4_up"="X4.2") %>% 
+cbind.data.frame(t=rep(c(90,183,365,1096,1826),each=dim(trans_matrix)[2]),
+  trans=rep(1:dim(trans_matrix)[2]),
+                  pmatrix2_b_t,pmatrix2_b_t_lo,pmatrix2_b_t_up) %>% 
+  data.frame() %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3","Trans_4"="X4","Trans_5"="X5",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1","Trans_4_lo"="X4.1","Trans_5_lo"="X5.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2","Trans_4_up"="X4.2","Trans_5_up"="X5.2") %>% 
   dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
                                    sprintf("%1.2f",Trans_1_lo),"-",
                                    sprintf("%1.2f",Trans_1_up),"]")) %>% 
@@ -450,16 +569,22 @@ cbind.data.frame(t=rep(c(.25,1,3),each=dim(mat_4_states)[2]),
                                    sprintf("%1.2f",Trans_3_up),"]")) %>% 
   dplyr::mutate(Trans_4_cis=paste0(sprintf("%1.2f",Trans_4)," [",
                                    sprintf("%1.2f",Trans_4_lo),"-",
-                                   sprintf("%1.2f",Trans_4_up),"]"))
+                                   sprintf("%1.2f",Trans_4_up),"]")) %>% 
+  dplyr::mutate(Trans_5_cis=paste0(sprintf("%1.2f",Trans_5)," [",
+                                   sprintf("%1.2f",Trans_5_lo),"-",
+                                   sprintf("%1.2f",Trans_5_up),"]"))
 
-pmatrix2_4s_t_b_df_final<-
-cbind.data.frame(t=rep(c(.25,1,3),each=dim(mat_4_states)[2]),
-  trans=rep(1:dim(mat_4_states)[2]),
-                  pmatrix2_4s_t_b,pmatrix2_4s_t_b_lo,pmatrix2_4s_t_b_up) %>% 
-    data.frame() %>% 
-  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3","Trans_4"="X4",
-                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1","Trans_4_lo"="X4.1",
-                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2","Trans_4_up"="X4.2") %>% 
+#pmatrix2_t_a_rp pmatrix2_t_a_rp_lo pmatrix2_t_a_rp_up
+#pmatrix2_t_b_rp pmatrix2_t_b_rp_lo pmatrix2_t_b_rp_up
+
+pmatrix2_t_a_rp_df_final<-
+cbind.data.frame(t=rep(c(90,183,365,1096,1826),each=dim(trans_matrix)[2]),
+  trans=rep(1:dim(trans_matrix)[2]),
+                  pmatrix2_t_a_rp,pmatrix2_t_a_rp_lo,pmatrix2_t_a_rp_up) %>% 
+  data.frame() %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3","Trans_4"="X4","Trans_5"="X5",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1","Trans_4_lo"="X4.1","Trans_5_lo"="X5.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2","Trans_4_up"="X4.2","Trans_5_up"="X5.2") %>% 
   dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
                                    sprintf("%1.2f",Trans_1_lo),"-",
                                    sprintf("%1.2f",Trans_1_up),"]")) %>% 
@@ -471,29 +596,932 @@ cbind.data.frame(t=rep(c(.25,1,3),each=dim(mat_4_states)[2]),
                                    sprintf("%1.2f",Trans_3_up),"]")) %>% 
   dplyr::mutate(Trans_4_cis=paste0(sprintf("%1.2f",Trans_4)," [",
                                    sprintf("%1.2f",Trans_4_lo),"-",
-                                   sprintf("%1.2f",Trans_4_up),"]"))
+                                   sprintf("%1.2f",Trans_4_up),"]")) %>% 
+  dplyr::mutate(Trans_5_cis=paste0(sprintf("%1.2f",Trans_5)," [",
+                                   sprintf("%1.2f",Trans_5_lo),"-",
+                                   sprintf("%1.2f",Trans_5_up),"]"))
+pmatrix2_t_b_rp_df_final<-
+cbind.data.frame(t=rep(c(90,183,365,1096,1826),each=dim(trans_matrix)[2]),
+  trans=rep(1:dim(trans_matrix)[2]),
+                  pmatrix2_t_b_rp,pmatrix2_t_b_rp_lo,pmatrix2_t_b_rp_up) %>% 
+  data.frame() %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3","Trans_4"="X4","Trans_5"="X5",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1","Trans_4_lo"="X4.1","Trans_5_lo"="X5.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2","Trans_4_up"="X4.2","Trans_5_up"="X5.2") %>% 
+  dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
+                                   sprintf("%1.2f",Trans_1_lo),"-",
+                                   sprintf("%1.2f",Trans_1_up),"]")) %>% 
+  dplyr::mutate(Trans_2_cis=paste0(sprintf("%1.2f",Trans_2)," [",
+                                   sprintf("%1.2f",Trans_2_lo),"-",
+                                   sprintf("%1.2f",Trans_2_up),"]")) %>% 
+  dplyr::mutate(Trans_3_cis=paste0(sprintf("%1.2f",Trans_3)," [",
+                                   sprintf("%1.2f",Trans_3_lo),"-",
+                                   sprintf("%1.2f",Trans_3_up),"]")) %>% 
+  dplyr::mutate(Trans_4_cis=paste0(sprintf("%1.2f",Trans_4)," [",
+                                   sprintf("%1.2f",Trans_4_lo),"-",
+                                   sprintf("%1.2f",Trans_4_up),"]")) %>% 
+  dplyr::mutate(Trans_5_cis=paste0(sprintf("%1.2f",Trans_5)," [",
+                                   sprintf("%1.2f",Trans_5_lo),"-",
+                                   sprintf("%1.2f",Trans_5_up),"]"))
+
+#pmatrix2_t_a_1096 pmatrix2_t_a_1096_lo pmatrix2_t_a_1096_up
+#pmatrix2_t_b_1096 pmatrix2_t_b_1096_lo pmatrix2_t_b_1096_up
+
+pmatrix2_t_a_df_1096_final<-
+cbind.data.frame(t=rep(c(90,183,365,1096,1826),each=dim(trans_matrix)[2]),
+  trans=rep(1:dim(trans_matrix)[2]),
+                  pmatrix2_t_a_1096,pmatrix2_t_a_1096_lo,pmatrix2_t_a_1096_up) %>% 
+  data.frame() %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3","Trans_4"="X4","Trans_5"="X5",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1","Trans_4_lo"="X4.1","Trans_5_lo"="X5.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2","Trans_4_up"="X4.2","Trans_5_up"="X5.2") %>% 
+  dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
+                                   sprintf("%1.2f",Trans_1_lo),"-",
+                                   sprintf("%1.2f",Trans_1_up),"]")) %>% 
+  dplyr::mutate(Trans_2_cis=paste0(sprintf("%1.2f",Trans_2)," [",
+                                   sprintf("%1.2f",Trans_2_lo),"-",
+                                   sprintf("%1.2f",Trans_2_up),"]")) %>% 
+  dplyr::mutate(Trans_3_cis=paste0(sprintf("%1.2f",Trans_3)," [",
+                                   sprintf("%1.2f",Trans_3_lo),"-",
+                                   sprintf("%1.2f",Trans_3_up),"]")) %>% 
+  dplyr::mutate(Trans_4_cis=paste0(sprintf("%1.2f",Trans_4)," [",
+                                   sprintf("%1.2f",Trans_4_lo),"-",
+                                   sprintf("%1.2f",Trans_4_up),"]")) %>% 
+  dplyr::mutate(Trans_5_cis=paste0(sprintf("%1.2f",Trans_5)," [",
+                                   sprintf("%1.2f",Trans_5_lo),"-",
+                                   sprintf("%1.2f",Trans_5_up),"]"))
+pmatrix2_t_b_df_1096_final<-
+cbind.data.frame(t=rep(c(90,183,365,1096,1826),each=dim(trans_matrix)[2]),
+  trans=rep(1:dim(trans_matrix)[2]),
+                  pmatrix2_t_b_1096,pmatrix2_t_b_1096_lo,pmatrix2_t_b_1096_up) %>% 
+  data.frame() %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3","Trans_4"="X4","Trans_5"="X5",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1","Trans_4_lo"="X4.1","Trans_5_lo"="X5.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2","Trans_4_up"="X4.2","Trans_5_up"="X5.2") %>% 
+  dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
+                                   sprintf("%1.2f",Trans_1_lo),"-",
+                                   sprintf("%1.2f",Trans_1_up),"]")) %>% 
+  dplyr::mutate(Trans_2_cis=paste0(sprintf("%1.2f",Trans_2)," [",
+                                   sprintf("%1.2f",Trans_2_lo),"-",
+                                   sprintf("%1.2f",Trans_2_up),"]")) %>% 
+  dplyr::mutate(Trans_3_cis=paste0(sprintf("%1.2f",Trans_3)," [",
+                                   sprintf("%1.2f",Trans_3_lo),"-",
+                                   sprintf("%1.2f",Trans_3_up),"]")) %>% 
+  dplyr::mutate(Trans_4_cis=paste0(sprintf("%1.2f",Trans_4)," [",
+                                   sprintf("%1.2f",Trans_4_lo),"-",
+                                   sprintf("%1.2f",Trans_4_up),"]")) %>% 
+  dplyr::mutate(Trans_5_cis=paste0(sprintf("%1.2f",Trans_5)," [",
+                                   sprintf("%1.2f",Trans_5_lo),"-",
+                                   sprintf("%1.2f",Trans_5_up),"]"))
+
+#pmatrix2_t_a_rp_1096 pmatrix2_t_a_rp_1096_lo pmatrix2_t_a_rp_1096_up
+#pmatrix2_t_b_rp_1096 pmatrix2_t_b_rp_1096_lo pmatrix2_t_b_rp_1096_up
+
+
+pmatrix2_t_a_rp_df_1096_final<-
+cbind.data.frame(t=rep(c(90,183,365,1096,1826),each=dim(trans_matrix)[2]),
+  trans=rep(1:dim(trans_matrix)[2]),
+                  pmatrix2_t_a_rp_1096,pmatrix2_t_a_rp_1096_lo,pmatrix2_t_a_rp_1096_up) %>% 
+  data.frame() %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3","Trans_4"="X4","Trans_5"="X5",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1","Trans_4_lo"="X4.1","Trans_5_lo"="X5.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2","Trans_4_up"="X4.2","Trans_5_up"="X5.2") %>% 
+  dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
+                                   sprintf("%1.2f",Trans_1_lo),"-",
+                                   sprintf("%1.2f",Trans_1_up),"]")) %>% 
+  dplyr::mutate(Trans_2_cis=paste0(sprintf("%1.2f",Trans_2)," [",
+                                   sprintf("%1.2f",Trans_2_lo),"-",
+                                   sprintf("%1.2f",Trans_2_up),"]")) %>% 
+  dplyr::mutate(Trans_3_cis=paste0(sprintf("%1.2f",Trans_3)," [",
+                                   sprintf("%1.2f",Trans_3_lo),"-",
+                                   sprintf("%1.2f",Trans_3_up),"]")) %>% 
+  dplyr::mutate(Trans_4_cis=paste0(sprintf("%1.2f",Trans_4)," [",
+                                   sprintf("%1.2f",Trans_4_lo),"-",
+                                   sprintf("%1.2f",Trans_4_up),"]")) %>% 
+  dplyr::mutate(Trans_5_cis=paste0(sprintf("%1.2f",Trans_5)," [",
+                                   sprintf("%1.2f",Trans_5_lo),"-",
+                                   sprintf("%1.2f",Trans_5_up),"]"))
+pmatrix2_t_b_rp_df_1096_final<-
+cbind.data.frame(t=rep(c(90,183,365,1096,1826),each=dim(trans_matrix)[2]),
+  trans=rep(1:dim(trans_matrix)[2]),
+                  pmatrix2_t_b_rp_1096,pmatrix2_t_b_rp_1096_lo,pmatrix2_t_b_rp_1096_up) %>% 
+  data.frame() %>% 
+  dplyr::rename("Trans_1"="X1","Trans_2"="X2","Trans_3"="X3","Trans_4"="X4","Trans_5"="X5",
+                "Trans_1_lo"="X1.1","Trans_2_lo"="X2.1","Trans_3_lo"="X3.1","Trans_4_lo"="X4.1","Trans_5_lo"="X5.1",
+                "Trans_1_up"="X1.2","Trans_2_up"="X2.2","Trans_3_up"="X3.2","Trans_4_up"="X4.2","Trans_5_up"="X5.2") %>% 
+  dplyr::mutate(Trans_1_cis=paste0(sprintf("%1.2f",Trans_1)," [",
+                                   sprintf("%1.2f",Trans_1_lo),"-",
+                                   sprintf("%1.2f",Trans_1_up),"]")) %>% 
+  dplyr::mutate(Trans_2_cis=paste0(sprintf("%1.2f",Trans_2)," [",
+                                   sprintf("%1.2f",Trans_2_lo),"-",
+                                   sprintf("%1.2f",Trans_2_up),"]")) %>% 
+  dplyr::mutate(Trans_3_cis=paste0(sprintf("%1.2f",Trans_3)," [",
+                                   sprintf("%1.2f",Trans_3_lo),"-",
+                                   sprintf("%1.2f",Trans_3_up),"]")) %>% 
+  dplyr::mutate(Trans_4_cis=paste0(sprintf("%1.2f",Trans_4)," [",
+                                   sprintf("%1.2f",Trans_4_lo),"-",
+                                   sprintf("%1.2f",Trans_4_up),"]")) %>% 
+  dplyr::mutate(Trans_5_cis=paste0(sprintf("%1.2f",Trans_5)," [",
+                                   sprintf("%1.2f",Trans_5_lo),"-",
+                                   sprintf("%1.2f",Trans_5_up),"]"))
 ```
 
 
+
+```{r dfs2_pat_probtrans1,eval=T, echo=T, paged.print=TRUE, error=T}
+pmatrix2_t_b_df_final_join<-
+pmatrix2_t_b_df_final %>% 
+    dplyr::select(t, trans, ends_with("cis")) %>% 
+  dplyr::filter(t%in% c(90,183,365,1096,1826)) %>%
+      dplyr::mutate(t=factor(t, levels=c(90,183,365,1096,1826),
+                                labels=c("~3 months", "~6 months", "~1 year", "~3 years", "~5 years")))
+
+pmatrix2_t_a_df_final %>% 
+  dplyr::select(t, trans, ends_with("cis")) %>% 
+  dplyr::filter(t%in% c(90,183,365,1096,1826)) %>%
+      dplyr::mutate(t=factor(t, levels=c(90,183,365,1096,1826),
+                                labels=c("~3 months", "~6 months", "~1 year", "~3 years", "~5 years")))%>% 
+  dplyr::left_join(pmatrix2_t_b_df_final_join,by=c("t","trans")) %>% 
+  dplyr::select(-t) %>% 
+  dplyr::select(`trans`,`Trans_1_cis.x`,`Trans_2_cis.x`,`Trans_3_cis.x`,`Trans_4_cis.x`,`Trans_5_cis.x`,`Trans_1_cis.y`,`Trans_2_cis.y`,`Trans_3_cis.y`,`Trans_4_cis.y`,`Trans_5_cis.y`) %>% 
+    dplyr::rename("1)Admission"="Trans_1_cis.x","2)Readmission"="Trans_2_cis.x","3)2nd Readmission"="Trans_3_cis.x",
+                "4)3rd Readmission"="Trans_4_cis.x")%>%
+    #2021-04-27: drop from/actual state, readmission
+  dplyr::filter(!grepl("5",trans)) %>% 
+        dplyr::mutate(trans=factor(trans, levels=c(1:4),
+                                labels=c("1)Admission","2)Readmission","3)2nd Readmission","4)3rd Readmission"))) %>% 
+          knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption = paste0("Table 1a. Estimated transition probabilities"),
+               col.names = c("Actual state", rep(c("1)Admission","2)Readmission","3)2nd Readmission","4)3rd Readmission","5)4th Readmission"),2)),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::add_footnote("Note. We removed 4th Readmission because it was an absorbing state", notation="none") %>% 
+  kableExtra::add_header_above(c(" ", "Residential: Transition to" = dim(trans_matrix)[2],"Outpatient: Transition to" = dim(trans_matrix)[2])) %>% 
+  kableExtra::pack_rows("~3 months", 1, dim(trans_matrix)[2]-1) %>% 
+  kableExtra::pack_rows("~6 months", dim(trans_matrix)[2], dim(trans_matrix)[2]*2-2) %>%
+  kableExtra::pack_rows("~1 year", dim(trans_matrix)[2]*2-1, dim(trans_matrix)[2]*3-3) %>%
+  kableExtra::pack_rows("~3 years", dim(trans_matrix)[2]*3-2, dim(trans_matrix)[2]*4-4) %>%
+  kableExtra::pack_rows("~5 years", dim(trans_matrix)[2]*4-3, dim(trans_matrix)[2]*5-5) %>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+
+```{r dfs2_pat_probtrans2,eval=T, echo=T, paged.print=TRUE, error=T}
+#pmatrix2_t_a_rp_df_1096_final pmatrix2_t_b_rp_df_1096_final
+#pmatrix2_t_a_df_1096_final pmatrix2_t_b_df_1096_final
+#pmatrix2_t_a_rp_df_final pmatrix2_t_b_rp_df_final
+
+pmatrix2_t_b_rp_df_final_join<-
+pmatrix2_t_b_rp_df_final %>% 
+    dplyr::select(t, trans, ends_with("cis")) %>% 
+  dplyr::filter(t%in% c(90,183,365,1096,1826)) %>%
+      dplyr::mutate(t=factor(t, levels=c(90,183,365,1096,1826),
+                                labels=c("~3 months", "~6 months", "~1 year", "~3 years", "~5 years")))
+
+pmatrix2_t_a_rp_df_final %>% 
+  dplyr::select(t, trans, ends_with("cis")) %>% 
+  dplyr::filter(t%in% c(90,183,365,1096,1826)) %>%
+      dplyr::mutate(t=factor(t, levels=c(90,183,365,1096,1826),
+                                labels=c("~3 months", "~6 months", "~1 year", "~3 years", "~5 years")))%>% 
+  dplyr::left_join(pmatrix2_t_b_rp_df_final_join,by=c("t","trans")) %>% 
+  dplyr::select(-t) %>% 
+  dplyr::select(`trans`,`Trans_1_cis.x`,`Trans_2_cis.x`,`Trans_3_cis.x`,`Trans_4_cis.x`,`Trans_5_cis.x`,`Trans_1_cis.y`,`Trans_2_cis.y`,`Trans_3_cis.y`,`Trans_4_cis.y`,`Trans_5_cis.y`) %>% 
+    dplyr::rename("1)Admission"="Trans_1_cis.x","2)Readmission"="Trans_2_cis.x","3)2nd Readmission"="Trans_3_cis.x",
+                "4)3rd Readmission"="Trans_4_cis.x")%>%
+    #2021-04-27: drop from/actual state, readmission
+  dplyr::filter(!grepl("5",trans)) %>% 
+        dplyr::mutate(trans=factor(trans, levels=c(1:4),
+                                labels=c("1)Admission","2)Readmission","3)2nd Readmission","4)3rd Readmission"))) %>% 
+          knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption = paste0("Table 1b. Estimated transition probabilities (RP)"),
+               col.names = c("Actual state", rep(c("1)Admission","2)Readmission","3)2nd Readmission","4)3rd Readmission","5)4th Readmission"),2)),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::add_footnote("Note. We removed 4th Readmission because it was an absorbing state", notation="none") %>% 
+  kableExtra::add_header_above(c(" ", "Residential: Transition to" = dim(trans_matrix)[2],"Outpatient: Transition to" = dim(trans_matrix)[2])) %>% 
+  kableExtra::pack_rows("~3 months", 1, dim(trans_matrix)[2]-1) %>% 
+  kableExtra::pack_rows("~6 months", dim(trans_matrix)[2], dim(trans_matrix)[2]*2-2) %>%
+  kableExtra::pack_rows("~1 year", dim(trans_matrix)[2]*2-1, dim(trans_matrix)[2]*3-3) %>%
+  kableExtra::pack_rows("~3 years", dim(trans_matrix)[2]*3-2, dim(trans_matrix)[2]*4-4) %>%
+  kableExtra::pack_rows("~5 years", dim(trans_matrix)[2]*4-3, dim(trans_matrix)[2]*5-5) %>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+```{r dfs2_pat_probtrans3,eval=T, echo=T, paged.print=TRUE, error=T}
+#pmatrix2_t_a_rp_df_1096_final pmatrix2_t_b_rp_df_1096_final
+#pmatrix2_t_a_df_1096_final pmatrix2_t_b_df_1096_final
+#pmatrix2_t_a_rp_df_final pmatrix2_t_b_rp_df_final
+
+pmatrix2_t_b_df_1096_final_join<-
+pmatrix2_t_b_df_1096_final %>% 
+    dplyr::select(t, trans, ends_with("cis")) %>% 
+  dplyr::filter(t%in% c(90,183,365,1096,1826)) %>%
+      dplyr::mutate(t=factor(t, levels=c(90,183,365,1096,1826),
+                                labels=c("~3 months", "~6 months", "~1 year", "~3 years", "~5 years")))
+
+pmatrix2_t_a_df_1096_final %>% 
+  dplyr::select(t, trans, ends_with("cis")) %>% 
+  dplyr::filter(t%in% c(90,183,365,1096,1826)) %>%
+      dplyr::mutate(t=factor(t, levels=c(90,183,365,1096,1826),
+                                labels=c("~3 months", "~6 months", "~1 year", "~3 years", "~5 years")))%>% 
+  dplyr::left_join(pmatrix2_t_b_df_1096_final_join,by=c("t","trans")) %>% 
+  dplyr::select(-t) %>% 
+  dplyr::select(`trans`,`Trans_1_cis.x`,`Trans_2_cis.x`,`Trans_3_cis.x`,`Trans_4_cis.x`,`Trans_5_cis.x`,`Trans_1_cis.y`,`Trans_2_cis.y`,`Trans_3_cis.y`,`Trans_4_cis.y`,`Trans_5_cis.y`) %>% 
+    dplyr::rename("1)Admission"="Trans_1_cis.x","2)Readmission"="Trans_2_cis.x","3)2nd Readmission"="Trans_3_cis.x",
+                "4)3rd Readmission"="Trans_4_cis.x")%>%
+    #2021-04-27: drop from/actual state, readmission
+  dplyr::filter(!grepl("5",trans)) %>% 
+        dplyr::mutate(trans=factor(trans, levels=c(1:4),
+                                labels=c("1)Admission","2)Readmission","3)2nd Readmission","4)3rd Readmission"))) %>% 
+          knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption = paste0("Table 1c. Estimated transition probabilities (Arrival 3 years)"),
+               col.names = c("Actual state", rep(c("1)Admission","2)Readmission","3)2nd Readmission","4)3rd Readmission","5)4th Readmission"),2)),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::add_footnote("Note. We removed 4th Readmission because it was an absorbing state", notation="none") %>% 
+  kableExtra::add_header_above(c(" ", "Residential: Transition to" = dim(trans_matrix)[2],"Outpatient: Transition to" = dim(trans_matrix)[2])) %>% 
+  kableExtra::pack_rows("~3 months", 1, dim(trans_matrix)[2]-1) %>% 
+  kableExtra::pack_rows("~6 months", dim(trans_matrix)[2], dim(trans_matrix)[2]*2-2) %>%
+  kableExtra::pack_rows("~1 year", dim(trans_matrix)[2]*2-1, dim(trans_matrix)[2]*3-3) %>%
+  kableExtra::pack_rows("~3 years", dim(trans_matrix)[2]*3-2, dim(trans_matrix)[2]*4-4) %>%
+  kableExtra::pack_rows("~5 years", dim(trans_matrix)[2]*4-3, dim(trans_matrix)[2]*5-5) %>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+```{r dfs2_pat_probtrans4,eval=T, echo=T, paged.print=TRUE, error=T}
+#pmatrix2_t_a_rp_df_1096_final pmatrix2_t_b_rp_df_1096_final
+#pmatrix2_t_a_df_1096_final pmatrix2_t_b_df_1096_final
+#pmatrix2_t_a_rp_df_final pmatrix2_t_b_rp_df_final
+
+pmatrix2_t_b_rp_df_1096_final_join<-
+pmatrix2_t_b_rp_df_1096_final %>% 
+    dplyr::select(t, trans, ends_with("cis")) %>% 
+  dplyr::filter(t%in% c(90,183,365,1096,1826)) %>%
+      dplyr::mutate(t=factor(t, levels=c(90,183,365,1096,1826),
+                                labels=c("~3 months", "~6 months", "~1 year", "~3 years", "~5 years")))
+
+pmatrix2_t_a_rp_df_1096_final %>% 
+  dplyr::select(t, trans, ends_with("cis")) %>% 
+  dplyr::filter(t%in% c(90,183,365,1096,1826)) %>%
+      dplyr::mutate(t=factor(t, levels=c(90,183,365,1096,1826),
+                                labels=c("~3 months", "~6 months", "~1 year", "~3 years", "~5 years")))%>% 
+  dplyr::left_join(pmatrix2_t_b_rp_df_1096_final_join,by=c("t","trans")) %>% 
+  dplyr::select(-t) %>% 
+  dplyr::select(`trans`,`Trans_1_cis.x`,`Trans_2_cis.x`,`Trans_3_cis.x`,`Trans_4_cis.x`,`Trans_5_cis.x`,`Trans_1_cis.y`,`Trans_2_cis.y`,`Trans_3_cis.y`,`Trans_4_cis.y`,`Trans_5_cis.y`) %>% 
+    dplyr::rename("1)Admission"="Trans_1_cis.x","2)Readmission"="Trans_2_cis.x","3)2nd Readmission"="Trans_3_cis.x",
+                "4)3rd Readmission"="Trans_4_cis.x")%>%
+    #2021-04-27: drop from/actual state, readmission
+  dplyr::filter(!grepl("5",trans)) %>% 
+        dplyr::mutate(trans=factor(trans, levels=c(1:4),
+                                labels=c("1)Admission","2)Readmissio","3)2nd Readmission","4)3rd Readmission"))) %>% 
+          knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption = paste0("Table 1d. Estimated transition probabilities (Arrival 3 years, RP)"),
+               col.names = c("Actual state", rep(c("1)Admission","2)Readmissio","3)2nd Readmission","4)3rd Readmission","5)4th Readmission"),2)),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::add_footnote("Note. We removed 4th Readmission because it was an absorbing state", notation="none") %>% 
+  kableExtra::add_header_above(c(" ", "Residential: Transition to" = dim(trans_matrix)[2],"Outpatient: Transition to" = dim(trans_matrix)[2])) %>% 
+  kableExtra::pack_rows("~3 months", 1, dim(trans_matrix)[2]-1) %>% 
+  kableExtra::pack_rows("~6 months", dim(trans_matrix)[2], dim(trans_matrix)[2]*2-2) %>%
+  kableExtra::pack_rows("~1 year", dim(trans_matrix)[2]*2-1, dim(trans_matrix)[2]*3-3) %>%
+  kableExtra::pack_rows("~3 years", dim(trans_matrix)[2]*3-2, dim(trans_matrix)[2]*4-4) %>%
+  kableExtra::pack_rows("~5 years", dim(trans_matrix)[2]*4-3, dim(trans_matrix)[2]*5-5) %>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+<br>
+
 # Simulate Final State
 
-#simfinal_fmsm_1096d simfinal_fmsm_1826d simfinal_fmsm_1096d_rp simfinal_fmsm_1826d_rp simfinal_fmsm_1096d_1096 simfinal_fmsm_1826d_1096 simfinal_fmsm_1096d_rp_1096 simfinal_fmsm_1826d_rp_1096
+```{r sim_medians, eval=T, echo=T, paged.print=TRUE, error=T}
+time_before_sim_medians2<-Sys.time()
+
+newdat2_a<-newdat_a %>% dplyr::mutate_at(vars(starts_with("TD")),~factor(1))
+newdat2_b<-newdat_b %>% dplyr::mutate_at(vars(starts_with("TD")),~factor(1))
+newdat2_a_1096<-newdat_a_1096 %>% dplyr::mutate_at(vars(starts_with("TD")),~factor(1))
+#2021-07-06, had newdat_a_1096, changed it for b
+newdat2_b_1096<-newdat_b_1096 %>% dplyr::mutate_at(vars(starts_with("TD")),~factor(1))
+
+set.seed(1234)
+simfinal2_fmsm_1096d<-
+simfinal_fmsm(fmsm_sel_param_fits_a, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat2_a[1,],newdat2_b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1096, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+
+  set.seed(1234)
+simfinal2_fmsm_1826d<-
+simfinal_fmsm(fmsm_sel_param_fits_a, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat2_a[1,],newdat2_b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1826, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+
+  set.seed(1234)
+simfinal2_fmsm_1096d_rp<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat2_a[1,],newdat2_b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1096, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+
+  set.seed(1234)
+simfinal2_fmsm_1826d_rp<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat2_a[1,],newdat2_b[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1826, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+
+set.seed(1234)
+simfinal2_fmsm_1096d_1096<-
+simfinal_fmsm(fmsm_sel_param_fits_a, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat2_a_1096[1,],newdat2_b_1096[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1096, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+
+  set.seed(1234)
+simfinal2_fmsm_1826d_1096<-
+simfinal_fmsm(fmsm_sel_param_fits_a, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat2_a_1096[1,],newdat2_b_1096[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1826, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+
+set.seed(1234)
+simfinal2_fmsm_1096d_rp_1096<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat2_a_1096[1,],newdat2_b_1096[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1096, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+  set.seed(1234)
+simfinal2_fmsm_1826d_rp_1096<-
+simfinal_fmsm(fmsm_sel_param_fits_b, #Object returned by fmsm, representing a multi-state model formed from transition-specific time-to-event models fitted by flexsurvreg.
+              newdata = rbind.data.frame(newdat2_a_1096[1,],newdat2_b_1096[1,])[,-"strata"], #Data frame of covariate values, with one column per covariate, and one row per alternative value.
+              t= 1826, #itempo máximo al que simular, de manera que el resumen se toman de la muestra de individuos en los datos simulados quienes están en el estado absorvente a ese tiempo.
+              probs = c(0.025,0.25, 0.5, 0.75,0.975), 
+              #M=100000, #necesita grandes números
+              B=n_iter/20, #Pondría 1,000
+              cores=8
+              )
+
+time_after_sim_medians2<-Sys.time()
+
+paste0("Time in process: ");time_after_sim_medians2-time_before_sim_medians2
+
+# probability of each final outcome
+# mean and quantiles of the time to that outcome for people who experience it
+```
+
+```{r sim_medians_df, eval=T, echo=T, paged.print=TRUE, error=T}
+#simfinal_fmsm_1096d simfinal_fmsm_1826d 
+#simfinal_fmsm_1096d_rp simfinal_fmsm_1826d_rp 
+#simfinal_fmsm_1096d_1096 simfinal_fmsm_1826d_1096 
+#simfinal_fmsm_1096d_rp_1096 simfinal_fmsm_1826d_rp_1096
+
+simfinal_fmsm_st_df<-
+rbind.data.frame(
+simfinal_fmsm_1096d%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=3, type="par"),  
+simfinal_fmsm_1826d%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=5, type="par"),
+simfinal_fmsm_1096d_rp%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=3, type="rp"),  
+simfinal_fmsm_1826d_rp%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=5, type="rp"),
+simfinal_fmsm_1096d_1096%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=3, type="par"),  
+simfinal_fmsm_1826d_1096%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=5, type="par"),
+simfinal_fmsm_1096d_rp_1096%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=3, type="rp"),
+simfinal_fmsm_1826d_rp_1096%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=5, type="rp"))
+
+simfinal_fmsm_st_df2<-
+rbind.data.frame(
+simfinal2_fmsm_1096d%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=3, type="par"),  
+simfinal2_fmsm_1826d%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=5, type="par"),
+simfinal2_fmsm_1096d_rp%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=3, type="rp"),  
+simfinal2_fmsm_1826d_rp%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=5, type="rp"),
+simfinal2_fmsm_1096d_1096%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=3, type="par"),  
+simfinal2_fmsm_1826d_1096%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=5, type="par"),
+simfinal2_fmsm_1096d_rp_1096%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=3, type="rp"),
+simfinal2_fmsm_1826d_rp_1096%>%dplyr::select("tipo_de_plan_res_1","arrival","quantity","val","lower","upper")%>%mutate(year=5, type="rp"))
+```
+
+```{r sim_final_plot1, eval=T, echo=T, paged.print=TRUE, fig.height=8, fig.cap="Figure 1a. Time to Readmission for Users who Experience it (Mean and 95%CIs)", fig.align="center", error=T}
+simfinal_fmsm_st_df %>%
+  dplyr::mutate(year=factor(year,levels=c(3, 5), labels=c("3 years", "5 years"))) %>% 
+  dplyr::mutate(type=factor(type,levels=c("par", "rp"), labels=c("Std. Parametric", "Royston-Parmar"))) %>% 
+  dplyr::mutate(arrival=factor(arrival,levels=c(0,1096), labels=c("0 days", "3 years"))) %>% 
+  dplyr::mutate(tipo_de_plan_res_1=factor(tipo_de_plan_res_1,levels=c(0,1), labels=c("Outpatient", "Residential"))) %>% 
+  dplyr::group_by(year, type, arrival, tipo_de_plan_res_1) %>% 
+  summarise(mean=sum(val[quantity=="mean"],na.rm=T),
+            lo=sum(lower[quantity=="2.5%"],na.rm=T),
+            up=sum(upper[quantity=="97.5%"],na.rm=T)) %>% 
+  ggplot(aes(x=year, y=mean, color=tipo_de_plan_res_1))+
+  geom_bar(aes(x=year, y=mean, color=tipo_de_plan_res_1, fill=tipo_de_plan_res_1), position="dodge", stat="identity", alpha=0.4)+
+  sjPlot::theme_sjplot2()+
+  geom_errorbar(aes(x=year, ymin=lo, ymax=up, color=tipo_de_plan_res_1), position="dodge", stat="identity", width=0.4,  alpha=0.9, size=1)+
+  ylab("Time to event")+
+  facet_wrap(type~arrival)+
+  scale_color_manual(name ="Type of program",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
+  scale_fill_manual(name ="Type of program",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
+  xlab("Maximum time of simualted individuals in the absorbing state")
+```
+
+```{r sim_final_plot2, eval=T, echo=T, paged.print=TRUE, fig.height=8, fig.cap="Figure 1b. Time to Readmission for Users who Experience it (Mean and 95%CIs), w/ Treatment Completion", fig.align="center", error=T}
+simfinal_fmsm_st_df2 %>%
+  dplyr::mutate(year=factor(year,levels=c(3, 5), labels=c("3 years", "5 years"))) %>% 
+  dplyr::mutate(type=factor(type,levels=c("par", "rp"), labels=c("Std. Parametric", "Royston-Parmar"))) %>% 
+  dplyr::mutate(arrival=factor(arrival,levels=c(0,1096), labels=c("0 days", "3 years"))) %>% 
+  dplyr::mutate(tipo_de_plan_res_1=factor(tipo_de_plan_res_1,levels=c(0,1), labels=c("Outpatient", "Residential"))) %>% 
+  dplyr::group_by(year, type, arrival, tipo_de_plan_res_1) %>% 
+  summarise(mean=sum(val[quantity=="mean"],na.rm=T),
+            lo=sum(lower[quantity=="2.5%"],na.rm=T),
+            up=sum(upper[quantity=="97.5%"],na.rm=T)) %>% 
+  ggplot(aes(x=year, y=mean, color=tipo_de_plan_res_1))+
+  geom_bar(aes(x=year, y=mean, color=tipo_de_plan_res_1, fill=tipo_de_plan_res_1), position="dodge", stat="identity", alpha=0.4)+
+  sjPlot::theme_sjplot2()+
+  geom_errorbar(aes(x=year, ymin=lo, ymax=up, color=tipo_de_plan_res_1), position="dodge", stat="identity", width=0.4,  alpha=0.9, size=1)+
+  ylab("Time to event")+
+  facet_wrap(type~arrival)+
+  scale_color_manual(name ="Type of program",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
+  scale_fill_manual(name ="Type of program",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
+  xlab("Maximum time of simualted individuals in the absorbing state")
+```
+
+<br>
 
 # Length of Stay
 
-#tolos_t_a_ tolos_t_b_ tolos_t_a_rp_ tolos_t_b_rp_ tolos_t_a_1096_ tolos_t_b_1096_ tolos_t_a_rp_1096_ tolos_t_b_rp_1096_ tolos_t_a_str2_ tolos_t_b_str2_ tolos_t_a_rp_str2_ tolos_t_b_rp_str2_ tolos_t_a_str3_ tolos_t_b_str3_ tolos_t_a_rp_str3_ tolos_t_b_rp_str3_ tolos_t_a_str4_ tolos_t_b_str4_ tolos_t_a_rp_str4_ tolos_t_b_rp_str4_ tolos_t_a_str2_1096_ tolos_t_b_str2_1096_ tolos_t_a_rp_str2_1096_ tolos_t_b_rp_str2_1096_ tolos_t_a_str3_1096_ tolos_t_b_str3_1096_ tolos_t_a_rp_str3_1096_ tolos_t_b_rp_str3_1096_ tolos_t_a_str4_1096_ tolos_t_b_str4_1096_ tolos_t_a_rp_str4_1096_ tolos_t_b_rp_str4_1096_
+```{r dfs2_los_pat2,eval=T, echo=T, paged.print=TRUE, error=T}
 
+#tolos_t_a_rp_1096_ tolos_t_b_rp_1096_ 
+#tolos_t_a_str2_ tolos_t_b_str2_ 
+#tolos_t_a_rp_str2_ tolos_t_b_rp_str2_ 
+#tolos_t_a_str3_ tolos_t_b_str3_ 
+#tolos_t_a_rp_str3_ tolos_t_b_rp_str3_ 
+#tolos_t_a_str4_ tolos_t_b_str4_ 
+#tolos_t_a_rp_str4_ tolos_t_b_rp_str4_ 
+#tolos_t_a_str2_1096_ tolos_t_b_str2_1096_ 
+#tolos_t_a_rp_str2_1096_ tolos_t_b_rp_str2_1096_
+#tolos_t_a_str3_1096_ tolos_t_b_str3_1096_ 
+#tolos_t_a_rp_str3_1096_ tolos_t_b_rp_str3_1096_ 
+#tolos_t_a_str4_1096_ tolos_t_b_str4_1096_ 
+#tolos_t_a_rp_str4_1096_ tolos_t_b_rp_str4_1096_
+
+#tolos_t_a_ tolos_t_b_ 
+tolos_t_a_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_",t)))
+    }))
+tolos_t_b_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_",t)))
+    }))
+
+#tolos_t_a_rp_ tolos_t_b_rp_ 
+tolos_t_a_rp_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_rp_",t)))
+    }))
+tolos_t_b_rp_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_rp_",t)))
+    }))
+
+#tolos_t_a_1096_ tolos_t_b_1096_ 
+tolos_t_a_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_1096_",t)))
+    }))
+tolos_t_b_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_1096_",t)))
+    }))
+
+#tolos_t_a_rp_1096_ tolos_t_b_rp_1096
+tolos_t_a_rp_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_rp_1096_",t)))
+    }))
+tolos_t_b_rp_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_rp_1096_",t)))
+    }))
+
+#tolos_t_a_str2_ tolos_t_b_str2_
+tolos_t_a_str2_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_str2_",t)))
+    }))
+tolos_t_b_str2_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_str2_",t)))
+    }))
+
+#tolos_t_a_rp_str2_ tolos_t_b_rp_str2_
+tolos_t_a_rp_str2_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_rp_str2_",t)))
+    }))
+tolos_t_b_rp_str2_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_rp_str2_",t)))
+    }))
+
+#tolos_t_a_str3_ tolos_t_b_str3_
+tolos_t_a_str3_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_str3_",t)))
+    }))
+tolos_t_b_str3_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_str3_",t)))
+    }))
+
+#tolos_t_a_rp_str3_ tolos_t_b_rp_str3_
+tolos_t_a_rp_str3_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_rp_str3_",t)))
+    }))
+tolos_t_b_rp_str3_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_rp_str3_",t)))
+    }))
+
+#tolos_t_a_str4_ tolos_t_b_str4_
+tolos_t_a_str4_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_str4_",t)))
+    }))
+tolos_t_b_str4_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_str4_",t)))
+    }))
+
+#tolos_t_a_rp_str4_ tolos_t_b_rp_str4_
+tolos_t_a_rp_str4_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_rp_str4_",t)))
+    }))
+tolos_t_b_rp_str4_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_rp_str4_",t)))
+    }))
+
+#tolos_t_a_str2_1096_ tolos_t_b_str2_1096_
+tolos_t_a_str2_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_str2_1096_",t)))
+    }))
+tolos_t_b_str2_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_str2_1096_",t)))
+    }))
+
+#tolos_t_a_rp_str2_1096_ tolos_t_b_rp_str2_1096_
+tolos_t_a_rp_str2_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_rp_str2_1096_",t)))
+    }))
+tolos_t_b_rp_str2_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_rp_str2_1096_",t)))
+    }))
+
+#tolos_t_a_str3_1096_ tolos_t_b_str3_1096_
+tolos_t_a_str3_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_str3_1096_",t)))
+    }))
+tolos_t_b_str3_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_str3_1096_",t)))
+    }))
+
+#tolos_t_a_rp_str3_1096_ tolos_t_b_rp_str3_1096_
+tolos_t_a_rp_str3_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_rp_str3_1096_",t)))
+    }))
+tolos_t_b_rp_str3_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_rp_str3_1096_",t)))
+    }))
+
+#tolos_t_a_str4_1096_ tolos_t_b_str4_1096_
+tolos_t_a_str4_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_str4_1096_",t)))
+    }))
+tolos_t_b_str4_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_str4_1096_",t)))
+    }))
+
+#tolos_t_a_rp_str4_1096_ tolos_t_b_rp_str4_1096_
+tolos_t_a_rp_str4_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_a_rp_str4_1096_",t)))
+    }))
+tolos_t_b_rp_str4_1096_df<-
+do.call('rbind', lapply(c(90,183,365,1096,1826), function(t) {
+    cbind.data.frame(t=t,state=1:dim(trans_matrix)[2],get(paste0("tolos_t_b_rp_str4_1096_",t)))
+    }))
+```
+
+
+```{r MSM_pat1, eval=T, echo=T, paged.print=TRUE, error=T}
+
+#tolos_t_a_df tolos_t_b_df
+#tolos_t_a_str2_df tolos_t_b_str2_df
+#tolos_t_a_str3_df tolos_t_b_str3_df
+#tolos_t_a_str4_df tolos_t_b_str4_df
+
+#tolos_t_a_rp_df tolos_t_b_rp_df
+#tolos_t_a_rp_str2_df tolos_t_b_rp_str2_df
+#tolos_t_a_rp_str3_df tolos_t_b_rp_str3_df
+#tolos_t_a_rp_str4_df tolos_t_b_rp_str4_df
+
+#tolos_t_a_1096_df tolos_t_b_1096_df
+#tolos_t_a_str2_1096_df tolos_t_b_str2_1096_df
+#tolos_t_a_str3_1096_df tolos_t_b_str3_1096_df
+#tolos_t_a_str4_1096_df tolos_t_b_str4_1096_df
+
+#tolos_t_a_rp_1096_df  tolos_t_b_rp_1096_df
+#tolos_t_a_rp_str2_1096_df  tolos_t_b_rp_str2_1096_df
+#tolos_t_a_rp_str3_1096_df  tolos_t_b_rp_str3_1096_df
+#tolos_t_a_rp_str4_1096_df  tolos_t_b_rp_str4_1096_df
+
+
+rbind.data.frame(
+cbind.data.frame(tolos_t_a_df,program="Residential", start=1),
+cbind.data.frame(tolos_t_b_df,program="Outpatient", start=1),
+cbind.data.frame(tolos_t_a_str2_df,program="Residential", start=2),
+cbind.data.frame(tolos_t_b_str2_df,program="Outpatient", start=2),
+cbind.data.frame(tolos_t_a_str3_df,program="Residential", start=3),
+cbind.data.frame(tolos_t_b_str3_df,program="Outpatient", start=3),
+cbind.data.frame(tolos_t_a_str4_df,program="Residential", start=4),
+cbind.data.frame(tolos_t_b_str4_df,program="Outpatient", start=4)
+)%>% 
+  dplyr::mutate(comb=dplyr::case_when(start==1 & state==2~"a",
+                                      start==2 & state==3~"a",
+                                      start==3 & state==4~"a",
+                                      start==4 & state==5~"a",
+                                      T~NA_character_)) %>% 
+  dplyr::filter(comb=="a") %>% 
+  dplyr::mutate(start=dplyr::case_when(start==1~"1)Admission", 
+                                       start==2~"2)Readmission",
+                                       start==3~"3)2nd Readmission",
+                                       start==4~"4)3rd Readmission",
+                                       T~"5)4th Readmission"))%>%
+  dplyr::mutate(state=dplyr::case_when(state==1~"1)Admission",
+                                      state==2~"2)Readmission",
+                                      state==3~"3)2nd Readmission",
+                                      state==4~"4)3rd Readmission",
+                                      T~"5)4th Readmission"))%>%
+  dplyr::mutate(est_ci=paste0(sprintf("%1.2f",est)," [",
+                                   sprintf("%1.2f",L),"-",
+                                   sprintf("%1.2f",U),"]")) %>% 
+  dplyr::select(program,t,start,state,est_ci) %>% 
+  tidyr::pivot_wider(names_from="program",values_from=c("est_ci")) %>% 
+  dplyr::mutate(comb=paste0(start,"_",state)) %>% 
+  #dplyr::mutate(t=sprintf("%1.4f",t)) %>%
+  #dplyr::filter(t %in% c("90", "1.0000", "3.0000")) %>% 
+  dplyr::mutate(t=factor(t,
+                levels=c("90","183","365","1096","1826"), 
+                labels=c("~3 months", "~6months", "~1 year", "~3 years", "~5 years"))) %>% 
+  dplyr::arrange(start, state, t) %>% 
+  dplyr::select(-start,-comb) %>%
+  dplyr::select(state, t, `Residential`, `Outpatient`) %>% 
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table 2a. Length of Stay"),
+       col.names = c("State","Time","Residential","Outpatient"),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  #kableExtra::add_header_above(c(rep("",1),"Women-specific"=1, "General population"=1)) %>% 
+  kableExtra::pack_rows("Starting From 1)Admission", 1, 5) %>%
+  kableExtra::pack_rows("Starting From 2)Readmission", 6, 10) %>%
+  kableExtra::pack_rows("Starting From 3)2nd Readmission", 11, 15) %>%
+  kableExtra::pack_rows("Starting From 4)3rd Readmission", 16, 20) %>%
+ # kableExtra::add_footnote("Note. Readmission state will not be considered because is an absorbing state", notation="none") %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+
+```{r MSM_pat2, eval=T, echo=T, paged.print=TRUE, error=T}
+
+#tolos_t_a_rp_df tolos_t_b_rp_df
+#tolos_t_a_rp_str2_df tolos_t_b_rp_str2_df
+#tolos_t_a_rp_str3_df tolos_t_b_rp_str3_df
+#tolos_t_a_rp_str4_df tolos_t_b_rp_str4_df
+
+rbind.data.frame(
+cbind.data.frame(tolos_t_a_rp_df,program="Residential", start=1),
+cbind.data.frame(tolos_t_b_rp_df,program="Outpatient", start=1),
+cbind.data.frame(tolos_t_a_rp_str2_df,program="Residential", start=2),
+cbind.data.frame(tolos_t_b_rp_str2_df,program="Outpatient", start=2),
+cbind.data.frame(tolos_t_a_rp_str3_df,program="Residential", start=3),
+cbind.data.frame(tolos_t_b_rp_str3_df,program="Outpatient", start=3),
+cbind.data.frame(tolos_t_a_rp_str4_df,program="Residential", start=4),
+cbind.data.frame(tolos_t_b_rp_str4_df,program="Outpatient", start=4)
+)%>% 
+  dplyr::mutate(comb=dplyr::case_when(start==1 & state==2~"a",
+                                      start==2 & state==3~"a",
+                                      start==3 & state==4~"a",
+                                      start==4 & state==5~"a",
+                                      T~NA_character_)) %>% 
+  dplyr::filter(comb=="a") %>% 
+  dplyr::mutate(start=dplyr::case_when(start==1~"1)Admission", 
+                                       start==2~"2)Readmission",
+                                       start==3~"3)2nd Readmission",
+                                       start==4~"4)3rd Readmission",
+                                       T~"5)4th Readmission"))%>%
+  dplyr::mutate(state=dplyr::case_when(state==1~"1)Admission",
+                                      state==2~"2)Readmission",
+                                      state==3~"3)2nd Readmission",
+                                      state==4~"4)3rd Readmission",
+                                      T~"5)4th Readmission"))%>%
+  dplyr::mutate(est_ci=paste0(sprintf("%1.2f",est)," [",
+                                   sprintf("%1.2f",L),"-",
+                                   sprintf("%1.2f",U),"]")) %>% 
+  dplyr::select(program,t,start,state,est_ci) %>% 
+  tidyr::pivot_wider(names_from="program",values_from=c("est_ci")) %>% 
+  dplyr::mutate(comb=paste0(start,"_",state)) %>% 
+  #dplyr::mutate(t=sprintf("%1.4f",t)) %>%
+  #dplyr::filter(t %in% c("90", "1.0000", "3.0000")) %>% 
+  dplyr::mutate(t=factor(t,
+                levels=c("90","183","365","1096","1826"), 
+                labels=c("~3 months", "~6months", "~1 year", "~3 years", "~5 years"))) %>% 
+  dplyr::arrange(start, state, t) %>% 
+  dplyr::select(-start,-comb) %>%
+  dplyr::select(state, t, `Residential`, `Outpatient`) %>% 
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table 2b. Length of Stay (RP)"),
+       col.names = c("State","Time","Residential","Outpatient"),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  #kableExtra::add_header_above(c(rep("",1),"Women-specific"=1, "General population"=1)) %>% 
+  kableExtra::pack_rows("Starting From 1)Admission", 1, 5) %>%
+  kableExtra::pack_rows("Starting From 2)Readmission", 6, 10) %>%
+  kableExtra::pack_rows("Starting From 3)2nd Readmission", 11, 15) %>%
+  kableExtra::pack_rows("Starting From 4)3rd Readmission", 16, 20) %>%
+ # kableExtra::add_footnote("Note. Readmission state will not be considered because is an absorbing state", notation="none") %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+
+
+```{r MSM_pat3, eval=T, echo=T, paged.print=TRUE, error=T}
+
+#tolos_t_a_1096_df tolos_t_b_1096_df
+#tolos_t_a_str2_1096_df tolos_t_b_str2_1096_df
+#tolos_t_a_str3_1096_df tolos_t_b_str3_1096_df
+#tolos_t_a_str4_1096_df tolos_t_b_str4_1096_df
+
+rbind.data.frame(
+cbind.data.frame(tolos_t_a_1096_df,program="Residential", start=1),
+cbind.data.frame(tolos_t_b_1096_df,program="Outpatient", start=1),
+cbind.data.frame(tolos_t_a_str2_1096_df,program="Residential", start=2),
+cbind.data.frame(tolos_t_b_str2_1096_df,program="Outpatient", start=2),
+cbind.data.frame(tolos_t_a_str3_1096_df,program="Residential", start=3),
+cbind.data.frame(tolos_t_b_str3_1096_df,program="Outpatient", start=3),
+cbind.data.frame(tolos_t_a_str4_1096_df,program="Residential", start=4),
+cbind.data.frame(tolos_t_b_str4_1096_df,program="Outpatient", start=4)
+)%>% 
+  dplyr::mutate(comb=dplyr::case_when(start==1 & state==2~"a",
+                                      start==2 & state==3~"a",
+                                      start==3 & state==4~"a",
+                                      start==4 & state==5~"a",
+                                      T~NA_character_)) %>% 
+  dplyr::filter(comb=="a") %>% 
+  dplyr::mutate(start=dplyr::case_when(start==1~"1)Admission", 
+                                       start==2~"2)Readmission",
+                                       start==3~"3)2nd Readmission",
+                                       start==4~"4)3rd Readmission",
+                                       T~"5)4th Readmission"))%>%
+  dplyr::mutate(state=dplyr::case_when(state==1~"1)Admission",
+                                      state==2~"2)Readmission",
+                                      state==3~"3)2nd Readmission",
+                                      state==4~"4)3rd Readmission",
+                                      T~"5)4th Readmission"))%>%
+  dplyr::mutate(est_ci=paste0(sprintf("%1.2f",est)," [",
+                                   sprintf("%1.2f",L),"-",
+                                   sprintf("%1.2f",U),"]")) %>% 
+  dplyr::select(program,t,start,state,est_ci) %>% 
+  tidyr::pivot_wider(names_from="program",values_from=c("est_ci")) %>% 
+  dplyr::mutate(comb=paste0(start,"_",state)) %>% 
+  #dplyr::mutate(t=sprintf("%1.4f",t)) %>%
+  #dplyr::filter(t %in% c("90", "1.0000", "3.0000")) %>% 
+  dplyr::mutate(t=factor(t,
+                levels=c("90","183","365","1096","1826"), 
+                labels=c("~3 months", "~6months", "~1 year", "~3 years", "~5 years"))) %>% 
+  dplyr::arrange(start, state, t) %>% 
+  dplyr::select(-start,-comb) %>%
+  dplyr::select(state, t, `Residential`, `Outpatient`) %>% 
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table 2c. Length of Stay (Arrival, ~3 years)"),
+       col.names = c("State","Time","Residential","Outpatient"),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  #kableExtra::add_header_above(c(rep("",1),"Women-specific"=1, "General population"=1)) %>% 
+  kableExtra::pack_rows("Starting From 1)Admission", 1, 5) %>%
+  kableExtra::pack_rows("Starting From 2)Readmission", 6, 10) %>%
+  kableExtra::pack_rows("Starting From 3)2nd Readmission", 11, 15) %>%
+  kableExtra::pack_rows("Starting From 4)3rd Readmission", 16, 20) %>%
+ # kableExtra::add_footnote("Note. Readmission state will not be considered because is an absorbing state", notation="none") %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+
+```{r MSM_pat4, eval=T, echo=T, paged.print=TRUE, error=T}
+#tolos_t_a_rp_1096_df  tolos_t_b_rp_1096_df
+#tolos_t_a_rp_str2_1096_df  tolos_t_b_rp_str2_1096_df
+#tolos_t_a_rp_str3_1096_df  tolos_t_b_rp_str3_1096_df
+#tolos_t_a_rp_str4_1096_df  tolos_t_b_rp_str4_1096_df
+
+rbind.data.frame(
+cbind.data.frame(tolos_t_a_rp_1096_df,program="Residential", start=1),
+cbind.data.frame(tolos_t_b_rp_1096_df,program="Outpatient", start=1),
+cbind.data.frame(tolos_t_a_rp_str2_1096_df,program="Residential", start=2),
+cbind.data.frame(tolos_t_b_rp_str2_1096_df,program="Outpatient", start=2),
+cbind.data.frame(tolos_t_a_rp_str3_1096_df,program="Residential", start=3),
+cbind.data.frame(tolos_t_b_rp_str3_1096_df,program="Outpatient", start=3),
+cbind.data.frame(tolos_t_a_rp_str4_1096_df,program="Residential", start=4),
+cbind.data.frame(tolos_t_b_rp_str4_1096_df,program="Outpatient", start=4)
+)%>% 
+  dplyr::mutate(comb=dplyr::case_when(start==1 & state==2~"a",
+                                      start==2 & state==3~"a",
+                                      start==3 & state==4~"a",
+                                      start==4 & state==5~"a",
+                                      T~NA_character_)) %>% 
+  dplyr::filter(comb=="a") %>% 
+  dplyr::mutate(start=dplyr::case_when(start==1~"1)Admission", 
+                                       start==2~"2)Readmission",
+                                       start==3~"3)2nd Readmission",
+                                       start==4~"4)3rd Readmission",
+                                       T~"5)4th Readmission"))%>%
+  dplyr::mutate(state=dplyr::case_when(state==1~"1)Admission",
+                                      state==2~"2)Readmission",
+                                      state==3~"3)2nd Readmission",
+                                      state==4~"4)3rd Readmission",
+                                      T~"5)4th Readmission"))%>%
+  dplyr::mutate(est_ci=paste0(sprintf("%1.2f",est)," [",
+                                   sprintf("%1.2f",L),"-",
+                                   sprintf("%1.2f",U),"]")) %>% 
+  dplyr::select(program,t,start,state,est_ci) %>% 
+  tidyr::pivot_wider(names_from="program",values_from=c("est_ci")) %>% 
+  dplyr::mutate(comb=paste0(start,"_",state)) %>% 
+  #dplyr::mutate(t=sprintf("%1.4f",t)) %>%
+  #dplyr::filter(t %in% c("90", "1.0000", "3.0000")) %>% 
+  dplyr::mutate(t=factor(t,
+                levels=c("90","183","365","1096","1826"), 
+                labels=c("~3 months", "~6months", "~1 year", "~3 years", "~5 years"))) %>% 
+  dplyr::arrange(start, state, t) %>% 
+  dplyr::select(-start,-comb) %>%
+  dplyr::select(state, t, `Residential`, `Outpatient`) %>% 
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table 2d. Length of Stay (Arrival, ~3 years + RP)"),
+       col.names = c("State","Time","Residential","Outpatient"),
+               align =rep('c', 101)) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  #kableExtra::add_header_above(c(rep("",1),"Women-specific"=1, "General population"=1)) %>% 
+  kableExtra::pack_rows("Starting From 1)Admission", 1, 5) %>%
+  kableExtra::pack_rows("Starting From 2)Readmission", 6, 10) %>%
+  kableExtra::pack_rows("Starting From 3)2nd Readmission", 11, 15) %>%
+  kableExtra::pack_rows("Starting From 4)3rd Readmission", 16, 20) %>%
+ # kableExtra::add_footnote("Note. Readmission state will not be considered because is an absorbing state", notation="none") %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+<br>
 
 # Session Info
 
 ```{r session_info, echo=T, error=T, paged.print=TRUE}
 Sys.getenv("R_LIBS_USER")
 
-rstudioapi::getSourceEditorContext()
-#save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
-
 if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
-    save.image("C:/Users/CISS Fondecyt/OneDrive/Escritorio/SUD_CL/mult_state_4_jun.RData")
+    save.image("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_4_jun.RData")
   } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
     save.image("C:/Users/andre/Desktop/SUD_CL/mult_state_4_jun.RData")
   } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
