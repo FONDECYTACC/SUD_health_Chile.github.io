@@ -42,6 +42,8 @@ This page is composed by the following main topics:
     
     3a.3a.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 3)](Matching_Process3_JUN_21)
     
+    3a.4a.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 3)](Matching_Process4_JUN_21)
+    
     3a.2b.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 2)](Matching_Process2_stata_APR_21)
     
     3a.2b.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 2)](Matching_Process2_stata_JUN_21)
