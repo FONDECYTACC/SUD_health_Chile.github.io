@@ -25,34 +25,28 @@ This page is composed by the following main topics:
     1.8. [Codebook of C1](codebook)
 
 3. Associations & Analytic Exercises
-    
-    3a.1.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 1)](Matching_Process_APR_21)
 
-    3a.1.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 1)](Matching_Process_JUN_21)
+    3a.1.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 1)](Matching_Process_JUN_21)
 
-    3a.1.2.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 1.5)](Matching_Process15_APR_21)
+    3a.2.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 1.5)](Matching_Process15_JUN_21)
+ 
+    3a.3.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 2)](Matching_Process2_JUN_21)
+   
+    3a.4.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 3)](Matching_Process3_JUN_21)
     
-    3a.1.2.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 1.5)](Matching_Process15_JUN_21)
+    3a.5.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 4)](Matching_Process4_JUN_21)
     
-    3a.2a.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 2)](Matching_Process2_APR_21)
+    3a.6.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 5)](Matching_Process5_JUN_21)
+
+    3a.1.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 1)](Matching_Process1_stata_JUN_21)
     
-    3a.2a.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 2)](Matching_Process2_JUN_21)
+    3a.2.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 2)](Matching_Process2_stata_JUN_21)
     
-    3a.3a.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 3)](Matching_Process3_APR_21)
+    3a.3.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 3)](Matching_Process3_stata_JUN_21)
     
-    3a.3a.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 3)](Matching_Process3_JUN_21)
+    3a.4.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 4)](Matching_Process4_stata_JUN_21)
     
-    3a.4a.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 4)](Matching_Process4_JUN_21)
-    
-    3a.2b.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 2)](Matching_Process2_stata_APR_21)
-    
-    3a.2b.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 2)](Matching_Process2_stata_JUN_21)
-    
-    3a.3b.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 3)](Matching_Process3_stata_APR_21)
-    
-    3a.3b.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 3)](Matching_Process3_stata_JUN_21)
-    
-    3a.4b.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 4)](Matching_Process4_stata_JUN_21)
+    3a.5.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 4)](Matching_Process5_stata_JUN_21)
     
     3b.1. [Supplemental: Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile (Step 1)](Proyecto_carla3)
     
