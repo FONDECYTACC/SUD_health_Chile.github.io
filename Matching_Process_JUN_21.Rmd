@@ -3822,7 +3822,6 @@ d_match_surv %>%
      nrow()
 
 
-
 #All possible paths through the multi-state model can be found here:
 boxes.Lexis(trans_matrix, wmult=1.3, hmult=1.3, cex=.9,
              boxpos = list(y = rep(50,5),
@@ -3854,14 +3853,14 @@ library(mstate)
 
 d_match_surv_msprep<-
   d_match_surv %>% 
-  dplyr::select(id, duplicates_filtered, fech_ing_num,fech_egres_num,dias_treat_imp_sin_na,fech_ing_next_treat,tipo_de_plan_res,motivodeegreso_mod_imp,min_achievement,group_match,dup) %>% 
+  dplyr::select(id, duplicates_filtered, fech_ing_num,fech_egres_num,dias_treat_imp_sin_na,fech_ing_next_treat,tipo_de_plan_res,motivodeegreso_mod_imp,min_achievement,group_match,dup, dias_treat_imp_sin_na) %>% 
   ## Filter the fifth readmission of registries
   dplyr::filter(dup<6) %>% 
   dplyr::mutate(tipo_de_plan_res=if_else(tipo_de_plan_res=="1",1,0,0)) %>% 
   dplyr::mutate(TD=if_else(motivodeegreso_mod_imp=="Therapeutic discharge",1,0,0)) %>% 
   dplyr::mutate(DWCA=if_else(motivodeegreso_mod_imp %in% c("Early Drop-out","Late Drop-out","Administrative discharge"),1,0,0)) %>% 
   #dplyr::mutate(tipo_de_plan_res_baseline=tipo_de_plan_res) %>% 
-  tidyr::pivot_wider(id_cols=c("id","group_match","duplicates_filtered"), names_from=dup, names_sep="_", values_from=c("fech_ing_num","tipo_de_plan_res","TD","DWCA")) %>% #"","motivodeegreso_mod_imp","min_achievement"
+  tidyr::pivot_wider(id_cols=c("id","group_match","duplicates_filtered"), names_from=dup, names_sep="_", values_from=c("fech_ing_num","tipo_de_plan_res","TD","DWCA", "dias_treat_imp_sin_na")) %>% #"","motivodeegreso_mod_imp","min_achievement"
   #,"tipo_de_plan_res_baseline"
   dplyr::arrange(id) %>%
   dplyr::select(id, group_match,everything()) %>% 
@@ -3905,8 +3904,11 @@ d_match_surv_msprep<-
     
     ## THE USERS THAT  DID NOT REGISTERED AN EVENT WILL COME UP TO THE FINAL TIME OF THE FOLLOW UP
  dplyr::select(
-     id, group_match, tipo_de_plan_res_1,tipo_de_plan_res_2, tipo_de_plan_res_3, tipo_de_plan_res_4, Readmission_time, Readmission_status, Readmission2_time, Readmission2_status, 
+     id, group_match, 
+     tipo_de_plan_res_1,tipo_de_plan_res_2, tipo_de_plan_res_3, tipo_de_plan_res_4, 
+     Readmission_time, Readmission_status, Readmission2_time, Readmission2_status, 
      Readmission3_time, Readmission3_status, Readmission4_time, Readmission4_status, 
+     dias_treat_imp_sin_na_1, dias_treat_imp_sin_na_2, dias_treat_imp_sin_na_3, dias_treat_imp_sin_na_4,
      TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4) %>%  
   as.data.frame() 
 
@@ -3933,7 +3935,7 @@ ms_d_match_surv <- mstate::msprep(time = c(NA, "Readmission_time", "Readmission2
                                             data = d_match_surv_msprep,
                                             id = "id",
                                             trans = trans_matrix,
-                                            keep =  c(paste0("tipo_de_plan_res_",1:4), paste0("TD_",1:4),paste0("DWCA_",1:4)))
+                                            keep =  c(paste0("tipo_de_plan_res_",1:4), paste0("TD_",1:4),paste0("DWCA_",1:4),paste0("dias_treat_imp_sin_na_",1:4)))
 
 #From starting state 1, subject 66 74 19717 has smallest transition time with status=0
 #Everyne has an infinite number in the transition. A good exmple is the user 19717. Only experienced a therapeutic discharge, but in the time from readmission it starts on 910 but ends in INf
@@ -3985,24 +3987,28 @@ d_match_surv_msprep %>%
       id, group_match,Readmission_status, Readmission2_status, Readmission3_status, Readmission4_status,
       Readmission_time, Readmission2_time, Readmission3_time, Readmission4_time,
       tipo_de_plan_res_1,tipo_de_plan_res_2, tipo_de_plan_res_3, tipo_de_plan_res_4,
+      dias_treat_imp_sin_na_1, dias_treat_imp_sin_na_2, dias_treat_imp_sin_na_3, dias_treat_imp_sin_na_4,
       TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4), 
   #dplyr::rename("id"="row", "ther_disch_time"="date_ther_disch","ther_disch_status"="ther_disch",
   #             "readmission_time"="date_post_treat","readmission_status"="readmission"),
-paste0(dta_path,"_mult_state_ags/ten_st_msprep_jun.dta"))
+paste0(gsub("SUD_CL/Matching_Process_JUN_21.Rmd","",path),"_mult_state_ags/five_st_msprep_jun.dta"))
 
 rio::export(
 d_match_surv_msprep %>% 
   rename_with(~ c("group.match","Readmission.status", "Readmission2.status", "Readmission3.status", "Readmission4.status",
-      "Readmission.time", "Readmission2.time", "Readmission3.time", "Readmission4.time"), c("group_match", "Readmission_status", "Readmission2_status", "Readmission3_status", "Readmission4_status",
-      "Readmission_time", "Readmission2_time", "Readmission3_time","Readmission4_time")) %>% 
+      "Readmission.time", "Readmission2.time", "Readmission3.time", "Readmission4.time",  paste0("dias_treat_imp_sin_na_",1:4)), c("group_match", "Readmission_status", "Readmission2_status", "Readmission3_status", "Readmission4_status",
+      "Readmission_time", "Readmission2_time", "Readmission3_time","Readmission4_time",
+      "dias_treat_imp_sin_na_1", "dias_treat_imp_sin_na_2", "dias_treat_imp_sin_na_3", "dias_treat_imp_sin_na_4")) %>% 
       dplyr::select(
       id, group.match,Readmission.status, Readmission2.status, Readmission3.status, Readmission4.status,
       Readmission.time, Readmission2.time, Readmission3.time, Readmission4.time,
       tipo_de_plan_res_1,tipo_de_plan_res_2, tipo_de_plan_res_3, tipo_de_plan_res_4,
-      TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4), 
+      days_treat_1, days_treat_2, days_treat_3, days_treat_4,
+      TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4,
+      ), 
   #dplyr::rename("id"="row", "ther_disch_time"="date_ther_disch","ther_disch_status"="ther_disch",
   #             "readmission_time"="date_post_treat","readmission_status"="readmission"),
-paste0(dta_path,"_mult_state_ags/ten_st_msprep_jun.csv"))
+paste0(gsub("SUD_CL/Matching_Process_JUN_21.Rmd","",path),"_mult_state_ags/five_st_msprep_jun.csv"))
 ```
 
 <br>
@@ -4038,7 +4044,6 @@ tab9_f %>%
 <br>
 
 
-### Frailty of readmissions
 
 ```{r add_perc_in_res,eval=T, echo=T, paged.print=TRUE}                                 
 ms_d_match_surv_res<-
@@ -4055,85 +4060,22 @@ ms_d_match_surv_res<-
                                                   TD_2==1 & trans==2~1,
                                                   TD_3==1 & trans==3~1,
                                                   TD_4==1 & trans==4~1,
-                                                  T~0))
+                                                  T~0)) %>% 
+    dplyr::mutate(TD=dplyr::case_when(TD_1==1 & trans==1~1,
+                                                  TD_2==1 & trans==2~1,
+                                                  TD_3==1 & trans==3~1,
+                                                  TD_4==1 & trans==4~1,
+                                                  T~0)) %>% 
+    dplyr::mutate(days_treated=dplyr::case_when(!is.na(dias_treat_imp_sin_na_1) & trans==1~dias_treat_imp_sin_na_1,
+                                                !is.na(dias_treat_imp_sin_na_2) & trans==2~dias_treat_imp_sin_na_2,
+                                                !is.na(dias_treat_imp_sin_na_3) & trans==3~dias_treat_imp_sin_na_3,
+                                                !is.na(dias_treat_imp_sin_na_4) & trans==4~dias_treat_imp_sin_na_4,
+                                                  T~NA_real_)) 
 
 ms_d_match_surv$tipo_de_plan_res<-ms_d_match_surv_res$tipo_de_plan_res
 ms_d_match_surv$TD<-ms_d_match_surv_res$TD
+ms_d_match_surv$days_treated<-ms_d_match_surv_res$days_treated
 ```
-
-```{r frailty2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
-invisible(c("No afecta si las variables no están en formato factor"))
-frailty_a<-
-frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) + tipo_de_plan_res+ TD, 
-                          data = ms_d_match_surv_res,
-                          RandDist="Gamma",
-                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
-                          recurrentAG = T, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          n.knots = 10,
-                          kappa = 1,
-                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
-                          )
-if(no_mostrar==1){
-frailty_b<-
-frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) +  tipo_de_plan_res+ TD, 
-                          data = ms_d_match_surv_res,
-                          RandDist="LogN",
-                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
-                          recurrentAG = T, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          n.knots = 10,
-                          kappa = 1,
-                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
-                          )
-
-}
-frailty_c<-
-frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id)+ tipo_de_plan_res+ TD_1+ TD_2+ TD_3+ TD_4, 
-                          data = ms_d_match_surv_res%>%  dplyr::mutate_at(vars("TD_1","TD_2","TD_3","TD_4"),~ifelse(!is.na(.),.,0)),
-                          RandDist="Gamma",
-                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
-                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          n.knots = 10,
-                          kappa = 1,
-                          #hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
-                          )
-invisible(c("Replacing missing values with 0 could lead to think that TD_3 or TD_4 would be a DWCA_3 or DWCA_4 instead"))
-invisible(c("Warning: Log normal gets stuck"))
-
-if(no_mostrar==1){
-frailty_d<-
-frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) +  tipo_de_plan_res+ TD, 
-                          data = ms_d_match_surv_res,
-                          RandDist="LogN",
-                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
-                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          n.knots = 10,
-                          kappa = 1,
-                          #hazard="Splines" #Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
-                          )
-}
-#The program took 20500.91 seconds 
-
-#The variance of the frailty term theta is significantly different from 0, meaning that there
-#is heterogeneity between subjects.
-# you will be violating the proportionality assumption and underestimating the treatment effect
-ms_d_match_surv_res_final<-
-ms_d_match_surv_res%>%  dplyr::mutate_at(vars("TD_1","TD_2","TD_3","TD_4"),~ifelse(!is.na(.),.,0))
-
-
-paste0("Frailty including residential as a dynamic covariate (Andersen-Gill model), Rand Effects: Gamma");summary(frailty_a, level = 0.95,len=3)
-paste0("Frailty including residential as a dynamic covariate (Andersen-Gill model), Rand Effects: Log-normal");summary(frailty_b, level = 0.95,len=3)
-paste0("Frailty including Type of Plan of the first treatment, Rand Effects: Gamma");summary(frailty_c, level = 0.95,len=3)
-paste0("Frailty including Type of Plan of the first treatment, Rand Effects: Log-normal");summary(frailty_d, level = 0.95,len=3)
-#tipo_de_plan_res_11 1.40 ( 1.35 - 1.46 ) tipo_de_plan_res_11 1.41 ( 1.35 - 1.47 )
-
-#https://www.uhasselt.be/documents/censtat/IBS2017/sessionI.pdf
-#Balan, T. A., & Putter, H. (2019). Nonproportional hazards and unobserved heterogeneity in clustered survival data: When can we tell the difference?. Statistics in medicine, 38(18), 3405–3420. https://doi.org/10.1002/sim.8171
-```
-
-<br>
-
-We can suspect that in readmissions there may be unobserved heterogeneity that affects the risk and time to readmission. The frailty term introduces dependence between the waiting time until leaving the initial state model and the waiting time until the current state and, hence, a violation of the Markov assumption. However, there has been evidence pointing out that shared frailty in sparse recurrent events in small subjects might capture non-proportional hazards instead of heterogeneity (Balan & Putter, 2019)
-
 
 <br>
 
@@ -4184,7 +4126,6 @@ title(main=paste0(plots[i,"title"]), cex.main=.8)
 builds in a proportional hazards assumption. 
 #No funciona haciendo sin covariables. Si te fijas, en el ejemplo de Williams, los modelos de supervivencia son NULOS, es decir, no tienen variables de control (Surv(years,status)~ 1)
 --->
-
 
 As seen in both Figures above, the cumulative hazards does not follow a proportional trend in the four transitions.
 
@@ -4540,7 +4481,7 @@ weights_matrix <- function(data,grid,from,to,min_time=0,other_weights=NULL) {
 #_#_#_#__#_#_#_#_#_#__###### markov test ##### _#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
 #Time grid
-tseq <- seq(1,1827,by=30) 
+tseq <- seq(1,1827,by=10) 
 
 #Three approaches to testing are considered; i) A simple method based on including 
 #time of entry into the state as a covariate in a Cox model for each transition 
@@ -4559,6 +4500,9 @@ cox_markov_test_prueba23<-
 cox_markov_test_prueba34<-
   cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res_1 + TD_1", tfrom=3 , tto=4, grid=tseq, trans=trans_matrix_etm, B=1000)
 
+cox_markov_test_prueba45<-
+  cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res_1 + TD_1", tfrom=4 , tto=5, grid=tseq, trans=trans_matrix_etm, B=1000)
+
 
 cox_markov_test_prueba12d<-
   cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1", tfrom=1 , tto=2, grid=tseq, trans=trans_matrix_etm, B=1000)
@@ -4569,12 +4513,13 @@ cox_markov_test_prueba23d<-
 cox_markov_test_prueba34d<-
   cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1+ TD_2+ TD_3", tfrom=3 , tto=4, grid=tseq, trans=trans_matrix_etm, B=1000)
 
+cox_markov_test_prueba45d<-
+  cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1+ TD_2+ TD_3+ TD4", tfrom=4, tto=5, grid=tseq, trans=trans_matrix_etm, B=1000)
 
 end_time <- Sys.time()
 
 print("Time taken in process")
 end_time - start_time
-
 ```
 
 ```{r markov_semimarkov22,eval=T, echo=T, paged.print=TRUE, error=T}      
@@ -4687,16 +4632,19 @@ plot.MarkovTest <- function(x, y, what=c("states", "overall"), idx=NULL, quantil
 
 plot.MarkovTest(cox_markov_test_prueba12, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm-> Readm2")
+                xlab="Days since arrival", ylab="Log-rank test statistic", main="Adm-> Readm")
 
 plot.MarkovTest(cox_markov_test_prueba23, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm2-> Readm3")
+                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm-> Readm2")
 
 plot.MarkovTest(cox_markov_test_prueba34, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm3-> Readm4")
+                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm2-> Readm3")
 
+plot.MarkovTest(cox_markov_test_prueba45, tseq, what="states",idx=1:50, 
+                states=colnames(trans_matrix),
+                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm3-> Readm4")
 ```
 
 
@@ -4705,16 +4653,19 @@ plot.MarkovTest(cox_markov_test_prueba34, tseq, what="states",idx=1:50,
 
 plot.MarkovTest(cox_markov_test_prueba12d, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm-> Readm2")
+                xlab="Days since arrival", ylab="Log-rank test statistic", main="Adm-> Readm")
 
 plot.MarkovTest(cox_markov_test_prueba23d, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm2-> Readm3")
+                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm-> Readm2")
 
 plot.MarkovTest(cox_markov_test_prueba34d, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm3-> Readm4")
+                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm2-> Readm3")
 
+plot.MarkovTest(cox_markov_test_prueba45d, tseq, what="states",idx=1:50, 
+                states=colnames(trans_matrix),
+                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm3-> Readm4")
 ```
 
 The model considered the transition from intermediate states to our absorbing state (being readmitted at the fourth time) is explained by the time spent in the previous health state. This covariate (time in the previous state) was shown to be statistically significant (p<.001); results indicated a longer duration spent in the first treatment is associated with increased risk of readmission. Therefore, a semi-Markov (called a Markov renewal model) or clock reset approach should be undertaken for both models.
