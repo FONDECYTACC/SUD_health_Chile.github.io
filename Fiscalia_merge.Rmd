@@ -1,0 +1,636 @@
+---
+title: "Chilean prosecutor's office Data merge"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: hide  
+    toc: true # table of content true
+    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_float: true
+    theme: flatly
+---
+
+```{css zoom-lib-src, echo = FALSE}
+script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+```
+
+```{js zoom-jquery, echo = FALSE}
+ $(document).ready(function() {
+    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
+    // onClick function for all plots (img's)
+    $('img:not(.zoomImg)').click(function() {
+      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
+      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
+    });
+    // onClick function for zoomImg
+    $('img.zoomImg').click(function() {
+      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
+    });
+  });
+```
+
+```{=html}
+<style type="text/css">
+.tablelines table, .tablelines td, .tablelines th {
+        border: 1px solid black;
+        }
+.centrado {
+    text-align: center;
+}
+.table.center {
+    margin-left:auto; 
+    margin-right:auto;
+  }
+.table_wrapper{
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+code.r{
+  font-size: 8px;
+}
+body{ /* Normal  */
+      text-align: justify;
+  }
+.superbigimage{
+    overflow-y:scroll;
+    white-space: nowrap;
+}
+.superbigimage img{
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+</style>
+```
+```{=html}
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
+</style>
+```
+```{r prev_setup, include = FALSE, cache=T}
+rm(list=ls());gc()
+
+path<-rstudioapi::getSourceEditorContext()$path
+
+if (grepl("CISS Fondecyt",path)==T){
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+  } else if (grepl("andre",path)==T){
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+  } else if (grepl("E:",path)==T){
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+  } else {
+    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+  }
+rm(list=setdiff(ls(), c("CONS_C1_df_dup_SEP_2020_match","CONS_C1_df_dup_SEP_2020","CONS_C1")))
+```
+
+```{r setup, include = FALSE, cache=T}
+#Libraries used in the routine. Dont change the order
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
+  if(class(ungroup(x))[1]=="tbl_df"){
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)    
+        }
+  } else {
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)       
+  }
+ }
+}  
+#packageVersion("codebook")
+#https://github.com/RevolutionAnalytics/checkpoint
+#if(!require(checkpoint)){install.packages("checkpoint")}
+#if(!require(here)){install.packages("here")}
+#checkpoint::checkpoint("2020-02-19",project=here::here(),checkpointLocation=paste0(here::here(),"/dedup"), use.lock=F, use.knitr=T, auto.install.knitr = T,scan.rnw.with.knitr=T, forceInstall=T,scanForPackages = TRUE)
+#checkpointArchives(tempdir(), full.names = TRUE)
+
+#if(!require(tidyr)){install.packages("tidyr")}
+#if(!require(DataExplorer)){install.packages("DataExplorer")}
+#if(!require(stringi)){install.packages("stringi")}
+#if(!require(stringr)){install.packages("stringr")}
+#if(!require(ggplot2)){install.packages("ggplot2")}
+#if(!require(Hmisc)){install.packages("Hmisc")}
+#if(!require(kableExtra)){install.packages("kableExtra")}
+#if(!require(plotly)){install.packages("plotly")}
+#if(!require(rbokeh)){install.packages("rbokeh")}
+#if(!require(altair)){install.packages("altair")}
+#if(!require(zoo)){install.packages("zoo")}
+#if(!require(codebook)){install.packages("codebook")}
+#if(!require(broom)){install.packages("broom")}
+#if(!require(sqldf)){install.packages("sqldf")} 
+#if(!require(devtools)){install.packages("devtools")}
+#if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
+#if(!require(data.table)){install.packages("data.table")}
+#if(!require(dplyr)){install.packages("dplyr")}
+
+#if(!require(boot)){install.packages("boot")}
+#if(!require(plyr)){install.packages("plyr")}
+#if(!require(matrixStats)){install.packages("matrixStats")}
+#if(!require(radiant)){install.packages("radiant", repos = "https://radiant-rstats.github.io/minicran/")}
+
+try(library(boot))
+library(matrixStats)
+library(knitr)
+library(tidyr)
+library(stringi)
+library(stringr)
+library(ggplot2)
+library(Hmisc)
+library(kableExtra)
+library(plotly)
+library(janitor)
+library(rbokeh)
+library(zoo)
+library(broom)
+library(sqldf)
+library(devtools)
+library(codebook)
+library(data.table)
+library(panelr)
+library(RColorBrewer)
+library(lsmeans)
+library(finalfit)
+suppressPackageStartupMessages(library(ggiraph))
+suppressPackageStartupMessages(library(sf))
+library(treemapify)
+library(dplyr)
+library(tidyverse)
+library(epiR)
+library(survminer)
+library(ggfortify)
+library(survMisc)
+
+library(foreign)
+library(Hmisc)
+library(gridExtra)
+library(reshape2)
+library(stargazer)
+library(tableone)
+library(MatchIt)
+library(cobalt)
+library(eha)
+library(igraph)
+library(Amelia)
+library(DiagrammeR) 
+library(mstate)
+library(flexsurv)
+library(muhaz)
+library(Metrics)
+library(EDA)
+#library(mstateutils)
+#remotes::install_github("chjackson/flexsurv-dev", upgrade = "never")
+#devtools::install_github("stulacy/multistateutils", build_vignettes=TRUE, upgrade = "never")
+#devtools::install_github("hputter/mstate", upgrade = "never")
+#unlink("C:/Users/CISS Fondecyt/OneDrive/Documentos/R/win-library/4.0/mstate", recursive=T, force=T)
+
+if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
+#install.packages( repos = "https://radiant-rstats.github.io/minicran/")
+#install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")
+
+#tryCatch(source("https://raw.githubusercontent.com/radiant-rstats/minicran/gh-pages/update.R"), error = function(e) print("updated package, radiant"))
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+try_with_time_limit <- function(expr, cpu = Inf, elapsed = Inf)
+{
+  y <- try({setTimeLimit(cpu, elapsed); expr}, silent = TRUE) 
+  if(inherits(y, "try-error")) NULL else y 
+}
+eval_fork <- function(..., timeout=60){
+
+  #this limit must always be higher than the timeout on the fork!
+  setTimeLimit(timeout+5);      
+
+  #dispatch based on method
+  ##NOTE!!!!! Due to a bug in mcparallel, we cannot use silent=TRUE for now.
+  myfork <- parallel::mcparallel({
+    eval(...)
+  }, silent=FALSE);
+
+  #wait max n seconds for a result.
+  myresult <- parallel::mccollect(myfork, wait=FALSE, timeout=timeout);
+
+  #try to avoid bug/race condition where mccollect returns null without waiting full timeout.
+  #see https://github.com/jeroenooms/opencpu/issues/131
+  #waits for max another 2 seconds if proc looks dead 
+  while(is.null(myresult) && totaltime < timeout && totaltime < 2) {
+     Sys.sleep(.1)
+     enddtime <- Sys.time();
+     totaltime <- as.numeric(enddtime - starttime, units="secs")
+     myresult <- parallel::mccollect(myfork, wait = FALSE, timeout = timeout);
+  }
+
+  #kill fork after collect has returned
+  tools::pskill(myfork$pid, tools::SIGKILL);    
+  tools::pskill(-1 * myfork$pid, tools::SIGKILL);  
+
+  #clean up:
+  parallel::mccollect(myfork, wait=FALSE);
+
+  #timeout?
+  if(is.null(myresult)){
+    stop("R call did not return within ", timeout, " seconds. Terminating process.", call.=FALSE);      
+  }
+
+  #move this to distinguish between timeout and NULL returns
+  myresult <- myresult[[1]];
+
+  #reset timer
+  setTimeLimit();     
+
+  #forks don't throw errors themselves
+  if(inherits(myresult,"try-error")){
+    #stop(myresult, call.=FALSE);
+    stop(attr(myresult, "condition"));
+  }
+
+  #send the buffered response
+  return(myresult);  
+}
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#GET LOCAL
+#dir.create(paste0(getwd(),"/renv_local"))
+#Sys.setenv(RENV_PATHS_LOCAL = paste0(getwd(),"/renv_local"))
+#install.packages(paste0(getwd(),"/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+#install.packages(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+library(gurobi)
+#"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)"
+#Sys.getenv("R_LIBS_USER")
+
+fitstats.flexsurvreg = function(x){
+  ll = x$loglik
+  aic = x$AIC
+  k = length(x$coefficients)
+  n = sum(x$data$m["(weights)"])
+  aicc = aic + ((2 * k) * (k + 1) / (n - k - 1))
+  bic = - 2 * ll + (k * log(n))
+  data.frame(
+   Df = k,
+    "n2ll" = -2 * ll,
+    AIC = aic,
+    AICc = aicc,
+    BIC = bic
+  )
+}
+
+
+if(.Platform$OS.type == "windows") withAutoprint({
+  memory.size()
+  memory.size(TRUE)
+  memory.limit()
+})
+memory.limit(size=56000)
+```
+
+<br>
+
+# Obtain the database
+
+<br>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:400px; overflow-x: scroll; width:100%">
+```{r traer_base,dpi = 96, message=F, error=T,eval=T, warnings=F}
+library(readxl)
+base_fiscalia <- read_excel("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/BASE.xlsx", 
+    sheet = "BASE", skip = 4, guess_max = min(1000000, 1000000)) %>% janitor::clean_names()
+#PASAR A FORMATO FECHA ENTENDIBLE Y HACERLO EN NUMERO: fec_comision  termino_relacion fec_cbiorelacion
+#ESTUDIAR ADVERTENCIAS
+#Todas. Número con que se identifica una causa o juicio en el sistema informático. Es único para todo el país, generalmente lo crea el Ministerio Público y nace y muere con la causa.
+#https://obtienearchivo.bcn.cl/obtienearchivo?id=documentos/10221.1/57046/1/GlosarioTerminos_PoderJudicial.pdf
+#irrelevante para nosotros: gls_sitiosuceso, cod_sitiosuceso, lugar_ocurrencia
+glimpse(base_fiscalia)
+
+#CLASIFICACION_PENA 55
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#Sirve: encontrado_como_victima, encontrado_como_imputado, tipo_termino, agrupa_terminos, gls_materia, familia_delito, gls_tipo_sujeto_vic,  familia_delito, gls_region, gls_parentesco
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+#encontrado_como_victima encontrado_como_imputado, ¿puede ser ambas?
+
+#
+
+#Investigar si sirve: gls_proctermino
+
+#idsujeto_victima varía por hash? puede porque él no sea víctima
+
+# Investigar consistencia de edad y sexo en función de gls_parentesco. Ver si varía por fecha para un mismo hash
+
+
+#Ver si  gls_region agrupa bien a las comunas
+#Ver si los agrupa/familia hacen bien la clasificación
+#Hay inconsistencia en gls_materia vs. cod_delito
+#Ver si hay información icompleta por quienes tienen medidas. Ver qué significa 155 pp e ip; también ver que es 43 a 58
+
+#Hacer prueba de aleatoriedad
+
+#Por lo visto nos metieron gente que no calza con la base de datos o que no está en nuestra base. Ver si corresponde a gente que descartamos.
+```
+</div>
+
+```{r tab1_descr_c1_baseline_vs_type_treatd,dpi = 96, message=F, error=T,eval=T, warnings=F}
+library(compareGroups)
+
+no_mostrar=1
+if(no_mostrar==0){
+CONS_C1_df_dup_SEP_2020_match<-
+  CONS_C1_df_dup_SEP_2020 %>% 
+  dplyr::filter(dup==1) %>% #, tipo_de_plan_2 %in% c("PG-PR","M-PR","PG-PAI","M-PAI","PG-PAB","M-PAB")
+  dplyr::mutate(tipo_de_plan_res=dplyr::case_when(grepl("PR",as.character(tipo_de_plan_2))~1,
+                                                  grepl("PAI",as.character(tipo_de_plan_2))~0,
+                                                  grepl("PAB",as.character(tipo_de_plan_2))~0,
+                                                  TRUE~NA_real_)) %>% 
+  dplyr::mutate(tipo_de_plan_res=factor(tipo_de_plan_res)) %>% 
+  dplyr::mutate(abandono_temprano_rec=factor(if_else(as.character(motivodeegreso_mod_imp)=="Early Drop-out",TRUE,FALSE,NA))) %>% 
+  dplyr::mutate(dg_trs_cons_sus_or=factor(if_else(as.character(dg_trs_cons_sus_or)=="Drug dependence",TRUE,FALSE,NA))) %>% 
+  dplyr::mutate(tipo_centro_pub=factor(if_else(as.character(tipo_centro)=="Public",TRUE,FALSE,NA))) %>% 
+  dplyr::mutate(condicion_ocupacional_corr=factor(condicion_ocupacional_corr),cat_ocupacional_corr=factor(cat_ocupacional_corr)) %>% 
+  dplyr::mutate(dg_trs_fis_rec=factor(dplyr::case_when(as.character(diagnostico_trs_fisico)=="En estudio"~"Diagnosis unknown (under study)",as.character(diagnostico_trs_fisico)=="Sin trastorno"~'Without physical comorbidity',cnt_diagnostico_trs_fisico>0 ~'With physical comorbidity',
+                                             TRUE~NA_character_)))%>%
+    dplyr::mutate(escolaridad_rec=parse_factor(as.character(escolaridad_rec),levels=c('3-Completed primary school or less', '2-Completed high school or less', '1-More than high school'), ordered=T,trim_ws=T,include_na =F, locale=locale(encoding = "Latin1"))) %>%   
+dplyr::mutate(freq_cons_sus_prin=parse_factor(as.character(freq_cons_sus_prin),levels=c('Did not use', 'Less than 1 day a week','2 to 3 days a week','4 to 6 days a week','1 day a week or more','Daily'), ordered =T,trim_ws=T,include_na =F, locale=locale(encoding = "UTF-8"))) %>% 
+  dplyr::mutate(evaluacindelprocesoteraputico=dplyr::case_when(grepl("1",as.character(evaluacindelprocesoteraputico))~'1-High Achievement',grepl("2",as.character(evaluacindelprocesoteraputico))~'2-Medium Achievement',grepl("3",as.character(evaluacindelprocesoteraputico))~'3-Minimum Achievement', TRUE~as.character(evaluacindelprocesoteraputico))) %>% 
+  dplyr::mutate(evaluacindelprocesoteraputico=parse_factor(as.character(evaluacindelprocesoteraputico),levels=c('1-High Achievement', '2-Medium Achievement','3-Minimum Achievement'), ordered =T,trim_ws=T,include_na =F, locale=locale(encoding = "UTF-8"))) %>% 
+  dplyr::select_(.dots = match.on_tot) %>% 
+  dplyr::mutate(more_one_treat=factor(ifelse(duplicates_filtered>1,1,0))) %>% 
+  data.table::data.table()
+}
+
+invisible("Comentarios")
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+kableone <- function(x, caption=NULL, col.names=NA, smd=T, test=T, varLabels=T, noSpaces=T, printToggle=T, dropEqual=F, ...) {
+  capture.output(x <- print(x, smd=T, test=test, varLabels=varLabels,noSpaces=noSpaces, printToggle=printToggle, dropEqual=dropEqual, ...))
+  
+  knitr::kable(x,format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption= caption, col.names= col.names)
+}
+as.data.frame.TableOne <- function(x, ...) {
+    
+    capture.output(print(x, showAllLevels = TRUE, smd=T, test=T, varLabels=T, ...) -> x)
+    
+    y <- as.data.frame(x)
+    y$characteristic <- na_if(rownames(x), "")
+    y <- y %>%
+        #fill(characteristic, .direction = "down") %>%
+        select(characteristic, everything())
+    
+    rownames(y) <- NULL
+    y 
+}
+
+options(knitr.kable.NA = '')
+
+#attr(CONS_C1_df_dup_SEP_2020_match$sus_ini_mod_mvv,"label")<-"Starting Substance"
+
+## Vector of variables to summarize
+myVars <-dput(names(dplyr::select(base_fiscalia, -c("rut_enc_saf","ruc","idrelacion","cod_delito","cod_lugarocurrencia","cod_parentescoimputado","cod_mottermino","cod_motsuspension","cod_proctermino","idsujeto_imputado","idsujeto_victima","impcod_tiposujeto","cod_lugarocurrencia","cod_sitiosuceso","cod_comunadelito","cod_region"))))
+
+## Vector of categorical variables that need transformation
+catVars <- c("encontrado_como_victima", "encontrado_como_imputado", "gls_tipo_sujeto_vic", "gls_region",
+             "tipo_termino", "agrupa_terminos", "gls_materia","familia_delito","relacion_vifsaf","gls_parentesco","gls_mottermino","gls_motsuspension","gls_proctermino","gls_tipo_imputado","lugar_ocurrencia","gls_sitiosuceso","gls_comuna","region_delito","medidas_155","medidas_pp","medidas_ip","marca_suspension_43","marca_pena_44","marca_multa_45","medida_alternativa_46","clasificacion_pena_47","tramos_condena_48","clasificacion_penarpa_1_49","clasificacion_penarpa_2_50","marca_suspension_51","marca_pena_52","marca_multa_53","medida_alternativa_54","clasificacion_pena_55","tramos_condena_56","clasificacion_penarpa_1_57","clasificacion_penarpa_2_58")
+## Create a TableOne object
+tab1 <- CreateTableOne(vars = myVars, data = base_fiscalia[,myVars], factorVars = catVars, 
+                       smd=T, includeNA=T,test=T)
+
+kableone(as.data.frame.TableOne(tab1), size=11, first.strip=T, hide.no="no",
+           format="html",caption= "Table 1. Summary descriptives",
+         smd=T, test=T, varLabels=T,noSpaces=T, printToggle=T, dropEqual=F) %>% #,col.names=c("Variables","Residential", "Ambulatory", "p-value")) %>% 
+    kableExtra::kable_styling(bootstrap_options = c("striped", "hover","condensed"),font_size= 10) %>%
+  row_spec(1, bold=T, italic=T,color="black",hline_after=T,extra_latex_after="\\arrayrulecolor{white}",font_size= 11) %>%
+  kableExtra::add_footnote(c("Note. Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+```{r tab2_descr_c1_baseline_vs_type_treatd,dpi = 96, message=F, error=T,eval=T, warnings=F}
+tab2 <- CreateTableOne(vars = myVars, data = base_fiscalia[,myVars], factorVars = catVars, 
+                       smd=T, strata="encontrado_como_imputado", includeNA=T,test=T)
+
+kableone(as.data.frame.TableOne(tab2), size=11, first.strip=T, hide.no="no",
+           format="html",caption= "Table 2. Summary descriptives, by accused",
+         smd=T, test=T, varLabels=T,noSpaces=T, printToggle=T, dropEqual=F) %>% #,col.names=c("Variables","Residential", "Ambulatory", "p-value")) %>% 
+    kableExtra::kable_styling(bootstrap_options = c("striped", "hover","condensed"),font_size= 10) %>%
+  row_spec(1, bold=T, italic=T,color="black",hline_after=T,extra_latex_after="\\arrayrulecolor{white}",font_size= 11) %>%
+  kableExtra::add_footnote(c("Note. Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+
+```
+
+<br>
+
+```{r hetcor, echo=T, cache= T, paged.print=TRUE, eval=F, error=F, dpi=320, fig.align="center", fig.cap="Figure 2. Latent classes"}
+
+mydata <- 
+  base_fiscalia %>% 
+  dplyr::mutate(accused=dplyr::case_when(encontrado_como_victima=="SI" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 encontrado_como_victima=="NO" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 T~"VICTIMA")) %>%
+  dplyr::select(-c("rut_enc_saf","gls_region","gls_tipo_sujeto_vic","ruc","idrelacion","cod_delito","cod_lugarocurrencia","cod_parentescoimputado","cod_mottermino","cod_motsuspension","cod_proctermino","idsujeto_imputado","idsujeto_victima","impcod_tiposujeto","cod_lugarocurrencia","cod_sitiosuceso","cod_comunadelito","iddelito","cod_region")) %>% 
+  dplyr::select(-c("encontrado_como_victima","encontrado_como_imputado","fec_comision", "termino_relacion", "fec_cbiorelacion", "gls_comuna", "lugar_ocurrencia")) %>% 
+  dplyr::filter(accused=="IMPUTADO") %>% 
+   # glimpse()
+  dplyr::mutate(across(, ~ifelse(is.na(.),9999,as.numeric(factor(.)))))
+
+
+f_df<-with(mydata, cbind(tipo_sujeto_vic, reg, tipo_termino, agrupa_terminos, 
+gls_materia, familia_delito, relacion_vifsaf, gls_parentesco, 
+gls_mottermino, gls_motsuspension, gls_proctermino, gls_tipo_imputado, 
+gls_sitiosuceso, region_delito, medidas_155, medidas_pp, 
+medidas_ip, marca_suspension_43, marca_pena_44, marca_multa_45, 
+medida_alternativa_46, clasificacion_pena_47, tramos_condena_48, 
+clasificacion_penarpa_1_49, clasificacion_penarpa_2_50, marca_suspension_51, 
+marca_pena_52, marca_multa_53, medida_alternativa_54, clasificacion_pena_55, 
+tramos_condena_56, clasificacion_penarpa_1_57, clasificacion_penarpa_2_58, 
+accused)~1)
+```
+
+<br>
+
+## Times as accused
+
+- `r table(base_fiscalia$encontrado_como_victima,base_fiscalia$encontrado_como_imputado)[4]` people that is found as accused and as a victim at the same time. Meanwhile, we considered them as accused.
+
+
+```{r fig1, echo=T, cache= T, paged.print=TRUE, warning=F, eval=T, fig.align="center", fig.cap="Figure 1. Distribution of records in which a user is declared as an accused", fig.height=12}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+base_fiscalia_acc_imp<-
+base_fiscalia %>% 
+  dplyr::mutate(accused=dplyr::case_when(encontrado_como_victima=="SI" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 encontrado_como_victima=="NO" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 T~"VICTIMA")) %>% 
+  dplyr::filter(accused=="IMPUTADO") %>% 
+  dplyr::group_by(rut_enc_saf) %>% 
+  dplyr::count() %>% 
+  ungroup()
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+p<-
+base_fiscalia_acc_imp %>% 
+  dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("hash_key","dup")] %>% distinct(hash_key, .keep_all = T),by=c("rut_enc_saf"="hash_key")) %>% ggplot(aes(x=n), alpha=.7)+
+  geom_histogram_interactive(bins=120)+
+  geom_vline(aes(xintercept=median(base_fiscalia_acc_imp$n)), color="darkred", linetype="dashed")+
+  geom_vline(aes(xintercept=quantile(base_fiscalia_acc_imp$n, .99)), color="darkmagenta", linetype="solid")+
+  geom_vline(aes(xintercept=quantile(base_fiscalia_acc_imp$n, .95)), color="darkblue", linetype="dotted")+
+  sjPlot::theme_sjplot2() +
+  #facet_wrap(~motivodeegreso_mod_imp)+
+labs(y = "Frequency",x="Diff. Between Treatments", caption= paste0("Blue dotted line=", quantile(base_fiscalia_acc_imp$n, .95)," records; Violet solid line=",quantile(base_fiscalia_acc_imp$n, .99)," records; Red dashed line= Median=",median(base_fiscalia_acc_imp$n)," records; Maximum=",max(base_fiscalia_acc_imp$n)," records"))
+# xlim(c(-1,2000))
+
+p
+```
+
+
+## Times as victim
+
+
+```{r fig2, echo=T, cache= T, paged.print=TRUE, warning=F, eval=T, fig.align="center", fig.cap="Figure 2. Distribution of records in which a user is declared as a Victim", fig.height=12}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+base_fiscalia_acc_vic<-
+base_fiscalia %>% 
+  dplyr::mutate(accused=dplyr::case_when(encontrado_como_victima=="SI" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 encontrado_como_victima=="NO" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 T~"VICTIMA")) %>% 
+  dplyr::filter(accused=="VICTIMA") %>% 
+  dplyr::group_by(rut_enc_saf) %>% 
+  dplyr::count() %>% 
+  ungroup()
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+
+p2<-
+base_fiscalia_acc_vic %>% 
+  dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("hash_key","dup")] %>% distinct(hash_key, .keep_all = T),by=c("rut_enc_saf"="hash_key")) %>% ggplot(aes(x=n), alpha=.7)+
+  geom_histogram_interactive(bins=120)+
+  geom_vline(aes(xintercept=median(base_fiscalia_acc_vic$n)), color="darkred", linetype="dashed")+
+  geom_vline(aes(xintercept=quantile(base_fiscalia_acc_vic$n, .99)), color="darkmagenta", linetype="solid")+
+  geom_vline(aes(xintercept=quantile(base_fiscalia_acc_vic$n, .95)), color="darkblue", linetype="dotted")+
+  sjPlot::theme_sjplot2() +
+  #facet_wrap(~motivodeegreso_mod_imp)+
+labs(y = "Frequency",x="Diff. Between Treatments", caption= paste0("Blue dotted line=", quantile(base_fiscalia_acc_vic$n, .95)," records; Violet solid line=",quantile(base_fiscalia_acc_vic$n, .99)," records; Red dashed line= Median=",median(base_fiscalia_acc_vic$n)," records; Maximum=",max(base_fiscalia_acc_vic$n)," records"))
+# xlim(c(-1,2000))
+
+p2
+```
+
+<br>
+
+
+# Codebook
+
+```{r codebook, echo=T, error=T, paged.print=TRUE}
+knitr::opts_chunk$set(
+  warning = TRUE, # show warnings during codebook generation
+  message = TRUE, # show messages during codebook generation
+  error = TRUE, # do not interrupt codebook generation in case of errors,
+                # usually better for debugging
+  echo = TRUE  # show R code
+)
+ggplot2::theme_set(ggplot2::theme_bw())
+pander::panderOptions("table.split.table", Inf)
+
+if(!require(codebook)){install.packages("codebook")}
+if(!require(future)){install.packages("future")}
+if(!require(dplyr)){install.packages("dplyr")}
+```
+
+
+```{r prepare_codebook, include=T}
+
+codebook_data <- dplyr::select(base_fiscalia, -c("rut_enc_saf","ruc","idrelacion","cod_delito","cod_lugarocurrencia","cod_parentescoimputado","cod_mottermino","cod_motsuspension","cod_proctermino","idsujeto_imputado","impcod_tiposujeto","cod_lugarocurrencia","cod_sitiosuceso","cod_comunadelito","cod_region"))
+
+muestra=0
+if(muestra==1){
+# omit the following lines, if your missing values are already properly labelled
+codebook_data <- detect_missing(codebook_data,
+    only_labelled = TRUE, # only labelled values are autodetected as
+                                   # missing
+    negative_values_are_missing = FALSE, # negative values are missing values
+    ninety_nine_problems = FALSE,   # 99/999 are missing values, if they
+                                   # are more than 5 MAD from the median
+    )
+}
+# If you are not using formr, the codebook package needs to guess which items
+# form a scale. The following line finds item aggregates with names like this:
+# scale = scale_1 + scale_2R + scale_3R
+# identifying these aggregates allows the codebook function to
+# automatically compute reliabilities.
+# However, it will not reverse items automatically.
+#codebook_data <- detect_scales(codebook_data)
+```
+
+<br>
+
+In the following Tables and graphics, there is a summary of the variables and documentation of their characteristics. This high-level summary may permit us find errors on coding, help us to understand missingness and guide us towards an objective, or lead us to more questions. If a variable contains the symbol `(*)`, it means that this variable has a concatenation of values among continuous entries in treatments.
+
+<br>
+
+```{r codebook_display}
+  metadata(codebook_data)$name <- "Prosecutor Support System (SAF), database of the Public Prosecutor's Office."
+  metadata(codebook_data)$description <- "The information was extracted and processed from the Prosecutor Support System (SAF) database in accordance with the criteria established in the methodological document 'Criteria for Extracting Information from the SAF - 11_04_2018', prepared and updated in 2018 by the Studies, Evaluation, Control and Management Development Division. Data obtained at 2021-08-13; Period= 2010 to 2019; Unit of measurement= Relationships; Offenses considered= All; Date to consider= Date of termination of the case; National Coverage; Detail or summary= Detail; In the search for victims, only direct victims were considered; The RUTs indicated are searched only in cases terminated or suspended in the period 2010 - 2019;
+The following types of accused are considered: COMPLAINED, ACCUSED, QUERELLED, WITNESS, SUSPECTED AND INVESTIGATED"
+
+codebook(codebook_data)
+```
+
+<br>
+
+# Session Info
+
+```{r session_info, echo=T, error=T, paged.print=TRUE}
+Sys.getenv("R_LIBS_USER")
+
+rstudioapi::getSourceEditorContext()
+#save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+
+if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.RData")
+  } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/andre/Desktop/SUD_CL/10.RData")
+  } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.RData")
+  } else {
+    save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.RData")
+  }
+
+sessionInfo()
+```
+
+# Exportar
+
+```{r export, warning=FALSE}
+  #dplyr::arrange(hash_key, fech_ing)%>% 
+path<-rstudioapi::getSourceEditorContext()$path
+
+  base_fiscalia %>% 
+  dplyr::mutate(accused=dplyr::case_when(encontrado_como_victima=="SI" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 encontrado_como_victima=="NO" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 T~"VICTIMA")) %>% 
+  dplyr::filter(accused=="VICTIMA") %>% 
+    rio::export(file = paste0(gsub("SUD_CL/Fiscalia_merge.Rmd","",path),"fiscalia_mariel_ago_2021.dta"))
+```

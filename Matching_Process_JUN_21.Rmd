@@ -716,6 +716,20 @@ CONS_C1_df_dup_SEP_2020_match %>%
   dplyr::ungroup() %>% 
   dplyr::summarise_at(vars(c(tipo_de_plan_res,sus_ini_mod_mvv, estado_conyugal_2,escolaridad_rec,edad_ini_cons,freq_cons_sus_prin,origen_ingreso_mod, dg_cie_10_rec, nombre_region, tipo_centro_pub, sexo_2,edad_al_ing,dg_trs_cons_sus_or,evaluacindelprocesoteraputico)),~sum(.))
 
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+CONS_C1_df_dup_SEP_2020_match %>%
+    rowwise %>%
+    dplyr::mutate_at(.vars = vars(c(tipo_de_plan_res,sus_ini_mod_mvv, estado_conyugal_2,escolaridad_rec,edad_ini_cons,freq_cons_sus_prin,origen_ingreso_mod, dg_cie_10_rec, nombre_region, tipo_centro_pub, sexo_2,edad_al_ing,dg_trs_cons_sus_or,evaluacindelprocesoteraputico)),
+                     .funs = ~ifelse(is.na(.), 1, 0)) %>% 
+      dplyr::ungroup() %>%
+dplyr::mutate(sumVar=rowSums(dplyr::select(., c("tipo_de_plan_res","sus_ini_mod_mvv", "estado_conyugal_2","escolaridad_rec","edad_ini_cons","freq_cons_sus_prin","origen_ingreso_mod", "dg_cie_10_rec", "nombre_region", "tipo_centro_pub", "sexo_2","edad_al_ing","dg_trs_cons_sus_or")))) %>% 
+  dplyr::filter(sumVar>0) %>% 
+  nrow()
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
 plot_miss<-
 missing.values %>%
   data.table::melt() %>%  #condicion_ocupacional_corr
@@ -3751,7 +3765,7 @@ d_match_surv_msprep<-
   d_match_surv %>% 
   dplyr::select(id, duplicates_filtered, fech_ing_num,fech_egres_num,dias_treat_imp_sin_na,fech_ing_next_treat,tipo_de_plan_res,motivodeegreso_mod_imp,min_achievement,group_match,dup, dias_treat_imp_sin_na) %>% 
   ## Filter the fifth readmission of registries
-  dplyr::filter(dup<6) %>% 
+  dplyr::filter(dup<5) %>% 
   dplyr::mutate(tipo_de_plan_res=if_else(tipo_de_plan_res=="1",1,0,0)) %>% 
   dplyr::mutate(TD=if_else(motivodeegreso_mod_imp=="Therapeutic discharge",1,0,0)) %>% 
   dplyr::mutate(DWCA=if_else(motivodeegreso_mod_imp %in% c("Early Drop-out","Late Drop-out","Administrative discharge"),1,0,0)) %>% 
@@ -4018,6 +4032,27 @@ builds in a proportional hazards assumption.
 #No funciona haciendo sin covariables. Si te fijas, en el ejemplo de Williams, los modelos de supervivencia son NULOS, es decir, no tienen variables de control (Surv(years,status)~ 1)
 --->
 
+```{r cox_zph,eval=T, echo=T, paged.print=TRUE}                                 
+cox_zph_trans<-data.frame()#rn="0",chisq=1,df=1,p=1
+for(i in c(1:max(trans_matrix,na.rm=T))){
+
+cox_zph_trans<-dplyr::bind_rows(cox_zph_trans,cbind.data.frame(trans=i,
+                                data.table::data.table(cox.zph(coxph(Surv(Tstart,Tstop,status)~factor(tipo_de_plan_res_1)+Tstart,
+              data=subset(ms_d_match_surv_res, trans==i),method = "breslow"))$table, keep.rownames = T))
+)
+}
+
+cox_zph_trans$p<-round(cox_zph_trans$p,3)
+cox_zph_trans$chisq<-round(cox_zph_trans$chisq,3)
+
+cox_zph_trans_cont<-data.frame()
+for(i in c(1:max(trans_matrix,na.rm=T))){
+cox_zph_trans_cont<-dplyr::bind_rows(cox_zph_trans_cont,cbind.data.frame(trans=i,
+  data.table::data.table(cox.zph(coxph(Surv(Tstart,Tstop,status)~factor(tipo_de_plan_res_1)+ factor(TD_1)+ factor(TD_2)+ factor(TD_3)+ factor(TD_4)+Tstart,data=subset(ms_d_match_surv_res, trans==i),method = "breslow"))$table, keep.rownames = T)))
+}
+cox_zph_trans_cont$p<-round(cox_zph_trans_cont$p,3)
+```
+
 As seen in both Figures above, the cumulative hazards does not follow a proportional trend in the four transitions.
 
 <br>
@@ -4043,6 +4078,20 @@ coxph(Surv(Tstart,Tstop,status)~factor(tipo_de_plan_res_1)+Tstart,
   tab_cox_markov_add<- cbind.data.frame(plots[i, "title"],get(paste0("HR",i)),get(paste0("CI",i)),get(paste0("P",i)))
   tab_cox_markov<-rbind.data.frame(tab_cox_markov,tab_cox_markov_add)
 }
+
+tab_cox_markov2<- data.frame()
+for (i in c(2:max(trans_matrix,na.rm=T))){
+coxph(Surv(time,status)~factor(tipo_de_plan_res_1)+Tstart,
+                  data=subset(ms_d_match_surv_res, trans==i),method = "breslow") %>% 
+    assign(paste0("CoxMarkov",i),.,envir=.GlobalEnv)
+  round(exp(coef(get(paste0("CoxMarkov",i)))),2)%>% assign(paste0("HR",i),.,envir=.GlobalEnv)
+  round(exp(confint(get(paste0("CoxMarkov",i)))),2)%>% assign(paste0("CI",i),.,envir=.GlobalEnv)
+  round(coef(summary(get(paste0("CoxMarkov",i))))[,5],4)%>% assign(paste0("P",i),.,envir=.GlobalEnv)
+  data.frame(get(paste0("CI",i))) %>% dplyr::rename("Lower 95% CI"="X2.5..","Upper 95% CI"="X97.5..")%>% assign(paste0("CI",i),.,envir=.GlobalEnv)
+  tab_cox_markov_add<- cbind.data.frame(plots[i, "title"],get(paste0("HR",i)),get(paste0("CI",i)),get(paste0("P",i)))
+  tab_cox_markov2<-rbind.data.frame(tab_cox_markov2,tab_cox_markov_add)
+}
+#2021-08-21: con renewal da lo mismo
 
 tab_cox_markov %>% 
   data.table(keep.rownames=T) %>% 
@@ -4369,6 +4418,13 @@ weights_matrix <- function(data,grid,from,to,min_time=0,other_weights=NULL) {
   fn_list
 }
 
+overall_test<-function(x){
+  x<-deparse(substitute(x))
+  paste0("Chi2(", get(x)[["Nsub"]],")=",
+  round(get(x)[["orig_ch_stat"]],2),", p=",
+  sprintf("%1.4f",get(x)[["p_ch_stat_wb"]]))
+} 
+
 #_#_#_#__#_#_#_#_#_#__###### markov test ##### _#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
 #Time grid
@@ -4385,27 +4441,43 @@ start_time <- Sys.time()
 cox_markov_test_prueba12<-
   cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res_1 + TD_1", tfrom=1 , tto=2, grid=tseq, trans=trans_matrix_etm, B=1000)
 
+overall_test(cox_markov_test_prueba12)
+
 cox_markov_test_prueba23<-
   cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res_1 + TD_1", tfrom=2 , tto=3, grid=tseq, trans=trans_matrix_etm, B=1000)
+
+overall_test(cox_markov_test_prueba23)
 
 cox_markov_test_prueba34<-
   cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res_1 + TD_1", tfrom=3 , tto=4, grid=tseq, trans=trans_matrix_etm, B=1000)
 
+overall_test(cox_markov_test_prueba34)
+
 cox_markov_test_prueba45<-
   cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res_1 + TD_1", tfrom=4 , tto=5, grid=tseq, trans=trans_matrix_etm, B=1000)
+
+overall_test(cox_markov_test_prueba45)
 
 
 cox_markov_test_prueba12d<-
   cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1", tfrom=1 , tto=2, grid=tseq, trans=trans_matrix_etm, B=1000)
 
+overall_test(cox_markov_test_prueba12d)
+
 cox_markov_test_prueba23d<-
   cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1 + TD_2", tfrom=2 , tto=3, grid=tseq, trans=trans_matrix_etm, B=1000)
+
+overall_test(cox_markov_test_prueba23d)
 
 cox_markov_test_prueba34d<-
   cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1+ TD_2+ TD_3", tfrom=3 , tto=4, grid=tseq, trans=trans_matrix_etm, B=1000)
 
+overall_test(cox_markov_test_prueba34d)
+
 cox_markov_test_prueba45d<-
   cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1+ TD_2+ TD_3+ TD_4", tfrom=4, tto=5, grid=tseq, trans=trans_matrix_etm, B=1000)
+
+overall_test(cox_markov_test_prueba45d)
 
 end_time <- Sys.time()
 
@@ -4520,43 +4592,92 @@ plot.MarkovTest <- function(x, y, what=c("states", "overall"), idx=NULL, quantil
 ```{r fig19_semimark_a, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 19. Log-rank test with therapeutic discharge and Treatment Setting in the baseline treatment as covariates", fig.height=10, error=T, eval=T}
 #$    tipo_de_plan_res + TD_1 - "tipo_de_plan_res_1 + TD_1"
 
-
+plot_12a_markovt<-
 plot.MarkovTest(cox_markov_test_prueba12, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic", main="Adm-> Readm")
+                xlab="Days since admission", ylab="Log-rank test statistic", main="Admission to Readmission")
 
+plot_23a_markovt<-
 plot.MarkovTest(cox_markov_test_prueba23, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm-> Readm2")
+                xlab="Days since admission", ylab="Log-rank test statistic", main="Readmission to 2nd Readmission")
 
+plot_34a_markovt<-
 plot.MarkovTest(cox_markov_test_prueba34, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm2-> Readm3")
+                xlab="Days since admission", ylab="Log-rank test statistic", main="2nd Readmission to 3rd Readmission")
 
+plot_45a_markovt<-
 plot.MarkovTest(cox_markov_test_prueba45, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm3-> Readm4")
+                xlab="Days since admission", ylab="Log-rank test statistic", main="3rd Readmission to 4th Readmission")
+
+plot_12_markovt<-
+plot.MarkovTest(cox_markov_test_prueba12, tseq, what="overall",idx=1:50, 
+                states=colnames(trans_matrix),
+                xlab="Days since admission", ylab="Chi-square test statistic", main="Admission to Readmission")
+
+plot_23_markovt<-
+plot.MarkovTest(cox_markov_test_prueba23, tseq, what="overall",idx=1:50, 
+                states=colnames(trans_matrix),
+                xlab="Days since admission", ylab="Chi-square test statistic", main="Readmission to 2nd Readmission")
+
+plot_34_markovt<-
+plot.MarkovTest(cox_markov_test_prueba34, tseq, what="overall",idx=1:50, 
+                states=colnames(trans_matrix),
+                xlab="Days since admission", ylab="Chi-square test statistic", main="2nd Readmission to 3rd Readmission")
+
+plot_45_markovt<-
+plot.MarkovTest(cox_markov_test_prueba45, tseq, what="overall",idx=1:50, 
+                states=colnames(trans_matrix),
+                xlab="Days since admission", ylab="Chi-square test statistic", main="3rd Readmission to 4th Readmission")
+
+cowplot::plot_grid(plot_12_markovt, plot_23_markovt, plot_34_markovt, plot_45_markovt)#,labels = c("a", "b", "c","d")
+
 ```
 
 
 ```{r fig20_semimark_b, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 20. Log-rank test with therapeutic discharge and Treatment Setting as dynamic covariates", fig.height=10, error=T, eval=T}
 #$    tipo_de_plan_res + TD_1 - "tipo_de_plan_res_1 + TD_1"
-
+plot_12da_markovt<-
 plot.MarkovTest(cox_markov_test_prueba12d, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic", main="Adm-> Readm")
-
+                xlab="Days since admission", ylab="Log-rank test statistic", main="Admission to Readmission")
+plot_23da_markovt<-
 plot.MarkovTest(cox_markov_test_prueba23d, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm-> Readm2")
-
+                xlab="Days since admission", ylab="Log-rank test statistic", main="Readmission to 2nd Readmission")
+plot_34da_markovt<-
 plot.MarkovTest(cox_markov_test_prueba34d, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm2-> Readm3")
-
+                xlab="Days since admission", ylab="Log-rank test statistic", main="2nd Readmission to 3rd Readmission")
+plot_45da_markovt<-
 plot.MarkovTest(cox_markov_test_prueba45d, tseq, what="states",idx=1:50, 
                 states=colnames(trans_matrix),
-                xlab="Days since arrival", ylab="Log-rank test statistic", main="Readm3-> Readm4")
+                xlab="Days since admission", ylab="Log-rank test statistic", main="3rd Readmission to 4th Readmission")
+
+plot_12d_markovt<-
+plot.MarkovTest(cox_markov_test_prueba12d, tseq, what="overall",idx=1:50, 
+                states=colnames(trans_matrix),
+                xlab="Days since admission", ylab="Chi-square test statistic", main="Admission to Readmission")
+plot_23d_markovt<-
+plot.MarkovTest(cox_markov_test_prueba23d, tseq, what="overall",idx=1:50, 
+                states=colnames(trans_matrix),
+                xlab="Days since admission", ylab="Chi-square test statistic", main="Readmission to 2nd Readmission")
+plot_34d_markovt<-
+plot.MarkovTest(cox_markov_test_prueba34d, tseq, what="overall",idx=1:50, 
+                states=colnames(trans_matrix),
+                xlab="Days since admission", ylab="Chi-square test statistic", main="2nd Readmission to 3rd Readmission")
+plot_45d_markovt<-
+plot.MarkovTest(cox_markov_test_prueba45d, tseq, what="overall",idx=1:50, 
+                states=colnames(trans_matrix),
+                xlab="Days since admission", ylab="Chi-square test statistic", main="3rd Readmission to 4th Readmission")
+#orig_ch_stat= Overall chi-squared summary statistic
+#p_stat_wb= P-values corresponding to each of the summary statistics for each starting state
+#p_ch_stat_wb= P-values for overall chi-squared summary statistic
+
+cowplot::plot_grid(plot_12d_markovt, plot_23d_markovt, plot_34d_markovt, plot_45d_markovt)#,labels = c("a", "b", "c","d")
+
 ```
 
 The model considered the transition from intermediate states to our absorbing state (being readmitted at the fourth time) is explained by the time spent in the previous health state. This covariate (time in the previous state) was shown to be statistically significant (p<.001); results indicated a longer duration spent in the first treatment is associated with increased risk of readmission. Therefore, a semi-Markov (called a Markov renewal model) or clock reset approach should be undertaken for both models.

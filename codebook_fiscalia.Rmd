@@ -1,0 +1,129 @@
+---
+title: "Codebook For Chilean prosecutor's office Data"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 4
+    toc_float: true
+    code_folding: 'hide'
+    self_contained: true
+---
+
+```{r setup, include=F}
+rm(list=ls());gc()
+unlink('codebook_cache', recursive = TRUE)
+guardar_tablas <- function (x,y) {writexl::write_xlsx(as.data.frame(x, keeprownames= T),paste0(y,".xlsx"))}
+
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+knitr::opts_chunk$set(
+  warning = TRUE, # show warnings during codebook generation
+  message = TRUE, # show messages during codebook generation
+  error = TRUE, # do not interrupt codebook generation in case of errors,
+                # usually better for debugging
+  echo = TRUE  # show R code
+)
+ggplot2::theme_set(ggplot2::theme_bw())
+pander::panderOptions("table.split.table", Inf)
+#file:///C:/Users/andre/OneDrive/Escritorio/RUTS/codebook%20tutorial.pdf
+#https://cran.r-project.org/web/packages/codebook/vignettes/codebook_tutorial.html
+if(!require(codebook)){install.packages("codebook")}
+if(!require(future)){install.packages("future")}
+if(!require(dplyr)){install.packages("dplyr")}
+```
+
+```{r prepare_codebook, include=T}
+load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.RData")
+
+codebook_data <- as.data.frame(CONS_C1_df_dup_SEP_2020)
+
+# to import an SPSS file from the same folder uncomment and edit the line below
+# codebook_data <- rio::import("mydata.sav")
+# for Stata
+# codebook_data <- rio::import("mydata.dta")
+# for CSV
+# codebook_data <- rio::import("mydata.csv")
+
+muestra=0
+if(muestra==1){
+# omit the following lines, if your missing values are already properly labelled
+codebook_data <- detect_missing(codebook_data,
+    only_labelled = TRUE, # only labelled values are autodetected as
+                                   # missing
+    negative_values_are_missing = FALSE, # negative values are missing values
+    ninety_nine_problems = FALSE,   # 99/999 are missing values, if they
+                                   # are more than 5 MAD from the median
+    )
+}
+# If you are not using formr, the codebook package needs to guess which items
+# form a scale. The following line finds item aggregates with names like this:
+# scale = scale_1 + scale_2R + scale_3R
+# identifying these aggregates allows the codebook function to
+# automatically compute reliabilities.
+# However, it will not reverse items automatically.
+#codebook_data <- detect_scales(codebook_data)
+```
+<br>
+
+In the following Tables and graphics, there is a summary of the variables and documentation of their characteristics. This high-level summary may permit us find errors on coding, help us to understand missingness and guide us towards an objective, or lead us to more questions. If a variable contains the symbol `(*)`, it means that this variable has a concatenation of values among continuous entries in treatments.
+
+<br>
+
+```{r codebook}
+  metadata(codebook_data)$name <- "Agreement 1 SENDA"
+  metadata(codebook_data)$description <- "Information About Agreement 1 of SENDA and MINSAL. Contians information about treatments.(*) Intermediate events are collapsed and concatenated in some variables; Criteria to select values from entries that were collapsed into single treatments: Wide format(a),Maximum/Last value(b), Minimum/First value(c), Kept more vulnerable category(d), Same value(e), Largest treatment(f), Favored dgs.-a(g), Sum values(h). In case of 'tipo_de_plan_2','dias_treat_imp_sin_na', 'diff_bet_treat', 'cum_dias_trat_sin_na', 'mean_cum_dias_trat_sin_na' & 'cum_diff_bet_treat', the first variable, 10 variables were generated for each variable and represents each treatment of user, since the first(1) to the last(10)"
+
+  #dplyr::select(-consentimiento_informado)%>%
+codebook(codebook_data)
+
+
+#Permite exportar los valores de cada variable de tipo factor.
+invisible=9
+df<-NULL
+df<- data.frame()
+  for (i in names(Filter(is.factor,codebook_data))) { 
+        fac<-data.table::data.table(table(codebook_data[i], exclude=NULL))%>% 
+            dplyr::mutate(variable=paste0(i),export=paste0(row_number(),".",V1))%>%
+            dplyr::rename("cat"="V1")%>%
+            dplyr::select(variable,export,cat,N)%>%
+          dplyr::filter(!grepl("\\.NA$",export))
+      df_titulo<-data.frame(variable=paste0(i),export=NA_character_,cat=NA_character_, N=9999999)
+      df<- rbind(df,df_titulo,fac)
+  }
+df<-
+  as.data.frame(df)%>%
+    dplyr::group_by(variable)%>%
+    dplyr::mutate(rn=row_number())%>%
+    select(variable,rn,everything())%>%
+  dplyr::ungroup()
+
+  guardar_tablas(df, "labels_codebook")
+  options(OutDec=',')
+  guardar_tablas(df, "labels_codebook_comma")
+  
+  #1. Copiar datos del libro de códigos
+  #2. Pegar en google spreadsheet codebook
+  #3. Correr comando eliminar filas y eliminar columnas de la s -Z
+  #4. Correr comando Añadir filas (con el 3), 
+  #5. Añadir columna a la derecha de label
+  #6. Separar por "/"
+  #7. Fijarse que no se superponga a otra variable
+  #8. Añadir columna a la derecha de A, y en B1 incorporar la siguiente fórmula: =ArrayFormula(SI(FILA(A1:A)<=COINCIDIR(2,1/(A:A<>""),1),BUSCAR(FILA(A1:A),FILA(A1:A)/SI(A1:A<>"",VERDADERO,FALSO),A1:A),))
+  #8. Fijarse que la última variable tenga todas las categorías llenas con Nombre Variable Estandarizado (abajo al final)
+  #9. Añadir Propiedad a la izquierda de Tipos de Datos (Data Type) (insertar a la izquierda) y poner la fórmula =BUSCARV(A4,'Base de Datos C1 Sep2020'!A:D,4,0)
+  #10. Pegar como valor (para no depender de la fórmula, dejar el comentario)
+  #11. Eliminar la columna A
+  #12. Ver cómo lo hago con labels_codebook (https://docs.google.com/spreadsheets/d/1D-KZ3_Xn3RFRTfPV2D-bPHSM1ZsFgje0/edit#gid=1641040851), ya sea para pegarlo directamente en la hoja 'para_pegar_cat_factores'
+  #13. Tengo que evaluar si la coma y el punto de los decimales era problemático. #14. En una de esas abrir el archio con google drive para saltarse ese problema
+  #15. Pararse en n_missing y generar una columna a la izquierda, pegando el siguiente formula: =SI(SI.ERROR(BUSCARV(CONCATENAR(A4,"_",CONTAR.SI($A$4:$A4,A4)-1),para_pegar_cat_factores!g:i,3,0),"")=9999999,"",SI.ERROR(BUSCARV(CONCATENAR(A4,"_",CONTAR.SI($A$4:$A4,A4)-1),para_pegar_cat_factores!g:i,3,0),""))
+  #16. Después pararse en la columna etiquetas (debiese ser la G), y generar una columna a la derecha
+  #17. Reemplazar value_labels por valores (eliminar value_labels y dejar el de la formula en formato valores), lo mismo de la columna vacia
+  #18. Agregar la siguiente fórmula =SI(I4="",G4,SI.ERROR(BUSCARV(CONCATENAR(A4,"_",CONTAR.SI($A$4:$A4,A4)-1),para_pegar_cat_factores!g:i,2,0),""))
+  #19. Introducir codebook file y pegar encabezados debajo de los labels antiguos
+  #20. Agregar filtro 
+  #21. Eliminar fila 2
+  #22. Poner cie10 en la oclumna al final =SI.ERROR(BUSCARV(G4,est_cod_dsm_iv_cie10!A:C,3,0),"")
+```
