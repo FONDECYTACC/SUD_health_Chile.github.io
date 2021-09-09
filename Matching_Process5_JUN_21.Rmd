@@ -198,13 +198,14 @@ library(mstate)
 library(flexsurv)
 library(muhaz)
 library(Metrics)
-library(hesim)
 
 library(TraMineR)
 library(RColorBrewer)
 library(TraMineRextras)
 library(WeightedCluster)
 library(cluster)
+library(parcats)
+library(easyalluvial)
 #library(mstateutils)
 #remotes::install_github("chjackson/flexsurv-dev", upgrade = "never")
 #devtools::install_github("stulacy/multistateutils", build_vignettes=TRUE, upgrade = "never")
@@ -375,14 +376,18 @@ We can suspect that in readmissions there may be unobserved heterogeneity that a
 
 ### Sequence analysis
 
-```{r alluvial, echo=T, error=T, paged.print=TRUE}
+```{r alluvial, echo=T, error=T, paged.print=TRUE, fig.height=9}
 library(easyalluvial)
 library(parcats)
 p_alluvial<-
-    alluvial_wide(data = d_match_surv_msprep[,c(1,3:6)], 
+  d_match_surv_msprep[,c(1,3:6)] %>% 
+    mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(ifelse(is.na(.),2,.))) %>% 
+    mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(factor(.,labels=c("ambulatory","residential","censored"),levels=c(0,1,2)))) %>% #$fct_rev(
+      alluvial_wide(
                    id = "id", 
                   bin=2,
-                   bin_labels = c("outpatient", "residential"),
+                   bin_labels = c("ambulatory", "residential"),
+                  order_levels= c("ambulatory", "residential","censored"),
                    fill_by = 'first_variable',
                     NA_label = "censored",
                    col_vector_flow=c("red","grey60"),#"#cF291D",
@@ -393,73 +398,12 @@ p_alluvial<-
                    colorful_fill_variable_stratum = F)+
   theme_void()
 
-parcats::parcats(p_alluvial, marginal_histograms = F, data=d_match_surv_msprep, width = 840,height = 1600)#, height=1600,width=1600) 672  480
-```
-
-
-```{r seq_an, echo=T, error=T, paged.print=TRUE}
-
-# 3.Analisis de secuencias laborales
-
-emp.lab <- c("Outpatient","Residential","Censored")
-emp.shortlab <- c("out","res", "cens")
-# 3.3.Creacion de objetos con colores para indicadores de variables
-emp.cpal <- c("#bf6f6f","gray84","red"
-d_match_surv_msprep_mod<-
-d_match_surv_msprep[,c(1,3:6)] %>% dplyr::mutate_all(~ifelse(is.na(.),2,.)) %>% data.frame()
-
-# 3.4.Crear objeto con secuencias
-names(elsoc)
-emp.seq <- seqdef(d_match_surv_msprep_mod, 
-                  2:5, labels=emp.lab, states=emp.shortlab, cpal=emp.cpal)
-#base de datos: elsoc ; columnas sobre las que se construiran las secuencias ; etiquetas largas ; etiquetas abreviadas ; paleta de colores
-
-# 3.5.Medir distancias entre secuencias usando analisis de secuencias usando optimal matching analysis
-dist.emp <- seqdist(emp.seq, method="OM",sm="CONSTANT") #OM= es el optimal matching ; sm= el peso o valor del costo de sustitución
-View(dist.emp)# las secuencias diversas son las que parecen no ser clasificables ; #ve cuantas sustituciones se hicieron y cuanta penalización entre uno y otro individuo ; #
-
-# 3.6.Construir tipos de trayectorias con analisis de cluster jerarquico Ward
-ward.emp <- hclust(as.dist(dist.emp), method = "ward.D")
-
-# 3.6.1.Comparar soluciones con diferentes numeros de trayectorias
-ward.range.emp <- as.clustrange(ward.emp, diss = dist.emp, ncluster = 15)
-#ordenan de modo jerárquico las mejores soluciones de cluster
-#el profe sugiere estandarizar los valores
-
-round(summary(ward.range.emp, max.rank = 15), digits=4)
-plot(ward.range.emp, stat=c("ASW","ASWw", "HG", "PBC", "HC"))
-plot(ward.range.emp, stat=c("ASW","ASWw", "HG", "PBC", "HC"), norm="zscore")
-
-#ASW is a measure of the coherence of a clustering solution. A high ASW value means that the clusters are homogeneous (all observations are close to cluster center), and that they are well separated. According to Kaufmann and Rousseuw (1990), a value below 0.25 means that the data are not structured. Between 0.25 and 0.5, the data might be structured, but it might also be an artifice
-```
-
-
-```{r seq_an2, echo=T, error=T, paged.print=TRUE}
-# 3.6.2.Revision de soluciones con 7 tipos
-# Crea una solución con 7 tipologías, porque en lgráfico es la que se ve mejorcito (conste que HC es al reves, menos es mejor)
-ward.emp6 <- cutree(ward.emp, k = 6)
-xtlab <-c("1er","2do","3er","4to")
-
-#graficar de distintas maneras los tipos de trayectorias
-#secuencias individuales que por tener una baja distancia entre ellas, fueron agrupadas
-#son gráficos de cronogramas
-
-seqdplot(emp.seq, group = ward.emp6, xtlab=xtlab, xlab="Tratamiento")# son la proporción de personas en cada tiempo - aquí me podría meter a los perdidos
-seqIplot(emp.seq, group = ward.emp6, xtlab=xtlab, sortv="from.start", xlab="Tratamiento") #también aquí
-seqmtplot(emp.seq, group = ward.emp6, xlab="Estatus") #Tiempo promedio que estuvieron en cada trayectoria
-seqHtplot(emp.seq, group = ward.emp6, xlab="Tiempo") #Índice de entropía es internamente cada uno de los tipos. 
-#La entropía es 0 del primer grupo porque siempre están en el mismo estado. En cambio, en el 2, van avanzando hacia un mercado laboral y 
-#la entropía empieza a descender (empiezan a llegar a estatus laboral todos)
-
-# 3.7. Juntar informacion de tipos con base inicial
-ward.emp6 <- as.data.frame(ward.emp6)
-elsoc <- cbind(elsoc, ward.emp6)
-prop.table(table(elsoc$ward.emp6))*100
-```
-
-
-```{r seq_an3, echo=T, error=T, paged.print=TRUE}
-
+p_alluvial
+# parcats::parcats(p_alluvial, marginal_histograms = F, data=  d_match_surv_msprep[,c(1,3:6)] %>% 
+#   mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(ifelse(is.na(.),2,.))) %>% 
+#   mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(factor(.,labels=c("ambulatory","residential","censored"),levels=c(0,1,2)))), 
+#                  labelfont = list(size = 12, color = "black"),
+#                width = 840, height = 672)#, height=1600,width=1600) 672  480
 ```
 
 

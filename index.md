@@ -46,6 +46,8 @@ This page is composed by the following main topics:
     
     3a.4.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 4)](Matching_Process4_stata_JUN_21)
     
+    3a.4.5.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 4.5)](Matching_Process4_5_stata_JUN_21)
+    
     3a.5.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 5)](Matching_Process5_stata_JUN_21)
     
     3b.1.a [Supplemental: Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile (Step 1)](Proyecto_carla3)

@@ -84,7 +84,7 @@ if (grepl("CISS Fondecyt",path)==T){
 rm(list=setdiff(ls(), c("CONS_C1_df_dup_SEP_2020_match","CONS_C1_df_dup_SEP_2020","CONS_C1")))
 ```
 
-```{r setup, include = FALSE, cache=T}
+```{r setup, include = FALSE, cache=T, error=T}
 #Libraries used in the routine. Dont change the order
 local({r <- getOption("repos")
        r["CRAN"] <- "http://cran.r-project.org" 
@@ -196,7 +196,10 @@ library(mstate)
 library(flexsurv)
 library(muhaz)
 library(Metrics)
-library(EDA)
+library(rpivotTable)
+library(caret)
+options(scipen=999) #display numbers rather scientific number
+
 #library(mstateutils)
 #remotes::install_github("chjackson/flexsurv-dev", upgrade = "never")
 #devtools::install_github("stulacy/multistateutils", build_vignettes=TRUE, upgrade = "never")
@@ -278,7 +281,6 @@ eval_fork <- function(..., timeout=60){
 #Sys.setenv(RENV_PATHS_LOCAL = paste0(getwd(),"/renv_local"))
 #install.packages(paste0(getwd(),"/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
 #install.packages(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
-library(gurobi)
 #"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)"
 #Sys.getenv("R_LIBS_USER")
 
@@ -316,7 +318,7 @@ memory.limit(size=56000)
 <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:400px; overflow-x: scroll; width:100%">
 ```{r traer_base,dpi = 96, message=F, error=T,eval=T, warnings=F}
 library(readxl)
-base_fiscalia <- read_excel("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/BASE.xlsx", 
+base_fiscalia <- read_excel(gsub("/SUD_CL/Fiscalia_merge.Rmd","/BASE.xlsx",rstudioapi::getSourceEditorContext()$path), 
     sheet = "BASE", skip = 4, guess_max = min(1000000, 1000000)) %>% janitor::clean_names()
 #PASAR A FORMATO FECHA ENTENDIBLE Y HACERLO EN NUMERO: fec_comision  termino_relacion fec_cbiorelacion
 #ESTUDIAR ADVERTENCIAS
@@ -472,12 +474,29 @@ accused)~1)
 
 <br>
 
+# Near Zero Variance
+
+```{r nearZeroVar, echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+nzv_vals <- nearZeroVar(base_fiscalia, saveMetrics = TRUE)
+nzv_sorted <- arrange(nzv_vals, desc(freqRatio))
+head(nzv_sorted)
+
+
+kable(as.data.frame.TableOne(nzv_sorted), size=11, format="html",
+           caption= "Table 2. Near Zero Variance",
+      col.names=c("Variable", "freqRatio", "% of Unique values", "Zero Variance", "Near Zero Variance")) %>% #,col.names=c("Variables","Residential", "Ambulatory", "p-value")) %>% 
+    kableExtra::kable_styling(bootstrap_options = c("striped", "hover","condensed"),font_size= 10) %>%
+  kableExtra::add_footnote(c("Note. freqRatio= ratio of frequencies for the most common value over the second most common value for that variable"), notation = "none")%>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+<br>
+
 ## Times as accused
 
 - `r table(base_fiscalia$encontrado_como_victima,base_fiscalia$encontrado_como_imputado)[4]` people that is found as accused and as a victim at the same time. Meanwhile, we considered them as accused.
 
 
-```{r fig1, echo=T, cache= T, paged.print=TRUE, warning=F, eval=T, fig.align="center", fig.cap="Figure 1. Distribution of records in which a user is declared as an accused", fig.height=12}
+```{r fig1, echo=T, cache= T, paged.print=TRUE, warning=F, eval=T, fig.align="center", fig.cap="Figure 1. Distribution of records in which a user is declared as an accused", fig.height=6}
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 base_fiscalia_acc_imp<-
 base_fiscalia %>% 
@@ -509,7 +528,7 @@ p
 ## Times as victim
 
 
-```{r fig2, echo=T, cache= T, paged.print=TRUE, warning=F, eval=T, fig.align="center", fig.cap="Figure 2. Distribution of records in which a user is declared as a Victim", fig.height=12}
+```{r fig2, echo=T, cache= T, paged.print=TRUE, warning=F, eval=T, fig.align="center", fig.cap="Figure 2. Distribution of records in which a user is declared as a Victim", fig.height=6}
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 base_fiscalia_acc_vic<-
 base_fiscalia %>% 
@@ -538,8 +557,64 @@ labs(y = "Frequency",x="Diff. Between Treatments", caption= paste0("Blue dotted 
 p2
 ```
 
+```{r fig3, echo=T, cache= T, paged.print=TRUE, warning=F, eval=T, fig.align="center", fig.cap="Figure 3. Distribution of records in which a user is declared as an accused"}
+
+base_fiscalia_acc_vic %>% 
+    dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("hash_key","dup")] %>% distinct(hash_key, .keep_all = T),by=c("rut_enc_saf"="hash_key")) %>% distinct(rut_enc_saf)
+
+paste0("Percentage of HASHs that have records as victims: ",
+scales::percent(
+base_fiscalia_acc_vic %>% 
+    dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("hash_key","dup")] %>% distinct(hash_key, .keep_all = T),by=c("rut_enc_saf"="hash_key")) %>%  distinct(rut_enc_saf) %>% nrow()/CONS_C1_df_dup_SEP_2020[,c("hash_key","dup")] %>% distinct(hash_key, .keep_all = T) %>% nrow(),
+accuracy=.01
+  )
+)
+
+```
+
+```{r fig4, echo=T, cache= T, paged.print=TRUE, warning=F, eval=T, fig.align="center", fig.cap="Figure 4. Distribution of records in which a user is declared as a victim"}
+
+paste0("Percentage of HASHs that have records as accused: ",
+scales::percent(
+base_fiscalia_acc_vic %>% 
+    dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("hash_key","dup")] %>% distinct(hash_key, .keep_all = T),by=c("rut_enc_saf"="hash_key")) %>%  distinct(rut_enc_saf) %>% nrow()/CONS_C1_df_dup_SEP_2020[,c("hash_key","dup")] %>% distinct(hash_key, .keep_all = T) %>% nrow(),
+accuracy=.01
+  )
+)
+```
+
 <br>
 
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:650px; overflow-x: scroll; width:100%">
+```{r exporttable, warning=FALSE}
+#https://cran.r-project.org/web/packages/rpivotTable/vignettes/rpivotTableIntroduction.html
+#
+CONS_C1_df_dup_SEP_2020_dup<-
+CONS_C1_df_dup_SEP_2020[,c("hash_key","dup")] %>% dplyr::group_by(hash_key) %>% slice_max(dup) %>% ungroup()
+
+pt<-
+rpivotTable(data = base_fiscalia %>% 
+              dplyr::left_join(CONS_C1_df_dup_SEP_2020_dup, by=c("rut_enc_saf"="hash_key")) %>% 
+  dplyr::mutate(accused=dplyr::case_when(encontrado_como_victima=="SI" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 encontrado_como_victima=="NO" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 T~"VICTIMA")), 
+  rows="gls_parentesco",
+  cols = c("accused"),
+  vals = "Cuenta", 
+  aggregatorName = "Cuenta",
+  subtotals=T,
+  locale="es",
+  rendererName = "Table",
+  width="100%", height="550px")
+
+#htmlwidgets::saveWidget(pt, "test3.html")
+```
+</div>
+
+<!---
+File is available in this [link](https://github.com/FONDECYTACC/SUD_health_Chile.github.io/raw/master/test3.html).
+--->
 
 # Codebook
 
@@ -621,9 +696,29 @@ if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
 sessionInfo()
 ```
 
+
 # Exportar
 
 ```{r export, warning=FALSE}
+if(no_mostrar==0){
+  codebook::var_label(surveymonkey_accionsalududp_df2_cor_sel_2) <-
+  var_labels_df%>% 
+    codebook::dict_to_list()
+    
+  attr(surveymonkey_accionsalududp_df2_cor_sel_2$rn,"label")<-'Número de Fila'  
+    
+  for (i in 1:length(surveymonkey_accionsalududp_df2_cor_table)){
+      x<-names(surveymonkey_accionsalududp_df2_cor_table)[i]
+      attr(surveymonkey_accionsalududp_df2_cor_sel_2[[x]],"label")<- attr(surveymonkey_accionsalududp_df2_cor_table[[x]],"label")
+  
+  var_labels_df<-data.frame()
+  for (i in 1:length(surveymonkey_accionsalududp_df2_cor_sel_2)){
+    x<-names(surveymonkey_accionsalududp_df2_cor_sel_2)[i]
+  var_labels_df<-rbind.data.frame(var_labels_df, cbind(x, attr(surveymonkey_accionsalududp_df2_cor_sel_2[[x]],"label")))
+    }
+  }
+}
+
   #dplyr::arrange(hash_key, fech_ing)%>% 
 path<-rstudioapi::getSourceEditorContext()$path
 

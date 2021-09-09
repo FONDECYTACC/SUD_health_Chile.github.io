@@ -718,6 +718,7 @@ CONS_C1_df_dup_SEP_2020_match %>%
 
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+n_miss_baseline<-
 CONS_C1_df_dup_SEP_2020_match %>%
     rowwise %>%
     dplyr::mutate_at(.vars = vars(c(tipo_de_plan_res,sus_ini_mod_mvv, estado_conyugal_2,escolaridad_rec,edad_ini_cons,freq_cons_sus_prin,origen_ingreso_mod, dg_cie_10_rec, nombre_region, tipo_centro_pub, sexo_2,edad_al_ing,dg_trs_cons_sus_or,evaluacindelprocesoteraputico)),
@@ -727,6 +728,8 @@ dplyr::mutate(sumVar=rowSums(dplyr::select(., c("tipo_de_plan_res","sus_ini_mod_
   dplyr::filter(sumVar>0) %>% 
   nrow()
 
+
+paste0("users with at least one missing value at baseline ",format(n_miss_baseline, big.mark=","))
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 
@@ -2911,6 +2914,8 @@ X_mat<-cbind(
 dist_mat_match1<-meantab(X_mat, t_ind, t_id_1, c_id_1, exact = NULL, digits = 2)#standardized differences in means after matching for each covariate;
 vline = 0.1
 loveplot(X_mat=X_mat, t_id=t_id_1, c_id=c_id_1, v_line=vline, legend_position = "topright")
+
+#broom::tidy(MASS::rlm(fech_ing_num ~ tipo_de_plan_res, data = subset(d_match_surv, dup==1)), conf.int=T) %>% copiar_nombres()
 ```
 
 <br>
@@ -3169,27 +3174,6 @@ We selected the first treatments,
 <br>
 
 ```{r irrs_health_conditions,eval=T, echo=T, paged.print=TRUE}                                 
-
-irrs<-function(x, y="event", z="person_days",db){
-  #x= variable que agrupa
-  #y= evento explicado
-  #z= person days
-  #db= base de datos
-  fmla <- as.formula(paste0(y,"~",x))
-  fmla2 <- as.formula(paste0(z,"~",x))
-assign(paste0("irr_",y,"_por_",x),
-       rateratio.test::rateratio.test(
-     x=as.numeric(xtabs(fmla, data=get(db)))[c(2,1)],
-     n=as.numeric(xtabs(fmla, data=get(db)))[c(2,1)]
-    )
-   )
-return(
-  rateratio.test::rateratio.test(
-     x=as.numeric(xtabs(fmla, data=get(db)))[c(2,1)],
-     n=as.numeric(xtabs(fmla2, data=get(db)))[c(2,1)]
-      )
-    )
-}
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 # CHECK  DUPLICATED ROWS
@@ -3282,6 +3266,48 @@ irrs_min_ach<-irrs(x="min_ach" , z="outcome_to_readmission", db="CONS_C1_df_dup_
 <br>
 
 The incidence rate of readmission was `r round(as.numeric(irrs_early_drop$estimate[1]),2)` (95% IC `r round(irrs_early_drop$conf.int[1],2)`-`r round(irrs_early_drop$conf.int[2],2)`) in users that had at least an early dropout, compared with users that did not have a physical condition at baseline (p`r ifelse(sprintf("%1.3f",irrs_early_drop$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",irrs_early_drop$p.value)))`).
+
+<br>
+
+```{r irrs_health_conditions2,eval=T, echo=T, paged.print=TRUE}                                 
+#biostat3::survRate(Surv((outcome_to_readmission)/1000, readmission==1) ~ comp_status, data=CONS_C1_df_dup_SEP_2020_women_miss_after_imp_conservados_cmprsk)
+#para compararlo
+
+library(rateratio.test)  
+
+irrs<-function(x, y="event", z="person_days",db){
+  #x= variable que agrupa
+  #y= evento explicado
+  #z= person days
+  #db= base de datos
+  fmla <- as.formula(paste0(y,"~",x))
+  fmla2 <- as.formula(paste0(z,"~",x))
+assign(paste0("irr_",y,"_por_",x),
+       rateratio.test::rateratio.test(
+     x=as.numeric(xtabs(fmla, data=get(db)))[c(2,1)],
+     n=as.numeric(xtabs(fmla, data=get(db)))[c(2,1)]
+    )
+   )
+return(
+  rateratio.test::rateratio.test(
+     x=as.numeric(xtabs(fmla, data=get(db)))[c(2,1)],
+     n=as.numeric(xtabs(fmla2, data=get(db)))[c(2,1)]
+      )
+    )
+}
+
+
+comp_status_readmission_modality <-
+  irrs(x="as.numeric(tipo_de_plan_res)", 
+                              y="as.numeric(event)",# 2021-04-06, 
+                              z="admission_to_readmission", 
+                              db="CONS_C1_df_dup_SEP_2020_irrs_health")
+
+biostat3::survRate(Surv((admission_to_readmission), event==1) ~ tipo_de_plan_res, data=CONS_C1_df_dup_SEP_2020_irrs_health)
+#https://mail.google.com/mail/u/0/?tab=rm&ogbl#search/%22event%22+%22jos%C3%A9%22/FMfcgzGkXwLJKPwsCJJNSWTlgGlPQqKk
+```
+
+Excluding censored cases, the incidence rate of readmission was significantly higher (`r round(as.numeric(comp_status_readmission$estimate[1]),2)`, 95% IC `r round(comp_status_readmission$conf.int[1],2)`-`r round(comp_status_readmission$conf.int[2],2)`) in users that had a Discharge without clinical advice, compared with users that had a Therapeutic discharge (p`r ifelse(sprintf("%1.3f",comp_status_readmission$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",comp_status_readmission$p.value)))`).
 
 <br>
 
@@ -3992,7 +4018,7 @@ Continuous variables need to be categorized into groups. The plot described is a
 #Bradburn, M., Clark, T., Love, S. et al. Survival Analysis Part III: Multivariate data analysis – choosing a model and assessing its adequacy and fit. Br J Cancer 89, 605–611 (2003). https://doi.org/10.1038/sj.bjc.6601120
 
 plots<- data.frame(title=rep(
-  c("Admission to Readmission", "Readmission to Readmission2", "Readmission2 to Readmission3", "Readmission3 to Readmission4" ),1),trans=rep(1:max(trans_matrix,na.rm=T),1))
+  c("Admission to\nReadmission", "Readmission to\nSecond Readmission", "Second to\nThird Readmission", "Third to\nFourth Readmission" ),1),trans=rep(1:max(trans_matrix,na.rm=T),1))
 
 ## SIN COVARIABLES
 layout(matrix(1:4, nc = 2, byrow = F))
@@ -4000,11 +4026,32 @@ for(i in c(1:max(trans_matrix,na.rm=T))){
 plot(log(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==0))$time), 
      log(-log(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==0))$surv)), type="l",
      xlab="log(Days)", ylab="", xaxs="i",yaxs="i",
-     las=1,cex.lab=.5, cex.axis=.5)
+     las=1,cex.lab=.8, cex.axis=.8)
 lines(log(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==1))$time), 
       log(-log(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==1))$surv)), lty=2)
-legend(7,-4, c("OUT", "RES"), bty="n", lty=c(2,1), cex=.5)
-title(main=paste0(plots[i,"title"]), cex.main=.8)
+legend(6,-4, c("AMBULATORY", "RESIDENTIAL"), bty="n", lty=c(2,1), cex=.8)
+title(main=paste0(plots[i,"title"]), cex.main=1.2)
+}
+
+
+
+
+if(no_mostrar==1){
+jpeg(paste0(gsub("SUD_CL/Matching_Process_JUN_21.Rmd","",path),"_mult_state_ags/ph_test1.jpg"), height=7, width= 13, res= 320, units = "in")
+  
+layout(matrix(1:4, nc = 2, byrow = F))
+for(i in c(1:max(trans_matrix,na.rm=T))){
+plot(log(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==0))$time), 
+     log(-log(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==0))$surv)), type="l",
+     xlab="log(Days)", ylab="", xaxs="i",yaxs="i",
+     las=1,cex.lab=.8, cex.axis=.8)
+lines(log(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==1))$time), 
+      log(-log(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==1))$surv)), lty=2)
+legend(6,-4, c("AMBULATORY", "RESIDENTIAL"), bty="n", lty=c(2,1), cex=.8)
+title(main=paste0(plots[i,"title"]), cex.main=1.2)
+}
+
+dev.off()
 }
 ```
 
@@ -4016,12 +4063,34 @@ for(i in c(1:max(trans_matrix,na.rm=T))){
 plot(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==0))$time, 
      -log(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==0))$surv), type="l",
      xlab="Days", ylab="", xaxs="i",yaxs="i", 
-     las=1,cex.lab=.5, cex.axis=.5, col=1)
+     las=1,cex.lab=.8, cex.axis=.8, col=1)
 lines(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==1))$time, 
       -log(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==1))$surv), lty=2)
-legend(2000,.1, c("OUT", "RES"), bty="n", lty=c(2,1), cex=.5)
-title(main=paste0(plots[i,"title"]), cex.main=.8)
+legend(2000,.2, c("AMBULATORY", "RESIDENTIAL"), bty="n", lty=c(2,1), cex=.8)
+title(main=paste0(plots[i,"title"]), cex.main=1.2)
 }
+
+
+
+if(no_mostrar==1){
+jpeg(paste0(gsub("SUD_CL/Matching_Process_JUN_21.Rmd","",path),"_mult_state_ags/ph_test2.jpg"), height=7, width= 13, res= 320, units = "in")
+  
+layout(matrix(1:4, nc = 2, byrow = F))
+
+for(i in c(1:max(trans_matrix,na.rm=T))){
+plot(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==0))$time, 
+     -log(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==0))$surv), type="l",
+     xlab="Days", ylab="", xaxs="i",yaxs="i", 
+     las=1,cex.lab=.8, cex.axis=.8, col=1)
+lines(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==1))$time, 
+      -log(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"trans"] & tipo_de_plan_res_1==1))$surv), lty=2)
+legend(2000,.2, c("AMBULATORY", "RESIDENTIAL"), bty="n", lty=c(2,1), cex=.8)
+title(main=paste0(plots[i,"title"]), cex.main=1.2)
+}
+
+dev.off()
+}
+
 ```
 
 <!----

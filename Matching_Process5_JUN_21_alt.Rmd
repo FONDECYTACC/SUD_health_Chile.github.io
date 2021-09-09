@@ -1,0 +1,429 @@
+---
+title: "Ambulatory or residential? a multi-state analysis of treatments for substance use disorders (Step 4)"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: hide  
+    toc: true # table of content true
+    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_float: true
+---
+
+```{css zoom-lib-src, echo = FALSE}
+script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+```
+
+```{js zoom-jquery, echo = FALSE}
+ $(document).ready(function() {
+    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
+    // onClick function for all plots (img's)
+    $('img:not(.zoomImg)').click(function() {
+      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
+      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
+    });
+    // onClick function for zoomImg
+    $('img.zoomImg').click(function() {
+      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
+    });
+  });
+```
+
+```{=html}
+<style type="text/css">
+.tablelines table, .tablelines td, .tablelines th {
+        border: 1px solid black;
+        }
+.centrado {
+    text-align: center;
+}
+.table.center {
+    margin-left:auto; 
+    margin-right:auto;
+  }
+.table_wrapper{
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+code.r{
+  font-size: 8px;
+}
+body{ /* Normal  */
+      text-align: justify;
+  }
+.superbigimage{
+    overflow-y:scroll;
+    white-space: nowrap;
+}
+.superbigimage img{
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+</style>
+```
+```{=html}
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
+</style>
+```
+```{r prev_setup, include = FALSE, cache=T}
+rm(list=ls());gc()
+path<-rstudioapi::getSourceEditorContext()$path
+#load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+if (grepl("CISS Fondecyt",path)==T){
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_2_jun.RData")
+  } else if (grepl("andre",path)==T){
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_2_jun.RData")
+  } else if (grepl("E:",path)==T){
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_2_jun.RData")
+  } else {
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_2_jun.RData")
+  }
+
+#getwd()
+#knitr::opts_knit$get()
+#devtools::install_github("hputter/mstate")
+
+```
+
+```{r setup, include = FALSE, cache=T, error=T}
+#Libraries used in the routine. Dont change the order
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
+  if(class(ungroup(x))[1]=="tbl_df"){
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)    
+        }
+  } else {
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)       
+  }
+ }
+}  
+#packageVersion("codebook")
+#https://github.com/RevolutionAnalytics/checkpoint
+#if(!require(checkpoint)){install.packages("checkpoint")}
+#if(!require(here)){install.packages("here")}
+#checkpoint::checkpoint("2020-02-19",project=here::here(),checkpointLocation=paste0(here::here(),"/dedup"), use.lock=F, use.knitr=T, auto.install.knitr = T,scan.rnw.with.knitr=T, forceInstall=T,scanForPackages = TRUE)
+#checkpointArchives(tempdir(), full.names = TRUE)
+
+#if(!require(tidyr)){install.packages("tidyr")}
+#if(!require(DataExplorer)){install.packages("DataExplorer")}
+#if(!require(stringi)){install.packages("stringi")}
+#if(!require(stringr)){install.packages("stringr")}
+#if(!require(ggplot2)){install.packages("ggplot2")}
+#if(!require(Hmisc)){install.packages("Hmisc")}
+#if(!require(kableExtra)){install.packages("kableExtra")}
+#if(!require(plotly)){install.packages("plotly")}
+#if(!require(rbokeh)){install.packages("rbokeh")}
+#if(!require(altair)){install.packages("altair")}
+#if(!require(zoo)){install.packages("zoo")}
+#if(!require(codebook)){install.packages("codebook")}
+#if(!require(broom)){install.packages("broom")}
+#if(!require(sqldf)){install.packages("sqldf")} 
+#if(!require(devtools)){install.packages("devtools")}
+#if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
+#if(!require(data.table)){install.packages("data.table")}
+#if(!require(dplyr)){install.packages("dplyr")}
+
+#if(!require(boot)){install.packages("boot")}
+#if(!require(plyr)){install.packages("plyr")}
+#if(!require(matrixStats)){install.packages("matrixStats")}
+#if(!require(radiant)){install.packages("radiant", repos = "https://radiant-rstats.github.io/minicran/")}
+
+try(library(boot))
+library(matrixStats)
+library(knitr)
+library(tidyr)
+library(stringi)
+library(stringr)
+library(ggplot2)
+library(Hmisc)
+library(kableExtra)
+library(plotly)
+library(janitor)
+library(rbokeh)
+library(zoo)
+library(broom)
+library(sqldf)
+library(devtools)
+library(codebook)
+library(data.table)
+library(panelr)
+library(RColorBrewer)
+library(lsmeans)
+library(finalfit)
+suppressPackageStartupMessages(library(ggiraph))
+suppressPackageStartupMessages(library(sf))
+library(treemapify)
+library(dplyr)
+library(tidyverse)
+library(epiR)
+library(survminer)
+library(ggfortify)
+library(survMisc)
+
+library(foreign)
+library(Hmisc)
+library(gridExtra)
+library(reshape2)
+library(stargazer)
+library(tableone)
+library(MatchIt)
+library(cobalt)
+library(eha)
+library(igraph)
+library(Amelia)
+library(DiagrammeR) 
+library(mstate)
+library(flexsurv)
+library(muhaz)
+library(Metrics)
+
+library(frailtypack)
+library(TraMineR)
+library(RColorBrewer)
+library(TraMineRextras)
+library(WeightedCluster)
+library(cluster)
+library(parcats)
+library(easyalluvial)
+#library(mstateutils)
+#remotes::install_github("chjackson/flexsurv-dev", upgrade = "never")
+#devtools::install_github("stulacy/multistateutils", build_vignettes=TRUE, upgrade = "never")
+#devtools::install_github("hputter/mstate", upgrade = "never")
+#unlink("C:/Users/CISS Fondecyt/OneDrive/Documentos/R/win-library/4.0/mstate", recursive=T, force=T)
+
+if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
+#install.packages( repos = "https://radiant-rstats.github.io/minicran/")
+#install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")
+
+#tryCatch(source("https://raw.githubusercontent.com/radiant-rstats/minicran/gh-pages/update.R"), error = function(e) print("updated package, radiant"))
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+try_with_time_limit <- function(expr, cpu = Inf, elapsed = Inf)
+{
+  y <- try({setTimeLimit(cpu, elapsed); expr}, silent = TRUE) 
+  if(inherits(y, "try-error")) NULL else y 
+}
+eval_fork <- function(..., timeout=60){
+
+  #this limit must always be higher than the timeout on the fork!
+  setTimeLimit(timeout+5);      
+
+  #dispatch based on method
+  ##NOTE!!!!! Due to a bug in mcparallel, we cannot use silent=TRUE for now.
+  myfork <- parallel::mcparallel({
+    eval(...)
+  }, silent=FALSE);
+
+  #wait max n seconds for a result.
+  myresult <- parallel::mccollect(myfork, wait=FALSE, timeout=timeout);
+
+  #try to avoid bug/race condition where mccollect returns null without waiting full timeout.
+  #see https://github.com/jeroenooms/opencpu/issues/131
+  #waits for max another 2 seconds if proc looks dead 
+  while(is.null(myresult) && totaltime < timeout && totaltime < 2) {
+     Sys.sleep(.1)
+     enddtime <- Sys.time();
+     totaltime <- as.numeric(enddtime - starttime, units="secs")
+     myresult <- parallel::mccollect(myfork, wait = FALSE, timeout = timeout);
+  }
+
+  #kill fork after collect has returned
+  tools::pskill(myfork$pid, tools::SIGKILL);    
+  tools::pskill(-1 * myfork$pid, tools::SIGKILL);  
+
+  #clean up:
+  parallel::mccollect(myfork, wait=FALSE);
+
+  #timeout?
+  if(is.null(myresult)){
+    stop("R call did not return within ", timeout, " seconds. Terminating process.", call.=FALSE);      
+  }
+
+  #move this to distinguish between timeout and NULL returns
+  myresult <- myresult[[1]];
+
+  #reset timer
+  setTimeLimit();     
+
+  #forks don't throw errors themselves
+  if(inherits(myresult,"try-error")){
+    #stop(myresult, call.=FALSE);
+    stop(attr(myresult, "condition"));
+  }
+
+  #send the buffered response
+  return(myresult);  
+}
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#GET LOCAL
+#dir.create(paste0(getwd(),"/renv_local"))
+#Sys.setenv(RENV_PATHS_LOCAL = paste0(getwd(),"/renv_local"))
+#install.packages(paste0(getwd(),"/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+#install.packages(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+library(gurobi)
+#"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)"
+#Sys.getenv("R_LIBS_USER")
+```
+
+<br>
+
+
+### Frailty of readmissions
+
+
+```{r frailty2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+invisible(c("No afecta si las variables no están en formato factor"))
+frailty_a<-
+frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id)+ tipo_de_plan_res+ TD+ days_treated, 
+                          data = ms_d_match_surv_res,
+                          RandDist="Gamma",
+                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
+                          recurrentAG = T, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
+                          n.knots = 10,
+                          kappa = 1,
+                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
+                          )
+#if(no_mostrar==1){
+frailty_b<-
+frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id)+  tipo_de_plan_res+ TD+ days_treated, 
+                          data = ms_d_match_surv_res,
+                          RandDist="LogN",
+                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
+                          recurrentAG = T, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
+                          n.knots = 10,
+                          kappa = 1,
+                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
+                          )
+
+#}
+frailty_c<-
+frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id)+ tipo_de_plan_res+ TD_1+ TD_2+ TD_3+ TD_4, 
+                          data = ms_d_match_surv_res%>%  dplyr::mutate_at(vars("TD_1","TD_2","TD_3","TD_4"),~ifelse(!is.na(.),.,0)),
+                          RandDist="Gamma",
+                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
+                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
+                          n.knots = 10,
+                          kappa = 1,
+                          #hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
+                          )
+invisible(c("Replacing missing values with 0 could lead to think that TD_3 or TD_4 would be a DWCA_3 or DWCA_4 instead"))
+invisible(c("Warning: Log normal gets stuck"))
+
+#if(no_mostrar==1){
+frailty_d<-
+frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) +  tipo_de_plan_res+ TD, 
+                          data = ms_d_match_surv_res,
+                          RandDist="LogN",
+                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
+                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
+                          n.knots = 10,
+                          kappa = 1,
+                          #hazard="Splines" #Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
+                          )
+#}
+#The program took 20500.91 seconds 
+
+#The variance of the frailty term theta is significantly different from 0, meaning that there
+#is heterogeneity between subjects.
+# you will be violating the proportionality assumption and underestimating the treatment effect
+ms_d_match_surv_res_final<-
+ms_d_match_surv_res%>%  dplyr::mutate_at(vars("TD_1","TD_2","TD_3","TD_4"),~ifelse(!is.na(.),.,0))
+
+
+paste0("Frailty including residential as a dynamic covariate (Andersen-Gill model), Rand Effects: Gamma");summary(frailty_a, level = 0.95,len=3)
+paste0("Frailty including residential as a dynamic covariate (Andersen-Gill model), Rand Effects: Log-normal");summary(frailty_b, level = 0.95,len=3)
+paste0("Frailty including Type of Plan of the first treatment, Rand Effects: Gamma");summary(frailty_c, level = 0.95,len=3)
+paste0("Frailty including Type of Plan of the first treatment, Rand Effects: Log-normal");summary(frailty_d, level = 0.95,len=3)
+#tipo_de_plan_res_11 1.40 ( 1.35 - 1.46 ) tipo_de_plan_res_11 1.41 ( 1.35 - 1.47 )
+
+#https://www.uhasselt.be/documents/censtat/IBS2017/sessionI.pdf
+#Balan, T. A., & Putter, H. (2019). Nonproportional hazards and unobserved heterogeneity in clustered survival data: When can we tell the difference?. Statistics in medicine, 38(18), 3405–3420. https://doi.org/10.1002/sim.8171
+```
+
+<br>
+
+We can suspect that in readmissions there may be unobserved heterogeneity that affects the risk and time to readmission. The frailty term introduces dependence between the waiting time until leaving the initial state model and the waiting time until the current state and, hence, a violation of the Markov assumption. However, there has been evidence pointing out that shared frailty in sparse recurrent events in small subjects might capture non-proportional hazards instead of heterogeneity (Balan & Putter, 2019)
+
+
+<br>
+
+### Sequence analysis
+
+```{r alluvial, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T}
+library(easyalluvial)
+library(parcats)
+p_alluvial<-
+  d_match_surv_msprep[,c(1,3:6)] %>% 
+    mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(ifelse(is.na(.),2,.))) %>% 
+    mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(factor(.,labels=c("ambulatory","residential","censored"),levels=c(0,1,2)))) %>% #$fct_rev(
+      alluvial_wide(
+                   id = "id", 
+                  bin=2,
+                   bin_labels = c("ambulatory", "residential"),
+                  order_levels= c("ambulatory", "residential","censored"),
+                   fill_by = 'first_variable',
+                    NA_label = "censored",
+                   col_vector_flow=c("red","grey60"),#"#cF291D",
+                    #palette_qualitative() %>% palette_filter(greys = F), #,#,"#ffe6d5","#bf6f6f","#eec1ad","#d29985","#cF291D","#b50717","#a43232","","gray",
+                  col_vector_value=c("#bf6f6f","#eec1ad","#d29985") ,
+                  auto_rotate_xlabs = T,
+                  stratum_label_size = 3,
+                   colorful_fill_variable_stratum = F)+
+  theme_void()
+
+p_alluvial
+# parcats::parcats(p_alluvial, marginal_histograms = F, data=  d_match_surv_msprep[,c(1,3:6)] %>% 
+#   mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(ifelse(is.na(.),2,.))) %>% 
+#   mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(factor(.,labels=c("ambulatory","residential","censored"),levels=c(0,1,2)))), 
+#                  labelfont = list(size = 12, color = "black"),
+#                width = 840, height = 672)#, height=1600,width=1600) 672  480
+```
+
+
+<br>
+
+# Session Info
+
+```{r session_info, echo=T, error=T, paged.print=TRUE}
+Sys.getenv("R_LIBS_USER")
+
+if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_4_jun_alt.RData")
+  } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/andre/Desktop/SUD_CL/mult_state_4_jun_alt.RData")
+  } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_4_jun_alt.RData")
+  } else {
+    save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_4_jun_alt.RData")
+  }
+
+sessionInfo()
+```
