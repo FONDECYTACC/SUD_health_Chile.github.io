@@ -301,37 +301,77 @@ library(gurobi)
 
 ```{r frailty2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
 invisible(c("No afecta si las variables no están en formato factor"))
-frailty_a<-
-frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id)+ tipo_de_plan_res+ TD+ days_treated, 
-                          data = ms_d_match_surv_res,
-                          RandDist="Gamma",
-                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
-                          recurrentAG = T, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          n.knots = 10,
-                          kappa = 1,
-                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
-                          )
-#if(no_mostrar==1){
-frailty_b<-
-frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id)+  tipo_de_plan_res+ TD+ days_treated, 
-                          data = ms_d_match_surv_res,
-                          RandDist="LogN",
-                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
-                          recurrentAG = T, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          n.knots = 10,
-                          kappa = 1,
-                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
-                          )
-
-#}
-frailty_c<-
-frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id)+ tipo_de_plan_res+ TD_1+ TD_2+ TD_3+ TD_4, 
-                          data = ms_d_match_surv_res%>%  dplyr::mutate_at(vars("TD_1","TD_2","TD_3","TD_4"),~ifelse(!is.na(.),.,0)),
+#subset(ms_d_match_surv,tipo_de_plan_res_1==1),#ms_d_match_surv,
+frailty_a_strata<-
+frailtypack::frailtyPenal(formula = Surv(time,status) ~ cluster(cid)+ strata(tipo_de_plan_res_1)+ TD, 
+                          data = ms_d_match_surv,#ms_d_match_surv,
                           RandDist="Gamma",
                           # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
                           recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          n.knots = 10,
-                          kappa = 1,
+                          n.knots = 4,
+                          #cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
+                          kappa = c(1,1),#1,# # positive smoothing parameter in the penalized likelihood estimation
+                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
+                          )
+frailty_a<-
+frailtypack::frailtyPenal(formula = Surv(time,status) ~ cluster(cid)+ tipo_de_plan_res_1+ TD, 
+                          data = ms_d_match_surv,
+                          RandDist="Gamma",
+                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
+                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
+                          n.knots = 4,
+                          cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
+                          kappa = 1,## # positive smoothing parameter in the penalized likelihood estimation
+                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
+                          )
+invisible("strata=2, residential treatments at baseline")
+#if(no_mostrar==1){
+frailty_b<-
+frailtypack::frailtyPenal(formula = Surv(time,status) ~ cluster(cid)+ tipo_de_plan_res_1+ TD, 
+                          data = ms_d_match_surv,
+                          RandDist="LogN",
+                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
+                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
+                          n.knots = 4,
+                          cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
+                          kappa = 1, # positive smoothing parameter in the penalized likelihood estimation
+                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
+                          )
+frailty_b_strata<-
+frailtypack::frailtyPenal(formula = Surv(time,status) ~ cluster(cid)+ strata(tipo_de_plan_res_1)+ TD, 
+                          data = ms_d_match_surv,
+                          RandDist="LogN",
+                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
+                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
+                          n.knots = 4,
+                          #cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
+                          kappa = c(1,1), # positive smoothing parameter in the penalized likelihood estimation
+                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
+                          )
+#}
+frailty_c<-
+frailtypack::frailtyPenal(formula =Surv(time,status) ~ cluster(id)+ tipo_de_plan_res_1+ TD, 
+                          data = ms_d_match_surv,
+                          RandDist="Gamma",
+                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
+                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
+                          cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
+                          n.knots = 4,
+                          kappa = 1,#1, # positive smoothing parameter in the penalized likelihood estimation
+                          #hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
+                          )
+invisible(c("Replacing missing values with 0 could lead to think that TD_3 or TD_4 would be a DWCA_3 or DWCA_4 instead"))
+invisible(c("Warning: Log normal gets stuck"))
+
+frailty_c_strata<-
+frailtypack::frailtyPenal(formula =Surv(time,status) ~ cluster(id)+ strata(tipo_de_plan_res_1)+ TD, 
+                          data = ms_d_match_surv,
+                          RandDist="Gamma",
+                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
+                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
+                          #cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
+                          n.knots = 4,
+                          kappa = c(1,1),#1, # positive smoothing parameter in the penalized likelihood estimation
                           #hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
                           )
 invisible(c("Replacing missing values with 0 could lead to think that TD_3 or TD_4 would be a DWCA_3 or DWCA_4 instead"))
@@ -339,13 +379,25 @@ invisible(c("Warning: Log normal gets stuck"))
 
 #if(no_mostrar==1){
 frailty_d<-
-frailtypack::frailtyPenal(formula = Surv(Tstart,Tstop,status) ~ cluster(id) +  tipo_de_plan_res+ TD, 
-                          data = ms_d_match_surv_res,
+frailtypack::frailtyPenal(formula = Surv(time,status) ~ cluster(id)+ tipo_de_plan_res+ TD, 
+                          data = ms_d_match_surv,
                           RandDist="LogN",
                           # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
                           recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          n.knots = 10,
+                          cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
+                          n.knots = 4,
                           kappa = 1,
+                          #hazard="Splines" #Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
+                          )
+frailty_d_strata<-
+frailtypack::frailtyPenal(formula = Surv(time,status) ~ cluster(id)+ strata(tipo_de_plan_res)+ TD, 
+                          data = ms_d_match_surv,
+                          RandDist="LogN",
+                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
+                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
+                          #cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
+                          n.knots = 4,
+                          kappa = c(1,1),
                           #hazard="Splines" #Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
                           )
 #}
@@ -358,11 +410,17 @@ ms_d_match_surv_res_final<-
 ms_d_match_surv_res%>%  dplyr::mutate_at(vars("TD_1","TD_2","TD_3","TD_4"),~ifelse(!is.na(.),.,0))
 
 
-paste0("Frailty including residential as a dynamic covariate (Andersen-Gill model), Rand Effects: Gamma");summary(frailty_a, level = 0.95,len=3)
-paste0("Frailty including residential as a dynamic covariate (Andersen-Gill model), Rand Effects: Log-normal");summary(frailty_b, level = 0.95,len=3)
-paste0("Frailty including Type of Plan of the first treatment, Rand Effects: Gamma");summary(frailty_c, level = 0.95,len=3)
-paste0("Frailty including Type of Plan of the first treatment, Rand Effects: Log-normal");summary(frailty_d, level = 0.95,len=3)
-#tipo_de_plan_res_11 1.40 ( 1.35 - 1.46 ) tipo_de_plan_res_11 1.41 ( 1.35 - 1.47 )
+paste0("Frailty including residential, and clustered by matched-pairs, Rand Effects: Gamma");summary(frailty_a, level = 0.95,len=3)
+paste0("Frailty including residential, and clustered by matched-pairs, Rand Effects: Gamma (Stratified)");summary(frailty_a_strata, level = 0.95,len=3)
+
+paste0("Frailty including residential, and clustered by matched-pairs, Rand Effects: Log-normal");summary(frailty_b, level = 0.95,len=3)
+paste0("Frailty including residential, and clustered by matched-pairs, Rand Effects: Log-normal (Stratified)");summary(frailty_b_strata, level = 0.95,len=3)
+
+paste0("Frailty including, and clustered by patient, Rand Effects: Gamma");summary(frailty_c, level = 0.95,len=3)
+paste0("Frailty including, and clustered by patient, Rand Effects: Gamma (Stratified)");summary(frailty_c_strata, level = 0.95,len=3)
+
+paste0("Frailty including, and clustered by patient, Rand Effects: Log-normal");summary(frailty_d, level = 0.95,len=3)
+paste0("Frailty including, and clustered by patient, Rand Effects: Log-normal (Stratified)");summary(frailty_d_strata, level = 0.95,len=3)
 
 #https://www.uhasselt.be/documents/censtat/IBS2017/sessionI.pdf
 #Balan, T. A., & Putter, H. (2019). Nonproportional hazards and unobserved heterogeneity in clustered survival data: When can we tell the difference?. Statistics in medicine, 38(18), 3405–3420. https://doi.org/10.1002/sim.8171
@@ -377,7 +435,7 @@ We can suspect that in readmissions there may be unobserved heterogeneity that a
 
 ### Sequence analysis
 
-```{r alluvial, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T}
+```{r alluvial, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500}
 library(easyalluvial)
 library(parcats)
 p_alluvial<-
