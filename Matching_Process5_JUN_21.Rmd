@@ -1,5 +1,5 @@
 ---
-title: "Ambulatory or residential? a multi-state analysis of treatments for substance use disorders (Step 4)"
+title: "Ambulatory or residential? a multi-state analysis of treatments for substance use disorders (Step 5)"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
@@ -206,10 +206,13 @@ library(WeightedCluster)
 library(cluster)
 library(parcats)
 library(easyalluvial)
+library(timereg)
 
 library(htmltools)
 library(rsvg)
+library(DiagrammeR)
 library(DiagrammeRsvg)
+#library(sjplot)
 #library(mstateutils)
 #remotes::install_github("chjackson/flexsurv-dev", upgrade = "never")
 #devtools::install_github("stulacy/multistateutils", build_vignettes=TRUE, upgrade = "never")
@@ -294,161 +297,246 @@ eval_fork <- function(..., timeout=60){
 library(gurobi)
 #"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)"
 #Sys.getenv("R_LIBS_USER")
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+
+plot_cums <-  function (x , pointwise.ci=1, hw.ci=0, sim.ci=0, robust.ci=0, col=NULL,
+                        specific.comps=FALSE,level=0.05, start.time = 0, 
+                        stop.time = 0, add.to.plot=FALSE,main=NULL,mains=TRUE, xlab="Time",
+                        ylab ="Cumulative coefficients",ylim=NULL,...) 
+  # pointwise.ci=1 
+  # hw.ci=0
+  # sim.ci=0
+  # robust.ci=0
+  # col=NULL
+  # specific.comps=FALSE
+  # level=0.05
+  # start.time = 0 
+  # stop.time = 0
+  # add.to.plot=FALSE
+  # main=NULL
+# mains=TRUE
+# ylab ="Cumulative coefficients"
+# ylim=NULL
+{ ## {{{ 
+  
+  #x<-timecox_pwp_const2
+  name_model<-deparse(substitute(x))#deparse(quote(x))
+  object<-x; rm(x); 
+  B<-object$cum; V<-object$var.cum; p<-dim(B)[[2]]; 
+  if (robust.ci>=1) {V<-object$robvar.cum;}
+  ### color for estimate, pointwise, robust-pointwise, sim.ci , hw.ci  
+  cis <- c(1,pointwise.ci>=1,robust.ci>=1,sim.ci>=1,hw.ci>=1)
+  if (is.null(col)) cols<-rep(1,5)  else { 
+    cols <-  rep(1,5)
+    cols[which(cis==TRUE)] <- col
+  }
+  
+  if (sum(specific.comps)==FALSE) comp<-2:p else comp<-specific.comps+1
+  if (stop.time==0) stop.time<-max(B[,1]);
+  
+  med<-B[,1]<=stop.time & B[,1]>=start.time
+  B<-B[med,]; Bs<-B[1,];  B<-t(t(B)-Bs); B[,1]<-B[,1]+Bs[1];
+  V<-V[med,]; Vs<-V[1,]; V<-t( t(V)-Vs); 
+  Vrob<-object$robvar.cum; 
+  Vrob<-Vrob[med,]; Vrobs<-Vrob[1,]; Vrob<-t( t(Vrob)-Vrobs); 
+  
+  c.alpha<- qnorm(1-level/2)
+  i <- 0
+  db<-list()
+  for (v in comp) { 
+    i <- i+1
+    c.alpha<- qnorm(1-level/2)
+    est<-B[,v];ul<-B[,v]+c.alpha*V[,v]^.5;nl<-B[,v]-c.alpha*V[,v]^.5;
+    db[[match(v,comp)]]<-cbind.data.frame(B[,1],est,ul,nl)
+    if (add.to.plot==FALSE) 
+    {
+      if (is.null(ylim))
+        plot(B[,1],est,ylim=1.05*range(ul,nl),type="s",xlab=xlab,ylab=ylab,col=cols[1],...) 
+      else
+        plot(B[,1],est,ylim=ylim,type="s",xlab=xlab,ylab=ylab,col=cols[1],...) 
+      if (!is.null(main)) { if (length(main)==1) main <- rep(main,length(comp)); mains <- FALSE; } 
+      if (!is.null(main)) title(main=main[i]); 
+      if (mains==TRUE) title(main=colnames(B)[v]); 
+    }
+    else lines(B[,1],est,type="s",col=cols[1]); 
+    
+    if (pointwise.ci>=1) {
+      lines(B[,1],ul,lty=pointwise.ci,type="s",col=cols[2]);
+      lines(B[,1],nl,lty=pointwise.ci,type="s",col=cols[2]); }
+    if (robust.ci>=1) {
+      lines(B[,1],ul,lty=robust.ci,type="s",col=cols[3]); 
+      lines(B[,1],nl,lty=robust.ci,type="s",col=cols[3]); }
+    if (hw.ci>=1) {
+      if (level!=0.05) cat("Hall-Wellner bands only 95 % \n");
+      tau<-length(B[,1])
+      nl<-B[,v]-1.27*V[tau,v]^.5*(1+V[,v]/V[tau,v])
+      ul<-B[,v]+1.27*V[tau,v]^.5*(1+V[,v]/V[tau,v])
+      lines(B[,1],ul,lty=hw.ci,type="s",col=cols[5]); 
+      lines(B[,1],nl,lty=hw.ci,type="s",col=cols[5]); 
+      db[[match(v,comp)]][[1]]<-cbind.data.frame(ul,nl)
+    }
+    if (sim.ci>=1) {
+      if (is.null(object$conf.band)==TRUE) 
+        cat("Uniform simulation based bands only computed for n.sim> 0\n")
+      if (level!=0.05) c.alpha<-percen(object$sim.testBeq0[,v-1],1-level)
+      else c.alpha<-object$conf.band[v-1];
+      nl<-B[,v]-c.alpha*Vrob[,v]^.5; ul<-B[,v]+c.alpha*Vrob[,v]^.5;
+      lines(B[,1],ul,lty=sim.ci,type="s",col=cols[4]); 
+      lines(B[,1],nl,lty=sim.ci,type="s",col=cols[4]); 
+      db[[match(v,comp)]][[1]]<-cbind.data.frame(ul,nl)
+    }
+    abline(h=0)
+  }
+  names(db)<-gsub("^",paste0(name_model,"_"),attr(object$cum,"dimnames")[[2]][2:length(attr(object$cum,"dimnames")[[2]])])
+  #names(db)<-attr(object$cum,"dimnames")[[2]][2:length(attr(object$cum,"dimnames")[[2]])]
+  list2env(db, envir = .GlobalEnv)
+  return(db)
+} ## }}} 
+
 ```
 
 <br>
 
 
-### Frailty of readmissions
+### Extended Cox
 
-```{r frailty2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
-invisible(c("No afecta si las variables no están en formato factor"))
-#subset(ms_d_match_surv,tipo_de_plan_res_1==1),#ms_d_match_surv,
-frailty_a_strata<-
-frailtypack::frailtyPenal(formula = Surv(time,status) ~ cluster(cid)+ strata(tipo_de_plan_res_1)+ TD, 
-                          data = ms_d_match_surv,#ms_d_match_surv,
-                          RandDist="Gamma",
-                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
-                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          n.knots = 4,
-                          #cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
-                          kappa = c(1,1),#1,# # positive smoothing parameter in the penalized likelihood estimation
-                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
-                          )
-frailty_a<-
-frailtypack::frailtyPenal(formula = Surv(time,status) ~ cluster(cid)+ tipo_de_plan_res_1+ TD, 
-                          data = ms_d_match_surv,
-                          RandDist="Gamma",
-                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
-                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          n.knots = 4,
-                          cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
-                          kappa = 1,## # positive smoothing parameter in the penalized likelihood estimation
-                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
-                          )
-invisible("strata=2, residential treatments at baseline")
-#if(no_mostrar==1){
-frailty_b<-
-frailtypack::frailtyPenal(formula = Surv(time,status) ~ cluster(cid)+ tipo_de_plan_res_1+ TD, 
-                          data = ms_d_match_surv,
-                          RandDist="LogN",
-                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
-                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          n.knots = 4,
-                          cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
-                          kappa = 1, # positive smoothing parameter in the penalized likelihood estimation
-                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
-                          )
-frailty_b_strata<-
-frailtypack::frailtyPenal(formula = Surv(time,status) ~ cluster(cid)+ strata(tipo_de_plan_res_1)+ TD, 
-                          data = ms_d_match_surv,
-                          RandDist="LogN",
-                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
-                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          n.knots = 4,
-                          #cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
-                          kappa = c(1,1), # positive smoothing parameter in the penalized likelihood estimation
-                          hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
-                          )
-#}
-frailty_c<-
-frailtypack::frailtyPenal(formula =Surv(time,status) ~ cluster(id)+ tipo_de_plan_res_1+ TD, 
-                          data = ms_d_match_surv,
-                          RandDist="Gamma",
-                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
-                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
-                          n.knots = 4,
-                          kappa = 1,#1, # positive smoothing parameter in the penalized likelihood estimation
-                          #hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
-                          )
-invisible(c("Replacing missing values with 0 could lead to think that TD_3 or TD_4 would be a DWCA_3 or DWCA_4 instead"))
-invisible(c("Warning: Log normal gets stuck"))
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r first_try,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+invisible("Investigating time-varying coefficient with timereg package")
+#https://www.ncbi.nlm.nih.gov/labs/pmc/articles/PMC6015946/
 
-frailty_c_strata<-
-frailtypack::frailtyPenal(formula =Surv(time,status) ~ cluster(id)+ strata(tipo_de_plan_res_1)+ TD, 
-                          data = ms_d_match_surv,
-                          RandDist="Gamma",
-                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
-                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          #cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
-                          n.knots = 4,
-                          kappa = c(1,1),#1, # positive smoothing parameter in the penalized likelihood estimation
-                          #hazard="Splines"#Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
-                          )
-invisible(c("Replacing missing values with 0 could lead to think that TD_3 or TD_4 would be a DWCA_3 or DWCA_4 instead"))
-invisible(c("Warning: Log normal gets stuck"))
+#Zhang, Z., Reinikainen, J., Adeleke, K. A., Pieterse, M. E., & Groothuis-Oudshoorn, C. (2018). Time-varying covariates 
+#and coefficients in Cox regression models. Annals of translational medicine, 6(7), 121. https://doi.org/10.21037/atm.2018.02.12
 
-#if(no_mostrar==1){
-frailty_d<-
-frailtypack::frailtyPenal(formula = Surv(time,status) ~ cluster(id)+ tipo_de_plan_res+ TD, 
-                          data = ms_d_match_surv,
-                          RandDist="LogN",
-                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
-                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
-                          n.knots = 4,
-                          kappa = 1,
-                          #hazard="Splines" #Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
-                          )
-frailty_d_strata<-
-frailtypack::frailtyPenal(formula = Surv(time,status) ~ cluster(id)+ strata(tipo_de_plan_res)+ TD, 
-                          data = ms_d_match_surv,
-                          RandDist="LogN",
-                          # "Gamma" for a gamma distribution, "LogN" for a log-normal distribution. Default is "Gamma".
-                          recurrentAG = F, # Is Andersen-Gill model fitted? If so indicates that recurrent event times with the counting process approach of Andersen and Gill is used. This formulation can be used for dealing with time-dependent covariates.
-                          #cross.validation=T, #Is cross validation procedure used for estimating smoothing parameter? If so a search of the smoothing parameter using cross validation is done, with kappa1 as the seed. The cross validation is not implem
-                          n.knots = 4,
-                          kappa = c(1,1),
-                          #hazard="Splines" #Type of hazard functions: "Splines" for semiparametric hazard functions using equidistant intervals or "Splines-per" using percentile with the penalized likelihood estimation, "Piecewise-per" for piecewise constant hazard function using percentile (not available for interval-censored data), "Piecewise-equi" for piecewise constant hazard function using equidistant intervals, "Weibull" for parametric Weibull functions. Default is "Splines". In case of jointGeneral = TRUE or if a joint nested frailty model is fitted, only hazard = "Splines" can be chosen.
-                          )
-#}
-#The program took 20500.91 seconds 
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#In this case the time-varying effect is tested by resampling method 
 
-#The variance of the frailty term theta is significantly different from 0, meaning that there
-#is heterogeneity between subjects.
-# you will be violating the proportionality assumption and underestimating the treatment effect
-ms_d_match_surv_res_final<-
-ms_d_match_surv_res%>%  dplyr::mutate_at(vars("TD_1","TD_2","TD_3","TD_4"),~ifelse(!is.na(.),.,0))
+# fits Cox models with possibly time-varying effects
+#fits the proportional hazards model, but allows for covariates to be included under the non-proportional hazards assumption as well,
+#using an extension of the traditional Cox model
+
+#recommended for instances where testing the significance of the NPH covariate effects are important, particularly if the estimate of the hazard rate is not imperative. The timereg package is well-designed, user-friendly,
+#and has plenty of associated documentation, and thus it is a very valuable piece of software for implementing
+#a variety of complex survival models. However, for survival modeling when the estimate of the hazard rate is
+#needed, other more reliable functions from other packages are available for including covariates under both the
+#PH and the NPH setting
 
 
-paste0("Frailty including residential, and clustered by matched-pairs, Rand Effects: Gamma");summary(frailty_a, level = 0.95,len=3)
-paste0("Frailty including residential, and clustered by matched-pairs, Rand Effects: Gamma (Stratified)");summary(frailty_a_strata, level = 0.95,len=3)
 
-paste0("Frailty including residential, and clustered by matched-pairs, Rand Effects: Log-normal");summary(frailty_b, level = 0.95,len=3)
-paste0("Frailty including residential, and clustered by matched-pairs, Rand Effects: Log-normal (Stratified)");summary(frailty_b_strata, level = 0.95,len=3)
 
-paste0("Frailty including, and clustered by patient, Rand Effects: Gamma");summary(frailty_c, level = 0.95,len=3)
-paste0("Frailty including, and clustered by patient, Rand Effects: Gamma (Stratified)");summary(frailty_c_strata, level = 0.95,len=3)
-
-paste0("Frailty including, and clustered by patient, Rand Effects: Log-normal");summary(frailty_d, level = 0.95,len=3)
-paste0("Frailty including, and clustered by patient, Rand Effects: Log-normal (Stratified)");summary(frailty_d_strata, level = 0.95,len=3)
-
-#https://www.uhasselt.be/documents/censtat/IBS2017/sessionI.pdf
-#Balan, T. A., & Putter, H. (2019). Nonproportional hazards and unobserved heterogeneity in clustered survival data: When can we tell the difference?. Statistics in medicine, 38(18), 3405–3420. https://doi.org/10.1002/sim.8171
+#here the test processes for each covariate with 1,00 randomly choosen 
+#realizations under the null hypothesis of constant effects
+timecox_pwp<- 
+  timecox(Surv(Tstart,Tstop,status) ~ tipo_de_plan_res_1+  
+            TD_1+ TD_2+ TD_3+ TD_4+ cluster(id) + strata(trans), Nit = 100,
+          data = ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
+#The default study period in the timecox() model is the first and last observed (i.e. uncensored) failure, but this can be changed by
+#the user through the “start.time” and “max.time” options.
 ```
-<br>
+</div>
 
-We can suspect that in readmissions there may be unobserved heterogeneity that affects the risk and time to readmission. The frailty term introduces dependence between the waiting time until leaving the initial state model and the waiting time until the current state and, hence, a violation of the Markov assumption. However, there has been evidence pointing out that shared frailty in sparse recurrent events in small subjects might capture non-proportional hazards instead of heterogeneity (Balan & Putter, 2019)
-
-
-<br>
-
-```{r prueba, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500}
-
-library(reReg)
-data("readmission")
-#dplyr::glimpse(readmission)
-
-reReg(Recur(Tstart, id, status, Tstop)~tipo_de_plan_res_1, data= ms_d_match_surv)
-summary(reReg(Recur("Tstart", "id", "status", "Tstop")~tipo_de_plan_res_1), data= ms_d_match_surv, method="HW")
+```{r first_try2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+summary(timecox_pwp)
 ```
 
 <br>
 
-### Sequence analysis
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r second_try,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+invisible("no cambiaré el maxtime, pero sí llevaré a constantes algunas variables encontradas arriba")
+timecox_pwp_const1<- 
+  timecox(Surv(Tstart,Tstop,status) ~ tipo_de_plan_res_1+  
+            TD_1+ const(TD_2)+ const(TD_3)+ TD_4+ cluster(id) + strata(trans), Nit = 100,
+          data = ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
+```
+</div>
 
-```{r alluvial, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500}
+```{r second_try2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+summary(timecox_pwp_const1)
+```
+
+<br>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r third_try,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+timecox_pwp_const2_opc1<- 
+  timecox(Surv(Tstart,Tstop,status) ~ tipo_de_plan_res_1+  
+            TD_1+ const(TD_2)+ const(TD_3)+ const(TD_4)+ cluster(id) + const(strata(trans)),Nit = 100,
+          data = ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
+```
+</div>
+
+```{r third_try2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+summary(timecox_pwp_const2_opc1)
+```
+
+<br>
+
+Holding constant other effects, allows us to detect that the type of plan had time-invariant effects indeed.
+
+<br>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r third_try3,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+timecox_pwp_const2_opc2<- 
+  timecox(Surv(Tstart,Tstop,status) ~ const(tipo_de_plan_res_1)+  
+            TD_1+ const(TD_2)+ const(TD_3)+ const(TD_4)+ cluster(id) + const(strata(trans)),Nit = 100,
+          data = ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
+```
+</div>
+
+```{r third_try4,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+summary(timecox_pwp_const2_opc2)
+```
+
+<br>
+
+Once set as constant those terms that had no time-varying effects, we found that treatment modality at baseline had a hazard ratio of `r paste0(round(exp(0.1410),3),"[",
+round(exp(0.0522),3),"-", round(exp(0.23000),3),"]")`.
+
+<br>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r plot, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.show='hide'}
+plot_cums(timecox_pwp_const2_opc2)
+```
+</div>
+
+<br>
+
+```{r plot_td, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.cap="Figure 1. Observed cumulative coefficients with 95% confidence bands"}
+
+timecox_pwp_const2_opc2_TD_1 %>% 
+	dplyr::mutate(year=`B[, 1]`/365.25,variable="Treatment\nCompletion") %>% 
+	dplyr::filter(year<=5) %>% 
+	dplyr::mutate(variable=factor(variable)) %>% 
+	ggplot()+
+	geom_ribbon(aes(x=year, ymin = nl, ymax = ul, fill =variable), alpha=.5) +# "steelblue"
+	geom_line(aes(x=year, y = est, color=variable))+ #"dodgerblue4"
+	theme_void()+ 
+	geom_hline(yintercept = 0)+
+	scale_color_manual(name="Variable",values=c("dodgerblue4","black"))+
+	scale_fill_manual(name="Variable",values=c("steelblue","grey70"))+
+	labs(y="Cumulative coefficients",x="Years")+
+	scale_y_continuous(breaks = seq(-900,90,by = 90), limits=c(-900,90))+
+	scale_x_continuous(breaks = seq(0,5,by = .5), limits=c(0,5))+
+	theme(axis.title.y = element_text(size = 15))+
+	theme(axis.title.x = element_text(size = 15))+
+	theme(axis.text.x = element_text(size = 13))+
+	theme(axis.text.y = element_text(size = 13))+
+	theme(legend.position = "none")
+```
+
+<br>
+
+### Sequential glimpse
+
+```{r alluvial, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.cap="Figure 2. Sankey Plot of Transitions by Treatment Modality"}
 library(easyalluvial)
 library(parcats)
 p_alluvial<-
@@ -481,7 +569,7 @@ p_alluvial
 
 <br>
 
-```{r long_alluv, echo=T, error=T, paged.print=TRUE}
+```{r long_alluv, echo=T, error=T, paged.print=TRUE, fig.cap="Figure 3. Sankey Plot of Transitions by Treatment Modality"}
 
 alluvial_long(data.frame(ms_d_match_surv %>% dplyr::mutate(tipo_de_plan_res=factor(tipo_de_plan_res, labels=c("ambulatory", "residential")))),key=from,id= id, 
               value= tipo_de_plan_res, 
@@ -497,13 +585,15 @@ alluvial_long(data.frame(ms_d_match_surv %>% dplyr::mutate(tipo_de_plan_res=fact
   theme_void()
 ```
 
-```{r alluvial3, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500}
+```{r alluvial3, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.cap="Figure 4. Sankey Plot of Transitions by Treatment Modality"}
 library(ggrepel)
+library(ggalluvial)
+
 plot_flow_alluvial<-
 ggplot(data.frame(ms_d_match_surv %>% dplyr::mutate(tipo_de_plan_res=factor(tipo_de_plan_res, labels=c("ambulatory", "residential"))) ), #requiere long %>% dplyr::filter(trans==1)
        aes(x = from, stratum = tipo_de_plan_res, alluvium = id,
             fill = tipo_de_plan_res)) +
-  geom_lode() + 
+  ggalluvial::geom_lode() + 
   geom_flow(curve_type = "cubic") +
   geom_stratum(alpha = 0) +
   theme_void()+
@@ -524,7 +614,7 @@ ggsave(paste0(gsub("SUD_CL/Matching_Process_JUN_21.Rmd","_mult_state_ags/",path)
        plot_flow_alluvial2, width = 9, height = 11, dpi = 600, units= "in")
 ```
 
-```{r alluvial3, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500}
+```{r alluvial32, echo=T, error=T, paged.print=TRUE}
 
 tab_1st_tr<-
  d_match_surv_msprep[,c(1,3:6)] %>% 
@@ -567,14 +657,8 @@ tab_3rd_tr<-
     dplyr::mutate(show=paste0(format(n, big.mark=","), " (",prop,")"))
 ```
  
-```{r alluvial4, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500}
-
-comb_subset<-
-expand.grid(tipo_de_plan_res_1=c(0,1),tipo_de_plan_res_2=c(0,1,NA),tipo_de_plan_res_3=c(0,1,NA),tipo_de_plan_res_4=c(0,1,NA)) %>% tidyr::unite_("esp",paste0("tipo_de_plan_res_",1:4))
-
-# d_match_surv_msprep %>% 
-#   tidyr::unite_("esp",paste0("tipo_de_plan_res_",1:4)) %>% 
-#   dplyr::(comb_subset)
+```{r alluvial4, echo=T, error=T, paged.print=TRUE, error=T, fig.cap="Figure 5. Tree diagram of counts and total proportions of Type of Plan from the first to the fourth treatment"}
+library(data.tree)
 
 #scales::percent(358/2078,accuracy = 1)
  traveller <- Node$new("Admission")
