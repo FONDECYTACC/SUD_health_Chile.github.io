@@ -69,7 +69,7 @@ div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-ali
 ```{r prev_setup, include = FALSE, cache=T}
 rm(list=ls());gc()
 path<-rstudioapi::getSourceEditorContext()$path
-#load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+#load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_5_jun.RData")
 if (grepl("CISS Fondecyt",path)==T){
     setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_4_jun.RData")
   } else if (grepl("andre",path)==T){
@@ -441,6 +441,21 @@ timecox_pwp<-
 </div>
 
 ```{r first_try2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+summary_test_t_inv0<-capture.output(summary(timecox_pwp))
+summary_test_t_inv_sel0<-summary_test_t_inv0[which(grepl("Test for time invariant", summary_test_t_inv0)):(which(grepl("Call", summary_test_t_inv0))-3)]
+summary_test_t_inv_sel0_df<-
+data.frame(summary_test_t_inv_sel0) %>% 
+    dplyr::mutate(summary_test_t_inv_sel0=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel0)) %>%  
+    tidyr::separate(summary_test_t_inv_sel0,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
+    dplyr::slice(-1) %>% 
+  #test p-value H_0:constant effect
+    dplyr::mutate(type=dplyr::case_when(grepl("Kolmogorov",Test)~ "Kolmogorov-Smirnov",
+                                        grepl("Cramer",Test)~ "Cramer von Mises",
+                                        T~NA_character_)) %>% 
+    tidyr::fill(type,.direction = "down") %>% 
+  dplyr::select(Variable, type, Test, pvalue) %>% 
+  tidyr::drop_na(pvalue)
+
 summary(timecox_pwp)
 ```
 
@@ -457,6 +472,26 @@ timecox_pwp_const1<-
 </div>
 
 ```{r second_try2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+summary_test_t_inv1<-capture.output(summary(timecox_pwp_const1))
+summary_test_t_inv_sel1<-summary_test_t_inv1[which(grepl("Test for time invariant|Test for non-significant", summary_test_t_inv1)):(which(grepl("Parametric|Call", summary_test_t_inv1))-2)]
+summary_test_t_inv_sel1_df<-
+data.frame(summary_test_t_inv_sel1) %>% 
+    dplyr::mutate(summary_test_t_inv_sel1=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel1)) %>%  
+    tidyr::separate(summary_test_t_inv_sel1,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
+    dplyr::slice(-1) %>% 
+  #test p-value H_0:constant effect
+    dplyr::mutate(type=dplyr::case_when(grepl("Supremum",Test)~"Supremum-test of significance",
+                                        grepl("Kolmogorov",Test)~ "Kolmogorov-Smirnov",
+                                        grepl("Cramer",Test)~ "Cramer von Mises",
+                                        T~NA_character_)) %>% 
+    tidyr::fill(type,.direction = "down") %>% 
+  dplyr::select(Variable, type, Test, pvalue) %>% 
+  tidyr::drop_na(pvalue) %>% 
+  dplyr::mutate(pvalue=dplyr::case_when(pvalue=="0.00000"~"<0.001",
+                                        pvalue=="0.000"~"<0.001",
+                                        pvalue=="0.0000"~"<0.001",
+                                        T~pvalue))
+
 summary(timecox_pwp_const1)
 ```
 
@@ -471,7 +506,26 @@ timecox_pwp_const2_opc1<-
 ```
 </div>
 
-```{r third_try2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+```{r third_try2,eval=T, echo=T, paged.print=TRUE, error=T}    
+summary_test_t_inv2_1<-capture.output(summary(timecox_pwp_const2_opc1))
+summary_test_t_inv_sel2_1<-summary_test_t_inv2_1[which(grepl("Test for time invariant|Test for non-significant", summary_test_t_inv2_1)):(which(grepl("Parametric|Call", summary_test_t_inv2_1))-2)]
+summary_test_t_inv_sel2_1_df<-
+data.frame(summary_test_t_inv_sel2_1) %>% 
+    dplyr::mutate(summary_test_t_inv_sel2_1=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel2_1)) %>%  
+    tidyr::separate(summary_test_t_inv_sel2_1,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
+    dplyr::slice(-1) %>% 
+  #test p-value H_0:constant effect
+    dplyr::mutate(type=dplyr::case_when(grepl("Supremum",Test)~"Supremum-test of significance",
+                                        grepl("Kolmogorov",Test)~ "Kolmogorov-Smirnov",
+                                        grepl("Cramer",Test)~ "Cramer von Mises",
+                                        T~NA_character_)) %>% 
+    tidyr::fill(type,.direction = "down") %>% 
+  dplyr::select(Variable, type, Test, pvalue) %>% 
+  tidyr::drop_na(pvalue) %>% 
+  dplyr::mutate(pvalue=dplyr::case_when(pvalue=="0.00000"~"<0.001",
+                                        pvalue=="0.000"~"<0.001",
+                                        T~pvalue))
+
 summary(timecox_pwp_const2_opc1)
 ```
 
@@ -490,7 +544,26 @@ timecox_pwp_const2_opc2<-
 ```
 </div>
 
-```{r third_try4,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+```{r third_try4,eval=T, echo=T, paged.print=TRUE, error=T}  
+summary_test_t_inv2_2<-capture.output(summary(timecox_pwp_const2_opc2))
+summary_test_t_inv_sel2_2<-summary_test_t_inv2_2[which(grepl("Test for time invariant|Test for non-significant", summary_test_t_inv2_2)):(which(grepl("Parametric|Call", summary_test_t_inv2_2))-2)]
+summary_test_t_inv_sel2_2_df<-
+data.frame(summary_test_t_inv_sel2_2) %>% 
+    dplyr::mutate(summary_test_t_inv_sel2_2=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel2_2)) %>%  
+    tidyr::separate(summary_test_t_inv_sel2_2,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
+    dplyr::slice(-1) %>% 
+  #test p-value H_0:constant effect
+    dplyr::mutate(type=dplyr::case_when(grepl("Supremum",Test)~"Supremum-test of significance",
+                                        grepl("Kolmogorov",Test)~ "Kolmogorov-Smirnov",
+                                        grepl("Cramer",Test)~ "Cramer von Mises",
+                                        T~NA_character_)) %>% 
+    tidyr::fill(type,.direction = "down") %>% 
+  dplyr::select(Variable, type, Test, pvalue) %>% 
+  tidyr::drop_na(pvalue)%>% 
+  dplyr::mutate(pvalue=dplyr::case_when(pvalue=="0.00000"~"<0.001",
+                                        pvalue=="0.000"~"<0.001",
+                                        T~pvalue))
+
 summary(timecox_pwp_const2_opc2)
 ```
 
@@ -569,7 +642,7 @@ p_alluvial
 
 <br>
 
-```{r long_alluv, echo=T, error=T, paged.print=TRUE, fig.cap="Figure 3. Sankey Plot of Transitions by Treatment Modality"}
+```{r long_alluv, echo=T, error=T, paged.print=TRUE, fig.cap="Figure 3. Sankey Plot of Transitions by Treatment Modality", fig.width=12, fig.height=8}
 
 alluvial_long(data.frame(ms_d_match_surv %>% dplyr::mutate(tipo_de_plan_res=factor(tipo_de_plan_res, labels=c("ambulatory", "residential")))),key=from,id= id, 
               value= tipo_de_plan_res, 
