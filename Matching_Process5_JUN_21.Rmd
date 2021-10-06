@@ -9,24 +9,6 @@ output:
     toc_float: true
 ---
 
-```{css zoom-lib-src, echo = FALSE}
-script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"
-```
-
-```{js zoom-jquery, echo = FALSE}
- $(document).ready(function() {
-    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
-    // onClick function for all plots (img's)
-    $('img:not(.zoomImg)').click(function() {
-      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
-      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
-    });
-    // onClick function for zoomImg
-    $('img.zoomImg').click(function() {
-      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
-    });
-  });
-```
 
 ```{=html}
 <style type="text/css">
@@ -68,7 +50,9 @@ div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-ali
 ```
 ```{r prev_setup, include = FALSE, cache=T}
 rm(list=ls());gc()
+
 path<-rstudioapi::getSourceEditorContext()$path
+
 #load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_5_jun.RData")
 if (grepl("CISS Fondecyt",path)==T){
     setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_4_jun.RData")
@@ -426,9 +410,6 @@ invisible("Investigating time-varying coefficient with timereg package")
 #needed, other more reliable functions from other packages are available for including covariates under both the
 #PH and the NPH setting
 
-
-
-
 #here the test processes for each covariate with 1,00 randomly choosen 
 #realizations under the null hypothesis of constant effects
 timecox_pwp<- 
@@ -569,6 +550,30 @@ summary(timecox_pwp_const2_opc2)
 
 <br>
 
+```{r third_try4_table,eval=T, echo=T, paged.print=TRUE, error=T}  
+data.table::data.table(capture.output(summary(timecox_pwp_const2_opc2))[(which(grepl("Parametric",capture.output(summary(timecox_pwp_const2_opc2))))+1):(which(grepl("Call",capture.output(summary(timecox_pwp_const2_opc2))))-2)], keep.rownames=T) %>% 
+    slice(-1) %>% 
+    tidyr::separate(V1,c("Variables","Coef", "SE", "Robust SE", "z", "Sig.", "95%CI_lo", "95%CI_up"), sep="\\s+") %>%
+    dplyr::mutate(HR= round(exp(as.numeric(Coef)),2), HR_95_CI_lo= round(exp(as.numeric(`95%CI_lo`)),2), HR_95_CI_up= round(exp(as.numeric(`95%CI_up`)),2)) %>% 
+  dplyr::mutate(Variables=dplyr::case_when(grepl("tipo_de_plan", Variables)~"Treatment modality at baseline",
+                                           grepl("TD_2", Variables)~"Treatment completion of the 2nd treatment",
+                                           grepl("TD_3", Variables)~"Treatment completion of the 3rd treatment",
+                                           grepl("TD_4", Variables)~"Treatment completion of the 4th treatment",
+                                           grepl("trans=2", Variables)~"Second transition (stratum)",
+                                           grepl("trans=3", Variables)~"Third transition (stratum)",
+                                           grepl("trans=4", Variables)~"Fourth transition (stratum)",
+                                           )) %>% 
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table. Coefficients"),
+       col.names = c("Variables","Coef.", "SE", "Robust SE", "z", "Sig.", "95%CI Lower", "95%CI Upper", "HR", "95%CI Lower", "95%CI Upper"),
+               align =c('l',rep('c', 101)), escape=T) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  #kableExtra::add_header_above(c(rep("",1),"Women-specific"=1, "General population"=1)) %>% 
+ # kableExtra::add_footnote("Note. Readmission state will not be considered because is an absorbing state", notation="none") %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+<br>
+
 Once set as constant those terms that had no time-varying effects, we found that treatment modality at baseline had a hazard ratio of `r paste0(round(exp(0.1410),3),"[",
 round(exp(0.0522),3),"-", round(exp(0.23000),3),"]")`.
 
@@ -582,7 +587,7 @@ plot_cums(timecox_pwp_const2_opc2)
 
 <br>
 
-```{r plot_td, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.cap="Figure 1. Observed cumulative coefficients with 95% confidence bands"}
+```{r plot_td, echo=T, error=T, paged.print=TRUE, fig.width=10, fig.height=6, error=T, dpi=500, fig.cap="Figure 1. Observed cumulative coefficients with 95% confidence bands"}
 
 timecox_pwp_const2_opc2_TD_1 %>% 
 	dplyr::mutate(year=`B[, 1]`/365.25,variable="Treatment\nCompletion") %>% 
@@ -598,7 +603,7 @@ timecox_pwp_const2_opc2_TD_1 %>%
 	labs(y="Cumulative coefficients",x="Years")+
 	scale_y_continuous(breaks = seq(-900,90,by = 90), limits=c(-900,90))+
 	scale_x_continuous(breaks = seq(0,5,by = .5), limits=c(0,5))+
-	theme(axis.title.y = element_text(size = 15))+
+	theme(axis.title.y = element_text(size = 15, angle=90))+
 	theme(axis.title.x = element_text(size = 15))+
 	theme(axis.text.x = element_text(size = 13))+
 	theme(axis.text.y = element_text(size = 13))+
@@ -642,7 +647,7 @@ p_alluvial
 
 <br>
 
-```{r long_alluv, echo=T, error=T, paged.print=TRUE, fig.cap="Figure 3. Sankey Plot of Transitions by Treatment Modality", fig.width=12, fig.height=8}
+```{r long_alluv, echo=T, error=T, paged.print=TRUE, fig.cap="Figure 3. Sankey Plot of Transitions by Treatment Modality", fig.width=12, fig.height=8, eval=T}
 
 alluvial_long(data.frame(ms_d_match_surv %>% dplyr::mutate(tipo_de_plan_res=factor(tipo_de_plan_res, labels=c("ambulatory", "residential")))),key=from,id= id, 
               value= tipo_de_plan_res, 
