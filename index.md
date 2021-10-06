@@ -48,7 +48,7 @@ This page is composed by the following main topics:
     
     3a.4.5.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 4.5)](Matching_Process4_5_stata_JUN_21)
     
-    3a.5.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 5)](Matching_Process5_stata_JUN_21)
+    3a.5.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 5)](Matching_Process5_stata_JUN_21) or [external alternative](https://rpubs.com/FONDECYTACC/step5)
     
     3a.6.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 6)](Matching_Process6_stata_JUN_21)
     
@@ -67,6 +67,10 @@ This page is composed by the following main topics:
     3b.3.b [Supplemental: Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile (Stata, Step 3)](Proyecto_carla3_stata_JUN_21)
     
     3b.4.b [Supplemental: Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile (Stata, Step 4)](Proyecto_carla4_stata_JUN_21)
+    
+    3c.1. Living with [conslidation](https://rpubs.com/FONDECYTACC/significant_others_SUDs)
+    
+    3c.2. Living with (Stata) [conslidation](analisis_joel_oct_2021_stata)
   
 4. [Data Preparation and Standardization of TOP or Profile of Treatment Results](Data_prep_TOP)
 
