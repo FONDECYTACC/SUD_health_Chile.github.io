@@ -36,7 +36,7 @@ This page is composed by the following main topics:
     
     3a.5.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 4)](Matching_Process4_JUN_21)
     
-    3a.6.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 5)](Matching_Process5_JUN_21)
+    3a.6.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 5)](Matching_Process5_JUN_21) or [altenative](https://rpubs.com/FONDECYTACC/step5)
 
     3a.1.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 1)](Matching_Process1_stata_JUN_21)
     
