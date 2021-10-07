@@ -198,6 +198,8 @@ library(muhaz)
 library(Metrics)
 library(rpivotTable)
 library(caret)
+library(polycor)
+library(ClusterR)
 options(scipen=999) #display numbers rather scientific number
 
 #library(mstateutils)
@@ -474,6 +476,59 @@ accused)~1)
 
 <br>
 
+
+# Missingness
+
+```{r miss, echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+cols<-base_fiscalia %>%
+    #dplyr::filter(resp_status=="partial") %>%  
+    dplyr::select(p3_siente_1:p47_demo_medio_transp_09) %>% names() #si fuera desde SPSS, sería p47_demo_medio_transp_otr
+
+tot<-
+base_fiscalia %>%
+  # dplyr::filter(resp_status=="partial") %>% 
+  nrow()
+#Ordenar variables
+missing.values <- 
+  base_fiscalia %>%
+  #dplyr::filter(resp_status=="partial") %>%  
+  #dplyr::select(p3_siente_1:p47_demo_medio_transp_09) %>% #si fuera desde SPSS, sería p47_demo_medio_transp_otr
+    tidyr::gather(key = "key", value = "val") %>%
+    dplyr::mutate(is.missing = is.na(val)) %>%
+    #dplyr::left_join(cols_labels,by=c("key"="V1")) %>% 
+    dplyr::group_by(key, is.missing) %>%
+    dplyr::summarise(num.missing = n()) %>%
+    dplyr::filter(is.missing==T) %>%
+    dplyr::mutate(perc_miss=num.missing/tot) %>% 
+    dplyr::select(-is.missing) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::group_by(key) %>% 
+    dplyr::slice(1) %>% 
+    dplyr::ungroup()
+    #dplyr::mutate(label=paste(stringi::stri_wrap(label, width=20),"<br>"))
+    #arrange(desc(num.missing)) 
+
+plot_miss<-
+missing.values %>%
+  dplyr::ungroup() %>% 
+ # slice(1:29) %>% 
+  ggplot() +
+    geom_bar(aes(x=factor(key), y=perc_miss), stat = 'identity') +
+    labs(x='variable', y="Porcentaje de perdidos", caption=paste0("Nota. Porcentaje de perdidos del total (",format(tot, big.mark=","),")")) +
+  #theme(axis.text.x = element_text(angle = 45, hjust = 1, size=6))+
+  theme(axis.text.x = element_blank())+
+  scale_y_continuous(limits=c(0,1))+
+  sjPlot::theme_sjplot()+
+  coord_flip()
+
+
+  ggplotly(plot_miss)%>% layout(xaxis= list(showticklabels = FALSE), height = 600, width=800)
+
+``` 
+  
+<br>
+
+
 # Near Zero Variance
 
 ```{r nearZeroVar, echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
@@ -615,6 +670,108 @@ rpivotTable(data = base_fiscalia %>%
 <!---
 File is available in this [link](https://github.com/FONDECYTACC/SUD_health_Chile.github.io/raw/master/test3.html).
 --->
+
+
+# Structure
+
+```{r s1, echo=T, error=T, paged.print=TRUE, error=T}
+hetcor_mat<-polycor::hetcor(base_fiscalia , ML = T, std.err = T, use="pairwise.complete.obs", bins=4, pd=TRUE)
+
+```
+
+
+
+```{r s2, echo=T, error=T, paged.print=TRUE, error=T}
+library(factoextra)
+#let's decide the maximum K to cluster. Say 10: 
+k.max <- 10
+
+#we will create a vector of the total within sum of squars, in order to visulize it 
+wss <- sapply(1:k.max, function(k){kmeans(base_fiscalia, k, 
+                                          nstart=50,iter.max = 1000 )$tot.withinss})
+
+#We can use the built in function fviz_nbclust to display "Elbow": 
+fviz_nbclust(base_fiscalia, FUN = kmeans,method = "wss" ,nstart = 50)
+#Error: cannot allocate vector of size 1203.1 Gb
+
+base_fiscalia %>%  dplyr::select(encontrado_como_victima:clasificacion_pena_47) %>% replace(., is.na(.), "")
+
+opt.k.sil <- Optimal_Clusters_KMeans(base_fiscalia, max_clusters=10, plot_clusters = TRUE, criterion = "silhouette")
+```
+
+```{r s3, echo=T, error=T, paged.print=TRUE}
+#base_fiscalia %>%  dplyr::select(encontrado_como_victima:clasificacion_pena_47) %>% glimpse()
+#idsujeto_imputado
+#iddelito 
+#idrelacion
+#ruc
+#idsujeto_victima
+#gls_tipo_sujeto_vic
+
+
+cat("ID sujeto víctima")
+base_fiscalia %>%
+    group_by(idsujeto_victima) %>% 
+    summarise(n=n()) %>% 
+    summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+#podría agrupar al resto. De hecho, hay un ID que agrupa a 18,045 filas
+
+cat("ID sujeto imputado")
+base_fiscalia %>%
+    group_by(idsujeto_imputado) %>% 
+    summarise(n=n()) %>% 
+    summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+#agrupa al resto, me da la impresión, tiene hasta 129 filas con el mismo id sujeto imputado
+
+cat("RUC")
+base_fiscalia %>%
+    group_by(ruc) %>% 
+    summarise(n=n()) %>% 
+    summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+#El ruc no es específico, tiene hasta 129 filas. Ver si tienen relación con los ID's sjeto imputado o víctima
+
+cat("ID sujeto imputado, RUC")
+# base_fiscalia %>%
+#     group_by(ruc,idsujeto_imputado) %>% 
+#     summarise(n=n()) %>% 
+#     summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+# No correr, entrega 494,929 casos
+
+cat("ID sujeto víctima, RUC")
+# base_fiscalia %>%
+#     group_by(idsujeto_victima,ruc) %>% 
+#     summarise(n=n()) %>% 
+#     summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+#no correr. son 514,344 casos
+#si pongo al revés, con el RUC primero, 
+      # Error: Problem with `summarise()` column `p75`.
+      # i `p75 = quantile(n, 0.75)`.
+      # x argument is not interpretable as logical
+      # i The error occurred in group 40782: ruc = "1000495180-3".
+      # Backtrace:
+      #   1. `%>%`(...)
+      #   9. base::.handleSimpleError(...)
+      #  10. dplyr:::h(simpleError(msg, call))
+      # In addition: Warning message:
+      # In if (na.rm) x <- x[!is.na(x)] else if (anyNA(x)) stop("missing values and NaN's not allowed if 'na.rm' is FALSE") :
+      #   the condition has length > 1 and only the first element will be used
+
+cat("ID delito")
+base_fiscalia %>%
+    group_by(iddelito) %>% 
+    summarise(n=n()) %>% 
+    summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+# algo específica, tiene como máximo 82 filas con el mismo id delito
+
+
+cat("ID relación")
+base_fiscalia %>%
+    group_by(idrelacion) %>% 
+    summarise(n=n()) %>% 
+    summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+# más específica, tiene como máximo 2 filas con el mismo id relación
+
+```
 
 # Codebook
 
