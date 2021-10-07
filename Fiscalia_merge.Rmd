@@ -360,6 +360,21 @@ glimpse(base_fiscalia)
 ```{r tab1_descr_c1_baseline_vs_type_treatd,dpi = 96, message=F, error=T,eval=T, warnings=F}
 library(compareGroups)
 
+
+base_fiscalia<-
+  base_fiscalia %>% 
+  dplyr::mutate(gls_region=dplyr::case_when(gls_region=="REGION METROPOLITANA CENTRO NORTE"~ "RM Centro Norte",
+                                            gls_region=="REGION METROPOLITANA OCCIDENTE"~ "RM Occidente",
+                                            gls_region=="REGION METROPOLITANA ORIENTE"~ "RM Oriente",
+                                            gls_region=="REGION METROPOLITANA SUR"~ "RM Sur",
+                                            T~NA_character_)) %>% 
+  dplyr::mutate(region_delito=dplyr::case_when(region_delito=="REGION METROPOLITANA CENTRO NORTE"~ "RM Centro Norte",
+                                            region_delito=="REGION METROPOLITANA OCCIDENTE"~ "RM Occidente",
+                                            region_delito=="REGION METROPOLITANA ORIENTE"~ "RM Oriente",
+                                            region_delito=="REGION METROPOLITANA SUR"~ "RM Sur",
+                                            T~NA_character_)) %>%   
+   
+
 no_mostrar=1
 if(no_mostrar==0){
 CONS_C1_df_dup_SEP_2020_match<-
@@ -530,6 +545,9 @@ missing.values %>%
 
 
 # Near Zero Variance
+
+
+Check variables that only one unique value (i.e. are zero variance) or predictors that have both of the following characteristics: few unique values given the sample size, and the frequency of the most common value is much more big than the second most common value.
 
 ```{r nearZeroVar, echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
 nzv_vals <- nearZeroVar(base_fiscalia, saveMetrics = TRUE)
@@ -768,10 +786,52 @@ cat("ID relación")
 base_fiscalia %>%
     group_by(idrelacion) %>% 
     summarise(n=n()) %>% 
-    summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
 # más específica, tiene como máximo 2 filas con el mismo id relación
 
+
+cat("RUC, RUT, ID relación")
+agrupacion_base<-
+base_fiscalia %>%
+    group_by(ruc,rut_enc_saf,idrelacion) %>% 
+    summarise(n=n()) %>% 
+    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+
+cat("Por qué ocurre esto???")
+agrupacion_base %>% 
+    dplyr::filter(max>1)
+invisible("Casos en que agrupados las relaciones por rucs y a su vez por cada rut, resultan tener 2 relaciones")
+invisible("ruc=='1101216380-2' tiene todo igual con la otra fila")
+invisible("ruc=='1200110540-8' tiene todo igual con la otra fila")
+invisible("ruc=='1200685456-5' tiene todo igual con la otra fila")
+invisible("ruc=='1200685456-5' tiene todo igual con la otra fila")
+# ruc          rut_enc_saf                        min   max  mean median  p025   p25   p75  p975
+# 1 1101216380-2 6a72664c6071e9728753279c9e9719e5     2     2   2      2    2     2     2     2   
+# 2 1200110540-8 471b17aece44998caa6f83fee6b3b483     2     2   2      2    2     2     2     2   
+# 3 1200685456-5 f1966360761b422b7e826bab2e1a38dc     2     2   2      2    2     2     2     2   
+# 4 1200771867-3 a2aee30c6c0693a9c13f39e3520f666c     2     2   2      2    2     2     2     2   
+# 5 1201254538-8 2d3bec94a94304a0b786ab83f7d1021a     2     2   2      2    2     2     2     2   
+# 6 1300390161-5 f336b9f3e4097cfe736239a8bb937596     1     2   1.5    1.5  1.02  1.25  1.75  1.98
+# 7 1600027649-2 bfc39f93fe4e0958c4e0ec16dddec275     2     2   2      2    2     2     2     2   
+
+cat("RUT")
+base_fiscalia %>%
+    group_by(rut_enc_saf) %>% 
+    summarise(n=n()) %>% 
+    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+
 ```
+
+
+```{r s4, echo=T, error=T, paged.print=TRUE}
+cat("Vista base de datos")
+base_fiscalia_ord<-
+base_fiscalia %>%
+    arrange(rut_enc_saf,fec_comision,ruc,idrelacion)
+```
+
+
+<br>
 
 # Codebook
 
