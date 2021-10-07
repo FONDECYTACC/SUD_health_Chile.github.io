@@ -70,7 +70,11 @@ This page is composed by the following main topics:
     
     3c.1. Living with [conslidation](analisis_joel2)
     
-    3c.2. Living with (Stata) [conslidation](analisis_joel_oct_2021_stata)
+    3c.2. Living with (Stata) [conslidation](analisis_joel_oct_2021_stata1)
+    
+    3c.3. Living with (Stata)- [Latent Class Analysis](analisis_joel_oct_2021_stata2)
+    
+    3c.4. Living with (Stata)- [Survival Regression](analisis_joel_oct_2021_stata3)
   
 4. [Data Preparation and Standardization of TOP or Profile of Treatment Results](Data_prep_TOP)
 
