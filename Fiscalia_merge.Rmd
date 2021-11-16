@@ -200,7 +200,9 @@ library(rpivotTable)
 library(caret)
 library(polycor)
 library(ClusterR)
-library(bnlearn)
+library(flextable)
+library(ggstatsplot)
+library(ggside)
 options(scipen=999) #display numbers rather scientific number
 
 #library(mstateutils)
@@ -318,10 +320,14 @@ memory.limit(size=56000)
 
 <br>
 
+We recoded the region to lower letters for Metropolitan Region sectors. Additionally, we generated the `_simple` columns with the dates with a more common format.
+
+<br>
+
 <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:400px; overflow-x: scroll; width:100%">
-```{r traer_base,dpi = 96, message=F, error=T,eval=T, warnings=F}
+```{r traer_base,dpi = 96, message=F, error=T, eval=T}
 library(readxl)
-base_fiscalia <- read_excel(gsub("/SUD_CL/Fiscalia_merge.Rmd","/BASE.xlsx",rstudioapi::getSourceEditorContext()$path), 
+base_fiscalia_orig <- read_excel(gsub("/SUD_CL/Fiscalia_merge.Rmd","/BASE.xlsx",rstudioapi::getSourceEditorContext()$path), 
     sheet = "BASE", skip = 4, guess_max = min(1000000, 1000000)) %>% janitor::clean_names()
 ```
 </div>
@@ -329,9 +335,8 @@ base_fiscalia <- read_excel(gsub("/SUD_CL/Fiscalia_merge.Rmd","/BASE.xlsx",rstud
 ```{r tab1_descr_c1_baseline_vs_type_treatd,dpi = 96, message=F, error=T,eval=T, warnings=F}
 library(compareGroups)
 
-
 base_fiscalia<-
-  base_fiscalia %>% 
+  base_fiscalia_orig %>% 
   dplyr::mutate(gls_region=dplyr::case_when(gls_region=="REGION METROPOLITANA CENTRO NORTE"~ "RM Centro Norte",
                                             gls_region=="REGION METROPOLITANA OCCIDENTE"~ "RM Occidente",
                                             gls_region=="REGION METROPOLITANA ORIENTE"~ "RM Oriente",
@@ -341,7 +346,10 @@ base_fiscalia<-
                                             region_delito=="REGION METROPOLITANA OCCIDENTE"~ "RM Occidente",
                                             region_delito=="REGION METROPOLITANA ORIENTE"~ "RM Oriente",
                                             region_delito=="REGION METROPOLITANA SUR"~ "RM Sur",
-                                            T~NA_character_)) %>%   
+                                            T~NA_character_)) %>% 
+  dplyr::mutate(fec_comision_simple=as.Date(stringr::str_extract(as.character(fec_comision), "^.{10}"))) %>% 
+  dplyr::mutate(fec_cbiorelacion_simple=as.Date(stringr::str_extract(as.character(fec_cbiorelacion), "^.{10}"))) %>%
+  dplyr::mutate(termino_relacion_simple=as.Date(stringr::str_extract(as.character(termino_relacion), "^.{10}")))
    
 
 no_mostrar=1
@@ -367,6 +375,9 @@ dplyr::mutate(freq_cons_sus_prin=parse_factor(as.character(freq_cons_sus_prin),l
   dplyr::select_(.dots = match.on_tot) %>% 
   dplyr::mutate(more_one_treat=factor(ifelse(duplicates_filtered>1,1,0))) %>% 
   data.table::data.table()
+
+#attr(CONS_C1_df_dup_SEP_2020_match$sus_ini_mod_mvv,"label")<-"Starting Substance"
+
 }
 
 invisible("Comentarios")
@@ -379,6 +390,7 @@ kableone <- function(x, caption=NULL, col.names=NA, smd=T, test=T, varLabels=T, 
   knitr::kable(x,format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
                caption= caption, col.names= col.names)
 }
+
 as.data.frame.TableOne <- function(x, ...) {
     
     capture.output(print(x, showAllLevels = TRUE, smd=T, test=T, varLabels=T, ...) -> x)
@@ -387,30 +399,34 @@ as.data.frame.TableOne <- function(x, ...) {
     y$characteristic <- na_if(rownames(x), "")
     y <- y %>%
         #fill(characteristic, .direction = "down") %>%
-        select(characteristic, everything())
+        dplyr::select(characteristic, everything())
     
     rownames(y) <- NULL
     y 
 }
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 
 options(knitr.kable.NA = '')
 
-#attr(CONS_C1_df_dup_SEP_2020_match$sus_ini_mod_mvv,"label")<-"Starting Substance"
+## 
+cat("Vector of variables to summarize")
 
-## Vector of variables to summarize
+#obtener las columnas así nos permite descartar nombres errróneos
 myVars <-dput(names(dplyr::select(base_fiscalia, -c("rut_enc_saf","ruc","idrelacion","cod_delito","cod_lugarocurrencia","cod_parentescoimputado","cod_mottermino","cod_motsuspension","cod_proctermino","idsujeto_imputado","idsujeto_victima","impcod_tiposujeto","cod_lugarocurrencia","cod_sitiosuceso","cod_comunadelito","cod_region"))))
 
-## Vector of categorical variables that need transformation
-catVars <- c("encontrado_como_victima", "encontrado_como_imputado", "gls_tipo_sujeto_vic", "gls_region",
-             "tipo_termino", "agrupa_terminos", "gls_materia","familia_delito","relacion_vifsaf","gls_parentesco","gls_mottermino","gls_motsuspension","gls_proctermino","gls_tipo_imputado","lugar_ocurrencia","gls_sitiosuceso","gls_comuna","region_delito","medidas_155","medidas_pp","medidas_ip","marca_suspension_43","marca_pena_44","marca_multa_45","medida_alternativa_46","clasificacion_pena_47","tramos_condena_48","clasificacion_penarpa_1_49","clasificacion_penarpa_2_50","marca_suspension_51","marca_pena_52","marca_multa_53","medida_alternativa_54","clasificacion_pena_55","tramos_condena_56","clasificacion_penarpa_1_57","clasificacion_penarpa_2_58")
-## Create a TableOne object
-tab1 <- CreateTableOne(vars = myVars, data = base_fiscalia[,myVars], factorVars = catVars, 
-                       smd=T, includeNA=T,test=T)
+cat("Vector of categorical variables that need transformation")
 
-kableone(as.data.frame.TableOne(tab1), size=11, first.strip=T, hide.no="no",
+catVars <- dput(names(dplyr::select(base_fiscalia,c("encontrado_como_victima", "encontrado_como_imputado", "gls_tipo_sujeto_vic", "gls_region","tipo_termino", "agrupa_terminos","gls_materia","familia_delito","relacion_vifsaf","gls_parentesco","gls_mottermino","gls_motsuspension","gls_proctermino","gls_tipo_imputado","lugar_ocurrencia","gls_sitiosuceso","gls_comuna","region_delito","medidas_155","medidas_pp","medidas_ip","marca_suspension_43","marca_pena_44","marca_multa_45","medida_alternativa_46","clasificacion_pena_47","tramos_condena_48","clasificacion_penarpa_1_49","clasificacion_penarpa_2_50","marca_suspension_51","marca_pena_52","marca_multa_53","medida_alternativa_54","clasificacion_pena_55","tramos_condena_56","clasificacion_penarpa_1_57","clasificacion_penarpa_2_58"))))
+
+## Create a TableOne object
+tab1<- as.data.frame.TableOne(CreateTableOne(vars = myVars, data = base_fiscalia, factorVars = catVars, 
+                                               smd=T, includeNA=T,test=T))
+
+kableone(tab1, size=11, first.strip=T, hide.no="no",
            format="html",caption= "Table 1. Summary descriptives",
          smd=T, test=T, varLabels=T,noSpaces=T, printToggle=T, dropEqual=F) %>% #,col.names=c("Variables","Residential", "Ambulatory", "p-value")) %>% 
-    kableExtra::kable_styling(bootstrap_options = c("striped", "hover","condensed"),font_size= 10) %>%
+    kableExtra::kable_classic(bootstrap_options = c("striped", "hover","condensed"),font_size= 10) %>%
   row_spec(1, bold=T, italic=T,color="black",hline_after=T,extra_latex_after="\\arrayrulecolor{white}",font_size= 11) %>%
   kableExtra::add_footnote(c("Note. Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
   kableExtra::scroll_box(width = "100%", height = "375px")
@@ -423,50 +439,56 @@ tab2 <- CreateTableOne(vars = myVars, data = base_fiscalia[,myVars], factorVars 
 kableone(as.data.frame.TableOne(tab2), size=11, first.strip=T, hide.no="no",
            format="html",caption= "Table 2. Summary descriptives, by accused",
          smd=T, test=T, varLabels=T,noSpaces=T, printToggle=T, dropEqual=F) %>% #,col.names=c("Variables","Residential", "Ambulatory", "p-value")) %>% 
-    kableExtra::kable_styling(bootstrap_options = c("striped", "hover","condensed"),font_size= 10) %>%
+    kableExtra::kable_classic(bootstrap_options = c("striped", "hover","condensed"),font_size= 10) %>%
   row_spec(1, bold=T, italic=T,color="black",hline_after=T,extra_latex_after="\\arrayrulecolor{white}",font_size= 11) %>%
   kableExtra::add_footnote(c("Note. Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
   kableExtra::scroll_box(width = "100%", height = "375px")
 
 ```
 
-<br>
 
-```{r hetcor, echo=T, cache= T, paged.print=TRUE, eval=F, error=F, dpi=320, fig.align="center", fig.cap="Figure 2. Latent classes"}
+```{r tab3,dpi = 96, message=F, error=T,eval=T, warnings=F}
+rbind(
+cbind(cat="Date of comission of the crime",
+base_fiscalia %>% 
+  dplyr::summarise(min = min(fec_comision_simple, na.rm=T),
+                   p025=as.Date(quantile(unclass(fec_comision_simple), .025, na.rm=T), origin = "1970-01-01"),
+                   p25=as.Date(quantile(unclass(fec_comision_simple), .25, na.rm=T), origin = "1970-01-01"),
+                   p50=as.Date(quantile(unclass(fec_comision_simple), .5, na.rm=T), origin = "1970-01-01"),
+                   p75=as.Date(quantile(unclass(fec_comision_simple), .75, na.rm=T), origin = "1970-01-01"),
+                   p975=as.Date(quantile(unclass(fec_comision_simple), .975, na.rm=T), origin = "1970-01-01"),
+            max = max(fec_comision_simple, na.rm=T))),
+cbind(cat="Date of termination of the relationship",
+base_fiscalia %>% 
+  dplyr::summarise(min = min(termino_relacion_simple, na.rm=T),
+                   p025=as.Date(quantile(unclass(termino_relacion_simple), .025, na.rm=T), origin = "1970-01-01"),
+                   p25=as.Date(quantile(unclass(termino_relacion_simple), .25, na.rm=T), origin = "1970-01-01"),
+                   p50=as.Date(quantile(unclass(termino_relacion_simple), .5, na.rm=T), origin = "1970-01-01"),
+                   p75=as.Date(quantile(unclass(termino_relacion_simple), .75, na.rm=T), origin = "1970-01-01"),
+                   p975=as.Date(quantile(unclass(termino_relacion_simple), .975, na.rm=T), origin = "1970-01-01"),
+            max = max(termino_relacion_simple, na.rm=T))),
+cbind(cat="Date of cbiorelacion",
+base_fiscalia %>% 
+  dplyr::summarise(min = min(fec_cbiorelacion_simple, na.rm=T),
+                   p025=as.Date(quantile(unclass(fec_cbiorelacion_simple), .025, na.rm=T), origin = "1970-01-01"),
+                   p25=as.Date(quantile(unclass(fec_cbiorelacion_simple), .25, na.rm=T), origin = "1970-01-01"),
+                   p50=as.Date(quantile(unclass(fec_cbiorelacion_simple), .5, na.rm=T), origin = "1970-01-01"),
+                   p75=as.Date(quantile(unclass(fec_cbiorelacion_simple), .75, na.rm=T), origin = "1970-01-01"),
+                   p975=as.Date(quantile(unclass(fec_cbiorelacion_simple), .975, na.rm=T), origin = "1970-01-01"),
+            max = max(fec_cbiorelacion_simple, na.rm=T)))
+) %>% 
+knitr::kable(format="html",caption= "Table 3. Summary of Dates") %>% #,col.names=c("Variables","Residential", "Ambulatory", "p-value")) %>% 
+    kableExtra::kable_classic(bootstrap_options = c("striped", "hover","condensed"),font_size= 10)
 
-mydata <- 
-  base_fiscalia %>% 
-  dplyr::mutate(accused=dplyr::case_when(encontrado_como_victima=="SI" & encontrado_como_imputado=="SI"~"IMPUTADO",
-                                 encontrado_como_victima=="NO" & encontrado_como_imputado=="SI"~"IMPUTADO",
-                                 T~"VICTIMA")) %>%
-  dplyr::select(-c("rut_enc_saf","gls_region","gls_tipo_sujeto_vic","ruc","idrelacion","cod_delito","cod_lugarocurrencia","cod_parentescoimputado","cod_mottermino","cod_motsuspension","cod_proctermino","idsujeto_imputado","idsujeto_victima","impcod_tiposujeto","cod_lugarocurrencia","cod_sitiosuceso","cod_comunadelito","iddelito","cod_region")) %>% 
-  dplyr::select(-c("encontrado_como_victima","encontrado_como_imputado","fec_comision", "termino_relacion", "fec_cbiorelacion", "gls_comuna", "lugar_ocurrencia")) %>% 
-  dplyr::filter(accused=="IMPUTADO") %>% 
-   # glimpse()
-  dplyr::mutate(across(, ~ifelse(is.na(.),9999,as.numeric(factor(.)))))
-
-
-f_df<-with(mydata, cbind(tipo_sujeto_vic, reg, tipo_termino, agrupa_terminos, 
-gls_materia, familia_delito, relacion_vifsaf, gls_parentesco, 
-gls_mottermino, gls_motsuspension, gls_proctermino, gls_tipo_imputado, 
-gls_sitiosuceso, region_delito, medidas_155, medidas_pp, 
-medidas_ip, marca_suspension_43, marca_pena_44, marca_multa_45, 
-medida_alternativa_46, clasificacion_pena_47, tramos_condena_48, 
-clasificacion_penarpa_1_49, clasificacion_penarpa_2_50, marca_suspension_51, 
-marca_pena_52, marca_multa_53, medida_alternativa_54, clasificacion_pena_55, 
-tramos_condena_56, clasificacion_penarpa_1_57, clasificacion_penarpa_2_58, 
-accused)~1)
 ```
 
 <br>
 
-
 # Missingness
 
 ```{r miss, echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
-cols<-base_fiscalia %>%
-    #dplyr::filter(resp_status=="partial") %>%  
-    dplyr::select(p3_siente_1:p47_demo_medio_transp_09) %>% names() #si fuera desde SPSS, sería p47_demo_medio_transp_otr
+cols<-base_fiscalia[,myVars] %>%
+     names() #si fuera desde SPSS, sería p47_demo_medio_transp_otr
 
 tot<-
 base_fiscalia %>%
@@ -475,29 +497,26 @@ base_fiscalia %>%
 #Ordenar variables
 missing.values <- 
   base_fiscalia %>%
-  #dplyr::filter(resp_status=="partial") %>%  
-  #dplyr::select(p3_siente_1:p47_demo_medio_transp_09) %>% #si fuera desde SPSS, sería p47_demo_medio_transp_otr
-    tidyr::gather(key = "key", value = "val") %>%
-    dplyr::mutate(is.missing = is.na(val)) %>%
-    #dplyr::left_join(cols_labels,by=c("key"="V1")) %>% 
+    tidyr::gather() %>%
+    dplyr::mutate(is.missing = is.na(value)) %>%
     dplyr::group_by(key, is.missing) %>%
     dplyr::summarise(num.missing = n()) %>%
     dplyr::filter(is.missing==T) %>%
     dplyr::mutate(perc_miss=num.missing/tot) %>% 
+    dplyr::mutate(label_text=paste0("%= ", scales::percent(num.missing/tot, accuracy=1L),"\n N= ", format(num.missing,big.mark=","))) %>% 
     dplyr::select(-is.missing) %>% 
     dplyr::ungroup() %>% 
     dplyr::group_by(key) %>% 
     dplyr::slice(1) %>% 
     dplyr::ungroup()
-    #dplyr::mutate(label=paste(stringi::stri_wrap(label, width=20),"<br>"))
-    #arrange(desc(num.missing)) 
+
 
 plot_miss<-
 missing.values %>%
   dplyr::ungroup() %>% 
  # slice(1:29) %>% 
   ggplot() +
-    geom_bar(aes(x=factor(key), y=perc_miss), stat = 'identity') +
+    geom_bar(aes(x=forcats::fct_reorder(key, perc_miss), y=perc_miss, label=label_text), stat = 'identity') +
     labs(x='variable', y="Porcentaje de perdidos", caption=paste0("Nota. Porcentaje de perdidos del total (",format(tot, big.mark=","),")")) +
   #theme(axis.text.x = element_text(angle = 45, hjust = 1, size=6))+
   theme(axis.text.x = element_blank())+
@@ -506,7 +525,7 @@ missing.values %>%
   coord_flip()
 
 
-  ggplotly(plot_miss)%>% layout(xaxis= list(showticklabels = FALSE), height = 600, width=800)
+   ggplotly(plot_miss, tooltip = c("label_text"))%>% layout(xaxis= list(showticklabels = T), height = 600, width=800) %>%   layout(xaxis = list(tickformat='%',  range = c(0, 1)))
 
 ``` 
   
@@ -521,16 +540,15 @@ Check variables that only one unique value (i.e. are zero variance) or predictor
 ```{r nearZeroVar, echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
 nzv_vals <- nearZeroVar(base_fiscalia, saveMetrics = TRUE)
 nzv_sorted <- arrange(nzv_vals, desc(freqRatio))
-head(nzv_sorted)
-
 
 kable(as.data.frame.TableOne(nzv_sorted), size=11, format="html",
-           caption= "Table 2. Near Zero Variance",
+           caption= "Table 4. Near Zero Variance",
       col.names=c("Variable", "freqRatio", "% of Unique values", "Zero Variance", "Near Zero Variance")) %>% #,col.names=c("Variables","Residential", "Ambulatory", "p-value")) %>% 
-    kableExtra::kable_styling(bootstrap_options = c("striped", "hover","condensed"),font_size= 10) %>%
+    kableExtra::kable_classic(bootstrap_options = c("striped", "hover","condensed"),font_size= 10) %>%
   kableExtra::add_footnote(c("Note. freqRatio= ratio of frequencies for the most common value over the second most common value for that variable"), notation = "none")%>%
   kableExtra::scroll_box(width = "100%", height = "375px")
 ```
+
 <br>
 
 ## Times as accused
@@ -560,8 +578,7 @@ base_fiscalia_acc_imp %>%
   geom_vline(aes(xintercept=quantile(base_fiscalia_acc_imp$n, .95)), color="darkblue", linetype="dotted")+
   sjPlot::theme_sjplot2() +
   #facet_wrap(~motivodeegreso_mod_imp)+
-labs(y = "Frequency",x="Diff. Between Treatments", caption= paste0("Blue dotted line=", quantile(base_fiscalia_acc_imp$n, .95)," records; Violet solid line=",quantile(base_fiscalia_acc_imp$n, .99)," records; Red dashed line= Median=",median(base_fiscalia_acc_imp$n)," records; Maximum=",max(base_fiscalia_acc_imp$n)," records"))
-# xlim(c(-1,2000))
+labs(y = "Frequency",x="Diff. Between Treatments", caption= paste0("Blue dotted line=", quantile(base_fiscalia_acc_imp$n, .95)," records; Violet solid line=",quantile(base_fiscalia_acc_imp$n, .99)," records; Red dashed line= Median=",median(base_fiscalia_acc_imp$n)," records; Maximum=",max(base_fiscalia_acc_imp$n)," records")) 
 
 p
 ```
@@ -600,10 +617,6 @@ p2
 ```
 
 ```{r fig3, echo=T, cache= T, paged.print=TRUE, warning=F, eval=T, fig.align="center", fig.cap="Figure 3. Distribution of records in which a user is declared as an accused"}
-
-base_fiscalia_acc_vic %>% 
-    dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("hash_key","dup")] %>% distinct(hash_key, .keep_all = T),by=c("rut_enc_saf"="hash_key")) %>% distinct(rut_enc_saf)
-
 paste0("Percentage of HASHs that have records as victims: ",
 scales::percent(
 base_fiscalia_acc_vic %>% 
@@ -611,11 +624,9 @@ base_fiscalia_acc_vic %>%
 accuracy=.01
   )
 )
-
 ```
 
 ```{r fig4, echo=T, cache= T, paged.print=TRUE, warning=F, eval=T, fig.align="center", fig.cap="Figure 4. Distribution of records in which a user is declared as a victim"}
-
 paste0("Percentage of HASHs that have records as accused: ",
 scales::percent(
 base_fiscalia_acc_vic %>% 
@@ -627,231 +638,48 @@ accuracy=.01
 
 <br>
 
-
-<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:650px; overflow-x: scroll; width:100%">
-```{r exporttable, warning=FALSE, eval=F}
-#https://cran.r-project.org/web/packages/rpivotTable/vignettes/rpivotTableIntroduction.html
-#
-CONS_C1_df_dup_SEP_2020_dup<-
-CONS_C1_df_dup_SEP_2020[,c("hash_key","dup")] %>% dplyr::group_by(hash_key) %>% slice_max(dup) %>% ungroup()
-
-pt<-
-rpivotTable(data = base_fiscalia %>% 
-              dplyr::left_join(CONS_C1_df_dup_SEP_2020_dup, by=c("rut_enc_saf"="hash_key")) %>% 
-  dplyr::mutate(accused=dplyr::case_when(encontrado_como_victima=="SI" & encontrado_como_imputado=="SI"~"IMPUTADO",
-                                 encontrado_como_victima=="NO" & encontrado_como_imputado=="SI"~"IMPUTADO",
-                                 T~"VICTIMA")), 
-  rows="gls_parentesco",
-  cols = c("accused"),
-  vals = "Cuenta", 
-  aggregatorName = "Cuenta",
-  subtotals=T,
-  locale="es",
-  rendererName = "Table",
-  width="100%", height="550px")
-
-#htmlwidgets::saveWidget(pt, "test3.html")
-```
-</div>
-
-<!---
-File is available in this [link](https://github.com/FONDECYTACC/SUD_health_Chile.github.io/raw/master/test3.html).
---->
-
-
 # Structure
 
-```{r s1, echo=T, error=T, paged.print=TRUE, error=T, eval=F}
-#hetcor_mat<-polycor::hetcor(base_fiscalia , ML = T, std.err = T, use="pairwise.complete.obs", bins=4, pd=TRUE)
- 
-```
-
-The hypothetized structure would be HASHs (`rut_enc_saf`), RUCs (`ruc`), and relationships (`idrelacion`) as the combination of an specific accused (`idsujeto_imputado`) and victim (`idsujeto_victima`) in a determined court case. But an alternative would be the established in the reports, `idsujeto_imputado` and the type of crime/offence (`id_delito`), and each crime/offence should be terminated with an indictment or filed as discontinued or suspended.
+The hypothetized structure would be HASHs (`rut_enc_saf`), RUCs (`ruc`), the combination of an specific accused (`idsujeto_imputado`) and victim (`idsujeto_victima`), ending with a relationship (`idrelacion`) as the result of this combination with an specific type of crime/offence (`id_delito`) in a determined court case.
 
 <br>
 
-```{r s2, echo=T, error=T, paged.print=TRUE, error=T}
-#sería RUT/Hash → RUC → relaciones
-#
-#fec_cbiorelacion
-#fec_comision  
-#termino_relacion 
+Some counts of different values by each variable.
 
-invisible("¿Hay algún patrón por año?, ver el recuento de id_victimas==0 por cada trimestre y sacar un gráfico de densidad de eso")
-require(zoo)
-require(ggrepel)
+<br>
 
-base_fiscalia %>% 
-    dplyr::arrange(rut_enc_saf, ruc, idrelacion) %>% 
-    dplyr::mutate(fech_ing_qrt=zoo::as.yearqtr(fec_comision)) %>%
-    dplyr::mutate(idsujeto_victima_0=ifelse(idsujeto_victima==0,1,0)) %>% 
-    dplyr::group_by(fech_ing_qrt) %>% #%>% janitor::tabyl(sus_ini)
-    dplyr::summarise(n=n(),
-                     sum_0 = length(n[idsujeto_victima_0==1]),
-                     perc = sum_0/n) %>% 
-    dplyr::ungroup() %>% 
-    dplyr::filter(fech_ing_qrt>=2000) %>% 
-    dplyr::arrange(desc(fech_ing_qrt)) %>% 
-    ggplot2::ggplot(aes(x = fech_ing_qrt, y = perc, label = paste0("n=",n))) +
-    geom_line(color = "#0076A8", size=1) +
-    geom_text_repel(aes(x = fech_ing_qrt, y = perc, label = paste0("Rows=",n,"\nNN victims= ", sum_0)), vjust = -1,hjust = 0, angle=45, size=3, arrow = arrow(length = unit(0.01, 'npc'))) +
-    sjPlot::theme_sjplot2() +
-    labs(y="% of Missing Data of the Victim",x="Years & Quarters, Date of commission of the crime",caption="Note. Some crimes were commited before 1960 (n= 246), and in 1900 (n=241)") + 
-    scale_y_continuous(limits=c(-1, 1),labels = scales::percent) +
-    scale_x_yearqtr(format="%YQ%q", n=20) +
-    theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), plot.caption=element_text(hjust=0)) 
-
-base_fiscalia %>% 
-  dplyr::arrange(rut_enc_saf, ruc, idrelacion) %>% 
-  dplyr::mutate(fech_ing_qrt=zoo::as.yearqtr(termino_relacion)) %>%
-   dplyr::mutate(idsujeto_victima_0=ifelse(idsujeto_victima==0,1,0)) %>% 
-    dplyr::group_by(fech_ing_qrt) %>% #%>% janitor::tabyl(sus_ini)
-   dplyr::summarise(n=n(),
-                  sum_0 = length(n[idsujeto_victima_0==1]),
-                  perc = sum_0/n) %>% 
-  dplyr::ungroup() %>% 
-  dplyr::filter(fech_ing_qrt>=2000) %>% 
-  dplyr::arrange(desc(fech_ing_qrt)) %>% 
-  ggplot2::ggplot(aes(x = fech_ing_qrt, y = perc, label = paste0("n=",n))) +
-  geom_line(color = "#0076A8", size=1) +
-    geom_text_repel(aes(x = fech_ing_qrt, y = perc, label = paste0("Rows=",n,"\nNN victims= ", sum_0)), vjust = -1,hjust = 0, angle=45, size=3, arrow = arrow(length = unit(0.01, 'npc'))) +
-  sjPlot::theme_sjplot2() +
-  labs(y="% of Missing Data of the Victim",x="Years & Quarters, Date of termination of the relationship") + 
-  scale_y_continuous(limits=c(-1, 1),labels = scales::percent) +
-  scale_x_yearqtr(format="%YQ%q", n=40) +
-  theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), plot.caption=element_text(hjust=0)) 
-
-```
-
-```{r s25, echo=T, error=T, paged.print=TRUE, error=T}
-
-
-invisible("¿Puede que el RUC se repita para un mismo HASH?, ¿en qué situaciones?")
-base_fiscalia %>%
-  dplyr::mutate(combinacion=paste0(ruc,"_",rut_enc_saf)) %>%
-  dplyr::filter(combinacion %in% as.character(unlist(agrupacion_base %>% 
-  dplyr::filter(max>1) %>%dplyr::mutate(combinacion=paste0(ruc,"_",rut_enc_saf)) %>% dplyr::select(combinacion)))) %>% View()
-
-
-base_fiscalia %>%
-  dplyr::filter(encontrado_como_victima=="SI" & encontrado_como_imputado=="SI")
-
-invisible("¿Hay diferencias en la fecha biorelacion y la de término de relación")
-base_fiscalia %>% 
-    dplyr::filter(termino_relacion!=fec_cbiorelacion) %>% 
-    dplyr::mutate(diff_en_dias=as.numeric((termino_relacion-fec_cbiorelacion)/(60*24))) %>% 
-    select(diff_en_dias) %>% 
-    summarise(n=n(),min=min(diff_en_dias), max=max(diff_en_dias), mean=mean(diff_en_dias), median=median(diff_en_dias), p025=quantile(diff_en_dias, .025), p25=quantile(diff_en_dias, .25), p75=quantile(diff_en_dias,.75), p975=quantile(diff_en_dias, .975)) %>% copiar_nombres()
-
-
-invisible("Casos en que hay filas en que un rut es imputado y víctima")
-base_fiscalia %>%
-    dplyr::filter(encontrado_como_victima=="SI" & encontrado_como_imputado=="SI") %>% 
-    summarise(n=n_distinct(rut_enc_saf), n2=n_distinct(ruc))
-
-invisible("Casos en que una persona comete un delito con distinta causa en la misma fecha")
-base_fiscalia %>%
-    dplyr::mutate(comb=paste0(rut_enc_saf,"_",fec_comision)) %>% 
-                    dplyr::add_count(comb, .keep=T) %>% filter(n > 1) %>% 
-    dplyr::group_by(comb) %>% 
-                      dplyr::summarise(n=n_distinct(ruc)) %>% 
-    dplyr::filter(n>1)
-
-# Ejemplo de un caso
-
-# 0007678b8b35fa0961d1e8110fbf9620	SI	NO	6	VICTIMA	47350754	5	V Región de Valparaíso	16913947	1400066420-1	SALIDA NO JUDICIAL	DECISI¿N DE NO PERSEVERAR	525	AMENAZAS CONDIC. CONTRA PERSONAS Y PROP. ART. 296 1 y 2, 297	DELITOS CONTRA LA LIBERTAD E INTIMIDAD DE LAS PERSONAS	SI	16	CONVIVIENTE	5	Decisión de no perseverar en el proced	0	NA	1	ORDINARIO	47350753	3	IMPUTADO	12909542	18-01-2014 19:40	16-04-2014	2	LUGAR HABITADO O DESTINADO A LA HABITACION Y SUS DEPENDENCIAS	1	VIVIENDA	310	VALPARAISO	5	V Región de Valparaíso	16-04-2014	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA
-
-# 0007678b8b35fa0961d1e8110fbf9620	SI	NO	6	VICTIMA	47359056	5	V Región de Valparaíso	16916932	1400068650-7	SALIDA NO JUDICIAL	ARCHIVO PROVISIONAL	524	AMENAZAS SIMPLES CONTRA PERSONAS Y PROPIEDADES ART. 296 Nº3.	DELITOS CONTRA LA LIBERTAD E INTIMIDAD DE LAS PERSONAS	SI	16	CONVIVIENTE	1	Archivo Provisional	0	NA	0	SIN PROCEDIMIENTO	47359057	3	IMPUTADO	12911972	18-01-2014 19:40	27-01-2014	2	LUGAR HABITADO O DESTINADO A LA HABITACION Y SUS DEPENDENCIAS	1	VIVIENDA	310	VALPARAISO	5	V Región de Valparaíso	27-01-2014	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA
-
-invisible("Gente que tendría distinto id de relación para una misma combianción de id víctima e id imputado")
-base_fiscalia %>%
-    dplyr::mutate(comb=paste0(idsujeto_victima,"_",idsujeto_imputado)) %>% 
-    dplyr::add_count(comb, .keep=T) %>% filter(n > 1) %>% 
-    dplyr::group_by(comb) %>% 
-    dplyr::summarise(n=n_distinct(idrelacion)) %>% 
-    dplyr::filter(!grepl("^0_", comb)) %>% 
-    dplyr::filter(n>1) %>%  nrow()
-
-base_fiscalia %>%
-    dplyr::mutate(comb=paste0(idsujeto_victima,"_",idsujeto_imputado)) %>% 
-    arrange(rut_enc_saf,fec_comision,ruc,idrelacion) %>% 
-    dplyr::filter(comb=="10760610_10760611") %>% View()
-
-invisible("Ver si hay alguien que comete el delito antes de terminarse la relación")
-invisible("¿Puede producirse que alguno cometa el delito después de terminada la relación?, investigar tales errores")
-#fec_cbiorelacion
-#fec_comision  
-#termino_relacion 
-
-base_fiscalia %>%
-  dplyr::mutate(fec_comision_simple=as.Date(stringr::str_extract(as.character(fec_comision), "^.{10}"))) %>% 
-  dplyr::mutate(termino_relacion_simple=as.Date(stringr::str_extract(as.character(termino_relacion), "^.{10}"))) %>%
-  dplyr::mutate(diff_en_dias=as.numeric((termino_relacion_simple-fec_comision_simple))) %>% 
-  dplyr::filter(diff_en_dias<0)
-  # dplyr::select(rut_enc_saf,ruc, fec_comision, termino_relacion, diff_en_dias) %>%  
-  #     select(diff_en_dias) %>% 
-  #     summarise(n=n(),min=min(diff_en_dias), max=max(diff_en_dias), mean=mean(diff_en_dias), median=median(diff_en_dias), p025=quantile(diff_en_dias, .025), p25=quantile(diff_en_dias, .25), p75=quantile(diff_en_dias,.75), p975=quantile(diff_en_dias, .975)) %>% copiar_nombres()
-
-invisible("Ver si hay más de un código delito por materia y viceversa")
-base_fiscalia %>%
-    dplyr::group_by(cod_delito) %>% 
-    summarise(n=n_distinct(gls_materia)) %>% 
-    dplyr::filter(n>1)
-base_fiscalia %>%
-    dplyr::group_by(gls_materia) %>% 
-    summarise(n=n_distinct(cod_delito)) %>% 
-    dplyr::filter(n>1)
-
-invisible("Puede ser que en algunos casos específicos, para un mismo RUC participen 2 o más RUT?")
-base_fiscalia %>%
-    dplyr::group_by(ruc) %>% 
-    summarise(n=n_distinct(rut_enc_saf)) %>% 
-    dplyr::filter(n>1)
-
-
-```
-
-```{r s3, echo=T, error=T, paged.print=TRUE}
-#base_fiscalia %>%  dplyr::select(encontrado_como_victima:clasificacion_pena_47) %>% glimpse()
-#idsujeto_imputado
-#iddelito 
-#idrelacion
-#ruc
-#idsujeto_victima
-#gls_tipo_sujeto_vic
-
-
-cat("ID sujeto víctima")
+```{r s1, echo=T, error=T, paged.print=TRUE}
+id_suj_vic<-
+cbind(cat="Number of entries by ID of victim",
 base_fiscalia %>%
     group_by(idsujeto_victima) %>% 
     summarise(n=n()) %>% 
-    summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
-#podría agrupar al resto. De hecho, hay un ID que agrupa a 18,045 filas
-
-#Exploro ese caso aislado. ¿Hay más de una relación por cada uno?
-
-    base_fiscalia %>%
+    summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975)))
+#podría agrupar al resto. De hecho, hay un ID que agrupa a 18,045 filas, que es el id sujeto ==0
+if(no_mostrar==0){
+base_fiscalia %>%
     dplyr::filter(ruc %in% as.character(unlist(base_fiscalia %>%
         dplyr::filter(idsujeto_victima==0) %>%
         dplyr::select(ruc)))) %>% 
       dplyr::group_by(idrelacion) %>% 
       summarise(n=n()) %>% 
     summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+}
 
-
-
-cat("ID sujeto imputado")
+id_suj_imp<-
+cbind(cat="Number of entries by ID of accused",
 base_fiscalia %>%
     group_by(idsujeto_imputado) %>% 
     summarise(n=n()) %>% 
-    summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+    summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975)))
 #agrupa al resto, me da la impresión, tiene hasta 129 filas con el mismo id sujeto imputado
 
-cat("RUC")
+ruc<-
+cbind(cat="Number of entries by RUC",
 base_fiscalia %>%
     group_by(ruc) %>% 
     summarise(n=n()) %>% 
-    summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+    summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975)))
 
  # 1 0810024146-4   129
  # 2 0901135475-8   106
@@ -860,18 +688,85 @@ base_fiscalia %>%
 
 #El ruc no es específico, tiene hasta 129 filas. Ver si tienen relación con los ID's sjeto imputado o víctima
 
-#Exploremos algunos:
-  base_fiscalia %>%
-    dplyr::filter(ruc %in% c("0810024146-4","0901135475-8")) %>% View()
+id_delito<-
+cbind(cat="Number of entries by ID delito",
+base_fiscalia %>%
+    group_by(iddelito) %>% 
+    summarise(n=n()) %>% 
+    summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975)))
+# algo específica, tiene como máximo 82 filas con el mismo id delito
 
-cat("ID sujeto imputado, RUC")
+id_rel<-
+cbind(cat="Number of entries by ID relación",
+base_fiscalia %>%
+    group_by(idrelacion) %>% 
+    summarise(n=n()) %>% 
+    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975)))
+# más específica, tiene como máximo 2 filas con el mismo id relación
+
+no_mostrar=1
+if(no_mostrar==0){
+invisible("Para ver casos posiblemente duplicados")
+base_fiscalia %>%
+  dplyr::mutate(combinacion=paste0(ruc,"_",rut_enc_saf)) %>%
+  dplyr::filter(combinacion %in% as.character(unlist(agrupacion_base %>% 
+  dplyr::filter(max>1) %>%dplyr::mutate(combinacion=paste0(ruc,"_",rut_enc_saf)) %>% dplyr::select(combinacion)))) %>% View()
+}
+
+ruts<-cbind(cat="Number of entries by Ruts",
+base_fiscalia %>%
+    group_by(rut_enc_saf) %>% 
+    summarise(n=n()) %>% 
+    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975)))
+
+ruc_por_rut<-
+cbind(cat="Number of different Causes(RUCs) by RUT",
+base_fiscalia %>%
+    group_by(rut_enc_saf) %>% 
+    summarise(n=n_distinct(ruc)) %>% 
+    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))) #%>% copiar_nombres()
+
+
+del_por_ruc<-
+cbind(cat="Number of different Crimes by RUT",
+base_fiscalia %>%
+    group_by(rut_enc_saf) %>% 
+    summarise(n=n_distinct(gls_materia)) %>% 
+    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975)))
+
+rel_por_ruc<-
+cbind(cat="Number of different relatonships by RUT",
+base_fiscalia %>%
+    group_by(rut_enc_saf) %>% 
+    summarise(n=n_distinct(idrelacion)) %>% 
+    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975)))# %>% copiar_nombres()
+
+rel_por_ruc<-
+cbind(cat="Number of different relatonships by Causes(RUC)",
+base_fiscalia %>%
+    group_by(ruc) %>% 
+    summarise(n=n_distinct(idrelacion)) %>% 
+    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975)))
+
+delitos_ruc<-
+cbind(cat="Number of different crimes by Causes(RUC)",base_fiscalia %>%
+    group_by(ruc) %>% 
+    summarise(n=n_distinct(gls_materia)) %>% 
+    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975)))
+
+
+invisible("Exploremos algunos")
+  # base_fiscalia %>%
+  #   dplyr::filter(ruc %in% c("0810024146-4","0901135475-8")) %>% View()
+
+invisible("ID sujeto imputado, RUC")
 # base_fiscalia %>%
 #     group_by(ruc,idsujeto_imputado) %>% 
 #     summarise(n=n()) %>% 
 #     summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
 # No correr, entrega 494,929 casos
 
-cat("ID sujeto víctima, RUC")
+invisible("ID sujeto víctima, RUC")
 # base_fiscalia %>%
 #     group_by(idsujeto_victima,ruc) %>% 
 #     summarise(n=n()) %>% 
@@ -890,32 +785,205 @@ cat("ID sujeto víctima, RUC")
       # In if (na.rm) x <- x[!is.na(x)] else if (anyNA(x)) stop("missing values and NaN's not allowed if 'na.rm' is FALSE") :
       #   the condition has length > 1 and only the first element will be used
 
-cat("ID delito")
+
+bind_rows(ruts,
+id_suj_vic, 
+id_suj_imp,
+ruc,
+id_delito,
+id_rel,
+ruc_por_rut, 
+del_por_ruc,
+rel_por_ruc,
+delitos_ruc) %>% 
+  dplyr::select(cat, everything()) %>% 
+  knitr::kable(size=11, first.strip=T, hide.no="no",
+           format="html",caption= "Table 5. Counts of entries by different groups",
+         smd=T, test=T, varLabels=T,noSpaces=T, printToggle=T, dropEqual=F) %>% #,col.names=c("Variables","Residential", "Ambulatory", "p-value")) %>% 
+    kableExtra::kable_classic(bootstrap_options = c("striped", "hover","condensed"),font_size= 12) %>%
+  # kableExtra::add_footnote(c("Note. Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+<br>
+
+We looked for the percentage of entries with the ID for the victim equal to 0 for each trimester, and the number of entries ithout  For each Cuando hablamos de víctimas sin ID sujeto, para cada trimestre desde el año 1999, porcentaje del total de entradas y el número de entradas sin ID sujeto por el total. En el eje x, la fecha en que se comete el crimen
+
+
+<br>
+
+
+```{r s2, echo=T, error=T, paged.print=TRUE, error=T}
+#sería RUT/Hash → RUC → relaciones
+#
+#fec_cbiorelacion
+#fec_comision  
+#termino_relacion 
+
+invisible("¿Hay algún patrón por año?, ver el recuento de id_victimas==0 por cada trimestre y sacar un gráfico de densidad de eso")
+require(zoo)
+require(ggrepel)
+
+vic_trim_id_suj_0<-
+base_fiscalia %>% 
+    dplyr::arrange(rut_enc_saf, ruc, idrelacion) %>% 
+    dplyr::mutate(fech_ing_qrt=zoo::as.yearqtr(fec_comision)) %>%
+    dplyr::mutate(idsujeto_victima_0=ifelse(idsujeto_victima==0,1,0)) %>% 
+    dplyr::group_by(fech_ing_qrt) %>% #%>% janitor::tabyl(sus_ini)
+    dplyr::summarise(n=n(),
+                     sum_0 = length(n[idsujeto_victima_0==1]),
+                     perc = sum_0/n) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::mutate(label_text= paste0("Year/Quarter= ",fech_ing_qrt,"\nTotal Entries= ",n,"\n %= ",scales::percent(perc, accuracy=1L),"\nEntries w/ NNs= ", sum_0)) %>% 
+    dplyr::filter(fech_ing_qrt>=2000) %>% 
+    dplyr::arrange(desc(fech_ing_qrt)) %>% 
+    ggplot2::ggplot(aes(x = fech_ing_qrt, y = perc, label = label_text)) +
+    geom_line(color = "#0076A8", size=1) +
+    #geom_text_repel(aes(x = fech_ing_qrt, y = perc, label = paste0("Rows=",n,"\nNN victims= ", sum_0)), vjust = -1,hjust = 0, angle=45, #size=3, arrow = arrow(length = unit(0.01, 'npc'))) +
+    sjPlot::theme_sjplot2() +
+    labs(y="% of Missing Data of the Victim",x="Years & Quarters, Date of commission of the crime",caption="Note. Some crimes were commited before 1960 (n= 246), and in 1900 (n=241)") + 
+    scale_y_continuous(labels = scales::percent) +
+    scale_x_yearqtr(format="%YQ%q", n=15) +
+    theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), plot.caption=element_text(hjust=0)) 
+
+ggplotly(vic_trim_id_suj_0, tooltip="label_text")
+```
+
+
+```{r s202, echo=T, error=T, paged.print=TRUE, error=T}
+vic_trim_id_suj_0_b<-
+base_fiscalia %>% 
+  dplyr::arrange(rut_enc_saf, ruc, idrelacion) %>% 
+  dplyr::mutate(fech_ing_qrt=zoo::as.yearqtr(termino_relacion)) %>%
+   dplyr::mutate(idsujeto_victima_0=ifelse(idsujeto_victima==0,1,0)) %>% 
+    dplyr::group_by(fech_ing_qrt) %>% #%>% janitor::tabyl(sus_ini)
+   dplyr::summarise(n=n(),
+                  sum_0 = length(n[idsujeto_victima_0==1]),
+                  perc = sum_0/n) %>% 
+  dplyr::ungroup() %>% 
+    dplyr::mutate(label_text= paste0("Year/Quarter= ",fech_ing_qrt,"\nTotal Entries= ",n,"\n %= ",scales::percent(perc, accuracy=1L),"\nEntries w/ NNs= ", sum_0)) %>% 
+  dplyr::filter(fech_ing_qrt>=2000) %>% 
+  dplyr::arrange(desc(fech_ing_qrt)) %>% 
+  ggplot2::ggplot(aes(x = fech_ing_qrt, y = perc, label = label_text)) +
+  geom_line(color = "#0076A8", size=1) +
+    # geom_text_repel(aes(x = fech_ing_qrt, y = perc, label = paste0("Rows=",n,"\nNN victims= ", sum_0)), vjust = -1,hjust = 0, angle=45, size=3, arrow = arrow(length = unit(0.01, 'npc'))) +
+  sjPlot::theme_sjplot2() +
+  labs(y="% of Missing Data of the Victim",x="Years & Quarters, Date of termination of the relationship") + 
+  scale_y_continuous(labels = scales::percent) +
+  scale_x_yearqtr(format="%YQ%q", n=30) +
+  theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), plot.caption=element_text(hjust=0)) 
+
+ggplotly(vic_trim_id_suj_0_b, tooltip="label_text")
+
+```
+
+<br>
+
+## Some questions
+
+<br>
+
+```{r s25, echo=T, error=T, paged.print=TRUE, error=T}
+# invisible("¿Puede que el RUC se repita para un mismo HASH?, ¿en qué situaciones?")
+# base_fiscalia %>%
+#   dplyr::mutate(combinacion=paste0(ruc,"_",rut_enc_saf)) %>%
+#   dplyr::filter(combinacion %in% as.character(unlist(agrupacion_base %>% 
+#   dplyr::filter(max>1) %>%dplyr::mutate(combinacion=paste0(ruc,"_",rut_enc_saf)) %>% dplyr::select(combinacion)))) %>% View()
+
+cat("Entries with accused and victim status")
+format(base_fiscalia %>%
+  dplyr::filter(encontrado_como_victima=="SI" & encontrado_como_imputado=="SI") %>% nrow(), big.mark=",")
+
+cat("Differences between date of termination of cbiorelacion (fec_cbiorelacion) and termination of relationship (termino_relacion)")
+invisible("¿Hay diferencias en la fecha biorelacion y la de término de relación")
+base_fiscalia %>% 
+    dplyr::filter(termino_relacion!=fec_cbiorelacion) %>% 
+    dplyr::mutate(diff_en_dias=as.numeric((termino_relacion-fec_cbiorelacion)/(60*24))) %>% 
+    select(diff_en_dias) %>% 
+    summarise(n=n(),min=min(diff_en_dias), max=max(diff_en_dias), mean=mean(diff_en_dias), median=median(diff_en_dias), p025=quantile(diff_en_dias, .025), p25=quantile(diff_en_dias, .25), p75=quantile(diff_en_dias,.75), p975=quantile(diff_en_dias, .975)) %>% copiar_nombres()
+
+cat("Entries in which the RUT is found as accused and victim (distinct RUTs & distinct RUCs)")
+invisible("Casos en que hay filas en que un rut es imputado y víctima")
 base_fiscalia %>%
-    group_by(iddelito) %>% 
-    summarise(n=n()) %>% 
-    summarise(min=min(n), max=max(n), mean=mean(n), median=median(n), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
-# algo específica, tiene como máximo 82 filas con el mismo id delito
+    dplyr::filter(encontrado_como_victima=="SI" & encontrado_como_imputado=="SI") %>% 
+    summarise(n=n_distinct(rut_enc_saf), n2=n_distinct(ruc))
 
+cat("Entries in which an accused commits a crime with distinct cause (RUC) in the same date")
+invisible("Casos en que una persona comete un delito con distinta causa en la misma fecha")
+format(base_fiscalia %>%
+    dplyr::mutate(comb=paste0(rut_enc_saf,"_",fec_comision)) %>% 
+                    dplyr::add_count(comb, .keep=T) %>% filter(n > 1) %>% 
+    dplyr::group_by(comb) %>% 
+                      dplyr::mutate(n=n_distinct(ruc)) %>% 
+    dplyr::filter(n>1) %>%
+  nrow(), big.mark=",")
+  # dplyr::ungroup() %>% 
+  # dplyr::arrange(rut_enc_saf, ruc) %>% 
+  # dplyr::select(rut_enc_saf, ruc, idrelacion, gls_materia, fec_comision)
 
-cat("ID relación")
+# Ejemplo de un caso
+
+# 0007678b8b35fa0961d1e8110fbf9620	SI	NO	6	VICTIMA	47350754	5	V Región de Valparaíso	16913947	1400066420-1	SALIDA NO JUDICIAL	DECISI¿N DE NO PERSEVERAR	525	AMENAZAS CONDIC. CONTRA PERSONAS Y PROP. ART. 296 1 y 2, 297	DELITOS CONTRA LA LIBERTAD E INTIMIDAD DE LAS PERSONAS	SI	16	CONVIVIENTE	5	Decisión de no perseverar en el proced	0	NA	1	ORDINARIO	47350753	3	IMPUTADO	12909542	18-01-2014 19:40	16-04-2014	2	LUGAR HABITADO O DESTINADO A LA HABITACION Y SUS DEPENDENCIAS	1	VIVIENDA	310	VALPARAISO	5	V Región de Valparaíso	16-04-2014	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA
+
+# 0007678b8b35fa0961d1e8110fbf9620	SI	NO	6	VICTIMA	47359056	5	V Región de Valparaíso	16916932	1400068650-7	SALIDA NO JUDICIAL	ARCHIVO PROVISIONAL	524	AMENAZAS SIMPLES CONTRA PERSONAS Y PROPIEDADES ART. 296 Nº3.	DELITOS CONTRA LA LIBERTAD E INTIMIDAD DE LAS PERSONAS	SI	16	CONVIVIENTE	1	Archivo Provisional	0	NA	0	SIN PROCEDIMIENTO	47359057	3	IMPUTADO	12911972	18-01-2014 19:40	27-01-2014	2	LUGAR HABITADO O DESTINADO A LA HABITACION Y SUS DEPENDENCIAS	1	VIVIENDA	310	VALPARAISO	5	V Región de Valparaíso	27-01-2014	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA	NA
+
+cat("Entries that have different relationship ID for the same combination of an ID of the victim and the ID of the accused")
+invisible("Gente que tendría distinto id de relación para una misma combianción de id víctima e id imputado")
+format(base_fiscalia %>%
+    dplyr::mutate(comb=paste0(idsujeto_victima,"_",idsujeto_imputado)) %>% 
+    dplyr::add_count(comb, .keep=T) %>% filter(n > 1) %>% 
+    dplyr::group_by(comb) %>% 
+    dplyr::summarise(n=n_distinct(idrelacion)) %>% 
+    dplyr::filter(!grepl("^0_", comb)) %>% 
+    dplyr::filter(n>1) %>%  nrow(), big.mark=",")
+
+cat("Example")
 base_fiscalia %>%
-    group_by(idrelacion) %>% 
-    summarise(n=n()) %>% 
-    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
-# más específica, tiene como máximo 2 filas con el mismo id relación
+    dplyr::mutate(comb=paste0(idsujeto_victima,"_",idsujeto_imputado)) %>% 
+    arrange(rut_enc_saf,fec_comision,ruc,idrelacion) %>% 
+    dplyr::filter(comb=="10760610_10760611") %>%
+    dplyr::select(rut_enc_saf, ruc, idsujeto_victima, idsujeto_imputado, idrelacion, gls_materia) %>%  print()
 
 
-cat("RUC, RUT, ID relación")
-agrupacion_base<-
-base_fiscalia %>%
-    group_by(ruc,rut_enc_saf,idrelacion) %>% 
-    summarise(n=n()) %>% 
-    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+cat("Cases with date of crime comission are posterior to the date that the relationship ended")
+format(base_fiscalia %>%
+  dplyr::mutate(fec_comision_simple=as.Date(stringr::str_extract(as.character(fec_comision), "^.{10}"))) %>% 
+  dplyr::mutate(termino_relacion_simple=as.Date(stringr::str_extract(as.character(termino_relacion), "^.{10}"))) %>%
+  dplyr::mutate(diff_en_dias=as.numeric((termino_relacion_simple-fec_comision_simple))) %>% 
+  dplyr::filter(diff_en_dias<0) %>% 
+  nrow(), big.mark=",")
+   #dplyr::select(rut_enc_saf,ruc, fec_comision, termino_relacion, diff_en_dias) %>%  
+  #     select(diff_en_dias) %>% 
+  #     summarise(n=n(),min=min(diff_en_dias), max=max(diff_en_dias), mean=mean(diff_en_dias), median=median(diff_en_dias), p025=quantile(diff_en_dias, .025), p25=quantile(diff_en_dias, .25), p75=quantile(diff_en_dias,.75), p975=quantile(diff_en_dias, .975)) %>% copiar_nombres()
 
-cat("Por qué ocurre esto???")
+cat("Are gls_materia and cod_delito distinct (differences in the number of categories contained)?")
+ifelse(base_fiscalia %>%
+    dplyr::group_by(cod_delito) %>% 
+    summarise(n=n_distinct(gls_materia)) %>% 
+    dplyr::filter(n>1) %>% nrow()>0,"Yes","No")
+
+cat("And viceversa?")
+
+ifelse(base_fiscalia %>%
+    dplyr::group_by(gls_materia) %>% 
+    summarise(n=n_distinct(cod_delito)) %>% 
+    dplyr::filter(n>1) %>% nrow(), "Yes","No")
+
+cat("Cases in which the same RUC has 2 or more RUTs")
+format(base_fiscalia %>%
+    dplyr::group_by(ruc) %>% 
+    summarise(n=n_distinct(rut_enc_saf)) %>% 
+    dplyr::filter(n>1) %>% 
+  nrow(), big.mark=",")
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+rel_ruc_rut<-
+cbind("More than one relationship within a RUC by each RUT",
 agrupacion_base %>% 
-    dplyr::filter(max>1)
+    dplyr::filter(max>1) %>% nrow())
 invisible("Casos en que agrupados las relaciones por rucs y a su vez por cada rut, resultan tener 2 relaciones")
 invisible("ruc=='1101216380-2' tiene todo igual con la otra fila")
 invisible("ruc=='1200110540-8' tiene todo igual con la otra fila")
@@ -930,85 +998,534 @@ invisible("ruc=='1200685456-5' tiene todo igual con la otra fila")
 # 6 1300390161-5 f336b9f3e4097cfe736239a8bb937596     1     2   1.5    1.5  1.02  1.25  1.75  1.98
 # 7 1600027649-2 bfc39f93fe4e0958c4e0ec16dddec275     2     2   2      2    2     2     2     2   
 
-invisible("Para ver casos posiblemente duplicados")
-base_fiscalia %>%
-  dplyr::mutate(combinacion=paste0(ruc,"_",rut_enc_saf)) %>%
-  dplyr::filter(combinacion %in% as.character(unlist(agrupacion_base %>% 
-  dplyr::filter(max>1) %>%dplyr::mutate(combinacion=paste0(ruc,"_",rut_enc_saf)) %>% dplyr::select(combinacion)))) %>% View()
 
-cat("RUT")
+cat("Number of different relationships within a RUC by each RUT")
+invisible("ID's de relación por RUCs en RUTs")
+agrupacion_base<-
 base_fiscalia %>%
-    group_by(rut_enc_saf) %>% 
+    group_by(ruc,rut_enc_saf,idrelacion) %>% 
     summarise(n=n()) %>% 
     summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
 
-
-cat("RUC por RUT")
-base_fiscalia %>%
-    group_by(rut_enc_saf) %>% 
-    summarise(n=n_distinct(ruc)) %>% 
-    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975)) %>% copiar_nombres()
-
-cat("Delitos por RUT")
-base_fiscalia %>%
-    group_by(rut_enc_saf) %>% 
-    summarise(n=n_distinct(gls_materia)) %>% 
-    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
-
-cat("Relaciones por RUT")
-base_fiscalia %>%
-    group_by(rut_enc_saf) %>% 
-    summarise(n=n_distinct(idrelacion)) %>% 
-    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975)) %>% copiar_nombres()
-
-cat("Delitos por relación y RUC")
+del_por_rel_ruc<-
+  cbind(cat="Delitos por relación y RUC",
 base_fiscalia %>%
     group_by(ruc, idrelacion, gls_materia) %>% 
     summarise(n=n()) %>% 
-    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975)))
+```
 
-cat("Relaciones por RUC")
-base_fiscalia %>%
-    group_by(ruc) %>% 
-    summarise(n=n_distinct(idrelacion)) %>% 
-    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+<br>
 
-cat("Delitos por ruc")
-base_fiscalia %>%
-    group_by(ruc) %>% 
-    summarise(n=n_distinct(gls_materia)) %>% 
-    summarise(min=min(n), max=max(n), mean=mean(n, na.rm=T), median=median(n, na.rm=T), p025=quantile(n, .025), p25=quantile(n, .25), p75=quantile(n,.75), p975=quantile(n, .975))
+Entries with the same data
 
+<br>
+
+```{r s35, echo=T, error=T, paged.print=TRUE}
+options(knitr.kable.NA = '')
 
 #quienes tienen más de uno, son los mismos datos
 base_fiscalia %>%
-dplyr::filter(idrelacion %in% c(12935546, 13290172, 14124442, 14248963, 14953586, 15559264, 20446792))
-
-
+dplyr::filter(idrelacion %in% c(12935546, 13290172, 14124442, 14248963, 14953586, 15559264, 20446792)) %>% 
+  dplyr::arrange(rut_enc_saf, ruc, idrelacion, id_delito) %>% 
+knitr::kable(size=11, first.strip=T, hide.no="no",
+           format="html",caption= "Table 6. Cases with duplicated entries",
+         smd=T, test=T, varLabels=T,noSpaces=T, printToggle=T, dropEqual=F) %>% #,col.names=c("Variables","Residential", "Ambulatory", "p-value")) %>% 
+    kableExtra::kable_classic(bootstrap_options = c("striped", "hover","condensed"),font_size= 10) %>%
+  # kableExtra::add_footnote(c("Note. Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
 ```
 
 
 ```{r s4, echo=T, error=T, paged.print=TRUE}
-cat("Vista base de datos")
-base_fiscalia_ord<-
-base_fiscalia %>%
-    arrange(rut_enc_saf,fec_comision,ruc,idrelacion)
+
+```
 
 
-base_fiscalia %>%
-    dplyr::filter(gls_mottermino=="Sentencia definitiva condenatoria") %>% View()
+<br>
+
+```{r paso1_funciones, echo=T, paged.print=TRUE, eval=T}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+lca_entropia <- function(x,seed,k,f,dat,nbr_repet,na_rm){
+  #x=texto distintivo
+  #y =seed ej: 4345
+  #k= cuantos modelos se van a calcular
+  #f= función
+  #dat= datos
+  #nbr_repet= número de repeeticiones
+  #na_rm= permitir valores perdidos
+  max_II <- -10000000
+  min_bic <- 10000000
+  set.seed(seed)
+      assign(paste("lc", 1, "_", x, sep = ""),#get(paste("lc", i, "_", x, sep = "")) 
+           poLCA(f, dat, nclass=1, maxiter=5000,
+                 tol=1e-5, na.rm=na_rm,
+                 nrep=nbr_repet, verbose=F, calc.se=TRUE)
+           )
+  set.seed(seed)
+  for(i in 2:k){
+    assign(paste("lc", i, "_", x, sep = ""),#get(paste("lc", i, "_", x, sep = "")) 
+           poLCA(f, dat, nclass=i, maxiter=5000,
+                 tol=1e-5, na.rm=na_rm,
+                 nrep=nbr_repet, verbose=F, calc.se=TRUE)
+           )
+    if(get(paste("lc",i,"_",x,sep=""))$bic < min_bic){
+        min_bic <- get(paste("lc",i,"_",x,sep=""))$bic
+        LCA_best_model<-get(paste("lc",i,"_",x,sep=""))
+    }
+  }
+  
+  tab.modfit<-data.frame(matrix(rep(999,14),nrow=1))
+  names(tab.modfit)<-c("log-likelihood","Chi2","Chi2_pval",
+                       "resid. df","BIC",
+                       "aBIC","cAIC","likelihood-ratio","LLik_pval","Entropy", "Entropy.R2","Dev Change","df","pval")
+  relative.entropy<-function(lc){
+    en<--sum(lc$posterior*
+               log(lc$posterior),na.rm=T)
+    e<-1-en/(nrow(lc$posterior)*log(ncol(lc$posterior)))
+    return(e)
+  }
+  machine_tolerance <- sqrt(.Machine$double.eps)
+  entropy.R2 <- function(fit) {
+  entropy <- function(p) {
+    p <- p[p > machine_tolerance] # since Lim_{p->0} p log(p) = 0
+    sum(-p * log(p))
+  }
+  error_prior <- entropy(fit$P) # Class proportions
+  error_post <- mean(apply(fit$posterior, 1, entropy))
+  R2_entropy <- (error_prior - error_post) / error_prior
+  R2_entropy
+}
+  for(i in 2:k){
+    tab.modfit<-rbind(tab.modfit,
+                      c(get(paste("lc",i,"_",x,sep=""))$llik,
+                        get(paste("lc",i,"_",x,sep=""))$Chisq,
+                        get(paste("lc",i,"_",x,sep=""))$Chisq.pvalue,
+                        get(paste("lc",i,"_",x,sep=""))$resid.df,
+                        get(paste("lc",i,"_",x,sep=""))$bic,
+                        (-2*get(paste("lc",i,"_",x,sep=""))$llik) +
+                          ((log((get(paste("lc",i,"_",x,sep=""))$N + 2)/24)) *
+                             get(paste("lc",i,"_",x,sep=""))$npar),
+                        (-2*get(paste("lc",i,"_",x,sep=""))$llik) +
+                          get(paste("lc",i,"_",x,sep=""))$npar *
+                          (1 + log(get(paste("lc",i,"_",x,sep=""))$N)),
+                        get(paste("lc",i,"_",x,sep=""))$Gsq,
+                        get(paste("lc",i,"_",x,sep=""))$Gsq.pvalue,
+                        relative.entropy(get(paste("lc",i,"_",x,sep=""))),
+                        entropy.R2(get(paste("lc",i,"_",x,sep=""))),
+                        (get(paste("lc",i-1,"_",x,sep=""))$Gsq- get(paste("lc",i,"_",x,sep=""))$Gsq),
+                        (get(paste("lc",i-1,"_",x,sep=""))$resid.df- get(paste("lc",i,"_",x,sep=""))$resid.df),
+                        (pchisq( get(paste("lc",i-1,"_",x,sep=""))$Gsq- get(paste("lc",i,"_",x,sep=""))$Gsq,  get(paste("lc",i-1,"_",x,sep=""))$resid.df- get(paste("lc",i,"_",x,sep=""))$resid.df))
+                        ))
+  }
+  tab.modfit<-round(tab.modfit[-1,],2)
+  tab.modfit$Nclass<-2:k
+
+  newList <- list("lc_entropy_table" = tab.modfit, 
+                  "lc_entropy_best_model" = LCA_best_model)
+  return(list2env(newList ,.GlobalEnv))
+}
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#' Bivariate residuals for latent class models
+#' 
+#' Calculate the "bivariate residuals" (BVRs) between pairs of variables 
+#' in a latent class model.
+#' 
+#' This function compares the model-implied (expected) counts in the crosstables
+#' of all pairs of observed dependent variables to the observed counts. For each
+#' pair, it calculates a "chi-square" statistic,
+#' 
+#' \deqn{\text{BVR} = \sum_{j, j'} \frac{(n_{jj'} - e_{jj'})^2}{e_{jj'}}},
+#' 
+#' where \eqn{n_{jj'}} are the observed counts for categories \eqn{j} and \eqn{j'} 
+#' of the variables being crosstabulated, and \eqn{e_{jj'}} are
+#' the expected counts under the latent class model. 
+#' 
+#' Note that the BVR does not follow an asymptotic chi-square distribution and
+#' for accurate p-values, parametric bootstrapping is necessary (Oberski et al. 2013).
+#' 
+#' @param fit A poLCA fit object
+#' @param tol Optional: tolerance for small expected counts
+#' @param rescale_to_df Optional: whether to divide the pairwise "chi-square" values by 
+#' the degrees of freedom of the local crosstable. Default is TRUE.
+#' @return The table of bivariate residuals
+#' @author Daniel Oberski (daniel.oberski@gmail.com)
+#' @seealso \code{\link{poLCA}} for fitting the latent class model.
+#' @references 
+#' Oberski, DL, Van Kollenburg, GH and Vermunt, JK (2013). 
+#'   A Monte Carlo evaluation of three methods to detect local dependence in binary data latent class models. 
+#'   Advances in Data Analysis and Classification 7 (3), 267-279.
+#' @examples
+#' data(values)
+#' f <- cbind(A, B, C, D) ~ 1
+#' M0 <- poLCA(f,values, nclass=1, verbose = FALSE) 
+#' bvr(M0) # 12.4, 5.7, 8.3, 15.6, ... 
+bvr <- function(fit, tol = 1e-3, rescale_to_df = TRUE) {
+  stopifnot(class(fit) == "poLCA")
+
+  ov_names <- names(fit$predcell)[1:(ncol(fit$predcell) - 2)]
+  ov_combn <- combn(ov_names, 2)
+
+  get_bvr <- function(ov_pair) {
+    form_obs <- as.formula(paste0("observed ~ ", ov_pair[1], " + ", ov_pair[2]))
+    form_exp <- as.formula(paste0("expected ~ ", ov_pair[1], " + ", ov_pair[2]))
+
+    counts_obs <- xtabs(form_obs, data = fit$predcell)
+    counts_exp <- xtabs(form_exp, data = fit$predcell)
+    counts_exp <- ifelse(counts_exp < tol, tol, counts_exp) # Prevent Inf/NaN
+
+    bvr_df <- prod(dim(counts_exp) - 1)
+    bvr_value <- sum((counts_obs - counts_exp)^2 / counts_exp)
+
+    if(rescale_to_df) bvr_value <- bvr_value / bvr_df
+
+    attr(bvr_value, "df") <- bvr_df
+
+    bvr_value
+  }
+
+  bvr_pairs <- apply(ov_combn, 2, get_bvr)
+
+  attr(bvr_pairs, "rescale_to_df") <- rescale_to_df
+  attr(bvr_pairs, "class") <- "dist"
+  attr(bvr_pairs, "Size") <- length(ov_names)
+  attr(bvr_pairs, "Labels") <- ov_names
+  attr(bvr_pairs, "Diag") <- FALSE
+  attr(bvr_pairs, "Upper") <- FALSE
+
+  bvr_pairs
+}
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+poLCA.entropy.fix <- function (lc)
+{
+  K.j <- sapply(lc$probs, ncol)
+  fullcell <- expand.grid(sapply(K.j, seq, from = 1))
+  P.c <- poLCA.predcell(lc, fullcell)
+  return(-sum(P.c * log(P.c), na.rm = TRUE))
+}
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#Calculate entropy R2 for poLCA model
+
+# MIT license
+# Author: Daniel Oberski
+# Input: result of a poLCA model fit
+# Output: entropy R^2 statistic (Vermunt & Magidson, 2013, p. 71)
+# See: daob.nl/wp-content/uploads/2015/07/ESRA-course-slides.pdf
+# And: https://www.statisticalinnovations.com/wp-content/uploads/LGtecnical.pdf
+#https://gist.github.com/daob/c2b6d83815ddd57cde3cebfdc2c267b3
+machine_tolerance <- sqrt(.Machine$double.eps)
+entropy.R2 <- function(fit) {
+  entropy <- function(p) {
+    p <- p[p > machine_tolerance] # since Lim_{p->0} p log(p) = 0
+    sum(-p * log(p))
+  }
+  error_prior <- entropy(fit$P) # Class proportions
+  error_post <- mean(apply(fit$posterior, 1, entropy))
+  R2_entropy <- (error_prior - error_post) / error_prior
+  R2_entropy
+}
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#http://researchdata.gla.ac.uk/879/1/Survey_data_processed_using_R.pdf
+##Function to plot variable probabilites by latent class
+
+## Function to undertake chisquare analayis and plot graphs of residuals and contributions
+chisquaretest.predictions.function <-
+ function(indfactor.data,
+ predclass.data,
+ noclasses,
+ pitem,
+ gitem,
+ chirows,
+ chicols) {
+ chisquare.results <- chisq.test(indfactor.data, predclass.data)
+ residuals.data <- chisquare.results$residuals
+ colnames(residuals.data) <- chicols
+ rownames(residuals.data) <- chirows
+ title.text <-
+ paste(
+ "Residuals: chi Square Crosstabulation of\n",
+ pitem,
+ "and",
+ gitem,
+ "\n(Chisquare =",
+ round(chisquare.results$statistic, 3),
+ " p <",
+ round(chisquare.results$p.value, 3),
+ ")",
+ sep = " "
+ )
+ corrplot(
+ residuals.data,
+ is.cor = FALSE,
+ title = title.text,
+ mar = c(0, 0, 4, 0)
+ )
+ contrib.data <-
+ 100 * residuals.data ^ 2 / chisquare.results$statistic
+ round(contrib.data, 3)
+ colnames(contrib.data) <- chicols
+ rownames(contrib.data) <- chirows
+ title.text <-
+ title.text <-
+ paste(
+ "Contributions: chi Square Crosstabulation of\n",
+ pitem,
+ "and",
+ gitem,
+ "\n(Chisquare =",
+ round(chisquare.results$statistic, 3),
+ " p <",
+ round(chisquare.results$p.value, 3),
+ ")",
+ sep = " "
+ )
+ corrplot(
+ contrib.data,
+ is.cor = FALSE,
+ title = title.text,
+ mar = c(0, 0, 4, 0)
+ )
+ return(chisquare.results)
+ }
+##Funciton for Cramers V test
+cv.test = function(x, y) {
+ CV = sqrt(chisq.test(x, y, correct = FALSE)$statistic /
+ (length(x) * (min(
+ length(unique(x)), length(unique(y))
+ ) - 1)))
+ print.noquote("Cramér V / Phi:")
+ return(as.numeric(CV))
+}
+```
+
+```{r paso2_definir_variables,eval=T, echo=T, paged.print=TRUE, eval=F}
+mydata <- 
+  base_fiscalia %>% 
+  dplyr::mutate(accused=dplyr::case_when(encontrado_como_victima=="SI" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 encontrado_como_victima=="NO" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 T~"VICTIMA")) %>%
+  dplyr::select("accused","gls_tipo_sujeto_vic","gls_region","agrupa_terminos","familia_delito", "relacion_vifsaf","gls_parentesco", "gls_mottermino", "gls_motsuspension", "gls_proctermino", "gls_tipo_imputado", "lugar_ocurrencia", "region_delito", "medidas_155", "clasificacion_pena_47") %>% 
+  dplyr::mutate(across(, ~ifelse(is.na(.),9999,as.numeric(factor(.)))))
+
+f_df<-with(mydata, cbind(accused,gls_tipo_sujeto_vic,gls_region,agrupa_terminos,familia_delito, relacion_vifsaf,gls_parentesco, gls_mottermino, gls_motsuspension, gls_proctermino, gls_tipo_imputado, lugar_ocurrencia, region_delito)~1)#, medidas_155, clasificacion_pena_47
+```
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:400px; overflow-x: scroll; width:100%">
+```{r paso2a_lca_select, echo=T, paged.print=TRUE, eval=F}
+# f is the selected variables
+# dat is the data
+# nb_var is the number of selected variables
+# k is the number of latent class generated
+# nbr_repet is the number of repetition to
+# reach the convergence of EM algorithm
+# x es el código para las variables de los modelos
+#seed es el numero random para las semillas. ej: 4345.
+#Modo de calcular el mejor modelo.
+old <- Sys.time()
+library(poLCA)
+lca_entropia(x="primer_lca",seed = 4345,k=5,f=f_df, dat=mydata, nbr_repet = 5,na_rm=T) #clus_iter
+#Error: cannot allocate vector of size 42.3 Gb
+
+#lca_select(f_naq, mydata_naq,k=10,nbr_repet=clus_iter, x="naq", seed=4345)
+#
+new<-(Sys.time())
+warning("Time taken in process: ");new-old
+
+
+# ALERT: at least one manifest variable contained only one
+#     outcome category, and has been removed from the analysis. 
+# 
+# Error: cannot allocate vector of size 28.1 Gb
+
+#Within poLCA, parameter estimates are obtained by a procedure that repeatedly improves estimates.
+#This is stopped when no further improvements are obtained, or until a maximum number of iterations is reached. The starting values are the values at which such repetitions were started. Increasing the number 4 R. ACHTERHOF ET AL.of iterations (cycles within each estimation) and setting more different starting values for each repetition results in a greater likelihood that the global (rather than local) maximum of the log-likelihood function (and thus, the best possible solution) is reached. The maximum number of iterations was chosen as 10.000, and 500 different sets of starting values were used (thus going beyond the recommendations by Linzer & Lewis, 2011; Oberski, 2016). As such, the influence of chance was minimized while the reproducibility of the results was maximized.
+```
+</div>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:700px; overflow-x: scroll; width:100%">
+```{r paso3_select_best_model,eval=T, echo=T, paged.print=TRUE, eval=F}
+#Si probs.start se establece en NULL (predeterminado) al llamar Polca, a continuación, la función genera los valores de partida al azar en cada ejecución. Esto significa que repite carreras de Polca normalmente producirán resultados con los mismos parámetros estimados (correspondiente a la misma el máximo diario de probabilidad), pero con etiquetas de clase latentes reordenados
+lc_entropy_best_model_lca<-lc_entropy_best_model
+lc_entropy_table_lca<-lc_entropy_table
+
+#A list of matrices of class-conditional response probabilities to be used as the starting values for the estimation algorithm. Each matrix in the list corresponds to one manifest variable, with one row for each latent class, and one column for each outcome. The default is NULL, producing random starting values. Note that if nrep>1, then any user-specified probs.start values are only used in the first of the nrep attempts.
+
+#The poLCA.reorder function takes as its first argument the list of starting values probs.start, and as its second argument a vector describing the desired reordering of the latent classes.
+new.probs.start <-  poLCA.reorder(lc_entropy_best_model_lca$probs.start, order(lc_entropy_best_model_lca$P, decreasing = T))
+#new.probs.start <-poLCA.reorder(probs.start,c(4,1,3,2))
+#A continuación, ejecute PoLCA, una vez más, esta vez utilizando los valores iniciales reordenados en la llamada de función.
+
+#The argument nrep=5 tells the program to repeat nrep times, and keep the fit with the highest likelihood to try to avoid local maxima.
+
+#.maxiter – The maximum number of iterations through which the estimation algorithm will cycle.
+#.nrep - Number of times to estimate the model, using different values of probs.start. (default is one)
+set.seed(4345)
+LCA_best_model_final<-
+   poLCA(f_df, mydata, nclass=length(lc_entropy_best_model_lca$P), maxiter=10000,tol=1e-15, na.rm=FALSE,nrep=clus_iter, verbose=TRUE, calc.se=TRUE,probs.start=new.probs.start) 
+
+output_LCA_best_model_final<-capture.output(LCA_best_model_final)
+glance_LCA_best_model_final<-glance(LCA_best_model_final)
+surveymonkey_accionsalududp_df2_cor_table2_LCA <- broom::augment(LCA_best_model_final, data = surveymonkey_accionsalududp_df2_cor_table2)
+```
+</div>
+
+```{r fig2_Comparison, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 3. Selected Model", message=FALSE, error=T, eval=F, fig.height=15}
+## If you are interested in the population-shares of the classes, you can get them like this:
+invisible(round(colMeans(LCA_best_model_final$posterior)*100,2))
+## or you inspect the estimated class memberships:
+invisible(round(prop.table(table(LCA_best_model_final$predclass)),4)*100)
+
+lcmodel <- reshape2::melt(LCA_best_model_final$probs, level=2)
+lcmodel2<-
+lcmodel %>% 
+  dplyr::mutate(L2=factor(L2, levels=c("tamizaje_ans", "tamizaje_dep","p8_exp_c19_cerca_cont_rec",paste0("p12_13_nec_insuf_0",c(1,2,3,4,6,7,9)),paste0("p40_cond_trab_istas_0",6:9),"p45_demo_sexo"),labels=c("ansiedad","depresion","contact_covid",paste0("nec_insuf_",c("gu","po","pf","ov","mq","m95","de")),paste0("istas_",c("sup_esc","sup_ayu","comp_ayu","amb_comp")),"sexo"), ordered=T)) %>% 
+  dplyr::mutate(Var2 = factor(dplyr::case_when(as.character(Var2)=="Pr(6)"~"Pr miss",
+                                               TRUE~as.character(Var2))))
+zp1 <- ggplot(lcmodel2,aes(x = L2, y = value, fill = Var2))
+zp1 <- zp1 + geom_bar(stat = "identity", position = "stack")
+zp1 <- zp1 + facet_grid(Var1 ~ .) 
+zp1 <- zp1 + scale_fill_brewer(type="seq", palette="Greys", na.value = "white") +theme_bw()
+zp1 <- zp1 + labs(y = "Percentage of Probabilities of Response", 
+                  x = "Items",
+                  fill ="Cateorías de\nRespuesta")
+zp1 <- zp1 + theme( axis.text.y=element_blank(),
+                    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+                    axis.ticks.y=element_blank(),                    
+                    panel.grid.major.y=element_blank())
+zp1 <- zp1 + guides(fill = guide_legend(reverse=TRUE))
+print(zp1)
+
+jpeg("_Fig_LCA.jpg", height = 7, width = 11.5, units = 'in', res = 600)
+zp1+ theme(plot.background = element_rect(fill=NA, color = NA))
+dev.off()
+```
+
+```{r paso4_bvr, echo=T, paged.print=TRUE, eval=F}
+#In this case, residuals are actual cell counts vs. expected cell counts. 
+bvr_LCA_best_model<-bvr(LCA_best_model_final)
+
+#conditional probabilities
+#Pr(B1=1|Class 3)
+posteriors <- data.frame(LCA_best_model_final$posterior, predclass=LCA_best_model_final$predclass) 
+
+library(plyr)
+classification_table <- plyr::ddply(posteriors, ~predclass, function(x) colSums(x[,1:4]))
+clasification_errors<- 1 - sum(diag(as.matrix(classification_table[,2:5]))) / sum(classification_table[,2:5]) 
+
+paste0("Error de clasificación: ", scales::percent(as.numeric(clasification_errors),accuracy=.01))
+
+detach("package:plyr", unload=TRUE)
+
+#\#minimum average posterior robability of cluster membership (\>0.7), interpretability (classes are clearly distinguishable), and parsimony (each class has a sufficient sample size for further analysis; n≥50).
+```
+
+<br>
+
+Ver si la exclusión de casos que no calzan en alguna clase tiene consecuencias.
+
+<br>
+
+```{r fig1_Comparison, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 2. Comparative of models of latent classes (2 to 7, from left to right)", message=FALSE, error=T, eval=F, fig.height=10}
+to_string <- as_labeller(c(`0` = "Sig. Outcomes", `1` = "Non Sig. Outcomes"))
+
+manualcolors<-c('indianred1','cornflowerblue', 'gray50', 'darkolivegreen4', 'slateblue2', 
+                'firebrick4', 'goldenrod4')
+#"#FF0000" "#00A08A" "#F2AD00" "#F98400" "#5BBCD6"
+#"#798E87" "#C27D38" "#CCC591" "#29211F"
+
+lc_entropy_table%>%
+  #dplyr::mutate_at(.vars=vars(Gsq, Llik, AIC, mAIC, AICc, HT, cAIC, AICu, BIC, aBIC, HQ), .funs = funs(`zw`=scale(.)))%>%
+  tidyr::pivot_longer(cols = -Nclass,names_to="indices", values_to="value",values_drop_na = F)%>%
+  #dplyr::group_by(Nclass)%>%
+  
+  dplyr::mutate(indices=factor(indices, levels=c('resid. df', 'likelihood-ratio', 'log-likelihood',"LLik_pval",'Chi2', 'Chi2_pval', 'BIC', 'aBIC', 'cAIC',"Entropy","Entropy.R2","Dev Change","df","pval"),labels=c('Degrees of Freedom', "Deviance","Log-Likelihood",'p value','Chi2','p value','Akaike Information\nCriterion',"Bayesian Information\nCriterion (BIC)","Adjusted BIC","Entropy","Entropy R2", "Deviance Change\n(with previous model)", "df", "pval of diffs"))) %>% 
+  dplyr::filter(indices %in% c('Akaike Information\nCriterion',"Bayesian Information\nCriterion (BIC)","Adjusted BIC")) %>%
+  dplyr::mutate(Nclass=factor(Nclass)) %>% 
+  ggplot(aes(x=Nclass,y=value,color=indices, group=indices))+
+  geom_line()+
+  geom_point()+
+  theme_classic()+
+  labs(x="Number of Classes", y="Value")+
+  labs(color = "Indices")+
+  geom_vline(xintercept=3)+
+  labs(caption="Vertical line= Selected model")
+#,'Gsq_zw', 'Llik_zw', 'AIC_zw', 'mAIC_zw', 'AICc_zw', 'HT_zw', 'cAIC_zw', 'AICu_zw', 'BIC_zw', 'aBIC_zw', 'HQ_zw'
+
+#lca_selectnaq %>% dplyr::arrange(BIC) 
+
+#International Journal of Workplace Health Management  (Zhang et al., 2018).
+
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+jpeg("_Fig_lc_entropy_table3.jpg", height = 7, width = 11.5, units = 'in', res = 600)
+
+
+lc_entropy_table%>%
+  #dplyr::mutate_at(.vars=vars(Gsq, Llik, AIC, mAIC, AICc, HT, cAIC, AICu, BIC, aBIC, HQ), .funs = funs(`zw`=scale(.)))%>%
+  tidyr::pivot_longer(cols = -Nclass,names_to="indices", values_to="value",values_drop_na = F)%>%
+  #dplyr::group_by(Nclass)%>%
+  
+  dplyr::mutate(indices=factor(indices, levels=c('resid. df', 'likelihood-ratio', 'log-likelihood',"LLik_pval",'Chi2', 'Chi2_pval', 'BIC', 'aBIC', 'cAIC',"Entropy","Entropy.R2","Dev Change","df","pval"),labels=c('Degrees of Freedom', "Deviance","Log-Likelihood",'p value','Chi2','p value','Akaike Information\nCriterion',"Bayesian Information\nCriterion (BIC)","Adjusted BIC","Entropy","Entropy R2", "Deviance Change\n(with previous model)", "df", "pval of diffs"))) %>% 
+  dplyr::filter(indices %in% c('Akaike Information\nCriterion',"Bayesian Information\nCriterion (BIC)","Adjusted BIC")) %>%
+  dplyr::mutate(Nclass=factor(Nclass)) %>% 
+  ggplot(aes(x=Nclass,y=value,color=indices, group=indices))+
+  geom_line()+
+  geom_point()+
+  theme_classic()+
+  labs(x="Number of Classes", y="Value")+
+  labs(color = "Indices")+
+  geom_vline(xintercept=3)+
+  labs(caption="Vertical line= Selected model")
+
+dev.off()
+```
+
+
+```{r hetcor, echo=T, cache= T, paged.print=TRUE, eval=F, error=F, dpi=320, fig.align="center", fig.cap="Figure 2. Latent classes"}
+
+# set.seed(2017)
+# # Fit the Poisson mixture model
+# library(flexmix)
+# poisson_mm <- stepFlexmix(as.matrix(mydata) ~ 1, 
+#                                  k = 1:15, 
+#                                  nrep = 5, 
+#                                  model = FLXMCmvpois(),
+#                                  control = list(tolerance = 1e-15, iter.max = 1000))
+# 
+# 
+# 
+# print(plot(poisson_mm, mark = 1, col = "grey", markcol = 1))
+# 
+# 
+# table(clusters(poisson_mm@models$`11`))
+
+ggcormat(
+  data=,
+  type="np",
+  partial=F, 
+  output="dataframe"
+) %>% 
+  dplyr::mutate_if(is.numeric, ~round(.,2))%>% 
+  flextable()
 ```
 
 <br>
 
 # Merge with SENDAs database
 
-
-
 ```{r merge_distinct_ruts, echo=T, error=T, paged.print=TRUE}
-
 invisible("¿Hay RUTs de fiscalía que no existen en la base de datos SENDA?")
-
+invisible("Ver cuántos calzan con la Base anterior (datos descartados en etapas del proceso de limpieza de datos)")
+rbind(
+cbind(cat="RUTs in P.O. that are not in SENDA's most recent database (accused)",
 #Sólo el recuento de los RUTs
 base_fiscalia_acc_imp %>% 
     #sólo dejo RUT únicos en la de septiembre, cosa que no me aumenten las filas originales
@@ -1016,17 +1533,18 @@ base_fiscalia_acc_imp %>%
   dplyr::distinct(rut_enc_saf, .keep_all = T) %>% 
       dplyr::summarise(n=n(),
                      sum_na = length(n[is.na(dup)]),
-                     perc = scales::percent(sum_na/n, accuracy=.01))
-#Sólo el recuento de los RUTs
+                     perc = scales::percent(sum_na/n, accuracy=.01))),
+cbind(cat="RUTs in P.O. that are not in SENDA's most recent database (victims)",
 base_fiscalia_acc_vic %>% 
     #sólo dejo RUT únicos en la de septiembre, cosa que no me aumenten las filas originales
   dplyr::left_join(distinct(CONS_C1_df_dup_SEP_2020[,c("hash_key","dup")],hash_key, .keep_all = T),by=c("rut_enc_saf"="hash_key")) %>% 
   dplyr::distinct(rut_enc_saf, .keep_all = T) %>% 
       dplyr::summarise(n=n(),
                      sum_na = length(n[is.na(dup)]),
-                     perc = scales::percent(sum_na/n, accuracy=.01))
+                     perc = scales::percent(sum_na/n, accuracy=.01))),
 
-invisible("Base anterior")
+
+cbind(cat="RUTs that matches with the original SENDA's database (accused)",
 #Sólo el recuento de los RUTs
 base_fiscalia_acc_imp %>% 
     #sólo dejo RUT únicos en la de septiembre, cosa que no me aumenten las filas originales
@@ -1034,15 +1552,20 @@ base_fiscalia_acc_imp %>%
   dplyr::distinct(rut_enc_saf, .keep_all = T) %>% 
       dplyr::summarise(n=n(),
                      sum_na = length(n[is.na(row)]),
-                     perc = scales::percent(sum_na/n, accuracy=.01))
-#Sólo el recuento de los RUTs
+                     perc = scales::percent(sum_na/n, accuracy=.01))),
+
+cbind(cat="RUTs that matches with the original SENDA's database (victims)",
 base_fiscalia_acc_vic %>% 
     #sólo dejo RUT únicos en la de septiembre, cosa que no me aumenten las filas originales
   dplyr::left_join(distinct(CONS_C1[,c("HASH_KEY","row")],HASH_KEY, .keep_all = T),by=c("rut_enc_saf"="HASH_KEY")) %>% 
   dplyr::distinct(rut_enc_saf, .keep_all = T) %>% 
       dplyr::summarise(n=n(),
                      sum_na = length(n[is.na(row)]),
-                     perc = scales::percent(sum_na/n, accuracy=.01))
+                     perc = scales::percent(sum_na/n, accuracy=.01)))
+) %>% 
+knitr::kable(size=11, first.strip=T, hide.no="no",
+           format="html",caption= "Table 7. Comparison of availability of RUTs") %>% #,col.names=c("Variables","Residential", "Ambulatory", "p-value")) %>% 
+    kableExtra::kable_classic(bootstrap_options = c("striped", "hover","condensed"),font_size= 12)
 ```
 
 <br>
