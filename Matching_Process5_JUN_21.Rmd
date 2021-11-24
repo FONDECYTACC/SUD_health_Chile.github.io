@@ -10,6 +10,25 @@ output:
 ---
 
 
+```{css zoom-lib-src, echo = FALSE}
+script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+```
+
+```{js zoom-jquery, echo = FALSE}
+ $(document).ready(function() {
+    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
+    // onClick function for all plots (img's)
+    $('img:not(.zoomImg)').click(function() {
+      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
+      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
+    });
+    // onClick function for zoomImg
+    $('img.zoomImg').click(function() {
+      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
+    });
+  });
+```
+
 ```{=html}
 <style type="text/css">
 .tablelines table, .tablelines td, .tablelines th {
@@ -454,30 +473,6 @@ summary(timecox_pwp_const2_opc2)
 
 <br>
 
-```{r third_try4_table,eval=T, echo=T, paged.print=TRUE, error=T}  
-data.table::data.table(capture.output(summary(timecox_pwp_const2_opc2))[(which(grepl("Parametric",capture.output(summary(timecox_pwp_const2_opc2))))+1):(which(grepl("Call",capture.output(summary(timecox_pwp_const2_opc2))))-2)], keep.rownames=T) %>% 
-    slice(-1) %>% 
-    tidyr::separate(V1,c("Variables","Coef", "SE", "Robust SE", "z", "Sig.", "95%CI_lo", "95%CI_up"), sep="\\s+") %>%
-    dplyr::mutate(HR= round(exp(as.numeric(Coef)),2), HR_95_CI_lo= round(exp(as.numeric(`95%CI_lo`)),2), HR_95_CI_up= round(exp(as.numeric(`95%CI_up`)),2)) %>% 
-  dplyr::mutate(Variables=dplyr::case_when(grepl("tipo_de_plan", Variables)~"Treatment modality at baseline",
-                                           grepl("TD_2", Variables)~"Treatment completion of the 2nd treatment",
-                                           grepl("TD_3", Variables)~"Treatment completion of the 3rd treatment",
-                                           grepl("TD_4", Variables)~"Treatment completion of the 4th treatment",
-                                           grepl("trans=2", Variables)~"Second transition (stratum)",
-                                           grepl("trans=3", Variables)~"Third transition (stratum)",
-                                           grepl("trans=4", Variables)~"Fourth transition (stratum)",
-                                           )) %>% 
-    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-       caption = paste0("Table. Coefficients"),
-       col.names = c("Variables","Coef.", "SE", "Robust SE", "z", "Sig.", "95%CI Lower", "95%CI Upper", "HR", "95%CI Lower", "95%CI Upper"),
-               align =c('l',rep('c', 101)), escape=T) %>%
-  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
-  #kableExtra::add_header_above(c(rep("",1),"Women-specific"=1, "General population"=1)) %>% 
- # kableExtra::add_footnote("Note. Readmission state will not be considered because is an absorbing state", notation="none") %>% 
-  kableExtra::scroll_box(width = "100%", height = "375px")
-```
-<br>
-
 Once set as constant those terms that had no time-varying effects, we found that treatment modality at baseline had a hazard ratio of `r paste0(round(exp(0.1410),3),"[",
 round(exp(0.0522),3),"-", round(exp(0.23000),3),"]")`.
 
@@ -611,6 +606,30 @@ timecox_pwp_const2_opc2_TD_1 %>%
 
 <br>
 
+```{r third_try4_table,eval=T, echo=T, paged.print=TRUE, error=T}
+ options(knitr.kable.NA = '')
+#upper97.5%
+data.table::data.table(capture.output(summary(timecox_pwp_const2_opc2))[(which(grepl("Parametric ",capture.output(summary(timecox_pwp_const2_opc2))))+1):(which(grepl("Call",capture.output(summary(timecox_pwp_const2_opc2))))-2)], keep.rownames=T) %>% 
+    slice(-1) %>% 
+    tidyr::separate(V1,c("Variables","Coef", "SE", "Robust SE", "z", "Sig.", "95%CI_lo", "95%CI_up"), sep="\\s+") %>%
+    dplyr::mutate(HR= round(exp(as.numeric(Coef)),2), HR_95_CI_lo= round(exp(as.numeric(`95%CI_lo`)),2), HR_95_CI_up= round(exp(as.numeric(`95%CI_up`)),2)) %>% 
+  dplyr::mutate(Variables=dplyr::case_when(grepl("tipo_de_plan", Variables)~"Treatment modality at baseline",
+                                           grepl("TD_2", Variables)~"Treatment completion of the 2nd treatment",
+                                           grepl("TD_3", Variables)~"Treatment completion of the 3rd treatment",
+                                           grepl("TD_4", Variables)~"Treatment completion of the 4th treatment",
+                                           grepl("trans=2", Variables)~"Second transition (stratum)",
+                                           grepl("trans=3", Variables)~"Third transition (stratum)",
+                                           grepl("trans=4", Variables)~"Fourth transition (stratum)",
+                                           )) %>% 
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table. Coefficients"),
+       col.names = c("Variables","Coef.", "SE", "Robust SE", "z", "Sig.", "95%CI Lower", "95%CI Upper", "HR", "95%CI Lower", "95%CI Upper"), align =c('l',rep('c', 101)), escape=T) %>%
+  kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+<br>
+
 ### Sequential glimpse
 
 ```{r alluvial, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.cap="Figure 2. Sankey Plot of Transitions by Treatment Modality"}
@@ -732,19 +751,151 @@ tab_3rd_tr<-
     dplyr::mutate(prop=scales::percent(n/sum(n), accuracy=1)) %>% 
     dplyr::ungroup()  %>% 
     dplyr::mutate(show=paste0(format(n, big.mark=","), " (",prop,")"))
+
+combinacion_concatenacion_eventos<-
+d_match_surv_msprep[,c(1,3:6)] %>% 
+  tidyr::unite("4_ev", tipo_de_plan_res_1:tipo_de_plan_res_4, remove = FALSE) %>% 
+  dplyr::group_by(`4_ev`) %>% 
+  dplyr::summarise(n=n())
+
+
+cat("Third row of the graphics")
+
+comb_conc_ev2<-
+combinacion_concatenacion_eventos %>% 
+    tidyr::separate(`4_ev`,into=c("first","second","third", "fourth"), sep="_") %>% 
+    tidyr::unite("2_ev", first:second, remove = FALSE) %>% 
+    dplyr::group_by(`2_ev`) %>%
+    dplyr::summarise(n=sum(n)) %>% 
+    tidyr::separate(`2_ev`,into=c("first","second"), sep="_") %>% 
+    dplyr::group_by(`first`) %>% 
+    dplyr::mutate(perc=scales::percent(n/sum(n))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(second!="NA")
+
+cat("Fourth row of the graphics")
+
+comb_conc_ev3<-
+combinacion_concatenacion_eventos %>% 
+    tidyr::separate(`4_ev`,into=c("first","second","third", "fourth"), sep="_") %>% 
+    tidyr::unite("3_ev", first:third, remove = FALSE) %>% 
+    dplyr::group_by(`3_ev`) %>%
+    dplyr::summarise(n=sum(n)) %>% 
+    tidyr::separate(`3_ev`,into=c("first","second","third"), sep="_") %>% 
+    tidyr::unite("2_ev", first:second, remove = FALSE) %>%
+    dplyr::group_by(`2_ev`) %>% 
+    dplyr::mutate(perc=scales::percent(n/sum(n))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(third!="NA")
+
+cat("Last row of the graphics")
+
+comb_conc_ev4<-
+combinacion_concatenacion_eventos %>% 
+    tidyr::separate(`4_ev`,into=c("first","second","third", "fourth"), sep="_") %>% 
+    tidyr::unite("3_ev", first:third, remove = FALSE) %>% 
+    dplyr::group_by(`3_ev`) %>% 
+    dplyr::mutate(perc=scales::percent(n/sum(n))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(fourth!="NA")
+
+
+
+cbind.fill <- function(...) {
+    transpoted <- lapply(list(...),t)
+    transpoted_dataframe <- lapply(transpoted, as.data.table, keep.rownames=T)
+    return (data.frame(t(plyr::rbind.fill(transpoted_dataframe))))                                               
+} 
+
+options(knitr.kable.NA = '')
+cbind.fill(comb_conc_ev2,comb_conc_ev3,comb_conc_ev4) %>% 
+  slice(-1) %>% 
+  #dplyr::select(-1) %>% 
+      knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table. Modality of readmissions and percentages by the previous one"),
+       col.names = c("First\nevent","Second\nevent", "n", "%", "Concatenated\nevents", "First\nevent", "Second\nevent", "Third\nevent", "n", "%", "Concatenated\nevents","First\nevent", "Second\nevent","Third\nevent", "Fourth\nevent","n","%"),
+               align =c('l',rep('c', 101)), escape=T) %>%
+  kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::add_header_above(c("Second"=5, "Third"=6, "Fouth"=7)) %>% 
+  kableExtra::add_footnote("Note. 0/1 denotes Ambulatory and Residential Treatment, respectively; % denotes the percentage of the previous event", notation="none") %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px")
 ```
+ 
+```{r alluvial322, echo=T, error=T, paged.print=TRUE}
+combinacion_concatenacion_eventos2<-
+d_match_surv_msprep[,c(1,3,19:21)] %>% 
+  tidyr::unite("4_ev", tipo_de_plan_res_1:TD_3, remove = FALSE) %>% 
+  dplyr::group_by(`4_ev`) %>% 
+  dplyr::summarise(n=n())
+
+cat("Third row of the graphics")
+
+comb2_conc_ev2<-
+combinacion_concatenacion_eventos2 %>% 
+    tidyr::separate(`4_ev`,into=c("first","second","third", "fourth"), sep="_") %>% 
+    tidyr::unite("2_ev", first:second, remove = FALSE) %>% 
+    dplyr::group_by(`2_ev`) %>%
+    dplyr::summarise(n=sum(n)) %>% 
+    tidyr::separate(`2_ev`,into=c("first","second"), sep="_") %>% 
+    dplyr::group_by(`first`) %>% 
+    dplyr::mutate(perc=scales::percent(n/sum(n))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(second!="NA")
+
+cat("Fourth row of the graphics")
+
+comb2_conc_ev3<-
+combinacion_concatenacion_eventos2 %>% 
+    tidyr::separate(`4_ev`,into=c("first","second","third", "fourth"), sep="_") %>% 
+    tidyr::unite("3_ev", first:third, remove = FALSE) %>% 
+    dplyr::group_by(`3_ev`) %>%
+    dplyr::summarise(n=sum(n)) %>% 
+    tidyr::separate(`3_ev`,into=c("first","second","third"), sep="_") %>% 
+    tidyr::unite("2_ev", first:second, remove = FALSE) %>%
+    #dplyr::group_by(`2_ev`) %>% 
+    dplyr::group_by(first) %>% 
+    dplyr::mutate(perc=scales::percent(n/sum(n))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(third!="NA")
+
+cat("Last row of the graphics")
+
+comb2_conc_ev4<-
+combinacion_concatenacion_eventos2 %>% 
+    tidyr::separate(`4_ev`,into=c("first","second","third", "fourth"), sep="_") %>% 
+    tidyr::unite("3_ev", first:third, remove = FALSE) %>% 
+    dplyr::group_by(first) %>% 
+    dplyr::mutate(perc=scales::percent(n/sum(n))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(fourth!="NA")
+
+
+options(knitr.kable.NA = '')
+cbind.fill(comb2_conc_ev2,comb2_conc_ev3,comb2_conc_ev4) %>% 
+  slice(-1) %>% 
+  #dplyr::select(-1) %>% 
+      knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table. Treatment completion status counts and percentages by the previous one"),
+       col.names = c("Base Tr.\nModality","Second\nevent", "n", "%", "Concatenated\nevents", "Base Tr.\nModality", "Second\nevent", "Third\nevent", "n", "%", "Concatenated\nevents","Base Tr.\nModality", "Second\nevent","Third\nevent", "Fourth\nevent","n","%"),
+               align =c('l',rep('c', 101)), escape=T) %>%
+  kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::add_header_above(c("Second (First tr. completion status)"=5, "Third (2nd tr. completion status)"=6, "Fouth (3rd tr. completion status)"=7)) %>% 
+  kableExtra::add_footnote("Note. 0/1 denotes Not-completion and Treatment Completion, respectively; % denotes the percentage of the total", notation="none") %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px")
+``` 
+ 
  
 ```{r alluvial4, echo=T, error=T, paged.print=TRUE, error=T, fig.cap="Figure 5. Tree diagram of counts and total proportions of Type of Plan from the first to the fourth treatment"}
 library(data.tree)
 
-#scales::percent(358/2078,accuracy = 1)
+#scales::percent(358/2078,accuracy = 1)ä
  traveller <- Node$new("Admission")
-route1 <- traveller$AddChild("1st tr.\nAmbulatory\n11,456 (50%)")
+route1 <- traveller$AddChild("1st tr.\nResidential\n11,456 (50%)")
 route10 <-route1$AddChild("2nd tr.\nAmbulatory\n2,078 (18%)")
 route100<-route10$AddChild("3rd tr.\nAmbulatory\n358 (17%)")
 route100$AddChild("4th tr.\nAmbulatory\n73 (20%)")
 route100$AddChild("4th tr.\nResidential\n26 (7%)")
-route101<-route10$AddChild("3rd tr.\nResidential\n218 (10%)")
+route101<-route10$AddChild("3rd tr.\nResidential\n218 (11%)")
 route101$AddChild("4th tr.\nAmbulatory\n42 (19%)")
 route101$AddChild("4th tr.\nResidential\n37 (17%)")
 route11 <-route1$AddChild("2nd tr.\nResidential\n1,717 (15%)")
@@ -755,24 +906,24 @@ route111<-route11$AddChild("3rd tr.\nResidential\n337 (20%)")
 route111$AddChild("4th tr.\nAmbulatory\n51 (15%)")
 route111$AddChild("4th tr.\nResidential\n80 (24%)")
 
-route2 <- traveller$AddChild("1st tr.\nResidential\n11,456 (50%)")
-route20 <- route2$AddChild("2nd tr.\nAmbulatory\n1,858 (16%)")
-route200<-route20$AddChild("3rd tr.\nAmbulatory\n381 (21%)")
-route200$AddChild("4th tr.\nAmbulatory\n75 (20%)")
-route200$AddChild("4th tr.\nResidential\n25 (7%)")
+route0 <- traveller$AddChild("1st tr.\nAmbulatory\n11,456 (50%)")
+route00 <- route0$AddChild("2nd tr.\nAmbulatory\n1,858 (16%)")
+route000<-route00$AddChild("3rd tr.\nAmbulatory\n381 (21%)")
+route000$AddChild("4th tr.\nAmbulatory\n75 (20%)")
+route000$AddChild("4th tr.\nResidential\n25 (7%)")
 
-route201<-route20$AddChild("3rd tr.\nResidential\n125 (7%)")
-route201$AddChild("4th tr.\nAmbulatory\n32 (26%)")
-route201$AddChild("4th tr.\nResidential\n14 (11%)")
+route001<-route00$AddChild("3rd tr.\nResidential\n125 (7%)")
+route001$AddChild("4th tr.\nAmbulatory\n32 (26%)")
+route001$AddChild("4th tr.\nResidential\n14 (11%)")
 
-route21 <- route2$AddChild("2nd tr.\nResidential\n745 (7%)")
-route210<-route21$AddChild("3rd tr.\nAmbulatory\n158 (21%)")
-route210$AddChild("4th tr.\nAmbulatory\n29 (18%)")
-route210$AddChild("4th tr.\nResidential\n15 (10%)")
+route01 <- route0$AddChild("2nd tr.\nResidential\n745 (7%)")
+route010<-route01$AddChild("3rd tr.\nAmbulatory\n158 (21%)")
+route010$AddChild("4th tr.\nAmbulatory\n29 (18%)")
+route010$AddChild("4th tr.\nResidential\n15 (10%)")
 
-route211<-route21$AddChild("3rd tr.\nResidential\n123 (17%)")
-route211$AddChild("4th tr.\nAmbulatory\n28 (20%)")
-route211$AddChild("4th tr.\nResidential\n27 (22%)")
+route011<-route01$AddChild("3rd tr.\nResidential\n123 (17%)")
+route011$AddChild("4th tr.\nAmbulatory\n28 (23%)")
+route011$AddChild("4th tr.\nResidential\n27 (22%)")
 
 plot(traveller)
 
@@ -807,7 +958,6 @@ if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
     save.image("~/mult_state_5_jun.RData")
     path.expand("~/mult_state_5_jun.RData")
   }
-
 
 sessionInfo()
 ```
