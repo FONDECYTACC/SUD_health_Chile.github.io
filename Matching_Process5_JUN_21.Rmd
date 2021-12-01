@@ -215,7 +215,7 @@ library(htmltools)
 library(rsvg)
 library(DiagrammeR)
 library(DiagrammeRsvg)
-#library(sjplot)
+library(EValue)
 #library(mstateutils)
 #remotes::install_github("chjackson/flexsurv-dev", upgrade = "never")
 #devtools::install_github("stulacy/multistateutils", build_vignettes=TRUE, upgrade = "never")
@@ -609,10 +609,15 @@ timecox_pwp_const2_opc2_TD_1 %>%
 ```{r third_try4_table,eval=T, echo=T, paged.print=TRUE, error=T}
  options(knitr.kable.NA = '')
 #upper97.5%
-data.table::data.table(capture.output(summary(timecox_pwp_const2_opc2))[(which(grepl("Parametric ",capture.output(summary(timecox_pwp_const2_opc2))))+1):(which(grepl("Call",capture.output(summary(timecox_pwp_const2_opc2))))-2)], keep.rownames=T) %>% 
-    slice(-1) %>% 
-    tidyr::separate(V1,c("Variables","Coef", "SE", "Robust SE", "z", "Sig.", "95%CI_lo", "95%CI_up"), sep="\\s+") %>%
-    dplyr::mutate(HR= round(exp(as.numeric(Coef)),2), HR_95_CI_lo= round(exp(as.numeric(`95%CI_lo`)),2), HR_95_CI_up= round(exp(as.numeric(`95%CI_up`)),2)) %>% 
+
+coefBase(timecox_pwp_const2_opc2, digits=3) %>% 
+# data.table::data.table(capture.output(summary(timecox_pwp_const2_opc2))[(which(grepl("Parametric ",capture.output(summary(timecox_pwp_const2_opc2))))+1):(which(grepl("Call",capture.output(summary(timecox_pwp_const2_opc2))))-2)], keep.rownames=T) %>% 
+#     slice(-1) %>% 
+#     tidyr::separate(V1,c("Variables","Coef", "SE", "Robust SE", "z", "Sig.", "95%CI_lo", "95%CI_up"), sep="\\s+") %>%
+    # dplyr::mutate(HR= round(exp(as.numeric(Coef)),2), HR_95_CI_lo= round(exp(as.numeric(`95%CI_lo`)),2), HR_95_CI_up= round(exp(as.numeric(`95%CI_up`)),2)) %>% 
+   data.table::data.table(keep.rownames = T) %>% 
+  dplyr::rename("Variables"="rn") %>% 
+    dplyr::mutate(HR= round(exp(`Coef.`),2), HR_95_CI_lo= round(exp(`lower2.5%`),2), HR_95_CI_up= round(exp(`upper97.5%`),2)) %>% 
   dplyr::mutate(Variables=dplyr::case_when(grepl("tipo_de_plan", Variables)~"Treatment modality at baseline",
                                            grepl("TD_2", Variables)~"Treatment completion of the 2nd treatment",
                                            grepl("TD_3", Variables)~"Treatment completion of the 3rd treatment",
@@ -938,6 +943,73 @@ plot(traveller) %>%
 
 #DiagrammeR::export_graph(gr_selected, height= 10, width=8)
 ```
+
+<br>
+
+# Sensitivity
+
+
+```{r evalue, warning=FALSE, message=F, cache=T, paged.print=TRUE, eval=T, error=T}
+evalue_or<-
+    EValue::evalues.RR(dplyr::rename(data.table::data.table(exp(coefBase(timecox_pwp_const2_opc2, digits=8)), keep.rownames = T), "Variables"="rn")[1,2], 
+                   dplyr::rename(data.table::data.table(exp(coefBase(timecox_pwp_const2_opc2, digits=8)), keep.rownames = T), "Variables"="rn")[1,7], 
+                   dplyr::rename(data.table::data.table(exp(coefBase(timecox_pwp_const2_opc2, digits=8)), keep.rownames = T), "Variables"="rn")[1,8], rare=F)
+evalue_or
+
+```
+
+We estimated the sensibility of the associations found assuming different values of the sensitivity parameter ($\Gamma$).  
+
+<br>
+
+```{r  eval2, warning=FALSE, fig.align = "center", message=F, fig.height=7, cache=T, fig.cap="Figure 6. Sensibility Parameters for the Interaction Found", eval= T, dpi=320}
+
+xmax = 10
+RR = unlist(evalue_or[1,1])
+
+  x = seq( 0, xmax, 0.01 )
+  
+  # MM: reverse RR if it's preventive
+  if ( RR < 1 ) RR = 1/RR
+  
+  plot( x, x, lty = 2, col = "white", type = "l", xaxs = "i", yaxs = "i", xaxt="n", yaxt = "n",
+        xlab = bquote(.("Association of the Exposure and Confounder ") ~  RR[EU]), 
+        ylab = bquote(.("Association of the Confounder and Outcome  ") ~ RR[UD]),
+        xlim = c( 0,xmax ),
+        main = "" )
+  
+  x = seq(RR, xmax, 0.01 )
+  
+  y    = RR*( RR-1 )/( x-RR )+RR
+  
+  lines( x, y, type = "l" )
+  
+  
+  high = RR + sqrt( RR*( RR-1 ) )
+  
+  
+  points( high, high, pch = 19 )
+  
+  label5 = seq( 5, 40, by = 5 )
+  axis( 1, label5, label5, cex.axis = 1 )
+  axis( 2, label5, label5, cex.axis = 1 )
+  
+  g = round( RR + sqrt( RR * ( RR - 1 ) ), 2 )
+  label = paste( "( ", g, ", ", g, " )", sep="" )
+  
+  text( high + 3, high + 1, label )
+  
+  legend( "bottomleft", expression(
+    RR[EU]*RR[UD]/( RR[EU]+RR[UD]-1 )==RR
+  ), 
+  lty = 1:2,
+  bty = "n" )
+
+```
+
+<br>
+
+With an risk ratio of `r as.numeric(round(dplyr::rename(data.table::data.table(exp(coefBase(timecox_pwp_const2_opc2, digits=8)), keep.rownames = T), "Variables"="rn")[1,2],2))`, an unmeasured confounder that was associated with both the outcome and the exposure by a RR of `r round(evalue_or[,2]$"E-values",2)`-fold each, above and beyond the measured confounders, could explain away the estimate, but weaker confounding could not.
 
 <br>
 
