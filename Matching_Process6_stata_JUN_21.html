@@ -44,7 +44,7 @@
 </script>
 </head>
 <h1><a href="#database-step-6" id="database-step-6">Database (step 6)</a></h1>
-<p>Date created: 22 Sep 2021.</p>
+<p>Date created:  6 Dec 2021.</p>
 <p>Install commands that are unavailable or out of date.</p>
 <pre><code>. clear all
 
@@ -158,7 +158,7 @@ C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)
 .         global pathdata &quot;C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags&quot;
 .         global pathdata2 &quot;C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/&quot;
 .         di &quot;Location= ${pathdata}; Date: `c(current_date)', considering an OS `c(os)' for the user: `c(username)'&quot;
-Location= C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags; Date: 22 Sep 2021, considering an OS Windows for the user: CISS Fondecyt
+Location= C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags; Date:  6 Dec 2021, considering an OS Windows for the user: CISS Fondecyt
 . }
 
 . else display &quot;This file does not exist&quot;
@@ -185,7 +185,7 @@ C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags
 .         global pathdata &quot;C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags&quot;
 .         global pathdata2 &quot;C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/&quot;
 .         di &quot;Location= ${pathdata}; Date: `c(current_date)', considering an OS `c(os)' for the user: `c(username)'&quot;
-Location= C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags; Date: 22 Sep 2021, considering an OS Windows for the user: CISS Fondecyt
+Location= C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags; Date:  6 Dec 2021, considering an OS Windows for the user: CISS Fondecyt
 . }
 
 . else display &quot;This file does not exist&quot;
@@ -193,8 +193,851 @@ Location= C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_
 . 
 </code></pre>
 <p>Path data= C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)_mult_state_ags;</p>
-<p>Timestamp: 22 Sep 2021, considering that is a Windows OS for the username: CISS Fondecyt</p>
+<p>Timestamp:  6 Dec 2021, considering that is a Windows OS for the username: CISS Fondecyt</p>
 <p>The file is located and named as: C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/archivo_multiestado5_jun.dta</p>
+<p>=============================================================================</p>
+<h2><a href="#tables-residential-vs-ambulatory-of-the-first-treatment" id="tables-residential-vs-ambulatory-of-the-first-treatment">Tables- Residential vs. Ambulatory of the First Treatment</a></h2>
+<p>=============================================================================</p>
+<h3><a href="#zero-years" id="zero-years">Zero years</a></h3>
+<h4><a href="#first-transition" id="first-transition">First transition</a></h4>
+<pre><code>. use &quot;${pathdata2}archivo_multiestado5_jun.dta&quot;, clear
+
+. 
+. *fdiff_prob_from-&gt; diff. between residential and ambulatory treatment
+. *fdiff_prob_from1_2_lci_rp_0 fdiff_prob_from1_2_uci_rp_0 fdiff_prob_from1_2_rp_0
+. *fdiff_prob_from1_2_lci_rp_3y fdiff_prob_from1_2_uci_rp_3y fdiff_prob_from1_2_rp_3y
+. *fdiff_prob_from1_2_lci_0_2 fdiff_prob_from1_2_uci_0_2 fdiff_prob_from1_2_0_2
+. *fdiff_prob_from1_2_lci_3y_2 fdiff_prob_from1_2_uci_3y_2 fdiff_prob_from1_2_3y_2
+. 
+. foreach var of varlist fdiff_prob_from1_2_0 fdiff_prob_from1_2_lci_0 fdiff_prob_from1_2_uci_0 fdiff_prob_from1_2_0_2 fdiff_prob_from1_2_lci_0_2 fdiff_prob_from1_2_uci_0_2 {
+  2.         scalar variable = &quot;`var'&quot;
+  3.         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.999, 5.02), local(mylevs) sep(,)
+  4. 
+.                                         tokenize &quot;`mylevs'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
+  5.                                         local done = 0
+  6.                                         local i = 0
+  7.                                         local count = 0
+  8.                                         while !`done' {  
+  9.                                            local ++i
+ 10.                                                 local next = &quot;``i''&quot;
+ 11.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
+ 12.                                            // Include elements that are not the parsing character itself.
+.                                                  if (&quot;`next'&quot; != &quot;,&quot;) &amp; (!`done') {
+ 13.                                                    local ++count
+ 14.                                                    scalar est_n`count' = &quot;`next'&quot;
+ 15.                                                 }  
+ 16.                                         }
+ 17.                                         //
+.                                         di &quot;`count' est&quot;
+ 18.                                         forval i = 1/`count' {
+ 19.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
+ 20.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
+.                                           di &quot;`=scalar(est_n`i')'&quot;
+ 21.                                         }       
+ 22.  di &quot;`=scalar(variable)'&quot;
+ 23.  di &quot;`=scalar(est_n1)'&quot;
+ 24.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
+ 25.  matrix colnames ests_`var' = `var'
+ 26.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
+ 27.  }
+.02994,.0562,.06614,.06776
+4 est
+3
+5.600000000000001
+6.600000000000001
+6.800000000000001
+fdiff_prob_from1_2_0
+3
+.0262444307202025,.0466350619651055,.0589422611274193,.059050673143878
+4 est
+2.6
+4.7
+5.9
+5.9
+fdiff_prob_from1_2_lci_0
+2.6
+.0336347509322504,.0657546333109888,.0732226557276068,.0765671659409267
+4 est
+3.4
+6.600000000000001
+7.300000000000001
+7.7
+fdiff_prob_from1_2_uci_0
+3.4
+.01263,.0436,.05605,.06063
+4 est
+1.3
+4.4
+5.600000000000001
+6.100000000000001
+fdiff_prob_from1_2_0_2
+1.3
+.0105656329171381,.0384750745764451,.0479556736295462,.0532186328874907
+4 est
+1.1
+3.8
+4.800000000000001
+5.300000000000001
+fdiff_prob_from1_2_lci_0_2
+1.1
+.014694259422997,.048722631792619,.0641369653430527,.0680346879492718
+4 est
+1.5
+4.9
+6.4
+6.800000000000001
+fdiff_prob_from1_2_uci_0_2
+1.5
+
+. 
+. matrix est_diff11 = (ests_fdiff_prob_from1_2_0, ests_fdiff_prob_from1_2_lci_0, ests_fdiff_prob_from1_2_uci_0, ests_fdiff_prob_from1_2_0_2, ests_fdiff_prob_from1_2_lci_0_2, ests_fdiff_prob_from1_2_uci_0_2)
+
+. matrix colnames est_diff11 =  &quot;Completed&quot; &quot;Completed_lo&quot; &quot;Completed_hi&quot; &quot;Not_Completed&quot; &quot;Not_Completed_lo&quot; &quot;Not_Completed_hi&quot;
+
+. 
+. esttab matrix(est_diff11) using &quot;${pathdata2}diff_probs_res_out_mod_t1.html&quot;, replace 
+(output written to C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/diff_probs_res_out_mod_t1.html)
+
+</code></pre>
+<p>The transition probabilities are presented here:</p>
+<table border="0" width="*">
+<tr><td colspan=7><hr></td></tr>
+<tr><td>            </td><td>  est_diff11</td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td></tr>
+<tr><td>            </td><td>   Completed</td><td>Completed_lo</td><td>Completed_hi</td><td>Not_Completed</td><td>Not_Completed_lo</td><td>Not_Completed_hi</td></tr>
+<tr><td colspan=7><hr></td></tr>
+<tr><td>3_mths      </td><td>           3</td><td>         2.6</td><td>         3.4</td><td>         1.3</td><td>         1.1</td><td>         1.5</td></tr>
+<tr><td>1_yr        </td><td>         5.6</td><td>         4.7</td><td>         6.6</td><td>         4.4</td><td>         3.8</td><td>         4.9</td></tr>
+<tr><td>3_yrs       </td><td>         6.6</td><td>         5.9</td><td>         7.3</td><td>         5.6</td><td>         4.8</td><td>         6.4</td></tr>
+<tr><td>5_yrs       </td><td>         6.8</td><td>         5.9</td><td>         7.7</td><td>         6.1</td><td>         5.3</td><td>         6.8</td></tr>
+<tr><td colspan=7><hr></td></tr>
+</table>
+<h4><a href="#second-transition" id="second-transition">Second transition</a></h4>
+<pre><code>. foreach var of varlist fdiff_prob_from2_3_0 fdiff_prob_from2_3_lci_0 fdiff_prob_from2_3_uci_0 fdiff_prob_from2_3_0_2 fdiff_prob_from2_3_lci_0_2 fdiff_prob_from2_3_uci_0_2  {
+  2.         scalar variable = &quot;`var'&quot;
+  3.         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.999, 5.02), local(mylevs) sep(,)
+  4. 
+.                                         tokenize &quot;`mylevs'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
+  5.                                         local done = 0
+  6.                                         local i = 0
+  7.                                         local count = 0
+  8.                                         while !`done' {  
+  9.                                            local ++i
+ 10.                                                 local next = &quot;``i''&quot;
+ 11.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
+ 12.                                            // Include elements that are not the parsing character itself.
+.                                                  if (&quot;`next'&quot; != &quot;,&quot;) &amp; (!`done') {
+ 13.                                                    local ++count
+ 14.                                                    scalar est_n`count' = &quot;`next'&quot;
+ 15.                                                 }  
+ 16.                                         }
+ 17.                                         //
+.                                         di &quot;`count' est&quot;
+ 18.                                         forval i = 1/`count' {
+ 19.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
+ 20.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
+.                                           di &quot;`=scalar(est_n`i')'&quot;
+ 21.                                         }       
+ 22.  di &quot;`=scalar(variable)'&quot;
+ 23.  di &quot;`=scalar(est_n1)'&quot;
+ 24.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
+ 25.  matrix colnames ests_`var' = `var'
+ 26.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
+ 27.  }
+-.00926,-.00472,.00201,.00276
+4 est
+-.9
+-.5
+.2
+.3
+fdiff_prob_from2_3_0
+-.9
+-.0299781703723199,-.0230886351418562,-.0116621716625978,-.0054289526801415
+4 est
+-3
+-2.3
+-1.2
+-.5
+fdiff_prob_from2_3_lci_0
+-3
+.0094487302270669,.0114661236786322,.0136518208850227,.0171810235905751
+4 est
+.9
+1.1
+1.4
+1.7
+fdiff_prob_from2_3_uci_0
+.9
+-.00669,-.00172,.00216,.00394
+4 est
+-.7000000000000001
+-.2
+.2
+.4
+fdiff_prob_from2_3_0_2
+-.7000000000000001
+-.0281748626555205,-.0208648140322538,-.0109272362374433,-.0056476996846008
+4 est
+-2.8
+-2.1
+-1.1
+-.6000000000000001
+fdiff_prob_from2_3_lci_0_2
+-2.8
+.0099674363443012,.0148010409070271,.0174260749612576,.0188054946608991
+4 est
+1
+1.5
+1.7
+1.9
+fdiff_prob_from2_3_uci_0_2
+1
+
+. 
+. matrix est_diff21 = (ests_fdiff_prob_from2_3_0, ests_fdiff_prob_from2_3_lci_0, ests_fdiff_prob_from2_3_uci_0, ests_fdiff_prob_from2_3_0_2, ests_fdiff_prob_from2_3_lci_0_2, ests_fdiff_prob_from2_3_uci_0_2)
+
+. matrix colnames est_diff21 = &quot;Completed&quot; &quot;Completed_lo&quot; &quot;Completed_hi&quot; &quot;Not_Completed&quot; &quot;Not_Completed_lo&quot; &quot;Not_Completed_hi&quot;
+
+. 
+. esttab matrix(est_diff21) using &quot;${pathdata2}diff_probs_res_out_mod_t2.html&quot;, replace 
+(output written to C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/diff_probs_res_out_mod_t2.html)
+
+</code></pre>
+<p>The transition probabilities are presented here:</p>
+<table border="0" width="*">
+<tr><td colspan=7><hr></td></tr>
+<tr><td>            </td><td>  est_diff21</td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td></tr>
+<tr><td>            </td><td>   Completed</td><td>Completed_lo</td><td>Completed_hi</td><td>Not_Completed</td><td>Not_Completed_lo</td><td>Not_Completed_hi</td></tr>
+<tr><td colspan=7><hr></td></tr>
+<tr><td>3_mths      </td><td>         -.9</td><td>          -3</td><td>          .9</td><td>         -.7</td><td>        -2.8</td><td>           1</td></tr>
+<tr><td>1_yr        </td><td>         -.5</td><td>        -2.3</td><td>         1.1</td><td>         -.2</td><td>        -2.1</td><td>         1.5</td></tr>
+<tr><td>3_yrs       </td><td>          .2</td><td>        -1.2</td><td>         1.4</td><td>          .2</td><td>        -1.1</td><td>         1.7</td></tr>
+<tr><td>5_yrs       </td><td>          .3</td><td>         -.5</td><td>         1.7</td><td>          .4</td><td>         -.6</td><td>         1.9</td></tr>
+<tr><td colspan=7><hr></td></tr>
+</table>
+<h4><a href="#third-transition" id="third-transition">Third transition</a></h4>
+<pre><code>. foreach var of varlist fdiff_prob_from3_4_0 fdiff_prob_from3_4_lci_0 fdiff_prob_from3_4_uci_0 fdiff_prob_from3_4_0_2 fdiff_prob_from3_4_lci_0_2 fdiff_prob_from3_4_uci_0_2  {
+  2.         scalar variable = &quot;`var'&quot;
+  3.         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.999, 5.02), local(mylevs) sep(,)
+  4. 
+.                                         tokenize &quot;`mylevs'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
+  5.                                         local done = 0
+  6.                                         local i = 0
+  7.                                         local count = 0
+  8.                                         while !`done' {  
+  9.                                            local ++i
+ 10.                                                 local next = &quot;``i''&quot;
+ 11.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
+ 12.                                            // Include elements that are not the parsing character itself.
+.                                                  if (&quot;`next'&quot; != &quot;,&quot;) &amp; (!`done') {
+ 13.                                                    local ++count
+ 14.                                                    scalar est_n`count' = &quot;`next'&quot;
+ 15.                                                 }  
+ 16.                                         }
+ 17.                                         //
+.                                         di &quot;`count' est&quot;
+ 18.                                         forval i = 1/`count' {
+ 19.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
+ 20.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
+.                                           di &quot;`=scalar(est_n`i')'&quot;
+ 21.                                         }       
+ 22.  di &quot;`=scalar(variable)'&quot;
+ 23.  di &quot;`=scalar(est_n1)'&quot;
+ 24.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
+ 25.  matrix colnames ests_`var' = `var'
+ 26.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
+ 27.  }
+.00428,.00722,.00885,.01304
+4 est
+.4
+.7000000000000001
+.9
+1.3
+fdiff_prob_from3_4_0
+.4
+-.0406871873747903,-.0299615567948069,-.0137823809271426,-.0055464861096174
+4 est
+-4.100000000000001
+-3
+-1.4
+-.6000000000000001
+fdiff_prob_from3_4_lci_0
+-4.100000000000001
+.0199841329438122,.0398436278583386,.0476349108487975,.0492298849874883
+4 est
+2
+4
+4.800000000000001
+4.9
+fdiff_prob_from3_4_uci_0
+2
+.00619,.0076900000000001,.00962,.01156
+4 est
+.6000000000000001
+.8
+1
+1.2
+fdiff_prob_from3_4_0_2
+.6000000000000001
+-.0354943239802692,-.0278434682386617,-.0138204809444161,-.0051825374765298
+4 est
+-3.5
+-2.8
+-1.4
+-.5
+fdiff_prob_from3_4_lci_0_2
+-3.5
+.0175609364781385,.0369255945074445,.047056481632725,.0508456593792825
+4 est
+1.8
+3.7
+4.7
+5.100000000000001
+fdiff_prob_from3_4_uci_0_2
+1.8
+
+. 
+. matrix est_diff31 = (ests_fdiff_prob_from3_4_0, ests_fdiff_prob_from3_4_lci_0, ests_fdiff_prob_from3_4_uci_0, ests_fdiff_prob_from3_4_0_2, ests_fdiff_prob_from3_4_lci_0_2, ests_fdiff_prob_from3_4_uci_0_2)
+
+. matrix colnames est_diff31 = &quot;Completed&quot; &quot;Completed_lo&quot; &quot;Completed_hi&quot; &quot;Not_Completed&quot; &quot;Not_Completed_lo&quot; &quot;Not_Completed_hi&quot;
+
+. 
+. esttab matrix(est_diff31) using &quot;${pathdata2}diff_probs_res_out_mod_t3.html&quot;, replace 
+(output written to C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/diff_probs_res_out_mod_t3.html)
+
+</code></pre>
+<p>The transition probabilities are presented here:</p>
+<table border="0" width="*">
+<tr><td colspan=7><hr></td></tr>
+<tr><td>            </td><td>  est_diff31</td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td></tr>
+<tr><td>            </td><td>   Completed</td><td>Completed_lo</td><td>Completed_hi</td><td>Not_Completed</td><td>Not_Completed_lo</td><td>Not_Completed_hi</td></tr>
+<tr><td colspan=7><hr></td></tr>
+<tr><td>3_mths      </td><td>          .4</td><td>        -4.1</td><td>           2</td><td>          .6</td><td>        -3.5</td><td>         1.8</td></tr>
+<tr><td>1_yr        </td><td>          .7</td><td>          -3</td><td>           4</td><td>          .8</td><td>        -2.8</td><td>         3.7</td></tr>
+<tr><td>3_yrs       </td><td>          .9</td><td>        -1.4</td><td>         4.8</td><td>           1</td><td>        -1.4</td><td>         4.7</td></tr>
+<tr><td>5_yrs       </td><td>         1.3</td><td>         -.6</td><td>         4.9</td><td>         1.2</td><td>         -.5</td><td>         5.1</td></tr>
+<tr><td colspan=7><hr></td></tr>
+</table>
+<h4><a href="#fourth-transition" id="fourth-transition">Fourth transition</a></h4>
+<pre><code>. foreach var of varlist fdiff_prob_from3_4_0 fdiff_prob_from3_4_lci_0 fdiff_prob_from3_4_uci_0 fdiff_prob_from3_4_0_2 fdiff_prob_from3_4_lci_0_2 fdiff_prob_from3_4_uci_0_2  {
+  2.         scalar variable = &quot;`var'&quot;
+  3.         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.999, 5.02), local(mylevs) sep(,)
+  4. 
+.                                         tokenize &quot;`mylevs'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
+  5.                                         local done = 0
+  6.                                         local i = 0
+  7.                                         local count = 0
+  8.                                         while !`done' {  
+  9.                                            local ++i
+ 10.                                                 local next = &quot;``i''&quot;
+ 11.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
+ 12.                                            // Include elements that are not the parsing character itself.
+.                                                  if (&quot;`next'&quot; != &quot;,&quot;) &amp; (!`done') {
+ 13.                                                    local ++count
+ 14.                                                    scalar est_n`count' = &quot;`next'&quot;
+ 15.                                                 }  
+ 16.                                         }
+ 17.                                         //
+.                                         di &quot;`count' est&quot;
+ 18.                                         forval i = 1/`count' {
+ 19.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
+ 20.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
+.                                           di &quot;`=scalar(est_n`i')'&quot;
+ 21.                                         }       
+ 22.  di &quot;`=scalar(variable)'&quot;
+ 23.  di &quot;`=scalar(est_n1)'&quot;
+ 24.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
+ 25.  matrix colnames ests_`var' = `var'
+ 26.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
+ 27.  }
+.00428,.00722,.00885,.01304
+4 est
+.4
+.7000000000000001
+.9
+1.3
+fdiff_prob_from3_4_0
+.4
+-.0406871873747903,-.0299615567948069,-.0137823809271426,-.0055464861096174
+4 est
+-4.100000000000001
+-3
+-1.4
+-.6000000000000001
+fdiff_prob_from3_4_lci_0
+-4.100000000000001
+.0199841329438122,.0398436278583386,.0476349108487975,.0492298849874883
+4 est
+2
+4
+4.800000000000001
+4.9
+fdiff_prob_from3_4_uci_0
+2
+.00619,.0076900000000001,.00962,.01156
+4 est
+.6000000000000001
+.8
+1
+1.2
+fdiff_prob_from3_4_0_2
+.6000000000000001
+-.0354943239802692,-.0278434682386617,-.0138204809444161,-.0051825374765298
+4 est
+-3.5
+-2.8
+-1.4
+-.5
+fdiff_prob_from3_4_lci_0_2
+-3.5
+.0175609364781385,.0369255945074445,.047056481632725,.0508456593792825
+4 est
+1.8
+3.7
+4.7
+5.100000000000001
+fdiff_prob_from3_4_uci_0_2
+1.8
+
+. 
+. matrix est_diff41 = (ests_fdiff_prob_from3_4_0, ests_fdiff_prob_from3_4_lci_0, ests_fdiff_prob_from3_4_uci_0, ests_fdiff_prob_from3_4_0_2, ests_fdiff_prob_from3_4_lci_0_2, ests_fdiff_prob_from3_4_uci_0_2)
+
+. matrix colnames est_diff41 = &quot;Completed&quot; &quot;Completed_lo&quot; &quot;Completed_hi&quot; &quot;Not_Completed&quot; &quot;Not_Completed_lo&quot; &quot;Not_Completed_hi&quot;
+
+. 
+. esttab matrix(est_diff41) using &quot;${pathdata2}diff_probs_res_out_mod_t4.html&quot;, replace 
+(output written to C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/diff_probs_res_out_mod_t4.html)
+
+</code></pre>
+<p>The transition probabilities are presented here:</p>
+<table border="0" width="*">
+<tr><td colspan=7><hr></td></tr>
+<tr><td>            </td><td>  est_diff41</td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td></tr>
+<tr><td>            </td><td>   Completed</td><td>Completed_lo</td><td>Completed_hi</td><td>Not_Completed</td><td>Not_Completed_lo</td><td>Not_Completed_hi</td></tr>
+<tr><td colspan=7><hr></td></tr>
+<tr><td>3_mths      </td><td>          .4</td><td>        -4.1</td><td>           2</td><td>          .6</td><td>        -3.5</td><td>         1.8</td></tr>
+<tr><td>1_yr        </td><td>          .7</td><td>          -3</td><td>           4</td><td>          .8</td><td>        -2.8</td><td>         3.7</td></tr>
+<tr><td>3_yrs       </td><td>          .9</td><td>        -1.4</td><td>         4.8</td><td>           1</td><td>        -1.4</td><td>         4.7</td></tr>
+<tr><td>5_yrs       </td><td>         1.3</td><td>         -.6</td><td>         4.9</td><td>         1.2</td><td>         -.5</td><td>         5.1</td></tr>
+<tr><td colspan=7><hr></td></tr>
+</table>
+<h3><a href="#three-years" id="three-years">Three years</a></h3>
+<h4><a href="#first-transition" id="first-transition">First transition</a></h4>
+<pre><code>. *fdiff_prob_from1_2_3y fdiff_prob_from1_2_lci_3y fdiff_prob_from1_2_uci_3y 
+. *fdiff_prob_from1_2_3y  fdiff_prob_from1_2_lci_3y  fdiff_prob_from1_2_uci_3y
+. *fdiff_prob_from1_2_lci_3y_2 fdiff_prob_from1_2_uci_3y_2 fdiff_prob_from1_2_3y_2
+. 
+. foreach var of varlist fdiff_prob_from1_2_3y fdiff_prob_from1_2_lci_3y fdiff_prob_from1_2_uci_3y fdiff_prob_from1_2_3y_2 fdiff_prob_from1_2_lci_3y_2 fdiff_prob_from1_2_uci_3y_2 {
+  2.         scalar variable = &quot;`var'&quot;
+  3.         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.999, 5.02), local(mylevs) sep(,)
+  4. 
+.                                         tokenize &quot;`mylevs'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
+  5.                                         local done = 0
+  6.                                         local i = 0
+  7.                                         local count = 0
+  8.                                         while !`done' {  
+  9.                                            local ++i
+ 10.                                                 local next = &quot;``i''&quot;
+ 11.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
+ 12.                                            // Include elements that are not the parsing character itself.
+.                                                  if (&quot;`next'&quot; != &quot;,&quot;) &amp; (!`done') {
+ 13.                                                    local ++count
+ 14.                                                    scalar est_n`count' = &quot;`next'&quot;
+ 15.                                                 }  
+ 16.                                         }
+ 17.                                         //
+.                                         di &quot;`count' est&quot;
+ 18.                                         forval i = 1/`count' {
+ 19.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
+ 20.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
+.                                           di &quot;`=scalar(est_n`i')'&quot;
+ 21.                                         }       
+ 22.  di &quot;`=scalar(variable)'&quot;
+ 23.  di &quot;`=scalar(est_n1)'&quot;
+ 24.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
+ 25.  matrix colnames ests_`var' = `var'
+ 26.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
+ 27.  }
+.03005,.06003,.06572,.06936
+4 est
+3
+6
+6.600000000000001
+6.9
+fdiff_prob_from1_2_3y
+3
+.0263364329418033,.0502115268997761,.0584990710616745,.0603500162053718
+4 est
+2.6
+5
+5.800000000000001
+6
+fdiff_prob_from1_2_lci_3y
+2.6
+.0337627376804958,.0698368708934234,.0729340522437397,.0783586822876245
+4 est
+3.4
+7
+7.300000000000001
+7.800000000000001
+fdiff_prob_from1_2_uci_3y
+3.4
+.01317,.04683,.06433,.0677
+4 est
+1.3
+4.7
+6.4
+6.800000000000001
+fdiff_prob_from1_2_3y_2
+1.3
+.0110917222860912,.0415887071576113,.0560381008476537,.0601478098508387
+4 est
+1.1
+4.2
+5.600000000000001
+6
+fdiff_prob_from1_2_lci_3y_2
+1.1
+.0152481639316663,.0520687155074087,.0726130258033289,.0752444399357978
+4 est
+1.5
+5.2
+7.300000000000001
+7.5
+fdiff_prob_from1_2_uci_3y_2
+1.5
+
+. 
+. matrix est_diff12 = (ests_fdiff_prob_from1_2_3y, ests_fdiff_prob_from1_2_lci_3y, ests_fdiff_prob_from1_2_uci_3y, ests_fdiff_prob_from1_2_3y_2, ests_fdiff_prob_from1_2_lci_3y_2, ests_fdiff_prob_from1_2_uci_3y_2)
+
+. matrix colnames est_diff12 = &quot;Completed&quot; &quot;Completed_lo&quot; &quot;Completed_hi&quot; &quot;Not_Completed&quot; &quot;Not_Completed_lo&quot; &quot;Not_Completed_hi&quot;
+
+. 
+. esttab matrix(est_diff12) using &quot;${pathdata2}diff_probs_res_out_mod_t1_3y.html&quot;, replace 
+(note: file C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/diff_probs_res_out_mod_t1_3y.html not found)
+(output written to C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/diff_probs_res_out_mod_t1_3y.html)
+
+</code></pre>
+<p>The transition probabilities are presented here:</p>
+<table border="0" width="*">
+<tr><td colspan=7><hr></td></tr>
+<tr><td>            </td><td>  est_diff12</td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td></tr>
+<tr><td>            </td><td>   Completed</td><td>Completed_lo</td><td>Completed_hi</td><td>Not_Completed</td><td>Not_Completed_lo</td><td>Not_Completed_hi</td></tr>
+<tr><td colspan=7><hr></td></tr>
+<tr><td>3_mths      </td><td>           3</td><td>         2.6</td><td>         3.4</td><td>         1.3</td><td>         1.1</td><td>         1.5</td></tr>
+<tr><td>1_yr        </td><td>           6</td><td>           5</td><td>           7</td><td>         4.7</td><td>         4.2</td><td>         5.2</td></tr>
+<tr><td>3_yrs       </td><td>         6.6</td><td>         5.8</td><td>         7.3</td><td>         6.4</td><td>         5.6</td><td>         7.3</td></tr>
+<tr><td>5_yrs       </td><td>         6.9</td><td>           6</td><td>         7.8</td><td>         6.8</td><td>           6</td><td>         7.5</td></tr>
+<tr><td colspan=7><hr></td></tr>
+</table>
+<h4><a href="#second-transition" id="second-transition">Second transition</a></h4>
+<pre><code>. foreach var of varlist fdiff_prob_from2_3_3y fdiff_prob_from2_3_lci_3y fdiff_prob_from2_3_uci_3y fdiff_prob_from2_3_3y_2 fdiff_prob_from2_3_lci_3y_2 fdiff_prob_from2_3_uci_3y_2 {
+  2.         scalar variable = &quot;`var'&quot;
+  3.         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.999, 5.02), local(mylevs) sep(,)
+  4. 
+.                                         tokenize &quot;`mylevs'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
+  5.                                         local done = 0
+  6.                                         local i = 0
+  7.                                         local count = 0
+  8.                                         while !`done' {  
+  9.                                            local ++i
+ 10.                                                 local next = &quot;``i''&quot;
+ 11.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
+ 12.                                            // Include elements that are not the parsing character itself.
+.                                                  if (&quot;`next'&quot; != &quot;,&quot;) &amp; (!`done') {
+ 13.                                                    local ++count
+ 14.                                                    scalar est_n`count' = &quot;`next'&quot;
+ 15.                                                 }  
+ 16.                                         }
+ 17.                                         //
+.                                         di &quot;`count' est&quot;
+ 18.                                         forval i = 1/`count' {
+ 19.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
+ 20.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
+.                                           di &quot;`=scalar(est_n`i')'&quot;
+ 21.                                         }       
+ 22.  di &quot;`=scalar(variable)'&quot;
+ 23.  di &quot;`=scalar(est_n1)'&quot;
+ 24.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
+ 25.  matrix colnames ests_`var' = `var'
+ 26.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
+ 27.  }
+-.00492,-.00257,-.00037,.00486
+4 est
+-.5
+-.3
+0
+.5
+fdiff_prob_from2_3_3y
+-.5
+-.0244027583162495,-.0201343168654707,-.0079162199348997,-.0059645084897266
+4 est
+-2.4
+-2
+-.8
+-.6000000000000001
+fdiff_prob_from2_3_lci_3y
+-2.4
+.0052245316507343,.0145664941691393,.0149959027359852,.0176346334813865
+4 est
+.5
+1.5
+1.5
+1.8
+fdiff_prob_from2_3_uci_3y
+.5
+-.00345,-.00173,.00148,.0023
+4 est
+-.3
+-.2
+.1
+.2
+fdiff_prob_from2_3_3y_2
+-.3
+-.0231980463551462,-.0195297702613729,-.0107947963187654,-.0043507898754965
+4 est
+-2.3
+-2
+-1.1
+-.4
+fdiff_prob_from2_3_lci_3y_2
+-2.3
+.0073106892426056,.0153940075831263,.0160708665702745,.0163007376527103
+4 est
+.7000000000000001
+1.5
+1.6
+1.6
+fdiff_prob_from2_3_uci_3y_2
+.7000000000000001
+
+. 
+. matrix est_diff22 = (ests_fdiff_prob_from2_3_3y, ests_fdiff_prob_from2_3_lci_3y, ests_fdiff_prob_from2_3_uci_3y, ests_fdiff_prob_from2_3_3y_2, ests_fdiff_prob_from2_3_lci_3y_2, ests_fdiff_prob_from2_3_uci_3y_2)
+
+. matrix colnames est_diff22 = &quot;Completed&quot; &quot;Completed_lo&quot; &quot;Completed_hi&quot; &quot;Not_Completed&quot; &quot;Not_Completed_lo&quot; &quot;Not_Completed_hi&quot;
+
+. 
+. esttab matrix(est_diff22) using &quot;${pathdata2}diff_probs_res_out_mod_t2_3y.html&quot;, replace 
+(output written to C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/diff_probs_res_out_mod_t2_3y.html)
+
+</code></pre>
+<p>The transition probabilities are presented here:</p>
+<table border="0" width="*">
+<tr><td colspan=7><hr></td></tr>
+<tr><td>            </td><td>  est_diff22</td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td></tr>
+<tr><td>            </td><td>   Completed</td><td>Completed_lo</td><td>Completed_hi</td><td>Not_Completed</td><td>Not_Completed_lo</td><td>Not_Completed_hi</td></tr>
+<tr><td colspan=7><hr></td></tr>
+<tr><td>3_mths      </td><td>         -.5</td><td>        -2.4</td><td>          .5</td><td>         -.3</td><td>        -2.3</td><td>          .7</td></tr>
+<tr><td>1_yr        </td><td>         -.3</td><td>          -2</td><td>         1.5</td><td>         -.2</td><td>          -2</td><td>         1.5</td></tr>
+<tr><td>3_yrs       </td><td>           0</td><td>         -.8</td><td>         1.5</td><td>          .1</td><td>        -1.1</td><td>         1.6</td></tr>
+<tr><td>5_yrs       </td><td>          .5</td><td>         -.6</td><td>         1.8</td><td>          .2</td><td>         -.4</td><td>         1.6</td></tr>
+<tr><td colspan=7><hr></td></tr>
+</table>
+<h4><a href="#third-transition" id="third-transition">Third transition</a></h4>
+<pre><code>. foreach var of varlist fdiff_prob_from3_4_3y fdiff_prob_from3_4_lci_3y fdiff_prob_from3_4_uci_3y fdiff_prob_from3_4_3y_2 fdiff_prob_from3_4_lci_3y_2 fdiff_prob_from3_4_uci_3y_2  {
+  2.         scalar variable = &quot;`var'&quot;
+  3.         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.999, 5.02), local(mylevs) sep(,)
+  4. 
+.                                         tokenize &quot;`mylevs'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
+  5.                                         local done = 0
+  6.                                         local i = 0
+  7.                                         local count = 0
+  8.                                         while !`done' {  
+  9.                                            local ++i
+ 10.                                                 local next = &quot;``i''&quot;
+ 11.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
+ 12.                                            // Include elements that are not the parsing character itself.
+.                                                  if (&quot;`next'&quot; != &quot;,&quot;) &amp; (!`done') {
+ 13.                                                    local ++count
+ 14.                                                    scalar est_n`count' = &quot;`next'&quot;
+ 15.                                                 }  
+ 16.                                         }
+ 17.                                         //
+.                                         di &quot;`count' est&quot;
+ 18.                                         forval i = 1/`count' {
+ 19.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
+ 20.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
+.                                           di &quot;`=scalar(est_n`i')'&quot;
+ 21.                                         }       
+ 22.  di &quot;`=scalar(variable)'&quot;
+ 23.  di &quot;`=scalar(est_n1)'&quot;
+ 24.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
+ 25.  matrix colnames ests_`var' = `var'
+ 26.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
+ 27.  }
+.00331,.00709,.01269,.01545
+4 est
+.3
+.7000000000000001
+1.3
+1.5
+fdiff_prob_from3_4_3y
+.3
+-.0391243874049112,-.0238487551072797,-.0091642551520161,-.0034084605559707
+4 est
+-3.9
+-2.4
+-.9
+-.3
+fdiff_prob_from3_4_lci_3y
+-3.9
+.0175868978234384,.0400455437949596,.0457324701387989,.0491948967073071
+4 est
+1.8
+4
+4.600000000000001
+4.9
+fdiff_prob_from3_4_uci_3y
+1.8
+.00464,.0116,.01236,.01281
+4 est
+.5
+1.2
+1.2
+1.3
+fdiff_prob_from3_4_3y_2
+.5
+-.029281235011999,-.0230348321228042,-.0100707224713193,-.0046345167360613
+4 est
+-2.9
+-2.3
+-1
+-.5
+fdiff_prob_from3_4_lci_3y_2
+-2.9
+.0139137185529631,.0356773153570237,.0477238854010716,.0524424929548392
+4 est
+1.4
+3.6
+4.800000000000001
+5.2
+fdiff_prob_from3_4_uci_3y_2
+1.4
+
+. 
+. matrix est_diff32 = (ests_fdiff_prob_from3_4_3y, ests_fdiff_prob_from3_4_lci_3y, ests_fdiff_prob_from3_4_uci_3y, ests_fdiff_prob_from3_4_3y_2, ests_fdiff_prob_from3_4_lci_3y_2, ests_fdiff_prob_from3_4_uci_3y_2)
+
+. matrix colnames est_diff32 = &quot;Completed&quot; &quot;Completed_lo&quot; &quot;Completed_hi&quot; &quot;Not_Completed&quot; &quot;Not_Completed_lo&quot; &quot;Not_Completed_hi&quot;
+
+. 
+. esttab matrix(est_diff32) using &quot;${pathdata2}diff_probs_res_out_mod_t3_3y.html&quot;, replace 
+(output written to C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/diff_probs_res_out_mod_t3_3y.html)
+
+</code></pre>
+<p>The transition probabilities are presented here:</p>
+<table border="0" width="*">
+<tr><td colspan=7><hr></td></tr>
+<tr><td>            </td><td>  est_diff32</td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td></tr>
+<tr><td>            </td><td>   Completed</td><td>Completed_lo</td><td>Completed_hi</td><td>Not_Completed</td><td>Not_Completed_lo</td><td>Not_Completed_hi</td></tr>
+<tr><td colspan=7><hr></td></tr>
+<tr><td>3_mths      </td><td>          .3</td><td>        -3.9</td><td>         1.8</td><td>          .5</td><td>        -2.9</td><td>         1.4</td></tr>
+<tr><td>1_yr        </td><td>          .7</td><td>        -2.4</td><td>           4</td><td>         1.2</td><td>        -2.3</td><td>         3.6</td></tr>
+<tr><td>3_yrs       </td><td>         1.3</td><td>         -.9</td><td>         4.6</td><td>         1.2</td><td>          -1</td><td>         4.8</td></tr>
+<tr><td>5_yrs       </td><td>         1.5</td><td>         -.3</td><td>         4.9</td><td>         1.3</td><td>         -.5</td><td>         5.2</td></tr>
+<tr><td colspan=7><hr></td></tr>
+</table>
+<h4><a href="#fourth-transition" id="fourth-transition">Fourth transition</a></h4>
+<pre><code>. foreach var of varlist fdiff_prob_from4_5_3y fdiff_prob_from4_5_lci_3y fdiff_prob_from4_5_uci_3y fdiff_prob_from4_5_3y_2 fdiff_prob_from4_5_lci_3y_2 fdiff_prob_from4_5_uci_3y_2  {
+  2.         scalar variable = &quot;`var'&quot;
+  3.         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.999, 5.02), local(mylevs) sep(,)
+  4. 
+.                                         tokenize &quot;`mylevs'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
+  5.                                         local done = 0
+  6.                                         local i = 0
+  7.                                         local count = 0
+  8.                                         while !`done' {  
+  9.                                            local ++i
+ 10.                                                 local next = &quot;``i''&quot;
+ 11.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
+ 12.                                            // Include elements that are not the parsing character itself.
+.                                                  if (&quot;`next'&quot; != &quot;,&quot;) &amp; (!`done') {
+ 13.                                                    local ++count
+ 14.                                                    scalar est_n`count' = &quot;`next'&quot;
+ 15.                                                 }  
+ 16.                                         }
+ 17.                                         //
+.                                         di &quot;`count' est&quot;
+ 18.                                         forval i = 1/`count' {
+ 19.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
+ 20.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
+.                                           di &quot;`=scalar(est_n`i')'&quot;
+ 21.                                         }       
+ 22.  di &quot;`=scalar(variable)'&quot;
+ 23.  di &quot;`=scalar(est_n1)'&quot;
+ 24.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
+ 25.  matrix colnames ests_`var' = `var'
+ 26.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
+ 27.  }
+.00204,.0051,.00968,.01159
+4 est
+.2
+.5
+1
+1.2
+fdiff_prob_from4_5_3y
+.2
+-.070980841504933,-.0706279089832679,-.0501545945904443,-.0215069704274232
+4 est
+-7.100000000000001
+-7.100000000000001
+-5
+-2.2
+fdiff_prob_from4_5_lci_3y
+-7.100000000000001
+.0255847084392722,.0603234700063337,.0898632315299994,.094003082324435
+4 est
+2.6
+6
+9
+9.4
+fdiff_prob_from4_5_uci_3y
+2.6
+.00195,.00546,.00978,.01246
+4 est
+.2
+.5
+1
+1.2
+fdiff_prob_from4_5_3y_2
+.2
+-.0696793015144984,-.0684684431336539,-.0463730750364983,-.0197864838567375
+4 est
+-7
+-6.800000000000001
+-4.600000000000001
+-2
+fdiff_prob_from4_5_lci_3y_2
+-7
+.0236846413544757,.0572637523485556,.0879088523965824,.0944314870901536
+4 est
+2.4
+5.7
+8.800000000000001
+9.4
+fdiff_prob_from4_5_uci_3y_2
+2.4
+
+. 
+. matrix est_diff42 = (ests_fdiff_prob_from4_5_3y, ests_fdiff_prob_from4_5_lci_3y, ests_fdiff_prob_from4_5_uci_3y, ests_fdiff_prob_from4_5_3y_2, ests_fdiff_prob_from4_5_lci_3y_2, ests_fdiff_prob_from4_5_uci_3y_2)
+
+. matrix colnames est_diff42 = &quot;Completed&quot; &quot;Completed_lo&quot; &quot;Completed_hi&quot; &quot;Not_Completed&quot; &quot;Not_Completed_lo&quot; &quot;Not_Completed_hi&quot;
+
+. 
+. esttab matrix(est_diff42) using &quot;${pathdata2}diff_probs_res_out_mod_t4_3y.html&quot;, replace 
+(output written to C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/diff_probs_res_out_mod_t4_3y.html)
+
+</code></pre>
+<p>The transition probabilities are presented here:</p>
+<table border="0" width="*">
+<tr><td colspan=7><hr></td></tr>
+<tr><td>            </td><td>  est_diff42</td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td></tr>
+<tr><td>            </td><td>   Completed</td><td>Completed_lo</td><td>Completed_hi</td><td>Not_Completed</td><td>Not_Completed_lo</td><td>Not_Completed_hi</td></tr>
+<tr><td colspan=7><hr></td></tr>
+<tr><td>3_mths      </td><td>          .2</td><td>        -7.1</td><td>         2.6</td><td>          .2</td><td>          -7</td><td>         2.4</td></tr>
+<tr><td>1_yr        </td><td>          .5</td><td>        -7.1</td><td>           6</td><td>          .5</td><td>        -6.8</td><td>         5.7</td></tr>
+<tr><td>3_yrs       </td><td>           1</td><td>          -5</td><td>           9</td><td>           1</td><td>        -4.6</td><td>         8.8</td></tr>
+<tr><td>5_yrs       </td><td>         1.2</td><td>        -2.2</td><td>         9.4</td><td>         1.2</td><td>          -2</td><td>         9.4</td></tr>
+<tr><td colspan=7><hr></td></tr>
+</table>
 <p>=============================================================================</p>
 <h2><a href="#pwp-tt" id="pwp-tt">PWP-TT</a></h2>
 <p>=============================================================================</p>
@@ -394,13 +1237,10 @@ note: robust variance-covariance matrix used.
 &gt; colfirst ycommon xcommon iscale(*.7) imargin(tiny) graphregion(color(gs16)) ///
 &gt; title(&quot;Combination of −ln{−ln(survival)} vs. ln(analysis time)&quot; &quot;PWP-TT&quot;, size(medium)) cols(2) ///
 &gt; subtitle(&quot;{it: in each transition}&quot;, size(small)) ///
-&gt; note(&quot;{it:              Note: Ordered by columns, from up to down, left to right}&quot;, size(tiny))
-
-. graph export &quot;_trans_ph_ln_surv_time.png&quot;, as(png) replace width(2000) height(1000)
-(file _trans_ph_ln_surv_time.png written in PNG format)
-
-. graph export &quot;_trans_ph_ln_surv_time.pdf&quot;, as(pdf) replace //*width(2000) height(2000) orientation(landscape)
-(file _trans_ph_ln_surv_time.pdf written in PDF format)
+&gt; note(&quot;{it:              Note: Ordered by columns, from up to down, left to right}&quot;, size(tiny)) ///
+&gt;         name(_trans_ph_ln_surv_time, replace)  ///
+&gt;         saving(_trans_ph_ln_surv_time.gph, replace)
+(file _trans_ph_ln_surv_time.gph saved)
 
 </code></pre>
 <p><img src="_trans_ph_ln_surv_time.svg" width="800" ></p>
@@ -543,9 +1383,9 @@ Note: Variables in tvc equation interacted with _t.
 
 . estimates store m3_pwptt
 
-. estwrite _all using &quot;${pathdata2}parmodels_m3_jun.sters&quot;
-file C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/parmodels_m3_jun.sters already exists
-r(602);
+. estwrite _all using &quot;${pathdata2}parmodels_m3_jun.sters&quot;, append
+(appending m3_pwptt)
+(file C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/parmodels_m3_jun.sters saved)
 
 . 
 </code></pre>
@@ -720,13 +1560,10 @@ note: robust variance-covariance matrix used.
 &gt; colfirst ycommon xcommon iscale(*.7) imargin(tiny) graphregion(color(gs16)) ///
 &gt; title(&quot;Combination of −ln{−ln(survival)} vs. ln(analysis time)&quot; &quot;PWP-GT&quot;, size(medium)) cols(2) ///
 &gt; subtitle(&quot;{it: in each transition}&quot;, size(small)) ///
-&gt; note(&quot;{it:              Note: Ordered by columns, from up to down, left to right}&quot;, size(tiny))
-
-. graph export &quot;_trans_ph_ln_surv_time2.png&quot;, as(png) replace width(2000) height(1000)
-(file _trans_ph_ln_surv_time2.png written in PNG format)
-
-. graph export &quot;_trans_ph_ln_surv_time2.pdf&quot;, as(pdf) replace //*width(2000) height(2000) orientation(landscape)
-(file _trans_ph_ln_surv_time2.pdf written in PDF format)
+&gt; note(&quot;{it:              Note: Ordered by columns, from up to down, left to right}&quot;, size(tiny)) ///
+&gt;         name(_trans_ph_ln_surv_time2, replace)  ///
+&gt;         saving(_trans_ph_ln_surv_time2.gph, replace)
+(file _trans_ph_ln_surv_time2.gph saved)
 
 </code></pre>
 <p><img src="_trans_ph_ln_surv_time2.svg" width="800" ></p>
@@ -762,7 +1599,7 @@ Log pseudolikelihood =   -11798.624             Prob &gt; chi2      =      0.000
                                                           Stratified by _trans
 
 . 
-. estat phtest, log plot(tipo_de_plan_res_1) yline(0) msym(oh) ///
+. estat phtest, log plot(1.tipo_de_plan_res_1) yline(0) msym(oh) ///
 &gt;          xtitle(&quot;Time (days)&quot;, size(small)) ///
 &gt;         xlabel(0(1460)5000, labsize(vsmall)) ///        
 &gt;         ylabel(-4(1)4, labsize(vsmall)) ///     
@@ -772,8 +1609,7 @@ Log pseudolikelihood =   -11798.624             Prob &gt; chi2      =      0.000
 &gt;         subtitle(&quot;{it: specified by Running mean smoother}&quot;,size(small)) ///
 &gt;         name(phtest_log_TD_1_2, replace)  ///
 &gt;         saving(phtest_log_TD_1_2.gph, replace)
-tipo_de_plan_res_1 not found in model
-r(198);
+(file phtest_log_TD_1_2.gph saved)
 
 . ***The stphtest command with the plot option will provide the graphs with a lowess curve.  
 . ***The usual graphing options can be used to include a horizontal reference line at y=0. 
@@ -828,375 +1664,4 @@ Note: Variables in tvc equation interacted with _t.
 (file C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/parmodels_m3_jun.sters saved)
 
 </code></pre>
-<h2><a href="#scvurve-tvc-predict-with-strata" id="scvurve-tvc-predict-with-strata">Scvurve tvc, predict with strata</a></h2>
-<pre><code>
-
-
-
-
-                id:  id
-     failure event:  _status != 0 &amp; _status &lt; .
-obs. time interval:  (_stop[_n-1], _stop]
- enter on or after:  time _start
- exit on or before:  time .
-
-------------------------------------------------------------------------------
-     31,968  total observations
-          0  exclusions
-------------------------------------------------------------------------------
-     31,968  observations remaining, representing
-     22,912  subjects
-      9,261  failures in multiple-failure-per-subject data
-   44771646  total analysis time at risk and under observation
-                                                at risk from t =         0
-                                     earliest observed entry t =         0
-                                          last observed exit t =     4,431
-
-
-
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Model m3_pwptt
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-Stratified Cox regr. -- Efron method for ties
-
-No. of subjects      =          646             Number of obs    =       2,584
-No. of failures      =        2,143
-Time at risk         =      1608281
-                                                Wald chi2(8)     =       76.74
-Log pseudolikelihood =   -10895.237             Prob &gt; chi2      =      0.0000
-
-                                    (Std. Err. adjusted for 646 clusters in id)
--------------------------------------------------------------------------------
-              |               Robust
-           _t | Haz. Ratio   Std. Err.      z    P&gt;|z|     [95% Conf. Interval]
---------------+----------------------------------------------------------------
-main          |
-_Itipo_de_p_1 |   1.280613   .1123619     2.82   0.005     1.078283    1.520907
-     _ITD_1_1 |   .4625426   .0554156    -6.44   0.000     .3657398    .5849668
-     _ITD_2_1 |   .9001604   .0515394    -1.84   0.066     .8046068    1.007062
-     _ITD_3_1 |   .8389973   .0442634    -3.33   0.001     .7565773     .930396
-     _ITD_4_1 |   1.076205   .0568508     1.39   0.164     .9703538    1.193603
-       _start |   .9997396   .0000675    -3.85   0.000     .9996073     .999872
---------------+----------------------------------------------------------------
-tvc           |
-_Itipo_de_p_1 |   .9998925   .0000632    -1.70   0.089     .9997686    1.000016
-     _ITD_1_1 |   1.000427   .0000776     5.50   0.000     1.000275    1.000579
--------------------------------------------------------------------------------
-                                                          Stratified by _trans
-Note: Variables in tvc equation interacted with _t.
-
-(note: variable scurve11 not found)
-(note: variable scurve12 not found)
-(note: variable scurve13 not found)
-(note: variable scurve14 not found)
-
-Dataset has been temporarily split at failure times
-(2591 failure times)
-(38,369,670 observations (episodes) created)
-
-The estimation is based on the following Cox Proportional Hazards Model:
-
-         failure _d:  _status
-   analysis time _t:  _stop
-  enter on or after:  time _start
-  exit on or before:  time .
-                 id:  id
-
-Iteration 0:   log likelihood = -82581.503
-Iteration 1:   log likelihood = -82421.162
-Iteration 2:   log likelihood = -82420.956
-Iteration 3:   log likelihood = -82420.956
-Refining estimates:
-Iteration 0:   log likelihood = -82420.956
-
-Stratified Cox regr. -- Breslow method for ties
-
-No. of subjects =       22,912                  Number of obs    =  38,401,638
-No. of failures =        9,261
-Time at risk    =     44771646
-                                                LR chi2(3)       =      321.10
-Log likelihood  =   -82420.956                  Prob &gt; chi2      =      0.0000
-
----------------------------------------------------------------------------------------
-                   _t |      Coef.   Std. Err.      z    P&gt;|z|     [95% Conf. Interval]
-----------------------+----------------------------------------------------------------
-   tipo_de_plan_res_1 |   1.934493   .1520631    12.72   0.000     1.636455    2.232531
-_tipo_de_plan_res_1_t |  -.2512692   .0230117   -10.92   0.000    -.2963713   -.2061671
-              _TD_1_t |  -.0138931   .0037447    -3.71   0.000    -.0212326   -.0065535
----------------------------------------------------------------------------------------
-                                                          Stratified by _trans
-Note: tvc-interactions denoted by _varname_t were interacted with ln(_t).
-__000004* invalid name
-r(198);
-
-(note: variable scurve21 not found)
-(note: variable scurve22 not found)
-(note: variable scurve23 not found)
-(note: variable scurve24 not found)
-
-Dataset has been temporarily split at failure times
-(2591 failure times)
-(38,369,670 observations (episodes) created)
-
-The estimation is based on the following Cox Proportional Hazards Model:
-
-         failure _d:  _status
-   analysis time _t:  _stop
-  enter on or after:  time _start
-  exit on or before:  time .
-                 id:  id
-
-Iteration 0:   log likelihood = -82581.503
-Iteration 1:   log likelihood = -82421.162
-Iteration 2:   log likelihood = -82420.956
-Iteration 3:   log likelihood = -82420.956
-Refining estimates:
-Iteration 0:   log likelihood = -82420.956
-
-Stratified Cox regr. -- Breslow method for ties
-
-No. of subjects =       22,912                  Number of obs    =  38,401,638
-No. of failures =        9,261
-Time at risk    =     44771646
-                                                LR chi2(3)       =      321.10
-Log likelihood  =   -82420.956                  Prob &gt; chi2      =      0.0000
-
----------------------------------------------------------------------------------------
-                   _t |      Coef.   Std. Err.      z    P&gt;|z|     [95% Conf. Interval]
-----------------------+----------------------------------------------------------------
-   tipo_de_plan_res_1 |   1.934493   .1520631    12.72   0.000     1.636455    2.232531
-_tipo_de_plan_res_1_t |  -.2512692   .0230117   -10.92   0.000    -.2963713   -.2061671
-              _TD_1_t |  -.0138931   .0037447    -3.71   0.000    -.0212326   -.0065535
----------------------------------------------------------------------------------------
-                                                          Stratified by _trans
-Note: tvc-interactions denoted by _varname_t were interacted with ln(_t).
-__000004* invalid name
-r(198);
-
-(2,110 real changes made)
-(16,514 missing values generated)
-(18,482 real changes made)
-(25,286 missing values generated)
-(26,201 real changes made)
-(29,384 missing values generated)
-(29,732 real changes made)
-
-
-(0 real changes made)
-(1,420 real changes made)
-(395 real changes made)
-(116 real changes made)
-
-
-
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Model m3_pwpgt_td2
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-Stratified Cox regr. -- Efron method for ties
-
-No. of subjects      =       31,968             Number of obs    =      31,968
-No. of failures      =        9,261
-Time at risk         =     44771646
-                                                Wald chi2(6)     =      518.39
-Log pseudolikelihood =   -83762.882             Prob &gt; chi2      =      0.0000
-
-                                 (Std. Err. adjusted for 22,912 clusters in id)
--------------------------------------------------------------------------------
-              |               Robust
-           _t | Haz. Ratio   Std. Err.      z    P&gt;|z|     [95% Conf. Interval]
---------------+----------------------------------------------------------------
-main          |
-_Itipo_de_p_1 |   1.612685   .0550757    13.99   0.000     1.508272    1.724326
-       _ITD_1 |   .5577293   .0207699   -15.68   0.000     .5184712    .5999599
-       _start |    .999594   .0000526    -7.72   0.000      .999491    .9996971
---------------+----------------------------------------------------------------
-tvc           |
-_Itipo_de_p_1 |   .9997666   .0000346    -6.74   0.000     .9996987    .9998344
-       _ITD_1 |   1.000503   .0000363    13.87   0.000     1.000432    1.000574
-       _start |          1   7.73e-08     5.44   0.000            1    1.000001
--------------------------------------------------------------------------------
-                                                          Stratified by _trans
-Note: Variables in tvc equation interacted with _t.
-
-(note: variable scurve11 not found)
-(note: variable scurve12 not found)
-(note: variable scurve13 not found)
-(note: variable scurve14 not found)
-
-Dataset has been temporarily split at failure times
-(2591 failure times)
-(38,369,670 observations (episodes) created)
-
-The estimation is based on the following Cox Proportional Hazards Model:
-
-         failure _d:  _status
-   analysis time _t:  _stop
-  enter on or after:  time _start
-  exit on or before:  time .
-                 id:  id
-
-Iteration 0:   log likelihood = -82581.503
-Iteration 1:   log likelihood = -82366.907
-Iteration 2:   log likelihood = -82366.666
-Iteration 3:   log likelihood = -82366.666
-Refining estimates:
-Iteration 0:   log likelihood = -82366.666
-
-Stratified Cox regr. -- Breslow method for ties
-
-No. of subjects =       22,912                  Number of obs    =  38,401,638
-No. of failures =        9,261
-Time at risk    =     44771646
-                                                LR chi2(4)       =      429.68
-Log likelihood  =   -82366.666                  Prob &gt; chi2      =      0.0000
-
----------------------------------------------------------------------------------------
-                   _t |      Coef.   Std. Err.      z    P&gt;|z|     [95% Conf. Interval]
-----------------------+----------------------------------------------------------------
-   tipo_de_plan_res_1 |   1.916475   .1520318    12.61   0.000     1.618498    2.214452
-_tipo_de_plan_res_1_t |  -.2473525   .0229991   -10.75   0.000      -.29243   -.2022751
-                _TD_t |  -.0212294   .0037299    -5.69   0.000    -.0285399    -.013919
-            __start_t |   .0000551   5.83e-06     9.44   0.000     .0000436    .0000665
----------------------------------------------------------------------------------------
-                                                          Stratified by _trans
-Note: tvc-interactions denoted by _varname_t were interacted with ln(_t).
-__000004* invalid name
-r(198);
-
-(note: variable scurve21 not found)
-(note: variable scurve22 not found)
-(note: variable scurve23 not found)
-(note: variable scurve24 not found)
-
-Dataset has been temporarily split at failure times
-(2591 failure times)
-(38,369,670 observations (episodes) created)
-
-The estimation is based on the following Cox Proportional Hazards Model:
-
-         failure _d:  _status
-   analysis time _t:  _stop
-  enter on or after:  time _start
-  exit on or before:  time .
-                 id:  id
-
-Iteration 0:   log likelihood = -82581.503
-Iteration 1:   log likelihood = -82366.907
-Iteration 2:   log likelihood = -82366.666
-Iteration 3:   log likelihood = -82366.666
-Refining estimates:
-Iteration 0:   log likelihood = -82366.666
-
-Stratified Cox regr. -- Breslow method for ties
-
-No. of subjects =       22,912                  Number of obs    =  38,401,638
-No. of failures =        9,261
-Time at risk    =     44771646
-                                                LR chi2(4)       =      429.68
-Log likelihood  =   -82366.666                  Prob &gt; chi2      =      0.0000
-
----------------------------------------------------------------------------------------
-                   _t |      Coef.   Std. Err.      z    P&gt;|z|     [95% Conf. Interval]
-----------------------+----------------------------------------------------------------
-   tipo_de_plan_res_1 |   1.916475   .1520318    12.61   0.000     1.618498    2.214452
-_tipo_de_plan_res_1_t |  -.2473525   .0229991   -10.75   0.000      -.29243   -.2022751
-                _TD_t |  -.0212294   .0037299    -5.69   0.000    -.0285399    -.013919
-            __start_t |   .0000551   5.83e-06     9.44   0.000     .0000436    .0000665
----------------------------------------------------------------------------------------
-                                                          Stratified by _trans
-Note: tvc-interactions denoted by _varname_t were interacted with ln(_t).
-__000004* invalid name
-r(198);
-
-(note: variable scurve11 not found)
-(note: variable scurve12 not found)
-(note: variable scurve13 not found)
-(note: variable scurve14 not found)
-
-Dataset has been temporarily split at failure times
-(2591 failure times)
-(38,369,670 observations (episodes) created)
-
-The estimation is based on the following Cox Proportional Hazards Model:
-
-         failure _d:  _status
-   analysis time _t:  _stop
-  enter on or after:  time _start
-  exit on or before:  time .
-                 id:  id
-
-Iteration 0:   log likelihood = -82581.503
-Iteration 1:   log likelihood = -82411.278
-Iteration 2:   log likelihood = -82411.062
-Iteration 3:   log likelihood = -82411.062
-Refining estimates:
-Iteration 0:   log likelihood = -82411.062
-
-Stratified Cox regr. -- Breslow method for ties
-
-No. of subjects =       22,912                  Number of obs    =  38,401,638
-No. of failures =        9,261
-Time at risk    =     44771646
-                                                LR chi2(3)       =      340.88
-Log likelihood  =   -82411.062                  Prob &gt; chi2      =      0.0000
-
----------------------------------------------------------------------------------------
-                   _t |      Coef.   Std. Err.      z    P&gt;|z|     [95% Conf. Interval]
-----------------------+----------------------------------------------------------------
-   tipo_de_plan_res_1 |   1.953245   .1521651    12.84   0.000     1.655007    2.251483
-_tipo_de_plan_res_1_t |  -.2539323   .0230168   -11.03   0.000    -.2990444   -.2088202
-                _TD_t |   -.021409   .0037295    -5.74   0.000    -.0287186   -.0140994
----------------------------------------------------------------------------------------
-                                                          Stratified by _trans
-Note: tvc-interactions denoted by _varname_t were interacted with ln(_t).
-__000004* invalid name
-r(198);
-
-(note: variable scurve21 not found)
-(note: variable scurve22 not found)
-(note: variable scurve23 not found)
-(note: variable scurve24 not found)
-
-Dataset has been temporarily split at failure times
-(2591 failure times)
-(38,369,670 observations (episodes) created)
-
-The estimation is based on the following Cox Proportional Hazards Model:
-
-         failure _d:  _status
-   analysis time _t:  _stop
-  enter on or after:  time _start
-  exit on or before:  time .
-                 id:  id
-
-Iteration 0:   log likelihood = -82581.503
-Iteration 1:   log likelihood = -82411.278
-Iteration 2:   log likelihood = -82411.062
-Iteration 3:   log likelihood = -82411.062
-Refining estimates:
-Iteration 0:   log likelihood = -82411.062
-
-Stratified Cox regr. -- Breslow method for ties
-
-No. of subjects =       22,912                  Number of obs    =  38,401,638
-No. of failures =        9,261
-Time at risk    =     44771646
-                                                LR chi2(3)       =      340.88
-Log likelihood  =   -82411.062                  Prob &gt; chi2      =      0.0000
-
----------------------------------------------------------------------------------------
-                   _t |      Coef.   Std. Err.      z    P&gt;|z|     [95% Conf. Interval]
-----------------------+----------------------------------------------------------------
-   tipo_de_plan_res_1 |   1.953245   .1521651    12.84   0.000     1.655007    2.251483
-_tipo_de_plan_res_1_t |  -.2539323   .0230168   -11.03   0.000    -.2990444   -.2088202
-                _TD_t |   -.021409   .0037295    -5.74   0.000    -.0287186   -.0140994
----------------------------------------------------------------------------------------
-                                                          Stratified by _trans
-Note: tvc-interactions denoted by _varname_t were interacted with ln(_t).
-__000004* invalid name
-r(198);
-
-</code></pre>
-<p>Saved at= 14:35:12 22 Sep 2021</p>
+<p>Saved at= 19:58:49  6 Dec 2021</p>
