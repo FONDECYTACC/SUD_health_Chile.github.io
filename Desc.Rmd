@@ -1440,9 +1440,9 @@ survfit_days_new_treat_dataframe<-summary(survfit_days_new_treat, times=seq(0, 3
 #
 data.table(survfit_days_new_treat_dataframe$table,keep.rownames = T)%>%
   knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
-               caption="Table 2. Estimates related to the probability that an entry kept free of a posterior one",
+               caption="Table 3. Estimates related to the probability that an entry kept free of a posterior one",
                align= c("l",rep('c', 5)), col.names = c("Cause of Discharge","Records","n.max", "n.start","events","rmean","se(rmean)","median", "95%CI Lower","95%CI Upper"))%>%
-  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 8)%>%
+  kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size= 8)%>%
         kableExtra::add_footnote(paste0("Note= Treatments that did not finished their first treatment were discarded (n=",CONS_C1_df_dup_JUN_2020%>% 
     dplyr::mutate(diff_nas_fech_egres= as.numeric(difftime(lubridate::ymd("2019-11-13"),fech_ing, units = "days")))%>%dplyr::mutate(perdi_seguimiento=dplyr::case_when(is.na(fech_egres_imp)&diff_nas_fech_egres>=1095~1,TRUE~0))%>%dplyr::filter(perdi_seguimiento==1)%>% nrow()%>% formatC(big.mark=","),"); Excluded cases with no cause of discharge (n=",CONS_C1_df_dup_JUN_2020%>% dplyr::mutate(diff_nas_fech_egres= as.numeric(difftime(lubridate::ymd("2019-11-13"),fech_ing, units = "days")))%>% dplyr::mutate(perdi_seguimiento=dplyr::case_when(is.na(fech_egres_imp)&diff_nas_fech_egres>=1095~1,TRUE~0))%>%  dplyr::filter(perdi_seguimiento==0)%>% dplyr::mutate(status=dplyr::case_when(!is.na(diff_bet_treat)~1,TRUE~0))%>% dplyr::filter(!is.na(diff_bet_treat),is.na(motivodeegreso_mod_imp))%>% nrow() %>% formatC(big.mark=","),")"), notation = "none")%>%
   kableExtra::scroll_box(width= "100%", height = "250x")
@@ -1767,7 +1767,7 @@ pvals2 <- getResults(table2)
 #p.adjust(pvals, method = "BH")
 restab2 <- createTable(table2, show.p.overall = T)
  export2md(restab2, size=9, first.strip=T, hide.no="no", position="center",
-           format="html",caption= "Table 3. Summary descriptives at baseline, between Users with more than one treatment (=1) and Users with only a single treatment (=0) from 2010-2019",col.names=c("Variables","Users w/ only one treatment", "Users w/ more than one treatment", "p-value"))%>%
+           format="html",caption= "Table 4. Summary descriptives at baseline, between Users with more than one treatment (=1) and Users with only a single treatment (=0) from 2010-2019",col.names=c("Variables","Users w/ only one treatment", "Users w/ more than one treatment", "p-value"))%>%
   kableExtra::add_footnote(c("Note. Variables of C1 dataset had to be standardized before comparison;", "Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
   kableExtra::scroll_box(width = "100%", height = "375px")
 ```
@@ -2648,7 +2648,7 @@ CONS_C1_df_dup_SEP_2020 %>%
                                                                   cnt_otros_probl_at_sm_or>0~1)) %>% 
       dplyr::mutate(dg_trs_cons_sus_or_irr=dplyr::case_when(dg_trs_cons_sus_or=="Drug dependence"~1,
                                                             dg_trs_cons_sus_or=="Hazardous consumption"~0,
-                                                            TRUE~NA_real_)) %>% 
+                                                            TRUE ~NA_real_)) %>% 
       dplyr::mutate(cnt_diagnostico_trs_fisico_irr=factor(cnt_diagnostico_trs_fisico_irr),
                     dg_fis_in_study_irr=as.factor(dg_fis_in_study_irr),
                     cnt_mod_cie_10_or_irr=as.factor(cnt_mod_cie_10_or_irr),
@@ -2979,6 +2979,48 @@ ggsurvplot_fit_dg_trs_cons_sus_or
  # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
 ```
 
+
+
+```{r seq1, warning=FALSE}
+
+invisible("https://cran.r-project.org/web/packages/riskCommunicator/vignettes/Vignette_newbieRusers.html#continuous-exposure-example")
+
+prueba2_imp2<-
+cbind.data.frame(prueba2_imp,
+      dplyr::select(prueba2,cum_dias_trat_sin_na_1, cum_dias_trat_sin_na_2, cum_dias_trat_sin_na_3, cum_dias_trat_sin_na_4, cum_dias_trat_sin_na_5, cum_dias_trat_sin_na_6, cum_dias_trat_sin_na_7, cum_dias_trat_sin_na_8, cum_dias_trat_sin_na_9, cum_dias_trat_sin_na_10, dias_treat_imp_sin_na_1, dias_treat_imp_sin_na_2, dias_treat_imp_sin_na_3, dias_treat_imp_sin_na_4, dias_treat_imp_sin_na_5, dias_treat_imp_sin_na_6, dias_treat_imp_sin_na_7, dias_treat_imp_sin_na_8, dias_treat_imp_sin_na_9, dias_treat_imp_sin_na_10, cum_diff_bet_treat_1, cum_diff_bet_treat_2, cum_diff_bet_treat_3, cum_diff_bet_treat_4, cum_diff_bet_treat_5, cum_diff_bet_treat_6, cum_diff_bet_treat_7, cum_diff_bet_treat_8, cum_diff_bet_treat_9, cum_diff_bet_treat_10),
+      dplyr::select(prueba2, fech_ing, fech_egres_imp, sus_principal_mod, cat_ocupacional_corr, cnt_diagnostico_trs_fisico, cnt_otros_probl_at_sm_or, dg_cie_10_rec, abandono_temprano, duplicates_filtered, max_cum_dias_trat_sin_na, max_cum_diff_bet_treat, cnt_mod_cie_10_dg_cons_sus_or, cnt_mod_cie_10_or, dg_total_cie_10, dias_treat_imp_sin_na_four, diff_bet_treat_four, cum_dias_trat_sin_na_four, cum_diff_bet_treat_four, mean_cum_dias_trat_sin_na_four, mean_cum_diff_bet_treat_four, n_treats, sex_abuse, dom_violence, motivodeegreso_mod_imp)) %>% 
+  dplyr::mutate(person_years=(as.numeric(as.Date("2019-11-13"))- as.numeric(fech_ing))/365.25,
+                max_cum_dias_trat_sin_na_adj= max_cum_dias_trat_sin_na/person_years,
+                duplicates_filtered_adj= duplicates_filtered/person_years)#
+#n_treats= readmissiones
+
+tablas_inc<-
+rbind(data.frame(biostat3::survRate(Surv(person_years, n_treats=="01") ~ con_quien_vive_joel, data=prueba2_imp2)),
+      data.frame(biostat3::survRate(Surv(person_years, n_treats=="02") ~ con_quien_vive_joel, data=prueba2_imp2)),
+      data.frame(biostat3::survRate(Surv(person_years, n_treats=="03") ~ con_quien_vive_joel, data=prueba2_imp2)),
+      data.frame(biostat3::survRate(Surv(person_years, grepl("01|02",n_treats)) ~ con_quien_vive_joel, data=prueba2_imp2)),
+      data.frame(biostat3::survRate(Surv(person_years, grepl("01|02|03",n_treats)) ~ con_quien_vive_joel, data=prueba2_imp2)),
+      data.frame(biostat3::survRate(Surv(person_years, n_treats=="04 or more") ~ con_quien_vive_joel, data=prueba2_imp2)),
+      data.frame(biostat3::survRate(Surv(person_years, grepl("Drop", motivodeegreso_mod_imp)) ~ con_quien_vive_joel, data=prueba2_imp2)))
+
+data.table::data.table(tablas_inc, keep.rownames = F)%>% 
+  dplyr::mutate(rate=round(rate*1000,0),lower=round(lower*1000,0), upper=round(upper*1000,0))%>% 
+knitr::kable(format="html",caption= "Table 8. Summary of incidence rates of events depending on whom patients live with")%>%
+  kableExtra::add_footnote(c("Note. Events per 1,000 person-years"), notation = "none")%>%
+  kableExtra::kable_classic() %>% 
+  kableExtra::group_rows("Only one treatment",1,3)%>% 
+  kableExtra::group_rows("Two treatments",4,6)%>%
+  kableExtra::group_rows("Three treatment",7,9)%>% 
+  kableExtra::group_rows("One & two treatments",10,12)%>%
+  kableExtra::group_rows("One, two & three treatments",13,15)%>%
+  kableExtra::group_rows("Four or more treatments",16,18)%>% 
+  kableExtra::group_rows("Drop-out from the first treatment",19,21)%>% 
+  kableExtra::scroll_box(width = "100%", height = "600px")
+
+```
+
+<br>
+
 ```{r change labels,echo=T, paged.print=TRUE, eval=T}
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_  
 
@@ -3215,7 +3257,7 @@ CONS_C1_df_dup_SEP_2020%>%
   dplyr::arrange(hash_key, fech_ing)%>% 
   rio::export(file = "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_SEP_2020.dta")
 
-save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.RData")
+save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9_2021.RData")
 
 #Agregar nuevas variables al codebook
 #hacer codebook
