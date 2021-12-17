@@ -3162,6 +3162,8 @@ coxph(Surv(outcome_to_readmission,event==1)~factor(motivodeegreso_mod_imp),data=
 
 <br>
 
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+
 ```{r fit_surv_parametric_simple_model, echo=T, error=T, fig.align="center", warning=FALSE, paged.print=TRUE, eval=T}
 #```{r fit_surv_parametric_simple_model,dpi = 320, warning=F,message=F,fig.align='center', error=T}
 
@@ -3434,6 +3436,8 @@ no_attempts <- 20
 
 </div>
 
+<br>
+
 ```{r fit_obj, eval=T, echo=T, fig.cap="Figure 17. Vissual Assessment of Survival Curves", fig.height=10, fig.width=10, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
 
 get_distinct_hues <- function(ncolor,s=0.5,v=0.95,seed=2125) {
@@ -3617,9 +3621,7 @@ rmse_comp_fits0_obj_filter<-
 
 <br>
 
-<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:800px; overflow-x: scroll; width:100%">
-
-```{r fit1_10s_a, eval=T, echo=T, fig.cap="Figure 18. Vissual Assessment of Survival Curves (w/o covars)", fig.height=10, fig.width=10, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
+```{r fit1_a, eval=T, echo=T, fig.cap="Figure 18. Vissual Assessment of Survival Curves (w/o covars)", warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
 #load("C:/Users/CISS Fondecyt/OneDrive/Escritorio/mult_state_ags.RData")
 
 c26 <- c(
@@ -3655,10 +3657,9 @@ ggplot()+
   labs(y="",x="")+
   theme(legend.position='none')
 
-ggplotly(fitted_flexsurvreg_binned_mix0_obj_plot, tooltip="text")
+plotly::ggplotly(fitted_flexsurvreg_binned_mix0_obj_plot, tooltip="text")
 ```
 
-</div>
 
 <br>
 
@@ -4098,23 +4099,25 @@ arrange(fit_flexsurvreg0_obj2, AIC)
 #Generalized F
 --->
 
-```{r fit_obj_complex, eval=T, echo=T, fig.cap="Figure 20. Vissual Assessment of Survival Curves", fig.height=10, fig.width=10, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
+ <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:800px; overflow-x: scroll; width:100%">
+ 
+```{r fit_obj_complex, eval=T, echo=T, fig.cap="Figure 20. Vissual Assessment of Survival Curves", warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
 rank_obj2<-
 fitted_flexsurvreg_binned_mix0_obj2 %>% 
-    group_by(dist,`Treatment Outcome`) %>% 
+    dplyr::group_by(dist,`Treatment Outcome`) %>% 
     tidyr::fill(surv,.direction="down") %>% 
     ungroup() %>% 
     dplyr::mutate(abs((est-surv)/surv)) %>% 
     dplyr::group_by(dist,`Treatment Outcome`) %>% 
-    dplyr::mutate(cumsum_error=cumsum(replace_na(`abs((est - surv)/surv)`, 0))) %>% 
+    dplyr::mutate(cumsum_error=cumsum(tidyr::replace_na(`abs((est - surv)/surv)`, 0))) %>% 
     dplyr::ungroup() %>%  
     dplyr::filter(time>=3) %>% 
     dplyr::group_by(`Treatment Outcome`) %>% 
     dplyr::slice_min(time) %>% 
-    mutate(rank = dense_rank(cumsum_error)) %>% 
+    dplyr::mutate(rank = dplyr::dense_rank(cumsum_error)) %>% 
     dplyr::ungroup() %>% 
     dplyr::arrange(`Treatment Outcome`,rank) %>%
-    dplyr::select(dist, `Treatment Outcome`,time, lcl, cumsum_error,rank) %>% 
+    dplyr::select(dist, `Treatment Outcome`,time, lcl, cumsum_error,rank) 
     
 
 fitted_flexsurvreg_binned_mix0_obj2_plot<-
@@ -4154,11 +4157,10 @@ fitted_flexsurvreg_binned_mix0_obj2_plot$data %>%
   dplyr::mutate(tr_out=`Treatment Outcome`) %>% 
 #   dplyr::left_join(cbind.data.frame(levels(fitted_flexsurvreg_binned_mix0_obj2$`Treatment Outcome`),tr_out=1:length(levels(fitted_flexsurvreg_binned_mix0_obj2$`Treatment Outcome`))), by="tr_out") %>% 
 dplyr::group_by(tr_out) %>%
-group_map(~ plot_ly(data=., x = ~time, y = ~est, color = ~dist, type = "scatter", mode="lines", text=~text) %>% 
-            add_trace(y = ~surv, type = 'scatter', mode = 'lines', line = list(color = 'red', width = 1), text=~text2)
-  # %>% layout(annotations = list(list(x = 0.5 , y = 1.03, text = ~tr_out, showarrow = F, xref='paper', yref='paper')))
-    , keep=TRUE) %>%    
-subplot(nrows = 3, shareX = T, shareY=T, titleX = F, titleY = F, margin = .05)%>% layout(showlegend = F) %>% #, margin = 0.05) %>% 
+dplyr::group_map(~ plot_ly(data=., x = ~time, y = ~est, color = ~dist, type = "scatter", mode="lines", text=~text) %>% 
+            add_trace(y = ~surv, type = 'scatter', mode = 'lines', line = list(color = 'red', width = 1), text=~text2) %>% layout(annotations = list(list(x = 0.5 , y = 1.03, text = unique(.x$`Treatment Outcome`), showarrow = F, xref='paper', yref='paper'))), keep=TRUE) %>%    
+subplot(nrows = 3, shareX = T, shareY=T, titleX = F, titleY = F, margin = .05)%>% layout(showlegend = F) %>% 
+  #, margin = 0.05) %>% 
   layout(annotations = list(
                 list(x = -0.06, y = 0.5, text = "Hazard",
                      font = list(color = "black",size = 15),
@@ -4167,6 +4169,8 @@ subplot(nrows = 3, shareX = T, shareY=T, titleX = F, titleY = F, margin = .05)%>
 
 p1_obj2
 ```
+
+</div>
 
 <br>
 
