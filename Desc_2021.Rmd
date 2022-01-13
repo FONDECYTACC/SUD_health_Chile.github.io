@@ -4202,6 +4202,7 @@ note_st_sub_mvv_fits_genf_obj <-
 note_st_sub_fits_genf_obj <-
     paste0("N= ",format(as.numeric(st_sub_fits_genf_obj$N), big.mark=","),"; Events= ",format(as.numeric(st_sub_fits_genf_obj$events), big.mark=","),"; Censored= ",format(as.numeric(st_sub_fits_genf_obj$N - st_sub_fits_genf_obj$events), big.mark=","),"; Time at risk= ",format(as.numeric(st_sub_fits_genf_obj$trisk), big.mark=","),"; Df= ",format(as.numeric(st_sub_fits_genf_obj$npars), big.mark=","), "; AIC= ",format(as.numeric(st_sub_fits_genf_obj$AIC), big.mark=","))
 
+
 invisible("Transformar los nombres de las interacciones para que sean fáciles de visualizar")
 dt_coefs_simple_surv_obj_w_int<-
     rbind(
@@ -4279,7 +4280,7 @@ coefs_obj_genf_st_sub<-
 rbindlist(list(coefs_obj_genf_int_sex, coefs_obj_genf_int_age, coefs_obj_genf_int_prim_sub, coefs_obj_genf_st_sub,coefs_obj_genf_int_st_sub_mvv), idcol="Model") %>% 
   dplyr::select(-Model) %>% 
     knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
-               caption=paste0("Table 10. Coefficients of more complex models"),
+               caption=paste0("Table 10a. Coefficients of more complex models"),
                col.names = c("Term",rep(c("Accelerating Factor (AFT) $ \\\\gamma $/ Parameter value","CI 95%"),1)),
                align= c("l",rep('c', 16)), escape=F)%>%
   kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size=13)%>%
@@ -4297,6 +4298,42 @@ rbindlist(list(coefs_obj_genf_int_sex, coefs_obj_genf_int_age, coefs_obj_genf_in
 <br>
 
 For example, the probability of the rest of people that are not women with an administrative discharge of not experiencing readmission at time $q$, equals the probability of not experiencing readmission at the 72% of that time (IC 95%: 56%, 93%) of women that had an administrative discharge.
+
+<br>
+
+
+```{r fit_surv_parametric_complex_model_b, echo=T, error=T, fig.align="center", warning=FALSE, paged.print=TRUE, eval=T}
+
+#2022
+total_fits_genf_obj <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1)~motivodeegreso_mod_imp*sexo_2+ motivodeegreso_mod_imp*edad_grupos+ motivodeegreso_mod_imp*sus_principal_mod+ motivodeegreso_mod_imp*sus_ini_mod,
+                                   data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg,
+                                   dist = "genf")
+note_total_fits_genf_obj <-
+    paste0("N= ",format(as.numeric(total_fits_genf_obj$N), big.mark=","),"; Events= ",format(as.numeric(total_fits_genf_obj$events), big.mark=","),"; Censored= ",format(as.numeric(total_fits_genf_obj$N - total_fits_genf_obj$events), big.mark=","),"; Time at risk= ",format(as.numeric(total_fits_genf_obj$trisk), big.mark=","),"; Df= ",format(as.numeric(total_fits_genf_obj$npars), big.mark=","), "; AIC= ",format(as.numeric(total_fits_genf_obj$AIC), big.mark=","))
+
+coefs_obj_genf_st_sub_total<-
+  data.table::data.table(round(exp(total_fits_genf_obj$res),2)[,1:3],keep.rownames = T) %>% 
+  dplyr::left_join(dt_coefs_simple_surv_obj_w_int, by=c("rn"="real_vars")) %>% 
+  #dplyr::mutate(p.value=ifelse(p.value<.001,"<0.001",as.character(sprintf("%1.3f",p.value)))) %>% 
+  dplyr::mutate(conf.low=sprintf("%1.2f",`L95%`),
+                conf.high=sprintf("%1.2f",`U95%`),
+                statistic=sprintf("%1.2f",est),
+                `CI 95%`=paste0(conf.low,", ",conf.high)) %>% 
+  dplyr::select(formal_vars, statistic, `CI 95%`) 
+
+coefs_obj_genf_st_sub_total %>% 
+  knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption=paste0("Table 10b. Coefficients of more complex model & controlling for interactions"),
+               col.names = c("Term",rep(c("Accelerating Factor (AFT) $ \\\\gamma $/ Parameter value","CI 95%"),1)),
+               align= c("l",rep('c', 16)), escape=F)%>%
+  kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size=13)%>%
+  kableExtra::add_footnote(c("Note. From left to right:", 
+                             paste0("Model fit: ",note_total_fits_genf_obj), 
+                             paste0("AFT= $\\\\frac{1}{\\\\hat{HR}}$; $S_2(t)=S_1(\\\\gamma t)$; $\\\\gamma $ <1, exposure harmful survival")), 
+                           notation = "none",
+                           escape=FALSE) %>%
+  kableExtra::scroll_box(width = "100%", height = "350px")
+```
 
 <br>
 
@@ -4441,13 +4478,43 @@ dt_sum_ob_tr_out_sex_90, dt_sum_ob_tr_out_age_90, dt_sum_ob_tr_out_prim_sub_90, 
   dplyr::select(-model)%>% 
   dplyr::select(lab, everything())%>% 
   dplyr::rename("Variable"="lab") %>% 
-  knitr::kable(format="html",caption="Table 11. Predicted Restricted Mean Survival Time of The Complex models (Interaction) depending on a specific time and value") %>% 
+  knitr::kable(format="html",caption="Table 11a. Predicted Restricted Mean Survival Time of The Complex models (Interaction) depending on a specific time and value") %>% 
   kableExtra::kable_classic() %>% 
   kableExtra::group_rows("At 90 days",1,22) %>% 
   kableExtra::group_rows("At 1 year",23,44) %>% 
   kableExtra::group_rows("At 3 years",45,66) %>% 
     kableExtra::group_rows("At 5 years",67,88) %>%
   kableExtra::scroll_box(width = "100%", height = "350px")
+```
+
+<br>
+
+```{r fit_surv_parametric_complex_model_pred_b, echo=T, error=T, fig.align="center", warning=FALSE, paged.print=TRUE, eval=T}
+time_before_sim_rmst<-Sys.time()
+
+#Warning: stack imbalance in '-', 92 then 93
+rbindlist(summary(total_fits_genf_obj, "rmst", 
+                  newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sexo_2=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2), edad_grupos=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_grupos), sus_principal_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_principal_mod), sus_ini_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod)), B=1e5, t=c(.25,1,3,5)), 
+          idcol="Total") %>% 
+  tidyr::separate(Total,into=c("Treatment Outcome","Sex", "Age","Primary Substance","Initial Substance"),sep=", ") %>% 
+  dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
+  dplyr::mutate(Sex=factor(gsub("sexo_2\\=","",Sex))) %>% 
+  dplyr::mutate(Age=factor(gsub("edad_grupos\\=","",Age))) %>% 
+  dplyr::mutate(`Primary Substance`=factor(gsub("sus_principal_mod\\=","",`Primary Substance`))) %>% 
+  dplyr::mutate(`Initial Substance`=factor(gsub("sus_ini_mod\\=","",`Initial Substance`))) %>% 
+  dplyr::mutate(RMST=paste0(sprintf("%3.2f",`est`)," [",sprintf("%3.2f",`lcl`),", ",sprintf("%3.2f",`ucl`),"]"))%>%
+  tidyr::pivot_wider(id_cols=c("time","Sex","Age","Primary Substance","Initial Substance"), names_from = `Treatment Outcome`, values_from = RMST) %>% 
+    dplyr::mutate(time=factor(as.character(time),
+                levels=c("0.25","1","3","5"), 
+                labels=c("~3 months", "~1 year", "~3 years", "~5 years"))) %>% 
+  knitr::kable(format="html",caption="Table 11b. Predicted Restricted Mean Survival Time of The more complex model & controlling for interactions, and depending on a specific time and value") %>% 
+  kableExtra::kable_classic(font_size = 11) %>% 
+  kableExtra::scroll_box(width = "100%", height = "350px")
+
+time_after_sim_rmst<-Sys.time()
+
+paste0("Time in process: ");time_after_sim_rmst-time_before_sim_rmst
+
 ```
 
 <br>
