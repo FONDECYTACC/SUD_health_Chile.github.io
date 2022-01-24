@@ -59,7 +59,7 @@ if (grepl("CISS Fondecyt",path)==T){
   } else {
     setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/m8.RData")
   }
-
+    #df_print: paged
 if(isTRUE(getOption('knitr.in.progress'))==T){
     nn_size= 1:5 # size= 1:5
     nn_seq=seq(0, 1, .5)
@@ -165,7 +165,6 @@ library(zoo)
 library(broom)
 library(sqldf)
 library(devtools)
-library(Statamarkdown)
 library(codebook)
 library(data.table)
 library(dplyr)
@@ -3179,9 +3178,17 @@ CONS_C1_df_dup_SEP_2020_irrs_health%>%
               event==1~ (fech_ing_next_treat-fech_egres_num)/365.25,# & grepl("",comp_status)
               event==0~ (as.numeric(as.Date("2019-11-13"))-fech_egres_num)/365.25)) %>% 
   #https://stats.stackexchange.com/questions/176376/invalid-survival-times-for-this-distribution
-          dplyr:::mutate(outcome_to_readmission=dplyr::case_when(outcome_to_readmission==0~.0001,T~outcome_to_readmission))%>%           dplyr::filter(motivodeegreso_mod_imp!="Ongoing treatment") %>% 
-          dplyr::mutate(factor(motivodeegreso_mod_imp, levels=c("Therapeutic discharge", "Late Drop-out", "Early Drop-out", "Administrative discharge", "Referral to another treatment"), labels=c("Therapeutic discharge", "Late Drop-out", "Early Drop-out", "Administrative discharge", "Referral to another treatment")))
+          dplyr:::mutate(outcome_to_readmission=dplyr::case_when(outcome_to_readmission==0~.0001,T~outcome_to_readmission))%>%           
+  dplyr::filter(motivodeegreso_mod_imp!="Ongoing treatment") %>% 
+  dplyr::mutate(motivodeegreso_mod_imp= relevel(motivodeegreso_mod_imp, ref = "Therapeutic discharge")) %>% 
+  dplyr::mutate(sus_principal_mod= relevel(sus_principal_mod, ref = "Alcohol")) %>% 
+  dplyr::mutate(sus_ini_mod= relevel(sus_ini_mod, ref = "Alcohol")) %>% 
+  dplyr::mutate(sus_ini_mod_mvv= relevel(sus_ini_mod_mvv, ref = "Alcohol")) %>% 
+  dplyr::mutate(edad_grupos= factor(edad_grupos, levels=c("18-24", "25-29", "30-35", "36-45", ">45"),ordered =T))
 
+#survit(Surv(event~outcome_to_readmission)~edad_grupos, data=CONS_C1_df_dup_SEP_2020_irrs_health_survreg)
+# sus_principal_mod sus_ini_mod sus_ini_mod_mvv edad_grupos
+#coxph(Surv(outcome_to_readmission,event==1)~edad_grupos, data=CONS_C1_df_dup_SEP_2020_irrs_health_survreg)
 
 # library("muhaz")
   kernel_haz_obj<-data.frame()
@@ -3666,8 +3673,8 @@ plotly::ggplotly(fitted_flexsurvreg_binned_mix0_obj_plot, tooltip="text") %>% la
 ```{r fit_surv_parametric_simple_model2, echo=T, error=T, fig.align="center", warning=FALSE, paged.print=TRUE, eval=T}
 dt_coefs_simple_surv_obj<-
 data.frame(
-real_vars=c("motivodeegreso_mod_impEarly Drop-out", "motivodeegreso_mod_impAdministrative discharge", "motivodeegreso_mod_impTherapeutic discharge", "motivodeegreso_mod_impReferral to another treatment","mu", "sigma", "Q","P", paste0("gamma",0:5)),
- formal_vars= c("Early Drop-out", "Administrative discharge", "Therapeutic discharge", "Referral to another treatment","_Parameter- mu (Location)", "_Parameter- sigma (Scale)", "_Parameter- Q (1st shape)","_Parameter- P (2nd shape)", "_Parameter- Gamma 1st area","_Parameter- Gamma 2nd area", "_Parameter- Gamma 3rd area", "_Parameter- Gamma 4th area", "_Parameter- Gamma 5th area", "_Parameter- Gamma 6th area"
+real_vars=c("motivodeegreso_mod_impEarly Drop-out", "motivodeegreso_mod_impAdministrative discharge", "motivodeegreso_mod_impTherapeutic discharge","motivodeegreso_mod_impLate Drop-out", "motivodeegreso_mod_impReferral to another treatment","mu", "sigma", "Q","P", paste0("gamma",0:5)),
+ formal_vars= c("Early Drop-out", "Administrative discharge", "Therapeutic discharge", "Late Drop-out", "Referral to another treatment","_Parameter- mu (Location)", "_Parameter- sigma (Scale)", "_Parameter- Q (1st shape)","_Parameter- P (2nd shape)", "_Parameter- Gamma 1st area","_Parameter- Gamma 2nd area", "_Parameter- Gamma 3rd area", "_Parameter- Gamma 4th area", "_Parameter- Gamma 5th area", "_Parameter- Gamma 6th area"
  )) 
 
 
@@ -3753,14 +3760,14 @@ data.table::data.table(summary(fits_rp03_objc,
                                #newtime=unique(fitted_km$time), 
                                type = "cumhaz", 
                                tidy=T,
-                               B=1e5))
+                               B=1e4))
 cumhaz_genf<-
 data.table::data.table(summary(fits_genf_objc, 
                                #newdata= newdat2a, 
                                #newtime=unique(fitted_km$time), 
                                type = "cumhaz", 
                                tidy=T,
-                               B=1e5))
+                               B=1e4))
 invisible("Lo ideal es hacerlo con intervalos, pero no se puede")
 #ggsurvplot_tr_outcome_fit
 naalen_dt<-
@@ -3862,7 +3869,7 @@ data.table::data.table(summary(fits_rp03_objc,
                                type = "rmst", 
                                t=.25,
                                tidy=T,
-                               B=1e5))
+                               B=1e4))
 rmst_genf_90<-
 data.table::data.table(summary(fits_genf_objc, 
                                #newdata= newdat2a, 
@@ -3870,7 +3877,7 @@ data.table::data.table(summary(fits_genf_objc,
                                type = "rmst", 
                                t=.25,
                                tidy=T,
-                               B=1e5))
+                               B=1e4))
 rmst_rp03_365<-
 data.table::data.table(summary(fits_rp03_objc, 
                                #newdata= newdat2a, 
@@ -3878,7 +3885,7 @@ data.table::data.table(summary(fits_rp03_objc,
                                type = "rmst", 
                                t=1,
                                tidy=T,
-                               B=1e5))
+                               B=1e4))
 rmst_genf_365<-
 data.table::data.table(summary(fits_genf_objc, 
                                #newdata= newdat2a, 
@@ -3886,7 +3893,7 @@ data.table::data.table(summary(fits_genf_objc,
                                type = "rmst", 
                                t=1,
                                tidy=T,
-                               B=1e5))
+                               B=1e4))
 rmst_rp03_1095<-
 data.table::data.table(summary(fits_rp03_objc, 
                                #newdata= newdat2a, 
@@ -3894,7 +3901,7 @@ data.table::data.table(summary(fits_rp03_objc,
                                type = "rmst", 
                                t=3,
                                tidy=T,
-                               B=1e5))
+                               B=1e4))
 rmst_genf_1095<-
 data.table::data.table(summary(fits_genf_objc, 
                                #newdata= newdat2a, 
@@ -3902,7 +3909,7 @@ data.table::data.table(summary(fits_genf_objc,
                                type = "rmst", 
                                t=3,
                                tidy=T,
-                               B=1e5))
+                               B=1e4))
 
 rmst_rp03_1826<-
 data.table::data.table(summary(fits_rp03_objc, 
@@ -3911,7 +3918,7 @@ data.table::data.table(summary(fits_rp03_objc,
                                type = "rmst", 
                                t=5,
                                tidy=T,
-                               B=1e5))
+                               B=1e4))
 rmst_genf_1826<-
 data.table::data.table(summary(fits_genf_objc, 
                                #newdata= newdat2a, 
@@ -3919,7 +3926,7 @@ data.table::data.table(summary(fits_genf_objc,
                                type = "rmst", 
                                t=5,
                                tidy=T,
-                               B=1e5))
+                               B=1e4))
 
 # "median" for median survival (alternative to type="quantile" with quantiles=0.5).
 # "quantile" for quantiles of the survival time distribution.
@@ -3992,7 +3999,7 @@ data.table::data.table(summary(fits_rp03_objc,
                                quantiles=c(.025,.25),
                                tidy=T,
                                na.action="na.omit",
-                               B=1e5)) %>% 
+                               B=1e4)) %>% 
   dplyr::mutate(est=paste0(sprintf("%1.2f",`*rmean`)," [",sprintf("%1.2f",`lcl`),", ",sprintf("%1.2f",`ucl`),"]")) %>%
   dplyr::select(model, time, `Treatment Outcome`,est)%>% 
      tidyr::pivot_wider(names_from = `Treatment Outcome`, values_from = est)
@@ -4004,7 +4011,7 @@ data.table::data.table(summary(fits_genf_objc,
                                type = "quantile", 
                                quantiles=c(.025,.25,.5,.75,.975),
                                tidy=T,
-                               B=1e5))
+                               B=1e4))
 quantile_km<-
 quantile(tr_outcome_fit, probs = c(.025,.25,.5,.75,.975), conf.int = T)
 survival:::quantile.survfit(tr_outcome_fit) 
@@ -4058,7 +4065,7 @@ for (i in 1:nrow(dists_no_covs_obj2)){  #
                                                            #newdata= newdat2a, 
                                                            #newtime=unique(fitted_km$time), 
                                                            type = "cumhaz", 
-                                                           B=1e5,
+                                                           B=1e4,
                                                            tidy=T)))) 
     # Generate fit indices
     fit_flexsurvreg0_obj2<-rbind(fit_flexsurvreg0_obj2,
@@ -4167,10 +4174,12 @@ subplot(nrows = 3, shareX = T, shareY=T, titleX = F, titleY = F, margin = .05)%>
                      textangle = 270,
                      showarrow = F, xref='paper', yref='paper', size=48,margin =m_obj)))
 
-p1_obj2
+htmlwidgets::saveWidget(as_widget(p1_obj2), "test_obj23_jun.html")
 ```
 
 </div>
+
+File is available in this [link](https://github.com/FONDECYTACC/SUD_health_Chile.github.io/raw/master/testest_obj23_jun.html).
 
 <br>
 
@@ -4178,9 +4187,56 @@ p1_obj2
 sexo_2_fits_genf_obj <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1) ~ motivodeegreso_mod_imp*sexo_2,
                              data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg,
                              dist = "genf")
-age_fits_genf_obj <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1) ~ motivodeegreso_mod_imp*edad_grupos,
+age_fits_genf_obj_0 <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1) ~ motivodeegreso_mod_imp*edad_grupos,
                            data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg,
                            dist = "genf")
+age_fits_genf_obj_a <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1) ~ motivodeegreso_mod_imp*edad_grupos,
+                           data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg %>% dplyr::mutate(edad_grupos=factor(edad_grupos, ordered=F)),
+                           dist = "genf")
+age_fits_genf_obj_b <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1) ~ motivodeegreso_mod_imp*edad_al_ing,
+                           data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg,
+                           dist = "genf")
+age_fits_genf_obj_c <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1) ~ motivodeegreso_mod_imp*edad_al_ing^2,
+                           data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg,
+                           dist = "genf")
+age_fits_genf_obj_d <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1) ~ motivodeegreso_mod_imp*poly(edad_al_ing, 2),
+                           data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg,
+                           dist = "genf")
+#Error in poly(edad_al_ing, 2) : missing values are not allowed in 'poly'
+age_fits_genf_obj_e <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1) ~ motivodeegreso_mod_imp*edad_al_ing^3,
+                           data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg,
+                           dist = "genf")
+#Error in terms.formula(formula) : invalid power in formula
+age_fits_genf_obj_f <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1) ~ motivodeegreso_mod_imp*log(edad_al_ing),
+                           data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg,
+                           dist = "genf")
+
+#https://statmodeling.stat.columbia.edu/2009/10/06/coding_ordinal/
+#https://stats.stackexchange.com/questions/33413/continuous-dependent-variable-with-ordinal-independent-variable
+#https://stackoverflow.com/questions/25735636/interpretation-of-ordered-and-non-ordered-factors-vs-numerical-predictors-in-m/25736023#25736023
+
+tryNA <- function(expr) {
+  suppressWarnings(tryCatch(expr = expr,
+                            error = function(e) NA,
+                            finally = NA))
+}
+lapply(c("age_fits_genf_obj_0", "age_fits_genf_obj_a", "age_fits_genf_obj_b", "age_fits_genf_obj_c", "age_fits_genf_obj_d", "age_fits_genf_obj_e", "age_fits_genf_obj_f"), function(x) {paste0(x,": ",round(tryNA(get(x)$AIC),2))})
+
+min_bic_culorg_clus <- 100000000
+for(i in 1:7){
+  skip_to_next <- FALSE
+  
+  lc_culorg_clus <- c("age_fits_genf_obj_0", "age_fits_genf_obj_a", "age_fits_genf_obj_b", "age_fits_genf_obj_c", "age_fits_genf_obj_d", "age_fits_genf_obj_e", "age_fits_genf_obj_f")[[i]]
+  
+  tryCatch(get(lc_culorg_clus), error = function(e) {skip_to_next <<- TRUE })
+  if(skip_to_next) { next } else {
+  if(get(lc_culorg_clus)$AIC < min_bic_culorg_clus){
+    min_bic_culorg_clus <- get(lc_culorg_clus)$AIC
+    age_fits_genf_obj<-get(lc_culorg_clus)
+    }
+  }
+}   
+
 prim_sub_fits_genf_obj <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1)~motivodeegreso_mod_imp*sus_principal_mod,
                            data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg,
                            dist = "genf")
@@ -4202,7 +4258,6 @@ note_st_sub_mvv_fits_genf_obj <-
 note_st_sub_fits_genf_obj <-
     paste0("N= ",format(as.numeric(st_sub_fits_genf_obj$N), big.mark=","),"; Events= ",format(as.numeric(st_sub_fits_genf_obj$events), big.mark=","),"; Censored= ",format(as.numeric(st_sub_fits_genf_obj$N - st_sub_fits_genf_obj$events), big.mark=","),"; Time at risk= ",format(as.numeric(st_sub_fits_genf_obj$trisk), big.mark=","),"; Df= ",format(as.numeric(st_sub_fits_genf_obj$npars), big.mark=","), "; AIC= ",format(as.numeric(st_sub_fits_genf_obj$AIC), big.mark=","))
 
-
 invisible("Transformar los nombres de las interacciones para que sean fáciles de visualizar")
 dt_coefs_simple_surv_obj_w_int<-
     rbind(
@@ -4211,16 +4266,22 @@ dt_coefs_simple_surv_obj_w_int<-
     formal_vars= gsub("sexo_2","",gsub("motivodeegreso_mod_imp","",gsub(":"," x ",attr(sexo_2_fits_genf_obj$datameans,"names")[grepl(":",attr(sexo_2_fits_genf_obj$datameans,"names"))])))),
     cbind(real_vars=attr(age_fits_genf_obj$datameans,"names")[grepl(":",attr(age_fits_genf_obj$datameans,"names"))],
     formal_vars= gsub("edad_grupos","",gsub("motivodeegreso_mod_imp","",gsub(":"," x ",attr(age_fits_genf_obj$datameans,"names")[grepl(":",attr(age_fits_genf_obj$datameans,"names"))])))),
+    
+    cbind(real_vars=attr(age_fits_genf_obj$datameans,"names")[grepl(":",attr(age_fits_genf_obj$datameans,"names"))],
+    formal_vars= gsub("edad_al_ing","Age at admission",gsub("motivodeegreso_mod_imp","",gsub(":"," x ",attr(age_fits_genf_obj$datameans,"names")[grepl(":",attr(age_fits_genf_obj$datameans,"names"))])))),
+    
     cbind(real_vars=attr(prim_sub_fits_genf_obj$datameans,"names")[grepl(":",attr(prim_sub_fits_genf_obj$datameans,"names"))],
     formal_vars= gsub("sus_principal_mod","",gsub("motivodeegreso_mod_imp","",gsub(":"," x ",attr(prim_sub_fits_genf_obj$datameans,"names")[grepl(":",attr(prim_sub_fits_genf_obj$datameans,"names"))])))),
     cbind(real_vars=attr(st_sub_fits_genf_obj$datameans,"names")[grepl(":",attr(st_sub_fits_genf_obj$datameans,"names"))],
     formal_vars= gsub("sus_ini_mod","",gsub("motivodeegreso_mod_imp","",gsub(":"," x ",attr(st_sub_fits_genf_obj$datameans,"names")[grepl(":",attr(st_sub_fits_genf_obj$datameans,"names"))])))),
     cbind(real_vars=attr(st_sub_mvv_fits_genf_obj$datameans,"names")[grepl(":",attr(st_sub_mvv_fits_genf_obj$datameans,"names"))],formal_vars= gsub("sus_ini_mod_mvv","",gsub("motivodeegreso_mod_imp","",gsub(":"," x ",attr(st_sub_mvv_fits_genf_obj$datameans,"names")[grepl(":",attr(st_sub_mvv_fits_genf_obj$datameans,"names"))])))),
-  cbind(real_vars=paste0("sexo_2",levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2)), formal_vars=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2)),
+  cbind(real_vars="edad_al_ing",formal_vars="Age at admission"),
+    cbind(real_vars=paste0("sexo_2",levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2)), formal_vars=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2)),
 cbind(real_vars=paste0("edad_grupos",levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_grupos)), formal_vars=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_grupos)),
 cbind(real_vars=paste0("sus_principal_mod",levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_principal_mod)), formal_vars=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_principal_mod)),
 cbind(real_vars=paste0("sus_ini_mod",levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod)), formal_vars=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod)),
-cbind(real_vars=paste0("sus_ini_mod_mvv",levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod_mvv)), formal_vars=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod_mvv))) %>% 
+cbind(real_vars=paste0("sus_ini_mod_mvv",levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod_mvv)), formal_vars=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod_mvv)),
+cbind(real_vars=paste0("edad_grupos",c("L", "Q", "C", "^4")), formal_vars=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_grupos)[1:4])) %>% 
   dplyr::mutate(formal_vars=gsub("Pasta Base","Cocaine paste",formal_vars)) %>% 
   dplyr::mutate(formal_vars=gsub("Otros","Other",formal_vars)) %>% 
   dplyr::mutate(formal_vars=gsub("Cocaína","Cocaine hydrochloride",formal_vars)) %>% 
@@ -4278,17 +4339,13 @@ coefs_obj_genf_st_sub<-
 
 
 rbindlist(list(coefs_obj_genf_int_sex, coefs_obj_genf_int_age, coefs_obj_genf_int_prim_sub, coefs_obj_genf_st_sub,coefs_obj_genf_int_st_sub_mvv), idcol="Model") %>% 
-  dplyr::select(-Model) %>% 
+  dplyr::mutate(Model=factor(Model, levels=1:5, labels=c("Sex","Age","Primary Substance at Admission","Starting Substance","Starting Substance (more vulnerable value)"))) %>% 
+  #dplyr::select(-Model) %>% 
     knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
                caption=paste0("Table 10a. Coefficients of more complex models"),
-               col.names = c("Term",rep(c("Accelerating Factor (AFT) $ \\\\gamma $/ Parameter value","CI 95%"),1)),
+               col.names = c("Term","Model",rep(c("Accelerating Factor (AFT) $ \\\\gamma $/ Parameter value","CI 95%"),1)),
                align= c("l",rep('c', 16)), escape=F)%>%
-  kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size=13)%>%
-  kableExtra::group_rows("Sex",1,13) %>% 
-  kableExtra::group_rows("Age",14,41) %>% 
-  kableExtra::group_rows("Primary substance at admission",42,69) %>% 
-  kableExtra::group_rows("Starting substance (most frequent)",70,97) %>% 
-  kableExtra::group_rows("Starting substance (most vulnerable)",98,125) %>% 
+  kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size=13)%>% 
   kableExtra::add_footnote(c("Note. From left to right:", paste0("Int w/ Sex: ",note_sex_fits_genf_obj),
     paste0("Int w/ Age: ",note_age_fits_genf_obj),paste0("Int w/ Primary substance at admission: ",note_prim_sub_fits_genf_obj),paste0("Int w/ Starting substance (most frequent): ",note_st_sub_fits_genf_obj),paste0("Int w/ Starting substance (most vulnerable) : ",note_st_sub_mvv_fits_genf_obj), paste0("AFT= $\\\\frac{1}{\\\\hat{HR}}$; $S_2(t)=S_1(\\\\gamma t)$; $\\\\gamma $ <1, exposure harmful survival")), notation = "none",
     escape=FALSE) %>%
@@ -4297,36 +4354,54 @@ rbindlist(list(coefs_obj_genf_int_sex, coefs_obj_genf_int_age, coefs_obj_genf_in
 
 <br>
 
-For example, the probability of the rest of people that are not women with an administrative discharge of not experiencing readmission at time $q$, equals the probability of not experiencing readmission at the 72% of that time (IC 95%: 56%, 93%) of women that had an administrative discharge.
+For example, the probability of the rest of people that are not women with an administrative discharge of not experiencing readmission at time $q$, equals the probability of not experiencing readmission at the 62% of that time (IC 95%: 55%, 71%) of women that had an administrative discharge.
 
 <br>
 
 
 ```{r fit_surv_parametric_complex_model_b, echo=T, error=T, fig.align="center", warning=FALSE, paged.print=TRUE, eval=T}
+knitr::knit_exit()
 
 #2022
-total_fits_genf_obj <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1)~motivodeegreso_mod_imp*sexo_2+ motivodeegreso_mod_imp*edad_grupos+ motivodeegreso_mod_imp*sus_principal_mod+ motivodeegreso_mod_imp*sus_ini_mod,
-                                   data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg,
-                                   dist = "genf")
+#https://github.com/chjackson/flexsurv-dev/issues/67
+#flexsurvreg handles uncentered and/or high-variance predictors particularly badly #67
+
+total_fits_genf_obj <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1)~motivodeegreso_mod_imp*sexo_2+ motivodeegreso_mod_imp*edad_al_ing+ motivodeegreso_mod_imp*sus_principal_mod+ motivodeegreso_mod_imp*sus_ini_mod, data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg %>% dplyr::mutate(edad_al_ing=as.numeric(scale(edad_al_ing, scale=F))),dist = "genf")
+
+total_fits_genf_obj_b <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1)~motivodeegreso_mod_imp*sexo_2+ motivodeegreso_mod_imp*edad_grupos+ motivodeegreso_mod_imp*sus_principal_mod+ motivodeegreso_mod_imp*sus_ini_mod, data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg,dist = "genf")
+
 note_total_fits_genf_obj <-
     paste0("N= ",format(as.numeric(total_fits_genf_obj$N), big.mark=","),"; Events= ",format(as.numeric(total_fits_genf_obj$events), big.mark=","),"; Censored= ",format(as.numeric(total_fits_genf_obj$N - total_fits_genf_obj$events), big.mark=","),"; Time at risk= ",format(as.numeric(total_fits_genf_obj$trisk), big.mark=","),"; Df= ",format(as.numeric(total_fits_genf_obj$npars), big.mark=","), "; AIC= ",format(as.numeric(total_fits_genf_obj$AIC), big.mark=","))
 
+#formal_vars
+
 coefs_obj_genf_st_sub_total<-
   data.table::data.table(round(exp(total_fits_genf_obj$res),2)[,1:3],keep.rownames = T) %>% 
-  dplyr::left_join(dt_coefs_simple_surv_obj_w_int, by=c("rn"="real_vars")) %>% 
+  dplyr::left_join(dplyr::filter(dt_coefs_simple_surv_obj_w_int, !grepl("edad_al_ing", formal_vars)), by=c("rn"="real_vars")) %>% 
   #dplyr::mutate(p.value=ifelse(p.value<.001,"<0.001",as.character(sprintf("%1.3f",p.value)))) %>% 
   dplyr::mutate(conf.low=sprintf("%1.2f",`L95%`),
                 conf.high=sprintf("%1.2f",`U95%`),
                 statistic=sprintf("%1.2f",est),
                 `CI 95%`=paste0(conf.low,", ",conf.high)) %>% 
+  #dplyr::mutate(var=dplyr::case_when(grepl("",rn)))
   dplyr::select(formal_vars, statistic, `CI 95%`) 
 
 coefs_obj_genf_st_sub_total %>% 
   knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
                caption=paste0("Table 10b. Coefficients of more complex model & controlling for interactions"),
-               col.names = c("Term",rep(c("Accelerating Factor (AFT) $ \\\\gamma $/ Parameter value","CI 95%"),1)),
+               col.names = c("Term",rep(c("Accelerating Factor (AFT)/Parameter value","CI 95%"),1)),
                align= c("l",rep('c', 16)), escape=F)%>%
   kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size=13)%>%
+  kableExtra::group_rows("",1,4) %>%
+  kableExtra::group_rows("Cause of discharge",5,8) %>% 
+  kableExtra::group_rows("Sex",9,9) %>% 
+  kableExtra::group_rows("Age",10,10) %>% 
+  kableExtra::group_rows("Substance at admission",11,14) %>%
+  kableExtra::group_rows("Starting Substance (most frequent)",15,18) %>%
+  kableExtra::group_rows("Sex",19,22) %>% 
+  kableExtra::group_rows("Age",23,26) %>% 
+  kableExtra::group_rows("Substance at admission",27,42) %>%
+  kableExtra::group_rows("Starting Substance (most frequent)",43,58) %>% 
   kableExtra::add_footnote(c("Note. From left to right:", 
                              paste0("Model fit: ",note_total_fits_genf_obj), 
                              paste0("AFT= $\\\\frac{1}{\\\\hat{HR}}$; $S_2(t)=S_1(\\\\gamma t)$; $\\\\gamma $ <1, exposure harmful survival")), 
@@ -4341,123 +4416,129 @@ coefs_obj_genf_st_sub_total %>%
 #sexo_2_fits_genf_obj  age_fits_genf_obj prim_sub_fits_genf_obj  st_sub_fits_genf_obj st_sub_mvv_fits_genf_obj
 
 dt_sum_ob_tr_out_sex_90<-
-  rbindlist(summary(sexo_2_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sexo_2=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2)), B=1e5, t=.25), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(sexo_2_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sexo_2=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2)), B=1e4, t=.25), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Sex"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(Sex=factor(gsub("sexo_2\\=","",Sex))) 
 
+# dt_sum_ob_tr_out_age_90<-
+#   rbindlist(summary(age_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], edad_grupos=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_grupos)), B=1e4, t=.25), idcol="Treatment Outcome") %>% 
+#     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Age"),sep=", ") %>% 
+#   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
+#   dplyr::mutate(Age=factor(gsub("edad_grupos\\=","",Age))) 
+
 dt_sum_ob_tr_out_age_90<-
-  rbindlist(summary(age_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], edad_grupos=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_grupos)), B=1e5, t=.25), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(age_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], edad_al_ing=quantile(scale(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_al_ing, scale=F),c(.25, .5, .75), na.rm=T)), B=1e4, t=.25), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Age"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
-  dplyr::mutate(Age=factor(gsub("edad_grupos\\=","",Age))) 
+  dplyr::mutate(Age=factor(gsub("edad_al_ing\\=","",Age)))
 
 dt_sum_ob_tr_out_prim_sub_90<-
-  rbindlist(summary(prim_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_principal_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_principal_mod)), B=1e5, t=.25), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(prim_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_principal_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_principal_mod)), B=1e4, t=.25), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Substance at admission"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(`Substance at admission` =factor(gsub("sus_principal_mod\\=","",`Substance at admission`))) 
 
 dt_sum_ob_tr_out_st_sub_90<-
-  rbindlist(summary(st_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod)), B=1e5, t=.25), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(st_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod)), B=1e4, t=.25), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Starting Substance (most frequent)"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(`Starting Substance (most frequent)`=factor(gsub("sus_ini_mod\\=","",`Starting Substance (most frequent)`))) 
 
 dt_sum_ob_tr_out_st_sub_mvv_90<-
-  rbindlist(summary(st_sub_mvv_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod_mvv=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod_mvv)), B=1e5, t=.25), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(st_sub_mvv_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod_mvv=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod_mvv)), B=1e4, t=.25), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Starting Substance (most vulnerable)"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(`Starting Substance (most vulnerable)`=factor(gsub("sus_ini_mod_mvv\\=","",`Starting Substance (most vulnerable)`))) 
 
 
 dt_sum_ob_tr_out_sex_365<-
-  rbindlist(summary(sexo_2_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sexo_2=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2)), B=1e5, t=.25), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(sexo_2_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sexo_2=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2)), B=1e4, t=.25), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Sex"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(Sex=factor(gsub("sexo_2\\=","",Sex))) 
 
 dt_sum_ob_tr_out_age_365<-
-  rbindlist(summary(age_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], edad_grupos=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_grupos)), B=1e5, t=1), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(age_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], edad_al_ing=quantile(scale(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_al_ing, scale=F),c(.25, .5, .75), na.rm=T)), B=1e4, t=1), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Age"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
-  dplyr::mutate(Age=factor(gsub("edad_grupos\\=","",Age))) 
+  dplyr::mutate(Age=factor(gsub("edad_al_ing\\=","",Age)))
 
 dt_sum_ob_tr_out_prim_sub_365<-
-  rbindlist(summary(prim_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_principal_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_principal_mod)), B=1e5, t=1), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(prim_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_principal_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_principal_mod)), B=1e4, t=1), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Substance at admission"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(`Substance at admission` =factor(gsub("sus_principal_mod\\=","",`Substance at admission`))) 
 
 dt_sum_ob_tr_out_st_sub_365<-
-  rbindlist(summary(st_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod)), B=1e5, t=1), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(st_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod)), B=1e4, t=1), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Starting Substance (most frequent)"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(`Starting Substance (most frequent)`=factor(gsub("sus_ini_mod\\=","",`Starting Substance (most frequent)`))) 
 
 dt_sum_ob_tr_out_st_sub_mvv_365<-
-  rbindlist(summary(st_sub_mvv_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod_mvv=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod_mvv)), B=1e5, t=1), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(st_sub_mvv_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod_mvv=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod_mvv)), B=1e4, t=1), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Starting Substance (most vulnerable)"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(`Starting Substance (most vulnerable)`=factor(gsub("sus_ini_mod_mvv\\=","",`Starting Substance (most vulnerable)`))) 
 
 dt_sum_ob_tr_out_sex_1096<-
-  rbindlist(summary(sexo_2_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sexo_2=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2)), B=1e5, t=3), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(sexo_2_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sexo_2=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2)), B=1e4, t=3), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Sex"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(Sex=factor(gsub("sexo_2\\=","",Sex))) 
 
 dt_sum_ob_tr_out_age_1096<-
-  rbindlist(summary(age_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], edad_grupos=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_grupos)), B=1e5, t=3), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(age_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], edad_al_ing=quantile(scale(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_al_ing, scale=F),c(.25, .5, .75), na.rm=T)), B=1e4, t=3), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Age"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
-  dplyr::mutate(Age=factor(gsub("edad_grupos\\=","",Age))) 
+  dplyr::mutate(Age=factor(gsub("edad_al_ing\\=","",Age)))
 
 dt_sum_ob_tr_out_prim_sub_1096<-
-  rbindlist(summary(prim_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_principal_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_principal_mod)), B=1e5, t=3), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(prim_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_principal_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_principal_mod)), B=1e4, t=3), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Substance at admission"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(`Substance at admission` =factor(gsub("sus_principal_mod\\=","",`Substance at admission`))) 
 
 dt_sum_ob_tr_out_st_sub_1096<-
-  rbindlist(summary(st_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod)), B=1e5, t=3), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(st_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod)), B=1e4, t=3), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Starting Substance (most frequent)"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(`Starting Substance (most frequent)`=factor(gsub("sus_ini_mod\\=","",`Starting Substance (most frequent)`))) 
 
 dt_sum_ob_tr_out_st_sub_mvv_1096<-
-  rbindlist(summary(st_sub_mvv_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod_mvv=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod_mvv)), B=1e5, t=3), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(st_sub_mvv_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod_mvv=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod_mvv)), B=1e4, t=3), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Starting Substance (most vulnerable)"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(`Starting Substance (most vulnerable)`=factor(gsub("sus_ini_mod_mvv\\=","",`Starting Substance (most vulnerable)`))) 
 
 
 dt_sum_ob_tr_out_sex_1826<-
-  rbindlist(summary(sexo_2_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sexo_2=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2)), B=1e5, t=5), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(sexo_2_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sexo_2=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2)), B=1e4, t=5), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Sex"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(Sex=factor(gsub("sexo_2\\=","",Sex))) 
 
 dt_sum_ob_tr_out_age_1826<-
-  rbindlist(summary(age_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], edad_grupos=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_grupos)), B=1e5, t=5), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(age_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], edad_al_ing=quantile(scale(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_al_ing, scale=F),c(.25, .5, .75), na.rm=T)), B=1e4, t=5), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Age"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
-  dplyr::mutate(Age=factor(gsub("edad_grupos\\=","",Age))) 
+  dplyr::mutate(Age=factor(gsub("edad_al_ing\\=","",Age)))
 
 dt_sum_ob_tr_out_prim_sub_1826<-
-  rbindlist(summary(prim_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_principal_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_principal_mod)), B=1e5, t=5), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(prim_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_principal_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_principal_mod)), B=1e4, t=5), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Substance at admission"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(`Substance at admission` =factor(gsub("sus_principal_mod\\=","",`Substance at admission`))) 
 
 dt_sum_ob_tr_out_st_sub_1826<-
-  rbindlist(summary(st_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod)), B=1e5, t=5), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(st_sub_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod)), B=1e4, t=5), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Starting Substance (most frequent)"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(`Starting Substance (most frequent)`=factor(gsub("sus_ini_mod\\=","",`Starting Substance (most frequent)`))) 
 
 dt_sum_ob_tr_out_st_sub_mvv_1826<-
-  rbindlist(summary(st_sub_mvv_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod_mvv=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod_mvv)), B=1e5, t=5), idcol="Treatment Outcome") %>% 
+  rbindlist(summary(st_sub_mvv_fits_genf_obj, "rmst", newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sus_ini_mod_mvv=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod_mvv)), B=1e4, t=5), idcol="Treatment Outcome") %>% 
     tidyr::separate(`Treatment Outcome`,into=c("Treatment Outcome","Starting Substance (most vulnerable)"),sep=", ") %>% 
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(`Starting Substance (most vulnerable)`=factor(gsub("sus_ini_mod_mvv\\=","",`Starting Substance (most vulnerable)`))) 
@@ -4469,6 +4550,7 @@ rbindlist(list(
 dt_sum_ob_tr_out_sex_90, dt_sum_ob_tr_out_age_90, dt_sum_ob_tr_out_prim_sub_90, dt_sum_ob_tr_out_st_sub_90, dt_sum_ob_tr_out_st_sub_mvv_90, dt_sum_ob_tr_out_sex_365, dt_sum_ob_tr_out_age_365, dt_sum_ob_tr_out_prim_sub_365, dt_sum_ob_tr_out_st_sub_365, dt_sum_ob_tr_out_st_sub_mvv_365, dt_sum_ob_tr_out_sex_1096, dt_sum_ob_tr_out_age_1096, dt_sum_ob_tr_out_prim_sub_1096, dt_sum_ob_tr_out_st_sub_1096, dt_sum_ob_tr_out_st_sub_mvv_1096, dt_sum_ob_tr_out_sex_1826, dt_sum_ob_tr_out_age_1826, dt_sum_ob_tr_out_prim_sub_1826, dt_sum_ob_tr_out_st_sub_1826, dt_sum_ob_tr_out_st_sub_mvv_1826), idcol=model, use.names=F) %>% 
   dplyr::rename("Category"="Sex","model"="fits_rp05_objc") %>% 
   dplyr::mutate(RMST=paste0(sprintf("%3.2f",`est`)," [",sprintf("%3.2f",`lcl`),", ",sprintf("%3.2f",`ucl`),"]")) %>%
+  dplyr::mutate(Category= dplyr::case_when(grepl("-8.540",as.character(Category))~"Q1",grepl("-1.840",as.character(Category))~"Q2",grepl("7.019",as.character(Category))~"Q3",T~as.character(Category))) %>% 
   tidyr::pivot_wider(id_cols=c("model","Category"), names_from = `Treatment Outcome`, values_from = RMST) %>% 
   dplyr::mutate(Category=gsub("Pasta Base","Cocaine paste",Category)) %>% 
   dplyr::mutate(Category=gsub("Otros","Other",Category)) %>% 
@@ -4480,10 +4562,10 @@ dt_sum_ob_tr_out_sex_90, dt_sum_ob_tr_out_age_90, dt_sum_ob_tr_out_prim_sub_90, 
   dplyr::rename("Variable"="lab") %>% 
   knitr::kable(format="html",caption="Table 11a. Predicted Restricted Mean Survival Time of The Complex models (Interaction) depending on a specific time and value") %>% 
   kableExtra::kable_classic() %>% 
-  kableExtra::group_rows("At 90 days",1,22) %>% 
-  kableExtra::group_rows("At 1 year",23,44) %>% 
-  kableExtra::group_rows("At 3 years",45,66) %>% 
-    kableExtra::group_rows("At 5 years",67,88) %>%
+  kableExtra::group_rows("At 90 days",1,20) %>% 
+  kableExtra::group_rows("At 1 year",21,40) %>% 
+  kableExtra::group_rows("At 3 years",41,60) %>% 
+    kableExtra::group_rows("At 5 years",61,80) %>%
   kableExtra::scroll_box(width = "100%", height = "350px")
 ```
 
@@ -4494,12 +4576,15 @@ time_before_sim_rmst<-Sys.time()
 
 #Warning: stack imbalance in '-', 92 then 93
 rbindlist(summary(total_fits_genf_obj, "rmst", 
-                  newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sexo_2=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2), edad_grupos=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_grupos), sus_principal_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_principal_mod), sus_ini_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod)), B=1e5, t=c(.25,1,3,5)), 
+                  newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sexo_2=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2), #edad_grupos=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_grupos),
+edad_al_ing=quantile(scale(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_al_ing, scale=F),c(.25, .5, .75), na.rm=T),                                      sus_principal_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_principal_mod), sus_ini_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod)), B=1e4, t=c(.25,1,3,5)), 
           idcol="Total") %>% 
   tidyr::separate(Total,into=c("Treatment Outcome","Sex", "Age","Primary Substance","Initial Substance"),sep=", ") %>% 
+    dplyr::mutate(Age= dplyr::case_when(grepl("-8.540",as.character(Age))~"Q1",grepl("-1.840",as.character(Age))~"Q2",grepl("7.019",as.character(Age))~"Q3",T~as.character(Age))) %>% #View()
   dplyr::mutate(`Treatment Outcome`=factor(gsub("motivodeegreso_mod_imp\\=","",`Treatment Outcome`))) %>% 
   dplyr::mutate(Sex=factor(gsub("sexo_2\\=","",Sex))) %>% 
   dplyr::mutate(Age=factor(gsub("edad_grupos\\=","",Age))) %>% 
+  dplyr::mutate(Age=factor(gsub("edad_al_ing\\=","",Age))) %>% 
   dplyr::mutate(`Primary Substance`=factor(gsub("sus_principal_mod\\=","",`Primary Substance`))) %>% 
   dplyr::mutate(`Initial Substance`=factor(gsub("sus_ini_mod\\=","",`Initial Substance`))) %>% 
   dplyr::mutate(RMST=paste0(sprintf("%3.2f",`est`)," [",sprintf("%3.2f",`lcl`),", ",sprintf("%3.2f",`ucl`),"]"))%>%
