@@ -4046,7 +4046,7 @@ fit_flexsurvreg0_obj2<-data.frame()
 fitted_flexsurvreg0_obj2<-data.frame()
 
 dists_no_covs_obj2<-cbind.data.frame(covs=c(rep("fits_",(15)*1)),
-              formal=rep(c("(AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
+              formal=rep(c("Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
                 "Generalized gamma", "Generalized gamma (original)", "Lognormal", "Exponential", "Generalized F", "Generalized F(original)", paste0("RP0",2:5)),1*1),
               dist=c("weibull", "weibullph", "llogis", "gamma", "gengamma","gengamma.orig", "gompertz", "lnorm", "exp", "genf","genf.orig",rep("no dist",4)),
               model=paste0(rep(c("wei", "weiph", "gomp", "llogis", "gam","ggam", "ggam_orig", "logn", "exp", "genf","genf_orig", paste0("rp0",2:5)),1*1),"_objc"),
@@ -4099,6 +4099,9 @@ data.frame(fitted_flexsurvreg0_obj2)[,c("dist","motivodeegreso_mod_imp","time","
 ```
 
 </div>
+
+
+<br>
 
 <!---
 arrange(fit_flexsurvreg0_obj2, AIC)
@@ -4173,13 +4176,19 @@ subplot(nrows = 3, shareX = T, shareY=T, titleX = F, titleY = F, margin = .05)%>
                      font = list(color = "black",size = 15),
                      textangle = 270,
                      showarrow = F, xref='paper', yref='paper', size=48,margin =m_obj)))
-
+#p1_obj2
 htmlwidgets::saveWidget(as_widget(p1_obj2), "test_obj23_jun.html")
 ```
 
 </div>
 
+<br>
+
 File is available in this [link](https://github.com/FONDECYTACC/SUD_health_Chile.github.io/raw/master/testest_obj23_jun.html).
+
+<br>
+
+As Generalized F AFT model was found to be the best fitted one, the interpretation about the effect of different independent variables on the survival times was made by using Generalized F AFT model. 
 
 <br>
 
@@ -4343,7 +4352,7 @@ rbindlist(list(coefs_obj_genf_int_sex, coefs_obj_genf_int_age, coefs_obj_genf_in
   #dplyr::select(-Model) %>% 
     knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
                caption=paste0("Table 10a. Coefficients of more complex models"),
-               col.names = c("Term","Model",rep(c("Accelerating Factor (AFT) $ \\\\gamma $/ Parameter value","CI 95%"),1)),
+               col.names = c("Term","Model",rep(c("Accelerating Factor (AFT) or Time Ratio (TR)/ Parameter value","CI 95%"),1)),
                align= c("l",rep('c', 16)), escape=F)%>%
   kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size=13)%>% 
   kableExtra::add_footnote(c("Note. From left to right:", paste0("Int w/ Sex: ",note_sex_fits_genf_obj),
@@ -4360,7 +4369,7 @@ For example, the probability of the rest of people that are not women with an ad
 
 
 ```{r fit_surv_parametric_complex_model_b, echo=T, error=T, fig.align="center", warning=FALSE, paged.print=TRUE, eval=T}
-knitr::knit_exit()
+#knitr::knit_exit()
 
 #2022
 #https://github.com/chjackson/flexsurv-dev/issues/67
@@ -4386,10 +4395,25 @@ coefs_obj_genf_st_sub_total<-
   #dplyr::mutate(var=dplyr::case_when(grepl("",rn)))
   dplyr::select(formal_vars, statistic, `CI 95%`) 
 
+
+if(no_mostrar==1){
+  data.table::data.table(round(exp(total_fits_genf_obj$res),2)[,1:3],keep.rownames = T) %>% 
+  dplyr::left_join(dplyr::filter(dt_coefs_simple_surv_obj_w_int, !grepl("edad_al_ing", formal_vars)), by=c("rn"="real_vars")) %>% 
+    dplyr::left_join(broom::tidy(total_fits_genf_obj)[,c("term","p.value")], by=c("rn"="term")) %>% 
+  #dplyr::mutate(p.value=ifelse(p.value<.001,"<0.001",as.character(sprintf("%1.3f",p.value)))) %>% 
+  dplyr::mutate(conf.low=sprintf("%1.2f",`L95%`),
+                conf.high=sprintf("%1.2f",`U95%`),
+                statistic=sprintf("%1.2f",est),
+                `CI 95%`=paste0(conf.low,", ",conf.high)) %>% 
+  #dplyr::mutate(var=dplyr::case_when(grepl("",rn)))
+  dplyr::select(formal_vars, statistic, `CI 95%`) %>% 
+    copiar_nombres()
+}
+
 coefs_obj_genf_st_sub_total %>% 
   knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
                caption=paste0("Table 10b. Coefficients of more complex model & controlling for interactions"),
-               col.names = c("Term",rep(c("Accelerating Factor (AFT)/Parameter value","CI 95%"),1)),
+               col.names = c("Term",rep(c("Accelerating Factor (AFT) or Time Ratio (TR)/Parameter value","CI 95%"),1)),
                align= c("l",rep('c', 16)), escape=F)%>%
   kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size=13)%>%
   kableExtra::group_rows("",1,4) %>%
@@ -4573,8 +4597,23 @@ dt_sum_ob_tr_out_sex_90, dt_sum_ob_tr_out_age_90, dt_sum_ob_tr_out_prim_sub_90, 
 
 ```{r fit_surv_parametric_complex_model_pred_b, echo=T, error=T, fig.align="center", warning=FALSE, paged.print=TRUE, eval=T}
 time_before_sim_rmst<-Sys.time()
+# Abadi, A., Amanpour, F., Bajdik, C., & Yavari, P. (2012). Breast Cancer Survival Analysis: Applying the Generalized Gamma Distribution under Different Conditions of the Proportional Hazards and Accelerated Failure Time Assumptions. International journal of preventive medicine, 3(9), 644–651.
+#
+# The relative times are defined for 0 < p < 1 as the ratio of the corresponding quantile functions, RT (p) = t1(p)/t0(p). The interpretation of RT (p) is that the time required for proportion p of individuals in the exposed or treated population to experience the event of interest is RT(p)-fold the time for the same proportion of events to occur in the reference population. Links between quantiles of the gamma and GG facilitats use of software to obtain the percentiles of the GG.
+#
+# In AFT model, the dependent variable is log of the survival time T.
+
+#https://myweb.uiowa.edu/pbreheny/7210/f15/notes/10-15.pdf
+#
+#If e ηi = 1/2, that subject effectively ages at twice normal speed If e
+#ηi = 2, that subject effectively ages at only half of normal speed
+
+# A positive coefficient means the effect of the covariate is to prolong the survival time while a negative coefficient is to shorten the time to attrition. Relatively, a time ratio greater than 1 implies the effect of the covariate increases the survival time and otherwise decreases (“speeds up”) the time to attrition.
+
+#have longer survival times compared to their counterparts
 
 #Warning: stack imbalance in '-', 92 then 93
+rmst_total_fits_genf_obj<-
 rbindlist(summary(total_fits_genf_obj, "rmst", 
                   newdata=expand.grid(motivodeegreso_mod_imp=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$motivodeegreso_mod_imp)[1:5], sexo_2=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sexo_2), #edad_grupos=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_grupos),
 edad_al_ing=quantile(scale(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_al_ing, scale=F),c(.25, .5, .75), na.rm=T),                                      sus_principal_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_principal_mod), sus_ini_mod=levels(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$sus_ini_mod)), B=1e4, t=c(.25,1,3,5)), 
@@ -4586,8 +4625,10 @@ edad_al_ing=quantile(scale(CONS_C1_df_dup_SEP_2020_irrs_health_survreg$edad_al_i
   dplyr::mutate(Age=factor(gsub("edad_grupos\\=","",Age))) %>% 
   dplyr::mutate(Age=factor(gsub("edad_al_ing\\=","",Age))) %>% 
   dplyr::mutate(`Primary Substance`=factor(gsub("sus_principal_mod\\=","",`Primary Substance`))) %>% 
-  dplyr::mutate(`Initial Substance`=factor(gsub("sus_ini_mod\\=","",`Initial Substance`))) %>% 
-  dplyr::mutate(RMST=paste0(sprintf("%3.2f",`est`)," [",sprintf("%3.2f",`lcl`),", ",sprintf("%3.2f",`ucl`),"]"))%>%
+  dplyr::mutate(`Initial Substance`=factor(gsub("sus_ini_mod\\=","",`Initial Substance`)))
+  
+rmst_total_fits_genf_obj %>% 
+    dplyr::mutate(RMST=paste0(sprintf("%3.2f",`est`)," [",sprintf("%3.2f",`lcl`),", ",sprintf("%3.2f",`ucl`),"]"))%>%
   tidyr::pivot_wider(id_cols=c("time","Sex","Age","Primary Substance","Initial Substance"), names_from = `Treatment Outcome`, values_from = RMST) %>% 
     dplyr::mutate(time=factor(as.character(time),
                 levels=c("0.25","1","3","5"), 
@@ -4600,6 +4641,94 @@ time_after_sim_rmst<-Sys.time()
 
 paste0("Time in process: ");time_after_sim_rmst-time_before_sim_rmst
 
+```
+
+<br>
+
+```{r plot_rmst_complex_mod1, echo=T, error=T, fig.cap="Figure 21a. Predicted Interaction", warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, eval=T}
+
+rmst_total_fits_genf_obj %>%
+    dplyr::mutate(time=factor(as.character(time),
+                levels=c("0.25","1","3","5"), 
+                labels=c("~3 months", "~1 year", "~3 years", "~5 years"))) %>%   
+  dplyr::filter(Age=="Q2", `Initial Substance`=="Alcohol", `Primary Substance`=="Alcohol") %>% 
+  ggplot(aes(x=`Treatment Outcome`, y=est, color=Sex, fill=Sex))+
+  geom_bar(aes(x=`Treatment Outcome`, y=est, color=Sex, fill=Sex), position="dodge", stat="identity", alpha=0.4)+
+  sjPlot::theme_sjplot2()+
+  geom_errorbar(aes(x=`Treatment Outcome`, ymin=lcl, ymax=ucl, color=Sex, fill=Sex), position="dodge", stat="identity", width=0.6,  alpha=0.9, size=1)+
+  ylab("Time to event")+
+  facet_wrap(~time)+
+  #scale_color_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
+  #scale_fill_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
+  xlab("Cause of discharge")+
+  coord_flip(ylim=c(.6,1))+
+  labs(caption="Note. For a median age with alcohol as the initial and primary substance")
+```
+
+<br>
+
+```{r plot_rmst_complex_mod2, echo=T, error=T, fig.cap="Figure 21b. Predicted Interaction", warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, eval=T}
+
+rmst_total_fits_genf_obj %>%
+    dplyr::mutate(time=factor(as.character(time),
+                levels=c("0.25","1","3","5"), 
+                labels=c("~3 months", "~1 year", "~3 years", "~5 years"))) %>%   
+  dplyr::filter(Sex=="Men", `Initial Substance`=="Alcohol", `Primary Substance`=="Alcohol") %>% 
+  ggplot(aes(x=`Treatment Outcome`, y=est, color=Age, fill=Age))+
+  geom_bar(aes(x=`Treatment Outcome`, y=est, color=Age, fill=Age), position="dodge", stat="identity", alpha=0.4)+
+  sjPlot::theme_sjplot2()+
+  geom_errorbar(aes(x=`Treatment Outcome`, ymin=lcl, ymax=ucl, color=Age, fill=Age), position="dodge", stat="identity", width=0.6,  alpha=0.9, size=1)+
+  ylab("Time to event")+
+  facet_wrap(~time)+
+  #scale_color_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
+  #scale_fill_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
+  xlab("Cause of discharge")+
+  coord_flip(ylim=c(.6,1))+
+  labs(caption="Note. For men with alcohol as the initial and primary substance")
+```
+
+<br>
+
+```{r plot_rmst_complex_mod3, echo=T, error=T, fig.cap="Figure 21c. Predicted Interaction", warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, eval=T}
+
+rmst_total_fits_genf_obj %>%
+    dplyr::mutate(time=factor(as.character(time),
+                levels=c("0.25","1","3","5"), 
+                labels=c("~3 months", "~1 year", "~3 years", "~5 years"))) %>%   
+  dplyr::filter(Sex=="Men", Age=="Q2", `Primary Substance`=="Alcohol") %>% 
+  ggplot(aes(x=`Treatment Outcome`, y=est, color=`Initial Substance`, fill=`Initial Substance`))+
+  geom_bar(aes(x=`Treatment Outcome`, y=est, color=`Initial Substance`, fill=`Initial Substance`), position="dodge", stat="identity", alpha=0.4)+
+  sjPlot::theme_sjplot2()+
+  geom_errorbar(aes(x=`Treatment Outcome`, ymin=lcl, ymax=ucl, color=`Initial Substance`, fill=`Initial Substance`), position="dodge", stat="identity", width=0.6,  alpha=0.9, size=1)+
+  ylab("Time to event")+
+  facet_wrap(~time)+
+  #scale_color_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
+  #scale_fill_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
+  xlab("Cause of discharge")+
+  coord_flip(ylim=c(.6,1))+
+  labs(caption="Note. For men with a median age and alcohol as the primary substance at admission")
+```
+
+<br>
+
+```{r plot_rmst_complex_mod4, echo=T, error=T, fig.cap="Figure 21d. Predicted Interaction", warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, eval=T}
+
+rmst_total_fits_genf_obj %>%
+    dplyr::mutate(time=factor(as.character(time),
+                levels=c("0.25","1","3","5"), 
+                labels=c("~3 months", "~1 year", "~3 years", "~5 years"))) %>%   
+  dplyr::filter(Sex=="Men", Age=="Q2", `Initial Substance`=="Alcohol") %>% 
+  ggplot(aes(x=`Treatment Outcome`, y=est, color=`Primary Substance`, fill=`Primary Substance`))+
+  geom_bar(aes(x=`Treatment Outcome`, y=est, color=`Primary Substance`, fill=`Primary Substance`), position="dodge", stat="identity", alpha=0.4)+
+  sjPlot::theme_sjplot2()+
+  geom_errorbar(aes(x=`Treatment Outcome`, ymin=lcl, ymax=ucl, color=`Primary Substance`, fill=`Primary Substance`), position="dodge", stat="identity", width=0.6,  alpha=0.9, size=1)+
+  ylab("Time to event")+
+  facet_wrap(~time)+
+  #scale_color_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
+  #scale_fill_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
+  xlab("Cause of discharge")+
+  coord_flip(ylim=c(.6,1))+
+  labs(caption="Note. For men with a median age and alcohol as the initial substance")
 ```
 
 <br>
