@@ -163,6 +163,7 @@ library(rbokeh)
 library(altair)
 library(zoo)
 library(broom)
+library(car)
 library(sqldf)
 library(devtools)
 library(codebook)
@@ -4184,7 +4185,7 @@ htmlwidgets::saveWidget(as_widget(p1_obj2), "test_obj23_jun.html")
 
 <br>
 
-File is available in this [link](https://github.com/FONDECYTACC/SUD_health_Chile.github.io/raw/master/testest_obj23_jun.html).
+File is available in this [link](https://github.com/FONDECYTACC/SUD_health_Chile.github.io/raw/master/test_obj23_jun.html).
 
 <br>
 
@@ -4377,7 +4378,23 @@ For example, the probability of the rest of people that are not women with an ad
 
 total_fits_genf_obj <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1)~motivodeegreso_mod_imp*sexo_2+ motivodeegreso_mod_imp*edad_al_ing+ motivodeegreso_mod_imp*sus_principal_mod+ motivodeegreso_mod_imp*sus_ini_mod, data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg %>% dplyr::mutate(edad_al_ing=as.numeric(scale(edad_al_ing, scale=F))),dist = "genf")
 
-total_fits_genf_obj_b <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1)~motivodeegreso_mod_imp*sexo_2+ motivodeegreso_mod_imp*edad_grupos+ motivodeegreso_mod_imp*sus_principal_mod+ motivodeegreso_mod_imp*sus_ini_mod, data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg,dist = "genf")
+# total_fits_genf_obj_b <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1)~motivodeegreso_mod_imp*sexo_2+ motivodeegreso_mod_imp*edad_grupos+ motivodeegreso_mod_imp*sus_principal_mod+ motivodeegreso_mod_imp*sus_ini_mod, data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg,dist = "genf")
+
+#alternative parametrization
+#https://www.youtube.com/watch?v=mxS8YbA-Zyw
+# total_fits_genf_obj_alt_par <- flexsurvreg(formula=Surv(outcome_to_readmission, event==1)~motivodeegreso_mod_imp:sexo_2+ motivodeegreso_mod_imp:edad_al_ing+ motivodeegreso_mod_imp:sus_principal_mod+ motivodeegreso_mod_imp:sus_ini_mod, data = CONS_C1_df_dup_SEP_2020_irrs_health_survreg %>% dplyr::mutate(edad_al_ing=as.numeric(scale(edad_al_ing, scale=F))),dist = "genf")
+
+total_fits_genf_obj_int_caus_adm_prim_subs<-
+linearHypothesis(total_fits_genf_obj, c("motivodeegreso_mod_impLate Drop-out:sus_principal_modCocaine hydrochloride", "motivodeegreso_mod_impEarly Drop-out:sus_principal_modCocaine hydrochloride", "motivodeegreso_mod_impAdministrative discharge:sus_principal_modCocaine hydrochloride", "motivodeegreso_mod_impReferral to another treatment:sus_principal_modCocaine hydrochloride", "motivodeegreso_mod_impLate Drop-out:sus_principal_modMarijuana", "motivodeegreso_mod_impEarly Drop-out:sus_principal_modMarijuana", "motivodeegreso_mod_impAdministrative discharge:sus_principal_modMarijuana", "motivodeegreso_mod_impReferral to another treatment:sus_principal_modMarijuana", "motivodeegreso_mod_impLate Drop-out:sus_principal_modOther", "motivodeegreso_mod_impEarly Drop-out:sus_principal_modOther", "motivodeegreso_mod_impAdministrative discharge:sus_principal_modOther", "motivodeegreso_mod_impReferral to another treatment:sus_principal_modOther"))
+
+total_fits_genf_obj_int_caus_adm_init_subs<-
+linearHypothesis(total_fits_genf_obj, c("motivodeegreso_mod_impLate Drop-out:sus_ini_modCocaine hydrochloride", "motivodeegreso_mod_impEarly Drop-out:sus_ini_modCocaine hydrochloride", "motivodeegreso_mod_impAdministrative discharge:sus_ini_modCocaine hydrochloride", "motivodeegreso_mod_impReferral to another treatment:sus_ini_modCocaine hydrochloride", "motivodeegreso_mod_impLate Drop-out:sus_ini_modMarijuana", "motivodeegreso_mod_impEarly Drop-out:sus_ini_modMarijuana", "motivodeegreso_mod_impAdministrative discharge:sus_ini_modMarijuana", "motivodeegreso_mod_impReferral to another treatment:sus_ini_modMarijuana", "motivodeegreso_mod_impLate Drop-out:sus_ini_modOther", "motivodeegreso_mod_impEarly Drop-out:sus_ini_modOther", "motivodeegreso_mod_impAdministrative discharge:sus_ini_modOther", "motivodeegreso_mod_impReferral to another treatment:sus_ini_modOther"))
+
+total_fits_genf_obj_int_caus_adm_sex<-
+linearHypothesis(total_fits_genf_obj, c("motivodeegreso_mod_impLate Drop-out:sexo_2Women", "motivodeegreso_mod_impEarly Drop-out:sexo_2Women", "motivodeegreso_mod_impAdministrative discharge:sexo_2Women", "motivodeegreso_mod_impReferral to another treatment:sexo_2Women"))
+
+total_fits_genf_obj_int_caus_adm_age<-
+linearHypothesis(total_fits_genf_obj, c("motivodeegreso_mod_impLate Drop-out:edad_al_ing", "motivodeegreso_mod_impEarly Drop-out:edad_al_ing", "motivodeegreso_mod_impAdministrative discharge:edad_al_ing", "motivodeegreso_mod_impReferral to another treatment:edad_al_ing"))
 
 note_total_fits_genf_obj <-
     paste0("N= ",format(as.numeric(total_fits_genf_obj$N), big.mark=","),"; Events= ",format(as.numeric(total_fits_genf_obj$events), big.mark=","),"; Censored= ",format(as.numeric(total_fits_genf_obj$N - total_fits_genf_obj$events), big.mark=","),"; Time at risk= ",format(as.numeric(total_fits_genf_obj$trisk), big.mark=","),"; Df= ",format(as.numeric(total_fits_genf_obj$npars), big.mark=","), "; AIC= ",format(as.numeric(total_fits_genf_obj$AIC), big.mark=","))
@@ -4433,6 +4450,18 @@ coefs_obj_genf_st_sub_total %>%
                            escape=FALSE) %>%
   kableExtra::scroll_box(width = "100%", height = "350px")
 ```
+
+<br>
+
+We made several Wald tests to determine whether the interactions were necessary or not:
+
+- `r paste0("The effect of sex is not the same for each cause of admission Chisq (",total_fits_genf_obj_int_caus_adm_sex$Df[2],")=",round(total_fits_genf_obj_int_caus_adm_sex$Chisq[2],2),", ",dplyr::case_when(total_fits_genf_obj_int_caus_adm_sex$"Pr(>Chisq)"[2]<0.001~"p <0.001",total_fits_genf_obj_int_caus_adm_sex$"Pr(>Chisq)"[2]<0.01~"p <0.01", total_fits_genf_obj_int_caus_adm_sex$"Pr(>Chisq)"[2]<0.05~ "p <0.05", T~ as.character(round(total_fits_genf_obj_int_caus_adm_sex$"Pr(>Chisq)"[2],2))))`
+
+- `r paste0("The effect of age is not the same for each cause of admission Chisq (",total_fits_genf_obj_int_caus_adm_age$Df[2],")=",round(total_fits_genf_obj_int_caus_adm_age$Chisq[2],2),", ",dplyr::case_when(total_fits_genf_obj_int_caus_adm_age$"Pr(>Chisq)"[2]<0.001~"p <0.001",total_fits_genf_obj_int_caus_adm_age$"Pr(>Chisq)"[2]<0.01~"p <0.01", total_fits_genf_obj_int_caus_adm_age$"Pr(>Chisq)"[2]<0.05~ "p <0.05", T~ as.character(round(total_fits_genf_obj_int_caus_adm_age$"Pr(>Chisq)"[2],2))))`
+
+- `r paste0("The effect of the primary substance at admission is not the same for each cause of admission Chisq (",total_fits_genf_obj_int_caus_adm_prim_subs$Df[2],")=",round(total_fits_genf_obj_int_caus_adm_prim_subs$Chisq[2],2),", ",dplyr::case_when(total_fits_genf_obj_int_caus_adm_prim_subs$"Pr(>Chisq)"[2]<0.001~"p <0.001",total_fits_genf_obj_int_caus_adm_prim_subs$"Pr(>Chisq)"[2]<0.01~"p <0.01", total_fits_genf_obj_int_caus_adm_prim_subs$"Pr(>Chisq)"[2]<0.05~ "p <0.05", T~ as.character(round(total_fits_genf_obj_int_caus_adm_prim_subs$"Pr(>Chisq)"[2],2))))`
+
+- `r paste0("The effect of the initial/starting substance is not the same for each cause of admission Chisq (",total_fits_genf_obj_int_caus_adm_init_subs$Df[2],")=",round(total_fits_genf_obj_int_caus_adm_init_subs$Chisq[2],2),", ",dplyr::case_when(total_fits_genf_obj_int_caus_adm_init_subs$"Pr(>Chisq)"[2]<0.001~"p <0.001",total_fits_genf_obj_int_caus_adm_init_subs$"Pr(>Chisq)"[2]<0.01~"p <0.01", total_fits_genf_obj_int_caus_adm_init_subs$"Pr(>Chisq)"[2]<0.05~ "p <0.05", T~ as.character(round(total_fits_genf_obj_int_caus_adm_init_subs$"Pr(>Chisq)"[2],2))))`
 
 <br>
 
@@ -4595,6 +4624,10 @@ dt_sum_ob_tr_out_sex_90, dt_sum_ob_tr_out_age_90, dt_sum_ob_tr_out_prim_sub_90, 
 
 <br>
 
+`r round(as.numeric(CONS_C1_df_dup_SEP_2020_irrs_health_survreg %>% dplyr::mutate(edad_al_ing_sc=as.numeric(scale(edad_al_ing, scale=F))) %>%  dplyr::select(edad_al_ing,edad_al_ing_sc) %>% distinct(edad_al_ing, .keep_all=T) %>% dplyr::arrange(edad_al_ing) %>% dplyr::slice(which.min(abs(edad_al_ing_sc - -1.84))) %>% dplyr::select(edad_al_ing)),2)` years was the median (M-1.84), the first quantile was `r round(as.numeric(CONS_C1_df_dup_SEP_2020_irrs_health_survreg %>% dplyr::mutate(edad_al_ing_sc=as.numeric(scale(edad_al_ing, scale=F))) %>%  dplyr::select(edad_al_ing,edad_al_ing_sc) %>% distinct(edad_al_ing, .keep_all=T) %>% dplyr::arrange(edad_al_ing) %>% dplyr::slice(which.min(abs(edad_al_ing_sc - -8.54))) %>% dplyr::select(edad_al_ing)),2)` (M-8.54) and the third quantile was `r round(as.numeric(CONS_C1_df_dup_SEP_2020_irrs_health_survreg %>% dplyr::mutate(edad_al_ing_sc=as.numeric(scale(edad_al_ing, scale=F))) %>%  dplyr::select(edad_al_ing,edad_al_ing_sc) %>% distinct(edad_al_ing, .keep_all=T) %>% dplyr::arrange(edad_al_ing) %>% dplyr::slice(which.min(abs(edad_al_ing_sc - 7.19))) %>% dplyr::select(edad_al_ing)),2)` years (M+7.019).
+
+<br>
+
 ```{r fit_surv_parametric_complex_model_pred_b, echo=T, error=T, fig.align="center", warning=FALSE, paged.print=TRUE, eval=T}
 time_before_sim_rmst<-Sys.time()
 # Abadi, A., Amanpour, F., Bajdik, C., & Yavari, P. (2012). Breast Cancer Survival Analysis: Applying the Generalized Gamma Distribution under Different Conditions of the Proportional Hazards and Accelerated Failure Time Assumptions. International journal of preventive medicine, 3(9), 644–651.
@@ -4653,16 +4686,16 @@ rmst_total_fits_genf_obj %>%
                 labels=c("~3 months", "~1 year", "~3 years", "~5 years"))) %>%   
   dplyr::filter(Age=="Q2", `Initial Substance`=="Alcohol", `Primary Substance`=="Alcohol") %>% 
   ggplot(aes(x=`Treatment Outcome`, y=est, color=Sex, fill=Sex))+
-  geom_bar(aes(x=`Treatment Outcome`, y=est, color=Sex, fill=Sex), position="dodge", stat="identity", alpha=0.4)+
+  geom_bar(aes(x=`Treatment Outcome`, y=est, color=Sex, fill=Sex), position="dodge", stat="identity", alpha=0.4, width=.85)+
   sjPlot::theme_sjplot2()+
-  geom_errorbar(aes(x=`Treatment Outcome`, ymin=lcl, ymax=ucl, color=Sex, fill=Sex), position="dodge", stat="identity", width=0.6,  alpha=0.9, size=1)+
+  geom_errorbar(aes(x=`Treatment Outcome`, ymin=lcl, ymax=ucl, color=Sex, fill=Sex), position="dodge", stat="identity", width=0.85,  alpha=0.9, size=1)+
   ylab("Time to event")+
   facet_wrap(~time)+
   #scale_color_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
   #scale_fill_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
   xlab("Cause of discharge")+
   coord_flip(ylim=c(.6,1))+
-  labs(caption="Note. For a median age with alcohol as the initial and primary substance")
+  labs(caption="Note. For a median age (34 years) with alcohol as the initial/starting and primary substance")
 ```
 
 <br>
@@ -4675,16 +4708,16 @@ rmst_total_fits_genf_obj %>%
                 labels=c("~3 months", "~1 year", "~3 years", "~5 years"))) %>%   
   dplyr::filter(Sex=="Men", `Initial Substance`=="Alcohol", `Primary Substance`=="Alcohol") %>% 
   ggplot(aes(x=`Treatment Outcome`, y=est, color=Age, fill=Age))+
-  geom_bar(aes(x=`Treatment Outcome`, y=est, color=Age, fill=Age), position="dodge", stat="identity", alpha=0.4)+
+  geom_bar(aes(x=`Treatment Outcome`, y=est, color=Age, fill=Age), position="dodge", stat="identity", alpha=0.4, width=.7)+
   sjPlot::theme_sjplot2()+
-  geom_errorbar(aes(x=`Treatment Outcome`, ymin=lcl, ymax=ucl, color=Age, fill=Age), position="dodge", stat="identity", width=0.6,  alpha=0.9, size=1)+
+  geom_errorbar(aes(x=`Treatment Outcome`, ymin=lcl, ymax=ucl, color=Age, fill=Age), position="dodge", stat="identity", width=0.7,  alpha=0.9, size=1)+
   ylab("Time to event")+
   facet_wrap(~time)+
   #scale_color_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
   #scale_fill_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
   xlab("Cause of discharge")+
   coord_flip(ylim=c(.6,1))+
-  labs(caption="Note. For men with alcohol as the initial and primary substance")
+  labs(caption="Note. For men with alcohol as the initial/starting and primary substance")
 ```
 
 <br>
@@ -4697,16 +4730,16 @@ rmst_total_fits_genf_obj %>%
                 labels=c("~3 months", "~1 year", "~3 years", "~5 years"))) %>%   
   dplyr::filter(Sex=="Men", Age=="Q2", `Primary Substance`=="Alcohol") %>% 
   ggplot(aes(x=`Treatment Outcome`, y=est, color=`Initial Substance`, fill=`Initial Substance`))+
-  geom_bar(aes(x=`Treatment Outcome`, y=est, color=`Initial Substance`, fill=`Initial Substance`), position="dodge", stat="identity", alpha=0.4)+
+  geom_bar(aes(x=`Treatment Outcome`, y=est, color=`Initial Substance`, fill=`Initial Substance`), position="dodge", stat="identity", alpha=0.4, width=.8)+
   sjPlot::theme_sjplot2()+
-  geom_errorbar(aes(x=`Treatment Outcome`, ymin=lcl, ymax=ucl, color=`Initial Substance`, fill=`Initial Substance`), position="dodge", stat="identity", width=0.6,  alpha=0.9, size=1)+
+  geom_errorbar(aes(x=`Treatment Outcome`, ymin=lcl, ymax=ucl, color=`Initial Substance`, fill=`Initial Substance`), position="dodge", stat="identity", width=0.8,  alpha=0.9, size=1)+
   ylab("Time to event")+
   facet_wrap(~time)+
   #scale_color_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
   #scale_fill_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
   xlab("Cause of discharge")+
   coord_flip(ylim=c(.6,1))+
-  labs(caption="Note. For men with a median age and alcohol as the primary substance at admission")
+  labs(caption="Note. For men with a median age (34 years) and alcohol as the primary substance at admission")
 ```
 
 <br>
@@ -4719,16 +4752,16 @@ rmst_total_fits_genf_obj %>%
                 labels=c("~3 months", "~1 year", "~3 years", "~5 years"))) %>%   
   dplyr::filter(Sex=="Men", Age=="Q2", `Initial Substance`=="Alcohol") %>% 
   ggplot(aes(x=`Treatment Outcome`, y=est, color=`Primary Substance`, fill=`Primary Substance`))+
-  geom_bar(aes(x=`Treatment Outcome`, y=est, color=`Primary Substance`, fill=`Primary Substance`), position="dodge", stat="identity", alpha=0.4)+
+  geom_bar(aes(x=`Treatment Outcome`, y=est, color=`Primary Substance`, fill=`Primary Substance`),  stat="identity", alpha=0.7, position = "dodge", width = .9)+
   sjPlot::theme_sjplot2()+
-  geom_errorbar(aes(x=`Treatment Outcome`, ymin=lcl, ymax=ucl, color=`Primary Substance`, fill=`Primary Substance`), position="dodge", stat="identity", width=0.6,  alpha=0.9, size=1)+
+  geom_errorbar(aes(x=`Treatment Outcome`, ymin=lcl, ymax=ucl, color=`Primary Substance`, fill=`Primary Substance`), position="dodge", stat="identity", width=.9,  alpha=0.9, size=1)+
   ylab("Time to event")+
   facet_wrap(~time)+
   #scale_color_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
   #scale_fill_manual(name ="Modality",values=c("#0E53A7","#FFB540"), labels= c("Outpatient","Residential"))+
   xlab("Cause of discharge")+
   coord_flip(ylim=c(.6,1))+
-  labs(caption="Note. For men with a median age and alcohol as the initial substance")
+  labs(caption="Note. For men with a median age (34 years) and alcohol as the initial/starting substance")
 ```
 
 <br>
