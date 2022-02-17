@@ -4,7 +4,7 @@ Welcome to the repositories of the construction of the treatment information sys
 
 This page is composed by the following main topics:
 
-1. [Encryption of RUTs and generation of HASHs](Encript.html)
+1. [Encryption of RUTs and Generation of HASHs](Encript.html)
 
 2. [Data Preparation and Standardization of C1](Data_prep_C1) 
 

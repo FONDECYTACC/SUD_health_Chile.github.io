@@ -15,8 +15,9 @@ output:
 
 ```{r setup, include = FALSE}
 rm(list=ls());gc()
-unlink('SUD_CL/Data_prep_C1_cache', recursive = TRUE)
-load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/1.Rdata")
+path <-dirname(rstudioapi::getActiveDocumentContext()$path)
+unlink(paste0(path, '/*_cache'), recursive = TRUE)
+load(paste0(gsub("/SUD_CL","",path),"/1.Rdata"))
 #source("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/_script_sistrat_para_1_Rdata.R", encoding="utf-8")
 
 #Libraries used in the routine. Dont change the order
@@ -38,7 +39,6 @@ if(!require(zoo)){install.packages("zoo")}
 #if(!require(tab)){install.packages("tab")}
 #remotes::install_github("leifeld/texreg",force = TRUE)
 if(!require(broom)){install.packages("broom")} 
-unlink('G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/*_cache', recursive = TRUE)
 ```
 
 <style type="text/css">
@@ -78,7 +78,7 @@ body{ /* Normal  */
 
 -->
 
-This page will be used to comment and understand the steps, advances and douts about the process of data preparations and standardization of the SISTRAT C1 (Convenio 1) which can be translated to Agreement on Collaboration, Technical Assistance and Transfer of Resources to General Population ("Convenio de Colaboración Técnica y de Transferencia de Recursos para Programa de Población General"). Must note that it does not include Adolescent criminal offenders (C2).
+This page will be used to comment and understand the steps, advances and doubts about the process of data preparation and standardization of the SISTRAT C1 (Convenio 1) which can be translated to Agreement on Collaboration, Technical Assistance and Transfer of Resources to General Population ("Convenio de Colaboración Técnica y de Transferencia de Recursos para Programa de Población General"). Must note that it does not include Adolescent criminal offenders (C2).
 
 
 To see the TOP or Profile of Treatment Results ("Perfil de Resultados de Tratamiento") data preparation, [go to this webpage](Data_prep_TOP).
@@ -90,11 +90,11 @@ To see the TOP or Profile of Treatment Results ("Perfil de Resultados de Tratami
 Define working directories that contain different text files that will be merged, correspondent to the years of the C1 Sistrat.
 
 ```markdown
-dir_c1 <-toString(paste0(getwd(),"/Encriptado c1/Personas tratadas c1/"))
-dir_top <-toString(paste0(getwd(),"/encriptados TOP/"))
+dir_c1 <-paste0(gsub("/SUD_CL","",path),"/Encriptado c1/Personas tratadas c1/")
+dir_top <-paste0(gsub("/SUD_CL","",path),"/encriptados TOP/")
 #In my case,
-dir_c1 <-toString(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)","/Encriptado c1/Personas tratadas c1/"))
-dir_top <-toString(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)","/encriptados TOP/"))
+#dir_c1 <-toString(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)","/Encriptado c1/Personas tratadas c1/"))
+#dir_top <-toString(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)","/encriptados TOP/"))
 ```
 
 Define files in the Directory folder, as long as they have the excel extension and they do not start with ~  (represent a working temporary file in excel)
@@ -142,7 +142,7 @@ for (x in SISTRAT_c1) {
  
 #### Normalize datasets
 
-Normalize datasets by defining a common name for hash key's ("HASH_KEY") and assign them an standardized name.
+Normalize datasets by defining a common name for hash key's ("HASH_KEY") and assign them a standardized name.
 
 ```markdown
 tab_10_18_mod <- function(x,y) {  get(x) %>% dplyr::rename("HASH_KEY" = !!names(.[91])) %>%
@@ -161,7 +161,7 @@ for (i in paste0(c(2010:2018),"tab")) {tab_10_18_mod(i,y="c1_")}
  
 #### Append the datasets
 
-Once normalized column names. Bind every year's datasets by their rows.
+Once column names are normalized, bind every year's datasets by their rows.
 ```markdown
 CONS_C1=rbindlist(mget(paste0("c1_",c(2010:2019),"tab")), idcol="TABLE", fill=T)
 CONS_C1 <- CONS_C1 %>% dplyr::mutate(row=1:nrow(CONS_C1)) %>% dplyr::select(row,everything())
@@ -303,7 +303,7 @@ CONS_C1_df %>%
 
 <br>
 
-Most of the dates were not formatted equally. When standardized,some cases failed to transform dates, specifically in dates of discharge, which contained 87 cases, while only one case was problematic in admission dates. 
+Most of the dates were not formatted equally. When standardized, some cases failed to transform dates, specifically in dates of discharge, which contained 87 cases, while only one case was problematic in admission dates. 
 
 ```markdown
 CONS_C1_df %>%
@@ -342,7 +342,7 @@ CONS_C1_df %>%
   assign("CONS_C1_df",.,envir = .GlobalEnv) #87 failed to parse, bajé a 37, y 30 después de quitar espacios
 ```
 
-For discharge dates, many cases had different formats. Those had to be transformed once the first formats were traduced (e.g. 30-12-2019 is interpreted first as "%d/%m/%Y" format. If it is not traduced, it interprets in "DD/MM/YY" format (or "%d/%m/%y"). We can see in Table 1 in non-formatted date of discharge (_fech_egres_sin_fmt_) how it was traduced into an plausible discharge date (_fech_egres_). One criterion is that in many cases, the second and or third 0 would possibly correspond to a month character. On the contrary, "7082013" or "9072013" would be "2013-8-70" and "2013-7-90", respectively.
+For discharge dates, many cases had different formats. Those had to be transformed once the first formats were traduced (e.g. 30-12-2019 is interpreted first in "%d/%m/%Y" format. If it is not traduced, it interprets in "DD/MM/YY" format (or "%d/%m/%y"). We can see in Table 1 in non-formatted date of discharge (_fech_egres_sin_fmt_) how it was traduced into an plausible discharge date (_fech_egres_). One criterion is that in many cases, the second and or third 0 would possibly correspond to a month character. On the contrary, "7082013" or "9072013" would be "2013-8-70" and "2013-7-90", respectively.
 
 
 ```{r echo=F, paged.print=TRUE}
@@ -362,7 +362,8 @@ CONS_C1_df %>%
 ```
 
 <br>
-As we can see in Table 2, some non-formatted date of discharge (_fech_egres_sin_fmt_), had insufficient information to traduce into valid dates.
+
+As we can see in Table 2, some non-formatted dates of discharge (_fech_egres_sin_fmt_), had insufficient information to traduce into valid dates.
 
 ```{r echo=F, paged.print=TRUE}
     CONS_C1_df %>%
@@ -380,11 +381,10 @@ As we can see in Table 2, some non-formatted date of discharge (_fech_egres_sin_
  <br>
 
 **UPDATE: 2019-12-11**, had to format this date because it was badly labelled.  `CONS_C1_df[CONS_C1_df$row=="5757","fech_egres"] <- parse_date_time(str_trim("04/10/2010"), orders = c("%d/%m/%Y"),exact=T)`.
-**UPDATE: 2020-01-17**. Thanks to SENDA's experts, they provided us with information about a case with missing values in dates of treatment. This date had to be formatted because it was bad labeled.  `CONS_C1_df[CONS_C1_df$row=="88379","fech_ing"] <- parse_date_time(str_trim("09/07/2015"), orders = c("%d/%m/%Y"),exact=T)`.
-**UPDATE: 2020-01-17**, this date had to be formatted because it was bad labeled.  `CONS_C1_df[CONS_C1_df$row=="79428","fech_ing"] <- parse_date_time(str_trim("09/07/2015"), orders = c("%d/%m/%Y"),exact=T)`.
-**UPDATE: 2020-01-17**, this date had to be formatted because it was bad labeled.  `CONS_C1_df[CONS_C1_df$row=="88379","fech_egres"] <- parse_date_time(str_trim("11/04/2016"), orders = c("%d/%m/%Y"),exact=T)`.
-**UPDATE: 2020-01-17**, this date had to be formatted because it was bad labeled.  `CONS_C1_df[CONS_C1_df$row=="79428","fech_egres"] <- parse_date_time(str_trim("11/04/2016"), orders = c("%d/%m/%Y"),exact=T)`. Still, there are `r table(is.na(CONS_C1_df$fech_egres))[2]` cases with NULL dates of
-discharge.
+**UPDATE: 2020-01-17**. Thanks to SENDA's experts, they provided us with information about a case with missing values in dates of treatment. This date had to be formatted because it was badly labeled.  `CONS_C1_df[CONS_C1_df$row=="88379","fech_ing"] <- parse_date_time(str_trim("09/07/2015"), orders = c("%d/%m/%Y"),exact=T)`.
+**UPDATE: 2020-01-17**, this date had to be formatted because it was badly labeled.  `CONS_C1_df[CONS_C1_df$row=="79428","fech_ing"] <- parse_date_time(str_trim("09/07/2015"), orders = c("%d/%m/%Y"),exact=T)`.
+**UPDATE: 2020-01-17**, this date had to be formatted because it was badly labeled.  `CONS_C1_df[CONS_C1_df$row=="88379","fech_egres"] <- parse_date_time(str_trim("11/04/2016"), orders = c("%d/%m/%Y"),exact=T)`.
+**UPDATE: 2020-01-17**, this date had to be formatted because it was badly labeled.  `CONS_C1_df[CONS_C1_df$row=="79428","fech_egres"] <- parse_date_time(str_trim("11/04/2016"), orders = c("%d/%m/%Y"),exact=T)`. Still, there are `r table(is.na(CONS_C1_df$fech_egres))[2]` cases with NULL dates of discharge.
  <br>
 ***
 ***
@@ -396,7 +396,7 @@ These rules were provided by SENDA's professionals, in order to select adequate 
 
 <br>
 
-#### 1. Exclude non SENDA treatments
+#### 1. Exclude non-SENDA treatments
 
 In the first place, we should discard treatments not provided by SENDA. NULL values correspond to a single HASH key ("72c54d822de128e52f10511f3eb2d19f", in datasets from 2010 and 2011) that did not have a plan and program.
 
@@ -411,7 +411,7 @@ In the first place, we should discard treatments not provided by SENDA. NULL val
   add_footnote(c("No= Admission under another agreement" ,"Si= Admission under SENDA agreement"), notation = "none")
 ```
 <br>
-As we can see in Table 3, around 4.8% of cases had a treatment that could not be part of SENDA's agreements. The case that did not take part under SENDA categories was admitted to a SENDA agreement in 2009/12/10 and then was admitted in 2009/12/14. Attending to what was informed by SENDAs professional in January 2020, many programs that was pointed as SENDA No may be SENDA yes.**That is why we keep these programs anyways, despite what was originally stated**.
+As we can see in Table 3, around 4.8% of cases had a treatment that could not be part of SENDA's agreements. The case that did not take part under SENDA categories was admitted to a SENDA agreement in 2009/12/10 and in 2009/12/14. Attending to what was informed by SENDAs professional in January 2020, many programs that was pointed as not part of SENDA may actually be part of SENDA. **That is why we keep these programs anyways, despite what was originally stated**.
 
 <br>
 
@@ -419,7 +419,7 @@ As we can see in Table 3, around 4.8% of cases had a treatment that could not be
 
 <br>
 
-It is necessary to explore if there is any case that may have a treatment under a probation/parole ("libertad vigilada") plan.**It is necessary to consider the  3 null values in type of plans, equivalent to 2 HASHs, dropping the case with a plan in Probation/Parole**.
+It is necessary to explore if there is any case that may have a treatment under a probation/parole ("libertad vigilada") plan. **It is necessary to consider the  3 null values in type of plans, equivalent to 2 HASHs, dropping the case with a plan in Probation/Parole**.
 
 ```{r echo=F, paged.print=TRUE}
   CONS_C1_df %>%
@@ -467,9 +467,10 @@ Must note that there are ***some plans that have a number 2*** but they do not c
 #### 4. Plans within Alcohol Program
 
 If there is a plan within the alcohol program, the plan must be modified into the general population plan.
+
 <br>
 
-Every of the `r CONS_C1_df %>% dplyr::filter(tipo_de_programa=="Programa Alcohol") %>% dplyr::group_by(tipo_de_plan) %>% dplyr::summarise(n())` cases in the alcohol program should be in the general population plan.
+Every of the `r CONS_C1_df %>% dplyr::filter(tipo_de_programa=="Programa Alcohol") %>% dplyr::group_by(tipo_de_plan) %>% dplyr::summarise(n()) %>% as.numeric()` cases in the alcohol program should be in the general population plan.
 
 <br>
 
@@ -512,11 +513,12 @@ CONS_C1_df %>%
 ```
 
 There are still a few doubts about these criteria:
-- **Why were there men and women with female gender identity that are in the general population?, (Basic outpatient , intensive outpatient , Residential and Outpatient 2)**
+
+- **Why are there men and women with female gender identity that are in the general population?, (Basic outpatient, intensive outpatient, Residential and Outpatient 2)**
 
 - **Should the 2 men and 12 women in M-PAI but with masculine gender identity be in the general population (PG PAI)?**
 
-- **If there was a woman with masculine gender identity in M-PR, should not be in the general population (PG_PR)?**
+- **If there is a woman with masculine gender identity in M-PR, should they not be in the general population (PG_PR)?**
 
 <br>
 
@@ -653,7 +655,7 @@ CONS_C1_df %>%
 
 See plans M-PR and M-PAI. Check if there are men. Keep the entries only if they identify as women.
 
-As seen in table 9, must note that many cases do not answer this question, or what could be more plausible, this question could not be present in previous datasets. This is why we may exclude NA's (missing values) for the following analysis.
+As seen in Table 9, it must be noted that many cases do not answer this question, or perhaps it's more plausible, this question was not present in previous datasets. This is why we may exclude NA's (missing values) for the following analysis.
 
 
 ```{r echo=F, paged.print=TRUE, warning=FALSE}
