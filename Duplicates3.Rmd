@@ -1,6 +1,6 @@
 ---
 title: "Duplicated/ Repeated Cases in SISTRAT C1 (part 3)"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
+date: "`r withr::with_locale(new = c('LC_TIME' = 'C'), code =format(Sys.time(),'%B %d, %Y'))`"
 output:
   html_document:
     code_folding: hide  
@@ -47,7 +47,18 @@ div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-ali
 
 ```{r setup0, include = FALSE, cache=T}
 rm(list=ls());gc()
-load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/5.Rdata")
+if(!require(here)){install.packages("here")}
+warning(paste0(getwd()))
+Sys.setlocale("LC_TIME")
+
+unlink(paste0(here::here(),"/*_cache"), recursive = TRUE)
+
+path<-gsub("/SUD_CL","",here::here())
+
+check_obj<-function(x){if(!exists(x)){stop(paste0("The object ",x ," was not created"))}}
+
+load(paste0(path,"/5.Rdata"))
+
 if(isTRUE(getOption('knitr.in.progress'))==T){
     nn_size= 1:5 # size= 1:5
     nn_seq=seq(0, 1, .5)
@@ -68,9 +79,6 @@ if(isTRUE(getOption('knitr.in.progress'))==T){
 
 ```{r setup, include = FALSE, cache=T}
 #Libraries used in the routine. Dont change the order
-
-#setwd("H:/")
-#rm(list=c("")
 
 local({r <- getOption("repos")
        r["CRAN"] <- "http://cran.r-project.org" 
@@ -134,64 +142,61 @@ copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
 #if(!require(matrixStats)){install.packages("matrixStats")}
 #if(!require(radiant)){install.packages("radiant", repos = "https://radiant-rstats.github.io/minicran/")}
 
-try(library(boot))
-library(matrixStats)
-library(knitr)
-library(tidyr)
-library(stringi)
-library(stringr)
-library(ggplot2)
-library(Hmisc)
-library(kableExtra)
-library(plotly)
-library(janitor)
-library(rbokeh)
-library(altair)
-library(zoo)
-library(broom)
-library(sqldf)
-library(devtools)
-library(Statamarkdown)
-library(codebook)
-library(data.table)
-library(dplyr)
-library(panelr)
-library(RColorBrewer)
-library(choroplethr)
-library(choroplethrMaps)
-library(choroplethrAdmin1)
-library(lsmeans)
-library(finalfit)
-library(chilemapas)
-suppressPackageStartupMessages(library(ggiraph))
-suppressPackageStartupMessages(library(sf))
-library(treemapify)
-library(dplyr)
-library(choroplethr)
-library(choroplethrMaps)
-library(choroplethrAdmin1)
+try(require(boot))
+require(matrixStats)
+require(knitr)
+require(tidyr)
+require(stringi)
+require(stringr)
+require(ggplot2)
+require(Hmisc)
+require(kableExtra)
+require(plotly)
+require(janitor)
+require(rbokeh)
+#2022: require(altair)
+require(zoo)
+require(broom)
+require(sqldf)
+require(devtools)
+require(Statamarkdown)
+require(codebook)
+require(data.table)
+require(panelr)
+require(RColorBrewer)
+require(lsmeans)
+require(finalfit)
+require(chilemapas)
+suppressPackageStartupMessages(require(ggiraph))
+suppressPackageStartupMessages(require(sf))
+require(treemapify)
+require(tidylog)
+require(dplyr)
+require(choroplethr)
+require(choroplethrMaps)
+require(choroplethrAdmin1)
 
-if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
+#if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
 #install.packages( repos = "https://radiant-rstats.github.io/minicran/")
 #install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")
 #tryCatch(source("https://raw.githubusercontent.com/radiant-rstats/minicran/gh-pages/update.R"), error = function(e) print("updated package, radiant"))
-
+time_before_dedup3<-Sys.time()
 ```
 
 <!--- SÍ O SÍ, HACER LA LIMPIEZA DE LOS SENDA NO, PRINCIPALMENTE DE LOS QUE SE SUPERPONGAN, TAMBIÉN PREGUNTAR A ACC SI LOS CON 0 DÍAS DE TRATAMIENTO SE BORRARÁN O NO; DE AHI EMPEZAR A NORMALIZAR LOS PROGRAMAS Y PLANES DE ACUERDO CON CRITERIOS MAUREEN, PARA NO GENERAR DIFERENCIAS AHI Y PODER DEDUPLICAR TRANQUILO --->
 
 <br>
 
-For the purpose of this page, we use the terms "rows" and "cases" as equal to refer to the entries of the dataset. In many of the processes made along the deduplication of entries in C1 dataset, we used unstandardized columns or many other data that was in fact duplicated by HASHs, that did not depend on events related to treatment.In order to find and delete duplicated data that does not add information relevant for the purposes of the study, we now may **use these standardized variables as a criteria to achieve the goal of having a unique event per HASH, by reducing its complexity based on irrelevant differences**.
+For the purpose of this page, we use the terms "rows" and "cases" interchangeably to refer to the entries of the dataset. In many of the processes made along the deduplication of entries in the C1 dataset, we used unstandardized columns or many other data that were in fact duplicated by HASHs, which did not depend on events related to treatment.In order to find and delete duplicated data that does not add relevant information for the purposes of the study, we now may **use these standardized variables as a criteria to achieve the goal of having a unique event per HASH, by reducing its complexity based on irrelevant differences**.
 
 <br>
 
 <div class = "blue">
-As stated in the second part of the deduplication process, we need to consolidate and define separate treatments as blocks, by keeping information about each event's complexities (such as referrals, changes of center, changes in plans and programs within each treatment), as variables of a single treatment. That is, to collapse intermediate events relative to a determined treatment into a single entry for each user. This will let us have a different treatment in every row. To get to this point, we had to standardize complex user-invariant variables, and other types that were not directly related relevant to the study aims. Additionally, we had to   identify which relevant variables may experience changes between the different entries, and many of the basis that let us define what would be a suitable criteria to collapse a greater amount of common entries.
+As stated in the second part of the deduplication process, we need to consolidate and define separate treatments as blocks, by keeping information about each event's complexities (such as referrals, changes of treatment center, changes in plans and programs within each treatment) as variables of a single treatment. That is, to collapse intermediate events relative to a determined treatment into a single entry for each user. This will let us have a different treatment in every row. To get to this point, we had to standardize complex user-invariant variables and other types that were not directly related or relevant to the study aims. Additionally, we had to identify which relevant variables may experience changes between the different entries and much of the basis that let us define what would be a suitable criteria to collapse a greater amount of common entries.
 </div>
 
 
-### 1.Missing Dates of Discharge
+### 1. Missing Dates of Discharge
 
 In the previous deduplication stage, we only imputed the discharge dates of the cases that overlapped with other cases inside the database. 
 
@@ -212,15 +217,15 @@ CONS_C1_df_dup_FEB_2020 %>% dplyr::filter(is.na(fech_egres_imp)) %>% janitor::ta
 
 <br>
 
-### 2.Last User-Invariant Variables. 
+### 2. Last User-Invariant Variables. 
 
-The last user-invariant variables had many different values by user. That is why it was necessary to use different sources to overcome ambiguities. Possibly, the process of formulating an answer is one of the factors that explains the ambiguity in the answers. Many times the respondents are not precise remembering specific ages. It is reasonable to think that those with a sustained substance abuse profile would experience difficulties to recall specific information. 
+The last user-invariant variables had many different values by user. That is why it was necessary to use different sources to overcome ambiguities. It is possible that the process of formulating an answer is one of the factors that explain the ambiguity in the answers. Many times the respondents are not precise remembering specific ages. It is reasonable to think that those with a sustained substance abuse profile would experience difficulties to recall specific information. 
 
 <br>
 
-- Age of Onset of Drug Use (edad_ini_cons) (n= `r CONS_C1_df_dup_FEB_2020 %>% dplyr::filter(hash_key %in% as.character(as.vector(unlist(data.table::as.data.table(unlist(CONS_C1_df_dup_FEB_2020 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_cons_por_hash=n_distinct(edad_ini_cons)) %>% ungroup() %>% dplyr::filter(edad_ini_cons_por_hash>1) %>% dplyr::distinct(hash_key) )))))) %>% nrow() %>% formatC(, format="f", big.mark=",", digits=0)`), had too many distinct values by each user (n `r CONS_C1_df_dup_FEB_2020 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_cons_por_hash=n_distinct(edad_ini_cons)) %>% ungroup() %>% dplyr::filter(edad_ini_cons_por_hash>1) %>% dplyr::distinct(hash_key)%>% nrow() %>% formatC(, format="f", big.mark=",", digits=0)`.
+- Age of the Onset of Drug Use (edad_ini_cons) (n= `r CONS_C1_df_dup_FEB_2020 %>% dplyr::filter(hash_key %in% as.character(as.vector(unlist(data.table::as.data.table(unlist(CONS_C1_df_dup_FEB_2020 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_cons_por_hash=n_distinct(edad_ini_cons)) %>% ungroup() %>% dplyr::filter(edad_ini_cons_por_hash>1) %>% dplyr::distinct(hash_key) )))))) %>% nrow() %>% formatC(, format="f", big.mark=",", digits=0)`), had too many distinct values by each user (n `r CONS_C1_df_dup_FEB_2020 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_cons_por_hash=n_distinct(edad_ini_cons)) %>% ungroup() %>% dplyr::filter(edad_ini_cons_por_hash>1) %>% dplyr::distinct(hash_key)%>% nrow() %>% formatC(, format="f", big.mark=",", digits=0)`).
 
-- Age of Onset of Drug Use Primary Substance (edad_ini_sus_prin) (n= `r CONS_C1_df_dup_FEB_2020 %>% dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist( CONS_C1_df_dup_FEB_2020 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_sus_prin_por_hash=n_distinct(edad_ini_sus_prin)) %>% ungroup() %>% dplyr::filter(edad_ini_sus_prin_por_hash>1) %>% dplyr::distinct(hash_key) )))))) %>% nrow()%>% formatC(, format="f", big.mark=",", digits=0)`), had too many distinct values by each user (n= `r CONS_C1_df_dup_FEB_2020 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_sus_prin_por_hash=n_distinct(edad_ini_sus_prin)) %>% ungroup() %>% dplyr::filter(edad_ini_sus_prin_por_hash>1) %>% dplyr::distinct(hash_key) %>% nrow() %>% formatC(, format="f", big.mark=",", digits=0)`).
+- Age of the Onset of Drug Use Primary Substance (edad_ini_sus_prin) (n= `r CONS_C1_df_dup_FEB_2020 %>% dplyr::filter(hash_key %in% as.character(as.vector(unlist(as.data.table(unlist( CONS_C1_df_dup_FEB_2020 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_sus_prin_por_hash=n_distinct(edad_ini_sus_prin)) %>% ungroup() %>% dplyr::filter(edad_ini_sus_prin_por_hash>1) %>% dplyr::distinct(hash_key) )))))) %>% nrow()%>% formatC(, format="f", big.mark=",", digits=0)`), had too many distinct values by each user (n= `r CONS_C1_df_dup_FEB_2020 %>% group_by(hash_key) %>% dplyr::mutate(edad_ini_sus_prin_por_hash=n_distinct(edad_ini_sus_prin)) %>% ungroup() %>% dplyr::filter(edad_ini_sus_prin_por_hash>1) %>% dplyr::distinct(hash_key) %>% nrow() %>% formatC(, format="f", big.mark=",", digits=0)`).
 
 <br>
 
@@ -268,7 +273,7 @@ edad_ini_sus_prin_summ<-
     summarise(avg_n=mean(n), sd_n=sd(n),avg_p25_p50=mean(diff_p25_p50),avg_p75_p50=mean(diff_p75_p50),avg_sd=mean(edad_ini_sus_prinsd,na.rm=T),avg_min_mean=mean(min_mean,na.rm=T),avg_max_mean=mean(max_mean,na.rm=T),avg_ranges=mean(ranges,na.rm=T),sd_ranges=sd(ranges,na.rm=T),p75_ranges=quantile(ranges, c(0.75),na.rm=T),p90_ranges=quantile(ranges, c(0.90),na.rm=T)) %>% 
   round(2)
 
-rbind(cbind(Variable="Age of Onset of Drug Use",round(edad_ini_cons_summ,2)),cbind(Variable="Age of Onset of Drug Use Primary Substance",round(edad_ini_sus_prin_summ,2))) %>%
+rbind(cbind(Variable="Age of the Onset of Drug Use",round(edad_ini_cons_summ,2)),cbind(Variable="Age of the Onset of Drug Use Primary Substance",round(edad_ini_sus_prin_summ,2))) %>%
     knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption="Table 2. Distribution of Differences in Years Within Users",
                  align =rep('c', 101),
@@ -279,18 +284,19 @@ rbind(cbind(Variable="Age of Onset of Drug Use",round(edad_ini_cons_summ,2)),cbi
 
 <br>
 
-Considering the abovementioned, we decided to restrict the rules to obtain unique values in user-invariant variables by each user, to the 25% of users that had more considerable variability in each value of the registries present in the dataset.
+Considering the abovementioned, we decided to restrict the rules to obtain unique values in user-invariant variables by each user to the 25% of users that had more considerable variability in each value of the registries present in the dataset.
 
 ```{r fig1_image-decision_tree_overlapped_cases, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 1. Decision Tree for the Users with more than one value in a User-Invariant Variable", message=FALSE}
-knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/same_hash_distinct_values_user_invariant_top.svg")
+knitr::include_graphics(paste0(path,"/SUD_CL/Figures/same_hash_distinct_values_user_invariant_top.svg"))
 ```
 
 <br>
 
-In case of Age of Onset of Drug Use (edad_ini_cons), users that had Age of Onset of Drug Use (edad_ini_cons) greater than `r as.numeric(edad_ini_cons_summ[,"p75_ranges"])`.
+In case of Age of the Onset of Drug Use (edad_ini_cons), users that had Age of the Onset of Drug Use (edad_ini_cons) greater than `r as.numeric(edad_ini_cons_summ[,"p75_ranges"])`.
 
-```{r fig2_image-decision_tree_overlapped_cases_edad_ini_cons, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 2. Decision Tree for the Users with more than one value in a Age of Onset of Substance Use of Primary Substance", message=FALSE}
-knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/age_onset_drug_use_same_hash_distinct_values_user_invariant.svg")
+```{r fig2_image-decision_tree_overlapped_cases_edad_ini_cons, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 2. Decision Tree for the Users with more than one value in a Age of the Onset of Substance Use of Primary Substance", message=FALSE}
+#knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/age_onset_drug_use_same_hash_distinct_values_user_invariant.svg")
+knitr::include_graphics(paste0(path,"/SUD_CL/Figures/age_onset_drug_use_same_hash_distinct_values_user_invariant.svg"))
 ```
 
 ```{r tab3_pers_info_edad_ini_cons, eval=T, echo=T, message=FALSE, warning=FALSE, paged.print=TRUE, warnings=F}
@@ -301,7 +307,7 @@ CONS_C1_df_dup_FEB_2020 %>%
 dplyr::select(row, hash_key, ano_bd, edad_ini_cons, edad, fech_nac,edad_al_ing, fech_ing, fech_egres_imp, tipo_de_plan, senda)%>%
     head(40)%>%
     knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
-               caption="Table 3. HASHs with more than one Age of Onset of Drug Use (First 40 Cases)",
+               caption="Table 3. HASHs with more than one Age of the Onset of Drug Use (First 40 Cases)",
                  align =rep('c', 101))  %>%
    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 8) %>%
   kableExtra::scroll_box(width = "100%", height = "375px")
@@ -635,10 +641,11 @@ summ_edad_ini_cons_sus_prin_por_concat_hash_sus_prin<-
 
 <br>
 
-In the case of Age of Onset of Drug Use Primary Substance (edad_ini_sus_prin), we needed to check for differences within each user, but for every admission in which he/she reported a common primary substance of admission. `r cases_affected_by_hash_sus_prin_age %>% formatC(, format="f", big.mark=",", digits=0)` entries had different ages of onset of drug use, in different treatments where they reported the same primary substance. For cases with ranges lower than `r as.numeric(summ_edad_ini_cons_sus_prin_por_concat_hash_sus_prin[,"p75_ranges"])` years or more, we replaced the age of onset of drug use with the average age for each user that reported the same primary substance.
+In the case of Age of Onset of Drug Use Primary Substance (edad_ini_sus_prin), we needed to check for differences within each user, but for every admission in which he/she reported a common primary substance of admission. In total, `r cases_affected_by_hash_sus_prin_age %>% formatC(, format="f", big.mark=",", digits=0)` entries had different ages of onset of drug use in different treatments where they reported the same primary substance. For cases with ranges less than `r as.numeric(summ_edad_ini_cons_sus_prin_por_concat_hash_sus_prin[,"p75_ranges"])` years, we replaced the age of onset of drug use with the average age for each user that reported the same primary substance.
 
 ```{r fig3_image-decision_tree_overlapped_cases_edad_ini_sus_prin, echo=T, fig.align='center', fig.pos='H', fig.cap= "Figure 3. Decision Tree for the Users with more than one value in a Age of Onset of Substance Use of Primary Substance", message=FALSE}
-knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/age_onset_drug_use_prim_substance_same_hash_distinct_values_user_invariant.svg")
+#knitr::include_graphics("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/Figures/age_onset_drug_use_prim_substance_same_hash_distinct_values_user_invariant.svg")
+knitr::include_graphics(paste0(path,"/SUD_CL/Figures/age_onset_drug_use_prim_substance_same_hash_distinct_values_user_invariant.svg"))
 
 #336+2834 combinaciones #3 más 2a
 ```
@@ -956,7 +963,7 @@ CONS_C1_df_dup_MAY_2020_prev_2 %>% dplyr::mutate(concat_hash_sus_prin=paste0(has
 ```
 
 
-### 3.Correction of Ties in Values of Variables as a Result of Rule-Based Imputations
+### 3. Correction of Ties in Variable Values as a Result of Rule-Based Imputations
 
 #### 3.1.Ties in sex
 
@@ -968,6 +975,154 @@ We used a neural network model to obtain a definitive value of the `r CONS_C1_df
 
 ```{r neuralnet_sex_prep, eval=T,echo=T, paged.print=TRUE}
 suppressPackageStartupMessages(library(radiant))
+
+#2022
+#https://arulvelkumar.wordpress.com/2017/02/28/neuralnet-function-in-r-error-in-neuronsi-weightsi/
+#' 2022, modificaciones= Predict method for the nn function
+#'
+#' @details See \url{https://radiant-rstats.github.io/docs/model/nn.html} for an example in Radiant
+#'
+#' @param object Return value from \code{\link{nn}}
+#' @param pred_data Provide the dataframe to generate predictions (e.g., diamonds). The dataset must contain all columns used in the estimation
+#' @param pred_cmd Generate predictions using a command. For example, `pclass = levels(pclass)` would produce predictions for the different levels of factor `pclass`. To add another variable, create a vector of prediction strings, (e.g., c('pclass = levels(pclass)', 'age = seq(0,100,20)')
+#' @param dec Number of decimals to show
+#' @param envir Environment to extract data from
+#' @param ... further arguments passed to or from other methods
+#'
+#' @examples
+#' result <- nn(titanic, "survived", c("pclass", "sex"), lev = "Yes")
+#' predict(result, pred_cmd = "pclass = levels(pclass)")
+#' result <- nn(diamonds, "price", "carat:color", type = "regression")
+#' predict(result, pred_cmd = "carat = 1:3")
+#' predict(result, pred_data = diamonds) %>% head()
+#'
+#' @seealso \code{\link{nn}} to generate the result
+#' @seealso \code{\link{summary.nn}} to summarize results
+#'
+#' @export
+predict.nn <- function(
+  object, pred_data = NULL, pred_cmd = "",
+  dec = 3, envir = parent.frame(), ...
+) {
+
+  if (is.character(object)) return(object)
+
+  ## ensure you have a name for the prediction dataset
+  if (is.data.frame(pred_data)) {
+    df_name <- deparse(substitute(pred_data))
+  } else {
+    df_name <- pred_data
+  }
+
+  pfun <- function(model, pred, se, conf_lev) {
+    pred_val <- try(sshhr(predict(model, pred)), silent = TRUE)
+
+    if (!inherits(pred_val, "try-error")) {
+      pred_val %<>% as.data.frame(stringsAsFactors = FALSE) %>%
+        select(1) %>%
+        set_colnames("Prediction")
+    }
+
+    pred_val
+  }
+
+  predict_model(object, pfun, "nn.predict", pred_data, pred_cmd, conf_lev = 0.95, se = FALSE, dec, envir = envir) %>%
+    set_attr("radiant_pred_data", df_name)
+}
+
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+
+
+#https://github.com/radiant-rstats/radiant.model/blob/master/R/nn.R
+#' Plot method for the nn function
+#'
+#' @details See \url{https://radiant-rstats.github.io/docs/model/nn.html} for an example in Radiant
+#'
+#' @param x Return value from \code{\link{nn}}
+#' @param shiny Did the function call originate inside a shiny app
+#' @param plots Plots to produce for the specified Neural Network model. Use "" to avoid showing any plots (default). Options are "olden" or "garson" for importance plots, or "net" to depict the network structure
+#' @param size Font size used
+#' @param pad_x Padding for explanatory variable labels in the network plot. Default value is 0.9, smaller numbers (e.g., 0.5) increase the amount of padding
+#' @param nrobs Number of data points to show in dashboard scatter plots (-1 for all)
+#' @param custom Logical (TRUE, FALSE) to indicate if ggplot object (or list of ggplot objects) should be returned. This option can be used to customize plots (e.g., add a title, change x and y labels, etc.). See examples and \url{https://ggplot2.tidyverse.org} for options.
+#' @param ... further arguments passed to or from other methods
+#'
+#' @examples
+#' result <- nn(titanic, "survived", c("pclass", "sex"), lev = "Yes")
+#' plot(result, plots = "net")
+#' plot(result, plots = "olden")
+#'
+#' @seealso \code{\link{nn}} to generate results
+#' @seealso \code{\link{summary.nn}} to summarize results
+#' @seealso \code{\link{predict.nn}} for prediction
+#'
+#' @importFrom NeuralNetTools plotnet olden garson
+#' @importFrom graphics par
+#'
+#' @export
+plot.nn <- function(
+  x, plots = "garson", size = 12, pad_x = 0.9, nrobs = -1,
+  shiny = FALSE, custom = FALSE, ...
+) {
+
+  if (is.character(x) || !inherits(x$model, "nnet")) return(x)
+  plot_list <- list()
+  ncol <- 1
+
+  if ("olden" %in% plots || "olsen" %in% plots) { ## legacy for typo
+    plot_list[["olsen"]] <- NeuralNetTools::olden(x$model, x_lab = x$coefnames, cex_val = 4) +
+      coord_flip() +
+      theme_set(theme_gray(base_size = size)) +
+      theme(legend.position = "none") +
+      labs(title = paste0("Olden plot of variable importance (size = ", x$size, ", decay = ", x$decay, ")"))
+  }
+
+  if ("garson" %in% plots) {
+    plot_list[["garson"]] <- NeuralNetTools::garson(x$model, x_lab = x$coefnames) +
+      coord_flip() +
+      theme_set(theme_gray(base_size = size)) +
+      theme(legend.position = "none") +
+      labs(title = paste0("Garson plot of variable importance (size = ", x$size, ", decay = ", x$decay, ")"))
+  }
+
+  if ("net" %in% plots) {
+    ## don't need as much spacing at the top and bottom
+    mar <- par(mar = c(0, 4.1, 0, 2.1))
+    on.exit(par(mar = mar$mar))
+    return(do.call(NeuralNetTools::plotnet, list(mod_in = x$model, x_names = x$coefnames, pad_x = pad_x, cex_val = size / 16)))
+  }
+
+  if ("pdp" %in% plots) {
+    ncol <- 2
+    for (pn in x$evar) {
+      plot_list[[pn]] <- pdp::partial(
+        x$model, pred.var = pn, plot = TRUE, rug = TRUE,
+        prob = x$type == "classification", plot.engine = "ggplot2"
+      ) + labs(y = "")
+    }
+  }
+
+  if (x$type == "regression" && "dashboard" %in% plots) {
+    plot_list <- plot.regress(x, plots = "dashboard", lines = "line", nrobs = nrobs, custom = TRUE)
+    ncol <- 2
+  }
+
+  if (length(plot_list) > 0) {
+    if (custom) {
+      if (length(plot_list) == 1) plot_list[[1]] else plot_list
+    } else {
+      patchwork::wrap_plots(plot_list, ncol = ncol) %>%
+        {if (shiny) . else print(.)}
+    }
+  }
+}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
 #genero la base de datos de entrenamiento.
 CONS_C1_df_dup_FEB_2020_prev24_train_nn<- CONS_C1_df_dup_FEB_2020_prev24 %>% 
@@ -1061,7 +1216,7 @@ CONS_C1_df_dup_FEB_2020_prev24_test_nn<- CONS_C1_df_dup_FEB_2020_prev24 %>%
 
 <br>
 
-The model was trained using the rest of the dataset with valid attributes on the variable sex (n= `r formatC(nrow(CONS_C1_df_dup_FEB_2020_prev24_train_nn),big.mark = ",")`). We generated a total of 10 cross-validations, with alternatives of 1 to 5 layers, and a threshold of 0, .5 and 1 in every model (10x5x3). The model that obtained the highest area under the curve  (AUC (mean)= `r round(nn_sex_par[1,"auc (mean)"],2)`) had a size of `r as.numeric(nn_sex_par[1,"size"])` `r ifelse(as.numeric(nn_sex_par[1,"size"])<2,"layer","layers")`, and a threshold for weights of `r as.numeric(nn_sex_par[1,"decay"])` (L2 penalty). THe following figure shows the neural network structure Due to the great amount of categories, we generated a garson plot of importance of variables into the weight.
+The model was trained using the rest of the dataset with valid attributes on the variable sex (n= `r formatC(nrow(CONS_C1_df_dup_FEB_2020_prev24_train_nn),big.mark = ",")`). We generated a total of 10 cross-validations, with alternatives of 1 to 5 layers, and a threshold of 0, 0.5 and 1 in every model (10x5x3). The model that obtained the highest area under the curve  (AUC (mean)= `r round(nn_sex_par[1,"auc (mean)"],2)`) had a size of `r as.numeric(nn_sex_par[1,"size"])` `r ifelse(as.numeric(nn_sex_par[1,"size"])<2,"layer","layers")` and a threshold for weights of `r as.numeric(nn_sex_par[1,"decay"])` (L2 penalty). Tee following figure shows the neural network structure Due to the great amount of categories, we generated a garson plot of importance of variables into the weight.
 
 <br>
 
@@ -1089,7 +1244,7 @@ plot(neuralnet_sex, plots = "olden", custom=T,size = 9, pad_x = 0.8, nrobs = -1,
 
 <br>
 
-The plot presented showed the product of the weights through the model from each predictor to the output and the target category of classifying a user as a women. As seen, the number of kids and an inactive employment status had an important and positive contribution to the weights of the model. In contrast, the condition of a household that is divested, or the condition of widowhood, had a small contribution. Lastly, the condition of employment contributed but in a negative direction into the model, just as the fact that the interviewed did not answer the question about housing tenure,
+The plot presented showed the product of the weights through the model from each predictor to the output and the target category of classifying a user as a women. As seen, the number of kids and an inactive employment status had an important and positive contribution to the weights of the model. In contrast, the condition of a household that is divested, or the condition of widowhood, had a small contribution. Lastly, the condition of employment contributed however in a negative direction into the model, just as the fact that the interviewees did not answer the question about housing tenure.
 
 <br>
 
@@ -1279,11 +1434,11 @@ no_es=1
  
 <br>
 
-To obtain valid ages, we predicted the age of onset of drug use.  We generated a total of 10 cross-validations, with alternatives of 1 to 5 layers, and a threshold of 0, .5 and 1 in every model (10x5x3). The model that obtained the best fit (RMSE (mean)= `r round(nn_edad_ini_cons_par[,3],2)`) had a size of `r result_edad_ini_cons_sus$size` hidden layers, and a threshold for weights of `r result_edad_ini_cons_sus$decay` (L2 penalty). 
+To obtain valid ages, we predicted the age of the onset of drug use.  We generated a total of 10 cross-validations, with alternatives of 1 to 5 layers, and a threshold of 0, .5 and 1 in every model (10x5x3). The model that obtained the best fit (RMSE (mean)= `r round(nn_edad_ini_cons_par[,3],2)`) had a size of `r result_edad_ini_cons_sus$size` hidden layers, and a threshold for weights of `r result_edad_ini_cons_sus$decay` (L2 penalty). 
 
 <br>
 
-```{r fig5a_NN_age_onset_drug_use_PLOT, fig.height=8, fig.width=13, warning=FALSE, fig.align = "center", message=F,fig.cap="Figure 5a. Neural Network of Age of Onset of Drug Use"}
+```{r fig5a_NN_age_onset_drug_use_PLOT, fig.height=8, fig.width=13, warning=FALSE, fig.align = "center", message=F,fig.cap="Figure 5a. Neural Network of Age of the Onset of Drug Use"}
 
 mar <- par(mar = c(0, 0, 0, 0))
 
@@ -1292,7 +1447,7 @@ on.exit(par(mar = mar$mar))
 plot(result_edad_ini_cons_sus, plots = "net", custom=T,size = 9, pad_x = 0.8, nrobs = -1,cex_val = 3)
 ```
 
-```{r fig5b_neuralnet_age_onset_drug_use,fig.height=4, fig.width=10, echo=T, fig.align='center', fig.pos='H', fig.cap="Figure 5b. Garson Plot of Variable Importance, Age of Onset of Drug Use", message=FALSE}
+```{r fig5b_neuralnet_age_onset_drug_use,fig.height=4, fig.width=10, echo=T, fig.align='center', fig.pos='H', fig.cap="Figure 5b. Garson Plot of Variable Importance, Age of the Onset of Drug Use", message=FALSE}
 #https://rdrr.io/cran/radiant.model/man/plot.nn.html  
   
   #Options are "olden" or "garson" for importance plots, or "net" to depict the network structure
@@ -1311,7 +1466,7 @@ plot(result_edad_ini_cons_sus, plots = "olden", custom=T,size = 9, pad_x = 0.8, 
 
 <br>
 
-The plot presented showed the product of the weights through the model from each predictor to the output. As seen, the age of onset of drug use of the primary substance had an important and positive contribution to the weights of the model. In contrast, the year of the dataset in which cases were obtained had a small contribution. Lastly, starting substance such as cocaine paste base, hallucinogens and tranquilizers contributed but in a negative direction into the model,
+The plot presented showed the product of the weights through the model from each predictor to the output. As seen, the age of the onset of drug use of the primary substance had an important and positive contribution to the weights of the model. In contrast, the year of the dataset in which cases were obtained had a small contribution. Lastly, starting substances such as cocaine paste base, hallucinogens and tranquilizers, contributed however in a negative direction into the model.
 
 <br>
 
@@ -1384,14 +1539,14 @@ age_onset_drug_use_replace_neuralnet <-
 
 <br>
 
-We selected the age of onset of drug use of cases within users that had the same amount of different values in the age of onset of drug use. We also extended this selection to the age of onset of drug use in the primary (users=`r nrow(age_onset_drug_use_replace_neuralnet)`).
+We selected the age of the onset of drug use of cases within users that had the same amount of different values in the age of the onset of drug use. We also extended this selection to the age of the onset of drug use in the primary substance (users=`r nrow(age_onset_drug_use_replace_neuralnet)`).
 
 <br>
 
-#### 3.3.Ties and major differences in age of onset of drug use of primary substance
+#### 3.3.Ties and major differences in the age of the onset of drug use of primary substance
 
 
-We used a neural network model to obtain valid ages of onset of drug use of the primary substance for `r CONS_C1_df_dup_MAY_2020_prev_4 %>% dplyr::filter(concat_hash_sus_prin %in% c(as.character(unlist(casos_fecha_inicio_cons_sus_prin_empates_3["concat_hash_sus_prin"])))) %>% group_by(hash_key)%>% distinct(hash_key) %>% nrow()` users that had more than one age of onset of drug use in treatments with the same primary substance. 
+We used a neural network model to obtain valid ages of onset of drug use of the primary substance for `r CONS_C1_df_dup_MAY_2020_prev_4 %>% dplyr::filter(concat_hash_sus_prin %in% c(as.character(unlist(casos_fecha_inicio_cons_sus_prin_empates_3["concat_hash_sus_prin"])))) %>% group_by(hash_key)%>% distinct(hash_key) %>% nrow()` users that had more than one age of the onset of drug use in treatments with the same primary substance. 
 
 <br>
 
@@ -1532,11 +1687,11 @@ no_es=1
  
 <br>
 
-To obtain valid ages, we predicted the age of onset of drug use.  We generated a total of 10 cross-validations, with alternatives of 1 to 5 layers, and a threshold of 0, .5 and 1 in every model (10x5x3). The model that obtained the best fit (RMSE (mean)= `r round(nn_edad_ini_cons_sus_prin_par[,3],2)`) had a size of `r result_edad_ini_cons_sus_prin$size` hidden layers, and a threshold for weights of `r result_edad_ini_cons_sus_prin$decay` (L2 penalty). 
+To obtain valid ages, we predicted the age of the onset of drug use.  We generated a total of 10 cross-validations, with alternatives of 1 to 5 layers, and a threshold of 0, 0.5 and 1 in every model (10x5x3). The model that obtained the best fit (RMSE (mean)= `r round(nn_edad_ini_cons_sus_prin_par[,3],2)`) had a size of `r result_edad_ini_cons_sus_prin$size` hidden layers, and a threshold for weights of `r result_edad_ini_cons_sus_prin$decay` (L2 penalty). 
 
 <br>
 
-```{r fig6a_NN_age_onset_drug_use_prim_subs_PLOT, fig.height=8, fig.width=13, warning=FALSE, fig.align = "center", message=F,fig.cap="Figure 6a. Neural Network of Age of Onset of Drug Use"}
+```{r fig6a_NN_age_onset_drug_use_prim_subs_PLOT, fig.height=8, fig.width=13, warning=FALSE, fig.align = "center", message=F,fig.cap="Figure 6a. Neural Network of Age of the Onset of Drug Use"}
 
 mar <- par(mar = c(0, 0, 0, 0))
 
@@ -1545,7 +1700,7 @@ on.exit(par(mar = mar$mar))
 plot(result_edad_ini_cons_sus_prin, plots = "net", custom=T,size = 9, pad_x = 0.8, nrobs = -1,cex_val = 3)
 ```
 
-```{r fig6b_neuralnet_age_onset_drug_use_prim_subs,fig.height=4, fig.width=10, echo=T, fig.align='center', fig.pos='H', fig.cap="Figure 6b. Garson Plot of Variable Importance, Age of Onset of Drug Use", message=FALSE}
+```{r fig6b_neuralnet_age_onset_drug_use_prim_subs,fig.height=4, fig.width=10, echo=T, fig.align='center', fig.pos='H', fig.cap="Figure 6b. Garson Plot of Variable Importance, Age of the Onset of Drug Use", message=FALSE}
 #https://rdrr.io/cran/radiant.model/man/plot.nn.html  
   
   #Options are "olden" or "garson" for importance plots, or "net" to depict the network structure
@@ -1564,7 +1719,7 @@ plot(result_edad_ini_cons_sus, plots = "olden", custom=T,size = 9, pad_x = 0.8, 
 
 <br>
 
-The plot presented showed the product of the weights through the model from each predictor to the output. As seen, the age of onset of drug use of the primary substance had an important and positive contribution to the weights of the model. In contrast, the year of the dataset in which cases were obtained had a small contribution. Lastly, starting substance such as cocaine paste base, hallucinogens and tranquilizers contributed but in a negative direction into the model,
+The plot presented showed the product of the weights through the model from each predictor to the output. As seen, the age of the onset of drug use of the primary substance had an important and positive contribution to the weights of the model. In contrast, the year of the dataset in which cases were obtained had a small contribution. Lastly, starting substances such as cocaine paste base, hallucinogens and tranquilizers, contributed however in a negative direction into the model.
 
 <br>
 
@@ -1645,19 +1800,19 @@ age_onset_drug_use_prim_subs_replace_neuralnet <-
 
 <br>
 
-We selected the age of onset of drug use in the primary substance of cases within users that had the same amount of different values in the age of onset of drug use of primary substance. We also extended this selection to the age of onset of drug use in the primary substance of admission (users=`r nrow(age_onset_drug_use_prim_subs_replace_neuralnet)`).
+We selected the age of the onset of drug use in the primary substance of cases within users that had the same amount of different values in the age of the onset of drug use of primary substance. We also extended this selection to the age of the onset of drug use in the primary substance of admission (users= `r nrow(age_onset_drug_use_prim_subs_replace_neuralnet)`).
 
 <br>
 
-### 4.Standardization of Some Variables
+### 4. Standardization of Some Variables
 
-At this point, it is necessary to differentiate between intermediate treatment events (referrals, changes in the treatment center, among others) and different treatments. **But what would be a suitable cut point?**, that is why we explored the amount of days between each entry in users that had more than one treatment.
+At this point, it is necessary to differentiate between intermediate treatment events (referrals, changes in the treatment center, among others) and different treatments. **But what would be a suitable cut-off point?**, which is why we explored the amount of days between each entry in users that had more than one treatment.
 
 <br>
 
 #### 4.1. Geographical
 
-First, we created the variable called `macrozona` into the following macro-zones: North (02, 15, 03, 04, 01), Center (08, 05, 06, 07, 13, 16) & South (09,11, 10, 14, 12). Also, we recoded the regions into more readable labels and added the number of the region in parenthesis into the variable `nombre_region`. We recoded the communes/districts of residence of users by taking the notation of the Nationwide Census of 2017 and a standardized code in parenthesis, into the variable `comuna_residencia_cod`.
+First, we created the variable called `macrozona` into the following macro-zones: North (02, 15, 03, 04, 01), Center (08, 05, 06, 07, 13, 16) & South (09,11, 10, 14, 12). Also, we recoded the regions into more readable labels and added the number of the region in parenthesis into the variable `nombre_region`. We recoded the municipalities/districts of residence of users by taking the notation of the Nationwide Census of 2017 and a standardized code in parenthesis into the variable `comuna_residencia_cod`.
 
 ```{r 6a_std_region,eval=T, echo=T, paged.print=TRUE}
 CONS_C1_df_dup_MAY_2020_prev_5%>%
@@ -2095,12 +2250,12 @@ ggiraph(code = {print(gg2)}, tooltip_extra_css = tooltip_css, tooltip_opacity = 
 
 <br>
 
-As seen in Figure 7a, most of the treatments have been concentrated in the metropolitan region.
+As seen in Figure 7a, most of the treatments have been concentrated in the Metropolitan Region.
 
 <br>
 
 
-```{r fig7_image-map_chile_comunas, echo=T, fig.align='center', fig.pos='H', message=FALSE, warning=FALSE, fig.cap= "Figure 7b. Cases By Region"}
+```{r fig7_image-map_chile_comunas, echo=T, fig.align='center', fig.pos='H', message=FALSE, warning=FALSE, fig.cap= "Figure 7b. Cases By Municipality"}
 
 mapa_comunas = chilemapas::mapa_comunas
 
@@ -2147,7 +2302,7 @@ As seen in Figure 7b, most of the treatments have been concentrated in La Pintan
 
 <br>
 
-#### 4.2. Related to Drug use
+#### 4.2. Related to drug use
 
 <br>
 
@@ -2180,11 +2335,11 @@ We also recoded a variable that serves as a proxy of the social resources of eac
 
 <br>
 
-Relative to the tenure status of households, many of them had discrepancies when responding to the type of housing they lived in. We discarded those cases that answered "caleta o punto de calle" (living on streets), "hospedería" (guesthouses), and "residencial, pensión, hostal" (pension and hostels), but qualified their tenure status as "owned" or "yielded". The resulting variable is called `tenencia_de_la_vivienda_mod`.
+Relative to the tenure status of households, many of them had discrepancies when responding to the type of housing they lived in. We discarded the cases that answered "caleta o punto de calle" (living on the streets), "hospedería" (guesthouses), and "residencial, pensión, hostal" (pension and hostels), but qualified their tenure status as "owned" or "yielded". The resulting variable is called `tenencia_de_la_vivienda_mod`.
 
 <br>
 
-Regarding to the area of work, we found several sources of discrepancies, such as self-employed directors and managers and professions in the military, or professions in the military in an area in which a person that declares that run his/her own enterprise ("empleador"). Does not apply values ("N/A") were treated as null values. The resulting variable is `rubro_trabaja_mod`.
+Regarding area of work, we found several sources of discrepancies, such as self-employed directors and managers and professions in the military, or professions in the military in an area in which a person that declares to run his/her own enterprise ("empleador"). "Does not apply" values (N/A) were treated as null values. The resulting variable is `rubro_trabaja_mod`.
 
 <br>
 
@@ -2255,7 +2410,7 @@ dplyr::mutate(edad_al_ing_grupos=as.factor(edad_al_ing_grupos)) %>%
 
 <br>
 
-We observed the cases that remained with more or equal than 1,095 days (n= `r CONS_C1_df_dup_MAY_2020_prev_6c%>% dplyr::filter(dias_trat_imp>1095)%>% nrow()`). Must take note that SENDAs professionals believed that treatments should not last more than 1095 days.
+We observed the remaining cases with more than or equal to 1,095 days (n= `r CONS_C1_df_dup_MAY_2020_prev_6c%>% dplyr::filter(dias_trat_imp>1095)%>% nrow()`). It must be noted that SENDA professionals believed that treatments should not last more than 1095 days.
 
 <br>
 
@@ -2321,7 +2476,7 @@ df_tab5%>%
 
 <br>
 
-As seen in the Table above, most of the users appeared in more than one yearly database with the same date of admission. Additionally, many of those cases that had more than 2000 days of treatment came from databases of 2010. Additionally, we were interested to find the most frequent dates of discharge, to check if there were eventual common dates of discharge among these abnormal cases.
+As seen in the Table above, most of the users appeared in more than one yearly database with the same date of admission. Additionally, many of the cases that had more than 2,000 days of treatment came from databases of 2010. Additionally, we were interested to find the most frequent dates of discharge, to check if there were eventual common dates of discharge among these abnormal cases.
 
 <br>
 
@@ -2341,7 +2496,7 @@ As seen in the table above, many cases had dates of discharge around the change 
 
 <br>
 
-Considering that we were focused on treatments from 2010 to 2019, we decided to delete those cases with more than 1095 days of treatment that started before 2010. Equally, we deleted those cases that rounded the change of the databases.
+Considering that we were focused on treatments from 2010 to 2019, we decided to delete the cases with more than 1,095 days of treatment that started before 2010. Equally, we deleted the cases that rounded the change of the databases.
 
 <br>
 
@@ -2369,7 +2524,7 @@ CONS_C1_df_dup_MAY_2020_prev_6c%>%
 
 <br>
 
-The dataset ended in `r nrow(CONS_C1_df_dup_MAY_2020_prev_6d)%>% formatC(big.mark=",")` entries, of `r length(unique(CONS_C1_df_dup_MAY_2020_prev_6d$hash_key))%>% formatC(big.mark=",")` users.
+The dataset resulted in `r nrow(CONS_C1_df_dup_MAY_2020_prev_6d)%>% formatC(big.mark=",")` entries corresponding to `r length(unique(CONS_C1_df_dup_MAY_2020_prev_6d$hash_key))%>% formatC(big.mark=",")` users.
 
 <br>
 
@@ -2377,7 +2532,7 @@ The dataset ended in `r nrow(CONS_C1_df_dup_MAY_2020_prev_6d)%>% formatC(big.mar
 
 <br>
 
-There are two questions concerning the number of children: the number of dependent children (`numero_de_hijos`) and the amount of children to enter to a residential treatment (`num_hijos_ing_trat_res`). Must note that `r CONS_C1_df_dup_MAY_2020_prev_6d%>% dplyr::group_by(hash_key)%>% dplyr::arrange(hash_key, desc(fech_ing))%>%dplyr::mutate(lag_numero_de_hijos=lag(numero_de_hijos),n=n(),validador_n_hijos=ifelse(lag_numero_de_hijos-numero_de_hijos<0,1,0),sum_validador=sum(validador_n_hijos,na.rm=T))%>% ungroup()%>% dplyr::filter(sum_validador>0)%>% distinct(hash_key)%>% nrow()%>%  formatC(big.mark=",")` users report less children compared to at least one of the next treatments that user had. We did not changed this number because we had no reason to think that some children could have died or not longer being recognized as they were in the previous treatment.
+There are two questions concerning the number of children: the number of dependent children (`numero_de_hijos`) and the amount of children to enter a residential treatment (`num_hijos_ing_trat_res`). It must be noted that `r CONS_C1_df_dup_MAY_2020_prev_6d%>% dplyr::group_by(hash_key)%>% dplyr::arrange(hash_key, desc(fech_ing))%>%dplyr::mutate(lag_numero_de_hijos=lag(numero_de_hijos),n=n(),validador_n_hijos=ifelse(lag_numero_de_hijos-numero_de_hijos<0,1,0),sum_validador=sum(validador_n_hijos,na.rm=T))%>% ungroup()%>% dplyr::filter(sum_validador>0)%>% distinct(hash_key)%>% nrow()%>%  formatC(big.mark=",")` users report less children compared to at least one of the next treatments that same user had. We did not change this number, because we had no reason to think that some children could have died or are no longer being recognized as they were in the previous treatment.
 
 <br>
 
@@ -2402,7 +2557,7 @@ Additionally, we generated a variable called `num_hijos_trat_res_mod` that disca
 
 <br>
 
-Lastly, we did not modify the question that asked to the relative(s) with whom the user lives. Consistent with the above rules, we could have discarded those cases that did not report any children but declared that lived with one. However, it is possible that in the last 30 days the user could not have been living with their children. That is why we decided to keep this variable unaltered.
+Lastly, we did not modify the question that asked for the relative(s) with whom the user lives. Consistent with the rules above, we could have discarded the cases that did not report any children but declared that they lived with one. However, it is possible that in the last 30 days the user could not have been living with their children, which is why we decided to keep this variable unaltered.
 
 <br>
 
@@ -2474,11 +2629,11 @@ CONS_C1_df_dup_MAY_2020_prev_6e%>% janitor::tabyl(origen_ingreso_mod,usuario_tri
 
 <br>
 
-As seen in the table above, most of the users that were in a drug treatment courts modality entered to a treatment motivated by initiatives from the justice sector. However, we could not define a rule to estimate is one value of the variables is valid or not.
+As seen in the table above, most of the users that were in a drug treatment courts modality entered a treatment motivated by initiatives from the justice sector. However, we could not define a rule to estimate if one value of the variables is valid or not.
 
 <br>
 
-One of the variables that is not available in the glossary of terms are the ones related to reported disability and cause of disability. 
+One of the variables that is not available in the glossary of terms provided by SENDA are the ones related to reported disability and cause of disability. 
 
 <br>
 
@@ -2495,13 +2650,13 @@ invisible(c("1.diagnostico_trs_fisico"));invisible(c("2.otros_probl_at_sm_or"))
 
 <br>
 
-As seen in the Table above, most of the reported causes of disability were physical and psychical. However, there were not evident errors of classification of types depending on disabilities.
+As seen in the Table above, most of the reported causes of disability were physical and psychic. However, there were no evident errors of classification of types depending on disabilities.
 
 <br>
 
 ### 5.Overview of spaces between treatments
 
-At this point, it was necessary to differentiate between intermediate treatment events (referrals, changes in the treatment center, among others) and different treatments. **But what would be a suitable cut point?**, that is why we explored the amount of days between each entry in users that had more than one treatment. This was done through the difference between the date of admission of a subsequent (more recent) entry of a user, and the date of discharge of the entry.
+At this point, it was necessary to differentiate between intermediate treatment events (referrals, changes in the treatment center, among others) and different treatments. **But what would be a suitable cut-off point?**, that is why we explored the amount of days between each entry in users that had more than one treatment. This was done through the difference between the date of admission of a subsequent (more recent) entry of a user, and the date of discharge of the entry.
 
 <br>
 
@@ -2537,7 +2692,7 @@ quantiles_diff_bet_treat<-data.table::data.table(cbind(quantile(CONS_C1_df_dup_M
 
 <br>
 
-Considering the distribution of differences in days between each entry and what was discussed with the team of professionals of SENDA in charge of treatments, we defined the cutpoint in 60 days, which represented the `r quantiles_diff_bet_treat %>% dplyr::filter(V1>=60) %>% slice(1) %>% dplyr::select(rn)` of the total differences .(n= `r dplyr::filter(CONS_C1_df_dup_MAY_2020_prev_6e_exp_spaces,!is.na(diff_bet_treat)) %>% nrow() %>% formatC(, format="f", big.mark=",", digits=0)`).
+Considering the distribution of differences in days between each entry and what was discussed with the team of professionals of SENDA in charge of treatments, we defined the cut-off point at 60 days, which represented `r quantiles_diff_bet_treat %>% dplyr::filter(V1>=60) %>% slice(1) %>% dplyr::select(rn)` of the total differences (n= `r dplyr::filter(CONS_C1_df_dup_MAY_2020_prev_6e_exp_spaces,!is.na(diff_bet_treat)) %>% nrow() %>% formatC(, format="f", big.mark=",", digits=0)`).
 
 <br>
 
@@ -2547,7 +2702,7 @@ p<-ggplot(CONS_C1_df_dup_MAY_2020_prev_6e_exp_spaces,aes(x=diff_bet_treat), alph
   geom_vline(aes(xintercept=30), color="darkred", linetype="dashed")+
   geom_vline(aes(xintercept=45), color="darkmagenta", linetype="solid")+
   geom_vline(aes(xintercept=60), color="darkblue", linetype="dotted")+
-  sjPlot::theme_sjplot2() +
+  theme_bw() +
   #facet_wrap(~motivodeegreso_mod_imp)+
 labs(y = "Frequency",x="Diff. Between Treatments", caption= "Blue dotted line= 60 days; Violet solid line= 45 days; Red dashed line= 30 days")#+
 # xlim(c(-1,2000))
@@ -2555,9 +2710,9 @@ labs(y = "Frequency",x="Diff. Between Treatments", caption= "Blue dotted line= 6
 ggiraph(code = {print(p)}, tooltip_extra_css = tooltip_css, tooltip_opacity = .75)
 ```
 
-#### 5.1. Cause of Discharge
+#### 5.1. Cause of discharge
 
-We explored how was the distribution between the causes of discharge, depending on treatment conditions. This could be useful to get an impression of the adjustment of the cutpoint chosen.
+We explored how the distribution was between the causes of discharge depending on treatment conditions. This could be useful to get an impression of the adjustment of the cut-off point chosen.
 
 <br>
 
@@ -2668,13 +2823,13 @@ ggiraph(code = print(plot))
 ```
 <br>
 
-As can be seen in Figure 8, Referrals in cases with more than one entry by user and equal or less than 60 days of difference between them, were overwhelmingly superior compared to the same category among entries that had more than 60 days of difference. Also users that only had one treatment in the study period had a small proportion of referrals compared to cases with more than one entries by user, with equal or less than 60 days of difference between last treatment.
+As can be seen in Figure 8, Referrals in cases with more than one entry by user and equal to or less than 60 days of difference between them were overwhelmingly superior compared to the same category among entries that had more than 60 days of difference. Also, users that only had one treatment in the study period had a small proportion of referrals compared to cases with more than one entry by user, with equal to or less than 60 days of difference between the last treatment.
 
 <br>
 
-#### 5.2. Changes Between the Last Treatments
+#### 5.2. Changes between the last treatments
 
-We considered that it was important to explore the changes between one entry of a user and their previous, since this can shed light **if a certain entry can be really considered as a different treatment from the next one, leading to identify a true readmission**.
+We considered that it was important to explore the changes between one entry of a user and their previous entry, since this can shed light on **if a certain entry can really be considered as a different treatment from another, leading to identify a true readmission**.
 
 <br>
 
@@ -2717,11 +2872,11 @@ CONS_C1_df_dup_MAY_2020_prev_6e %>%
 
 <br>
 
-From the Table above, we can see that the majority of cases changed center and type of plan	(44.2%). These are followed by a group that changed the center, type of plan and  type of program (15.7%). There was another group that did not changed in any characteristic from the earlier entry (11.6%). Also, a group of cases only changed the type of plan (10.2%), and other, only changed from one center to another (8.9%).
+From the Table above, we can see that the majority of cases changed center and type of plan	(44.2%). These are followed by a group that changed treatment center, type of plan and  type of program (15.7%). There was another group that did not change in any characteristic from the earlier entry (11.6%). Also, a group of cases only changed the type of plan (10.2%), and another, only changed from one center to another (8.9%).
 
 <br>
 
-We fitted a model of the interactive effect of the number of changes from the next entry with referral, on the odds of showing <=60 days of difference with the next entry We suspected a nonlinear effect of reporting the next treatment with a cause of discharge as a referral. This difference may not be the same for cases that changed one, two, three or even four of characteristics of the treatment between the next entry.
+We fitted a model of the interactive effect of the number of changes from the next entry with referral, on the odds of showing <=60 days of difference with the next entry We suspected a nonlinear effect of reporting the next treatment with a cause of discharge as a referral. This difference may not be the same for cases that changed in one, two, three or even four of characteristics of the treatment between the first and next entry.
 
 <br>
 
@@ -2795,7 +2950,7 @@ knitr::kable(t,format = "html", format.args = list(decimal.mark = ".", big.mark 
 
 <br>
 
-In the following figure, we show the marginal effects on the probability of having less or equal than 60 days of difference between the next entry, depending on cause of discharge (referral) and the number of changes in the characteristics of treatments with the next entry.
+In the following figure, we show the marginal effects on the probability of having 60 days or less of difference with the next entry, depending on the cause of discharge (referral) and the number of changes in the characteristics of treatments with the next entry.
 
 <br>
 
@@ -2824,7 +2979,7 @@ geom_line(position=position_dodge(0.1), size=.5)+
 geom_point(position=position_dodge(0.1), size=2)+
   xlab("No. of Changes in the Treatment Characteristics")+
   ylab("Odds Ratio (OR) of <60 days of \ndiff. w/ next entry")+
-  sjPlot::theme_sjplot2() +
+  theme_bw() +
   geom_rect_interactive(alpha = 0.1, xmin=.1, xmax=.1, ymin=.1,ymax=.1) +
     # Remove plot elements added by geom_rect_interactive
   theme(legend.position="bottom")+
@@ -2840,7 +2995,7 @@ ggiraph(code = print(g4R))
 
 <br>
 
-Figure 10 tend show that there was more chance to had a minor difference with the next treatment, if the cause of discharge was  a referral and a user had among 2 or 3 changes in the characteristics of the treatment in the following entry. However, must note that referrals had more chance than other causes of discharge by itself, regardless of the number of changes.
+Figure 10 shows that there was more chance to have a minor difference with the next treatment, if the cause of discharge was  a referral and a user had among 2 or 3 changes in the characteristics of the treatment in the following entry. However, it must be noted that referrals had more chance than other causes of discharge by itself, regardless of the number of changes.
 
 <br>
 
@@ -2854,11 +3009,11 @@ CONS_C1_df_dup_MAY_2020_prev_6e%>%
 
 <br>
 
-#### 6.1. Type of Referral
+#### 6.1. Type of referral
 
 <br>
   
-We looked over the center in which each user was referred, but considering the cause of admission.
+We looked over the center in which each user was referred, but considered the cause of admission.
 
 <br>
 
@@ -2877,7 +3032,7 @@ CONS_C1_df_dup_JUN_2020%>% janitor::tabyl(tipo_centro_derivacion,motivodeegreso_
 
 <br>
 
-From the table above, we could observe that no other causes of discharge had a type of referral, so there was no reason to alter this variable.
+From the Table 14, we can see that no other causes of discharge had a type of referral, so there was no reason to alter this variable.
 
 <br>
   
@@ -2902,7 +3057,7 @@ From the table above, we could observe that no other causes of discharge had a t
     geom_bar(stat='identity', alpha=.8) + 
     scale_x_discrete()+
     scale_fill_viridis(discrete = T, name= "No. of changes") +
-    sjPlot::theme_sjplot2()+
+    theme_bw()+
     labs(x="",y="Percentages ",
          caption= paste0("Note. ;\n", 
                          ""))+
@@ -2945,7 +3100,7 @@ From the table above, we could observe that no other causes of discharge had a t
     geom_bar(stat='identity', alpha=.8) + 
     scale_x_discrete()+
     scale_fill_manual(name= "No. of changes",values=c("cornsilk3", "lightskyblue2", "#56B4E9", "steelblue","slategray4")) +
-    sjPlot::theme_sjplot2()+
+    theme_bw()+
     labs(x="",y="Percentages ", fill="No. of changes")+
     #ylim(0,101)+
     scale_y_continuous(limits=c(0,1),labels = scales::percent) +
@@ -2991,7 +3146,11 @@ CONS_C1_df_dup_JUN_2020%>% dplyr::mutate(no_otro_trat=!is.na(diff_bet_treat))%>%
 
 <br>
 
-As seen in the Table above, it was not clear whether the absence of a following treatment is explicitly associated with a type of center of referral. This is why we had to ask SENDAs professionals about the characteristics of the referrals.
+As seen in the Table 15, it was not clear whether the absence of a following treatment is explicitly associated with a type of center of referral. This is why we had to ask SENDA professionals about the characteristics of the referrals.
+
+<br>
+
+# 7. Consolidation of the dataset and its variables 
 
 <br>
 
@@ -3237,9 +3396,9 @@ dplyr::mutate_at(c('dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_cie_10_or','x3_dg_trs
 codebook::var_label(CONS_C1_df_dup_JUN_2020) <- list(
 row= 'Numerador de los eventos presentes en la Base de Datos/Events in the Dataset',
 table= 'Origen de los Datos (de los archivos por año)/Source of Data (of files per year)',
-hash_key= 'Codificación del RUT/Masked Identifier (RUT)',
+hash_key= 'Codificación del RUN/Masked Identifier (RUN)',
 ano_bd= 'Año de la Base de Datos/Year of the Dataset (Source)',
-id= 'Codigo Identificación de SENDA/SENDAs ID',
+id= 'Codigo Identificación de SENDA/SENDA ID',
 nombre_centro= 'Nombre del Centro de Tratamiento/Treatment Center',
 tipo_centro= 'Tipo de Centro/Type of Center',
 region_del_centro= '(original, Recodificado en nombre_region)/',
@@ -3325,29 +3484,29 @@ dg_nec_int_soc_cap_soc_or_1= 'Diagnóstico de Necesidades de Integración Social
 tiene_menores_de_edad_a_cargo= 'Menores de Edad A Cargo/Minor Dependants',
 mot_egres_alt_adm_or= 'Motivo de Egreso Alta Administrativa/Cause of Administrative Discharge',
 consorcio=  'Sociedades de Tratamiento Servicios de Salud- Fundaciones- entre otras entidades encargadas de los centros/Consortium',
-id_centro= 'ID de Centro/Center ID',
+id_centro= 'ID de Centro/Treatment center ID',
 ha_estado_embarazada_egreso= '¿Ha estado embarazada? (al Egreso)/Have you been Pregnant (at Discharge)',
 identidad_de_genero= 'Identidad de Género/Gender Identity',
 discapacidad= 'Presenta Discapacidad/Disability',
-hash_rut_completo= 'HASH alternativo, en el escenario en que se asuma que el individuo al que se le codificó el RUT presente mayor edad/Alternative HASH-Key',
+hash_rut_completo= 'HASH alternativo, en el escenario en que se asuma que el individuo al que se le codificó el RUN presente mayor edad/Alternative HASH-Key',
 opcion_discapacidad= 'Origen de Discapacidad/Cause of Disability',
 sexo_2= 'Sexo Usuario/Sex of User',
 embarazo= 'Embarazo al Ingreso /Pregnant at Admission',
 tipo_de_plan_2= 'Tipo de Plan/Type of Plan',
 tipo_de_programa_2= 'Tipo de Programa de Tratamiento/Type of Program',
 fech_egres_sin_fmt= 'Fecha de Egreso de Tratamiento (Sin Formato de Fecha)/Date of Discharge',
-id_mod= 'ID de SENDA para Presentación en Página Web (enmascara caracteres 5 y 6)/SENDAs ID (mask characters 5 & 6)',
+id_mod= 'ID de SENDA para Presentación en Página Web (enmascara caracteres 5 y 6)/SENDA ID (mask characters 5 & 6)',
 ano_nac= 'Año de Nacimiento (numérico)/Year of Birth (numeric)',
 fech_ing_ano= 'Año de Ingreso (numérico)/Year of Admission (numeric)',
 fech_ing_mes= 'Mes de Ingreso (numérico)/Month of Admission (numeric)',
 fech_ing_dia= 'Día de Ingreso (numérico)/Day of Admission (numeric)',
-concat= 'ID de SENDA y HASH Concatenado (permite discriminar más de un HASH en un mismo ID)/Combination of SENDAs ID & HASH',
+concat= 'ID de SENDA y HASH Concatenado (permite discriminar más de un HASH en un mismo ID)/Combination of SENDA ID & HASH',
 obs= 'Observaciones al Proceso de Limpieza y Estandarización de Casos/Observations to the Process of Data Tidying & Standardization',
 dias_trat_inv= 'Días de Tratamiento Invertidos (fecha más reciente, menor valor numérico)/Treatment Days (Reversed)',
 fech_nac= 'Fecha de Nacimiento/Date of Birth',
 edad_al_ing= 'Edad a la Fecha de Ingreso a Tratamiento (numérico continuo)/Age at Admission to Treatment',
-edad_ini_cons= 'Edad de Inicio de Consumo/Age of Onset of Drug Use',
-edad_ini_sus_prin=  'Edad de Inicio de Consumo Sustancia Principal/Age of Onset of Drug Use of Primary Substance',
+edad_ini_cons= 'Edad de Inicio de Consumo/Age of the Onset of Drug Use',
+edad_ini_sus_prin=  'Edad de Inicio de Consumo Sustancia Principal/Age of the Onset of Drug Use of Primary Substance',
 dias_trat_alta_temprana= 'Días de tratamiento (<90)/Less than 90 days in treatment',
 motivodeegreso_mod= 'Motivo de Egreso (con abandono temprano y tardío)/Cause of Discharge (with late and early withdrawal)',
 sus_principal= 'Sustancia Principal de Consumo/Primary or Main Substance of Consumption at Admission',
@@ -3403,28 +3562,39 @@ obs_cambios_fac= "Recuento de cambios del tratamiento en comparación al registr
 at_least_one_cont_entry= "Casos de Usuarios con más de una entrada después de otra/Cases of users with more than one entry after another one"
 )
 
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+time_after_dedup3<-Sys.time()
 
-#####to_export_labels
-table_labels<-
-  tibble::rownames_to_column(data.frame(Hmisc::label(CONS_C1_df_dup_JUN_2020))) %>% data.frame() %>%
-  dplyr::rename("code" = !!names(.[1]), "label" = !!names(.[2])) %>% data.frame() %>%
-  dplyr::mutate(first= "cap label variable")%>%
-  dplyr::mutate(final= paste0(first, " ",code,' "',label,'"'))%>%
-  dplyr::select(-code,-label,-first)%>%
-  rbind('cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUN_2020.dta", replace')%>%
-  rbind('cap drop id id_mod nombre_centro consentimiento_informado')%>%
-  rbind('cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUN_2020_exp.dta", replace')
+paste0("Time in markdown: ");time_after_dedup3-time_before_dedup3
 
-table_labels<-
-  data.frame(final='use "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUN_2020.dta", clear')%>%
-  rbind(table_labels)%>%
-  rename("*final"="final")
-  #write.csv2(table_labels,"__labels_to_stata_C1_jun_2020.do",row.names =F)
-  write.table(table_labels, file = "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/_label_var_to_stata.do", sep = "",
-            row.names = FALSE, quote = FALSE,fileEncoding="UTF-8")
+CONS_C1_df_dup_JUN_2020 %>%
+  dplyr::arrange(hash_key, desc(fech_ing)) %>% 
+  rio::export(file = paste0(path,"/CONS_C1_df_dup_JUN_2020.dta"))
+#save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/6.RData")
+save.image(paste0(path,"/6.RData"))
+```
 
- # dplyr::filter(label!="") %>%
+```{r label_to_stata, echo=T, paged.print=TRUE}
+
+# #####to_export_labels
+# table_labels<-
+#   tibble::rownames_to_column(data.frame(Hmisc::label(CONS_C1_df_dup_JUN_2020))) %>% data.frame() %>%
+#   dplyr::rename("code" = !!names(.[1]), "label" = !!names(.[2])) %>% data.frame() %>%
+#   dplyr::mutate(first= "cap label variable")%>%
+#   dplyr::mutate(final= paste0(first, " ",code,' "',label,'"'))%>%
+#   dplyr::select(-code,-label,-first)%>%
+#   rbind('cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUN_2020.dta", replace')%>%
+#   rbind('cap drop id id_mod nombre_centro consentimiento_informado')%>%
+#   rbind('cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUN_2020_exp.dta", replace')
+# 
+# table_labels<-
+#   data.frame(final='use "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUN_2020.dta", clear')%>%
+#   rbind(table_labels)%>%
+#   rename("*final"="final")
+#   #write.csv2(table_labels,"__labels_to_stata_C1_jun_2020.do",row.names =F)
+#   write.table(table_labels, file = "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/_label_var_to_stata.do", sep = "",
+#             row.names = FALSE, quote = FALSE,fileEncoding="UTF-8")
+
+# dplyr::filter(label!="") %>%
 #  bind_rows(data.frame("code"=c("fech_egres_imp", 
 ##                                "dias_trat_imp",
 #                                "dias_trat_alta_temprana_imp",
@@ -3433,23 +3603,41 @@ table_labels<-
 #                                                                     "Days of Treatment for Early Withdrawal (Imputed)",
 #                                                                     "Cause of Discharge w/ Early or Late Withdrawal (Imputed)"))) %>% 
 
-CONS_C1_df_dup_JUN_2020 %>%
-  dplyr::arrange(hash_key, desc(fech_ing)) %>% 
-  rio::export(file = "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUN_2020.dta")
-
-save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/6.RData")
-
 #Agregar nuevas variables al codebook
 #hacer codebook
 #Agregar procesos a strobe
 #Poner olr y arriba pondría los otros modelos.
+
+export_lab_stata<-
+  tibble::rownames_to_column(data.frame(Hmisc::label(CONS_C1_df_dup_JUN_2020)))%>% data.frame() %>%
+  dplyr::rename("code" = !!names(.[1]), "label" = !!names(.[2]))%>% data.frame()%>%
+  dplyr::mutate(first= "cap noi label variable")%>%
+  dplyr::mutate(final= paste0(first, " ",code,' "',label,'"'))%>%
+  dplyr::select(-code,-label,-first)%>%
+  dplyr::rename("*clear all"="final") %>% 
+  rbind(paste0('cap noi save "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUN_2020.dta", replace'))%>%
+  rbind('cap noi drop id id_mod nombre_centro consentimiento_informado')%>%
+  rbind('cap noi drop id id_mod nombre_centro')%>%
+  rbind(paste0('cap noi save "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUN_2020_exp.dta", replace'))
+
+rbind(paste0('cap noi use "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUN_2020.dta", clear'),export_lab_stata) %>% knitr::kable("html") %>% 
+    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size =10) %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px")
+
+write.table(rbind(paste0('cap noi use "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUN_2020.dta", clear'),export_lab_stata), file = paste0(path,"/SUD_CL/_label_var_to_stata.do"), sep = "",row.names = FALSE, quote = FALSE, fileEncoding="UTF-8")
 ```
+
 
 <br>
 
-```{stata 2, collectcode=TRUE,results="hide"}
-cap do _label_var_to_stata.do
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+
+```{stata 2, collectcode=F, include=T, error=T, cleanlog=F}
+*should be in the same folder of the .Rmd to work
+cap noi do _label_var_to_stata.do
 ```
+
+</div>
 
 <br>
 

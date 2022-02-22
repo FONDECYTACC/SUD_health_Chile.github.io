@@ -1,6 +1,6 @@
 ---
 title: "Descriptive Statistics"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
+date: "`r withr::with_locale(new = c('LC_TIME' = 'C'), code =format(Sys.time(),'%B %d, %Y'))`"
 output:
   html_document:
     code_folding: hide  
@@ -46,8 +46,21 @@ div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-ali
 </style>
 
 ```{r prev_setup, include = FALSE, cache=T}
+# rm(list=ls());gc()
+# load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/8.Rdata")
+
 rm(list=ls());gc()
-load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/8.Rdata")
+if(!require(here)){install.packages("here")}
+warning(paste0(getwd()))
+Sys.setlocale("LC_TIME")
+
+unlink(paste0(here::here(),"/*_cache"), recursive = TRUE)
+
+path<-gsub("/SUD_CL","",here::here())
+
+check_obj<-function(x){if(!exists(x)){stop(paste0("The object ",x ," was not created"))}}
+
+load(paste0(path,"/7.Rdata"))
 
 if(isTRUE(getOption('knitr.in.progress'))==T){
     nn_size= 1:5 # size= 1:5
@@ -137,50 +150,54 @@ copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
 #if(!require(matrixStats)){install.packages("matrixStats")}
 #if(!require(radiant)){install.packages("radiant", repos = "https://radiant-rstats.github.io/minicran/")}
 
-try(library(boot))
-library(matrixStats)
-library(knitr)
-library(tidyr)
-library(stringi)
-library(stringr)
-library(ggplot2)
-library(Hmisc)
-library(kableExtra)
-library(plotly)
-library(janitor)
-library(rbokeh)
-library(altair)
-library(zoo)
-library(broom)
-library(sqldf)
-library(devtools)
-library(Statamarkdown)
-library(codebook)
-library(data.table)
-library(dplyr)
-library(panelr)
-library(RColorBrewer)
-library(choroplethr)
-library(choroplethrMaps)
-library(choroplethrAdmin1)
-library(lsmeans)
-library(finalfit)
-library(chilemapas)
-suppressPackageStartupMessages(library(ggiraph))
-suppressPackageStartupMessages(library(sf))
-library(treemapify)
-library(dplyr)
-library(choroplethr)
-library(choroplethrMaps)
-library(choroplethrAdmin1)
-library(tidyverse)
-library(epiR)
-library(survminer)
-library(rateratio.test)  
-library(ggfortify)
-library(survMisc)
+#2022
+if(!require(biostat3)){install.packages("biostat3")}
+require(Statamarkdown)
 
-if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
+#2020
+try(require(boot))
+require(matrixStats)
+require(knitr)
+require(tidyr)
+require(stringi)
+require(stringr)
+require(ggplot2)
+require(Hmisc)
+require(kableExtra)
+require(plotly)
+require(janitor)
+require(rbokeh)
+#2022: require(altair)
+require(zoo)
+require(broom)
+require(car)
+require(sqldf)
+require(devtools)
+require(codebook)
+require(data.table)
+require(panelr)
+require(RColorBrewer)
+require(lsmeans)
+require(finalfit)
+require(chilemapas)
+suppressPackageStartupMessages(require(ggiraph))
+suppressPackageStartupMessages(require(sf))
+require(treemapify)
+require(dplyr)
+require(tidylog)
+require(choroplethr)
+require(choroplethrMaps)
+require(choroplethrAdmin1)
+require(tidyverse)
+require(epiR)
+require(survminer)
+require(rateratio.test)  
+require(ggfortify)
+require(survMisc)
+require(muhaz)
+require(flexsurv)
+
+#if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
 #install.packages( repos = "https://radiant-rstats.github.io/minicran/")
 #install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")
 
@@ -213,13 +230,14 @@ return(
       )
     )
 }
+time_before_desc<-Sys.time()
 ```
 
 <!--- SÍ O SÍ, HACER LA LIMPIEZA DE LOS SENDA NO, PRINCIPALMENTE DE LOS QUE SE SUPERPONGAN, TAMBIÉN PREGUNTAR A ACC SI LOS CON 0 DÍAS DE TRATAMIENTO SE BORRARÁN O NO; DE AHI EMPEZAR A NORMALIZAR LOS PROGRAMAS Y PLANES DE ACUERDO CON CRITERIOS MAUREEN, PARA NO GENERAR DIFERENCIAS AHI Y PODER DEDUPLICAR TRANQUILO --->
 
 <br>
 
-For the purpose of this page, we use the terms "rows" and "cases" as equal to refer to the entries of the dataset. In many of the processes made along the deduplication of entries in C1 dataset, we used unstandardized columns or many other data that was in fact duplicated by HASHs, that did not depend on events related to treatment.In order to find and delete duplicated data that does not add information relevant for the purposes of the study, we now may **use these standardized variables as a criteria to achieve the goal of having a unique event per HASH, by reducing its complexity based on irrelevant differences**.
+For the purpose of this page, we use the terms "rows" and "cases" interchangeably to refer to the entries of the dataset. In many of the processes made along the deduplication of entries in the C1 dataset, we used unstandardized columns or many other data that was in fact duplicated by HASHs that did not depend on events related to treatment.In order to find and delete duplicated data that does not add information relevant for the purposes of the study, we now may **use these standardized variables as a criteria to achieve the goal of having a unique event per HASH, by reducing its complexity based on irrelevant differences**.
 
 <br>
 
@@ -319,11 +337,11 @@ Only rows with available data on TOP scores
 ```
 
 
-# Characteristics of Population in Agreement 1
+# Characteristics of population in Agreement 1 (C1)
 
 <br>
 
-We first compared treatments selected in the database, to the discarded entries due to duplicated or invalid values.
+We first compared treatments selected in the database to the discarded entries due to duplicated or invalid values.
 
 <br>
 
@@ -907,13 +925,13 @@ restab <- suppressWarnings(createTable(table, show.p.overall = F))
 
 <br>
 
-As we can see in Table 1, there was a greater proportion of treatments of women and +50 users that were not available for selection. Also, among the non-selected treatments, there was a greater share of alcohol, but a lower cocaine-paste as a primary substance at admission. Additionally, there was a greater proportion of therapeutic discharges and referrals, but a lower proportion of late and early drop-outs. Regarding the motives of admission to treatment, Spontaneous motives had a lower percentage in comparison to the selected cases. For psychiatric comorbidity, there was a greater proportion of treatments with psychiatric comorbidity, but a lower proportion had a diagnosis under study. Another variable that was worth mentioning was occupational status, where the inactive group had greater proportions among the non- selected group. The treatment lengths were greater in the non-selected treatments.
+As we can see in Table 1, there was a greater proportion of treatments of women and +50 users that were not available for selection. Also, among the non-selected treatments, there was a greater share of alcohol, but a lower rate of cocaine-paste as a primary substance at admission. Additionally, there was a greater proportion of therapeutic discharges and referrals, but a lower proportion of late and early drop-outs. Regarding the motives of admission to treatment, spontaneous motives had a lower percentage in comparison to the selected cases. For psychiatric comorbidity, there was a greater proportion of treatments with psychiatric comorbidity, but a lower proportion had a diagnosis under study. Another variable that was worth mentioning was occupational status, in which the inactive group had greater proportions among the non- selected group. The treatment lengths were greater in the non-selected treatments.
 
 <br>
 
-# Give format to the database
+# Format the database
 
-Person days are conceived as the difference in each user, of the minimum date of admission (the first time that each patient was admitted between 2010 and 2019), and the maximum date of discharge (the last time that a patient was discharged from a treatment between 2010 and 2019).
+Person days are conceived as the difference in each user between the minimum date of admission (the first time that each patient was admitted between 2010 and 2019) and the maximum date of discharge (the last time that a patient was discharged from a treatment between 2010 and 2019).
 
 <br>
 
@@ -1024,11 +1042,11 @@ The total incidence rate was `r formatC(table(CONS_C1_df_dup_SEP_2020_prev3$even
 
 <br>
 
-## Incidence Rate of the First Readmission By Groups
+## Incidence rate of the first readmission by groups
 
 <br>
 
-We recoded the variables of cause of discharge, in order to account for early drop-out and late drop-out. Also we recoded the variables of main type of drug, in order to account for the main substance and comparisons between them: Cocaine vs. Alcohol, Cocaine Paste vs. Alcohol, and Marihuana vs. Alcohol.
+We recoded the variables of cause of discharge, in order to account for early drop-out and late drop-out. Also we recoded the variables of main type of drug, in order to account for the main substance and comparisons between them: cocaine vs. alcohol, cocaine paste vs. alcohol, and marihuana vs. alcohol.
 
 <br>
 
@@ -1083,23 +1101,23 @@ irrs_mar<-irrs(x="droga_rec_mar" ,db="CONS_C1_df_dup_SEP_2020_prev4")
 
 <br>
 
-Compared with users with therapeutic discharge as the cause of discharge, the incidence rate of readmission was `r round(as.numeric(irrs_early$estimate[1]),2)` (95% IC `r round(irrs_early$conf.int[1],2)`-`r round(irrs_early$conf.int[2],2)`) times higher for those that drop-out treatment before 3 months in treatment.
+Compared to users with therapeutic discharge as the cause of discharge, the incidence rate of readmission was `r round(as.numeric(irrs_early$estimate[1]),2)` (95% IC `r round(irrs_early$conf.int[1],2)`-`r round(irrs_early$conf.int[2],2)`) times higher for those that dropped-out of treatment before 3 months in treatment.
 
 <br>
 
-Compared with users with therapeutic discharge as the cause of discharge, the incidence rate of readmission was `r round(as.numeric(irrs_late$estimate[1]),2)` (95% IC `r round(irrs_late$conf.int[1],2)`-`r round(irrs_late$conf.int[2],2)`) times higher for those that drop-out treatment after 3 months in treatment.
+Compared to users with therapeutic discharge as the cause of discharge, the incidence rate of readmission was `r round(as.numeric(irrs_late$estimate[1]),2)` (95% IC `r round(irrs_late$conf.int[1],2)`-`r round(irrs_late$conf.int[2],2)`) times higher for those that dropped-out of treatment after 3 months in treatment.
 
 <br>
 
-Compared with those with alcohol as the main substance at admission, the cumulative incidence rate of readmission was `r round(as.numeric(irrs_coc$estimate[1]),2)` (IC95% `r round(irrs_coc$conf.int[1],2)`-`r round(irrs_coc$conf.int[2],2)`) times higher for those using cocaine.
+Compared to those with alcohol as the main substance at admission, the cumulative incidence rate of readmission was `r round(as.numeric(irrs_coc$estimate[1]),2)` (IC95% `r round(irrs_coc$conf.int[1],2)`-`r round(irrs_coc$conf.int[2],2)`) times higher for those using cocaine.
 
 <br>
 
-Compared with those with alcohol as the main substance at admission, the cumulative incidence rate of readmission was `r round(as.numeric(irrs_pbas$estimate[1]),2)` (IC95% `r round(irrs_pbas$conf.int[1],2)`-`r round(irrs_pbas$conf.int[2],2)`) times higher for those using cocaine paste.
+Compared to those with alcohol as the main substance at admission, the cumulative incidence rate of readmission was `r round(as.numeric(irrs_pbas$estimate[1]),2)` (IC95% `r round(irrs_pbas$conf.int[1],2)`-`r round(irrs_pbas$conf.int[2],2)`) times higher for those using cocaine paste.
 
 <br>
 
-Compared with those with alcohol as the main substance at admission, there were non-significant differences in the cumulative incidence for those using marijuana in comparison to those using alcohol (p = `r round(irrs_mar$p.value,3)`).
+Compared to those with alcohol as the main substance at admission, there were non-significant differences in the cumulative incidence for those using marijuana in comparison to those using alcohol (p = `r round(irrs_mar$p.value,3)`).
 
 <!--- (1.03 [IC95% 0.96- 1.10]). --->
 <br>
@@ -1108,7 +1126,7 @@ Compared with those with alcohol as the main substance at admission, there were 
 
 <br>
 
-To calculate the average time outside treatment, we needed to drop cases with only one treatment and keep those with more than one treatment.
+To calculate the average time outside treatment, we needed to drop cases that only had one treatment and keep those with more than one treatment.
 
 <br>
 
@@ -1117,7 +1135,7 @@ Then, we had to order the dataset by HASHs and date of admission and date of dis
 <br>
 
 
-### Graphical Representation
+### Graphical representation
 
 The following figures shows the Nelson-Aalen for the cumulative hazard of experiencing readmission in the study period.
 
@@ -1477,7 +1495,7 @@ mtext("Note. Users who did not finish their first treatment or did not show recu
 
 <br>
 
-# Descriptives at Baseline
+# Descriptives at baseline
 
 Bivariate descriptive analyses were conducted using student’s t, ANOVA, Wilcoxon or Kruskall-Wallis tests (two-tailed) for continuous data and chi-square tests for categorical data stratified with readmission status.
 <!--- no es sólo t-test y chi-square --->
@@ -1787,7 +1805,7 @@ p<-ggplot(CONS_C1_df_dup_JUL_2020,aes(x=diff_bet_treat), alpha=.7)+
   #   geom_vline(aes(xintercept=30), color="darkred", linetype="dashed")+
   #   geom_vline(aes(xintercept=45), color="darkmagenta", linetype="solid")+
   #   geom_vline(aes(xintercept=60), color="darkblue", linetype="dotted")+
-  sjPlot::theme_sjplot2() +
+  theme_bw() +
   #facet_wrap(~motivodeegreso_mod_imp)+
 labs(y = "Frequency",x="Diff. Between Treatments")#+
 # xlim(c(-1,2000))
@@ -1797,7 +1815,7 @@ ggiraph(code = {print(p)}, tooltip_extra_css = tooltip_css, tooltip_opacity = .7
 
 <br>
 
-Summarising by HASHs, the average treatment span between treatments among the readmitted (`r CONS_C1_df_dup_JUL_2020%>% dplyr::group_by(hash_key)%>% dplyr::mutate(n_hash=n())%>% dplyr::filter(n_hash>1)%>% distinct(hash_key) %>% nrow() %>%  formatC(big.mark = ",")`) was around `r CONS_C1_df_dup_JUL_2020%>% dplyr::group_by(hash_key)%>% dplyr::mutate(n_hash=n())%>% dplyr::filter(n_hash>1)%>%  dplyr::mutate(span_treat= diff_bet_treat/365.25)%>% dplyr::group_by(hash_key)%>% summarise(avg_span_treat= mean(span_treat,na.rm=T))%>% dplyr::ungroup()%>%  dplyr::summarise(avg_span_treat_tot= mean(avg_span_treat,na.rm=T))%>% as.numeric()%>% round(2)` years.
+Summarizing by HASHs, the average treatment span between treatments among the readmitted cases (`r CONS_C1_df_dup_JUL_2020%>% dplyr::group_by(hash_key)%>% dplyr::mutate(n_hash=n())%>% dplyr::filter(n_hash>1)%>% distinct(hash_key) %>% nrow() %>%  formatC(big.mark = ",")`) was around `r CONS_C1_df_dup_JUL_2020%>% dplyr::group_by(hash_key)%>% dplyr::mutate(n_hash=n())%>% dplyr::filter(n_hash>1)%>%  dplyr::mutate(span_treat= diff_bet_treat/365.25)%>% dplyr::group_by(hash_key)%>% summarise(avg_span_treat= mean(span_treat,na.rm=T))%>% dplyr::ungroup()%>%  dplyr::summarise(avg_span_treat_tot= mean(avg_span_treat,na.rm=T))%>% as.numeric()%>% round(2)` years.
 
 <br>
 
@@ -1834,7 +1852,7 @@ CONS_C1_df_dup_JUL_2020 %>%
 
 <br>
 
-A view on the differences between treatments but considering the times each user had been readmitted from 2010-2019, shown that on average, the differences between the first and the second treatment were apparently greater than the rest. However, this difference also had a greater variability.
+A view on the differences between treatments while considering the times each user had been readmitted from 2010-2019 showed that on average, the differences between the first and the second treatment were apparently greater than the rest. However, this difference also had a greater variability.
 
 <br>
 
@@ -1877,7 +1895,7 @@ The average cumulative days in treatment tended to remain stable, independently 
 
 <br>
 
-# Consolidating a Database for Access
+# Consolidating a database for access
 
 We first translated relevant categories, restricted some imputed dates that trespassed the study period (over 2019-11-13), standardized ICD-10 and DSM-IV sum of categories, corrected labels such as owning status of housing conditions, and generated a dummyfied version of every physical diagnostic and other mental health related problems into ones and zeros for each category, as well as the most vulnerable substance of the starting substances (if the user indicated more than one) (`sus_ini_mod_mvv`, "Paste Base">"Cocaine hydrochloride">"Marijuana">"Alcohol">"Other").
  
@@ -2424,9 +2442,7 @@ dplyr::mutate(edad_ini_sus_prin_grupos=as.factor(edad_ini_sus_prin_grupos)) %>%
 
 # Adding another criteria for classifying occupations
 
-<br>
-
-We redone the task of collapsing the occupational condition (`condicion_ocupacional`) into an occupational status composed of three categories: Employed, Unemployed and Inactive made on `Duplicatates` process (1st deduplication stage). However, many values of the different rows may be different due to some changes in the stage of collapsing continuous treatments (`Desc4`). For this, we had to replicate this steps in order to track down the value of the largest intermediate treatment to generate a occupational condition following a different criteria.
+We repeated the task of collapsing the occupational condition (`condicion_ocupacional`) into an occupational status composed of three categories: Employed, Unemployed and Inactive made on `Duplicatates` process (1st deduplication stage). However, many values of the different rows may be different due to some changes in the stage of collapsing continuous treatments (`Desc4`). For this, we had to replicate this steps in order to track down the value of the largest intermediate treatment to generate a occupational condition following a different criteria.
 
 <br>
 
@@ -2617,7 +2633,7 @@ assign("CONS_C1_df_dup_SEP_2020",., envir=.GlobalEnv)
 
 <br>
 
-# Health Conditions & Readmissions
+# Health conditions & readmissions
 
 To describe the incidence rate of SUD treatment readmissions by type of health conditions, we recoded the different variables of interest into pairs of different groups by each variable.
 
@@ -2675,7 +2691,7 @@ irrs_dg_trs_cons_sus_or<-irrs(x="dg_trs_cons_sus_or_irr" ,db="CONS_C1_df_dup_SEP
 
 <br>
 
-The incidence rate of readmission was `r round(as.numeric(irrs_tr_fis$estimate[1]),2)` (95% IC `r round(irrs_tr_fis$conf.int[1],2)`-`r round(irrs_tr_fis$conf.int[2],2)`) in users that had at least one physical condition, compared with users that did not have a physical condition at baseline (p = `r sprintf("%1.3f",irrs_tr_fis$p.value)`).
+The incidence rate of readmission was `r round(as.numeric(irrs_tr_fis$estimate[1]),2)` (95% IC `r round(irrs_tr_fis$conf.int[1],2)`-`r round(irrs_tr_fis$conf.int[2],2)`) in users that had at least one physical condition, compared to users that did not have a physical condition at baseline (p = `r sprintf("%1.3f",irrs_tr_fis$p.value)`).
 
 <br>
 
@@ -2725,7 +2741,7 @@ ggsurvplot_fit_dg_tr_fis
 
 <br>
 
-Compared with users with no physical diagnostics at baseline, users that had a physical condition in study had an incidence rate of readmission was `r round(as.numeric(irrs_tr_fis_in_study$estimate[1]),2)` (95% IC `r round(irrs_tr_fis_in_study$conf.int[1],2)`-`r round(irrs_tr_fis_in_study$conf.int[2],2)`, p = `r sprintf("%1.4f",irrs_tr_fis_in_study$p.value)`).
+Compared to users with no physical diagnosis at baseline, users that had a physical condition in study had an incidence rate of readmission of `r round(as.numeric(irrs_tr_fis_in_study$estimate[1]),2)` (95% IC `r round(irrs_tr_fis_in_study$conf.int[1],2)`-`r round(irrs_tr_fis_in_study$conf.int[2],2)`, p = `r sprintf("%1.4f",irrs_tr_fis_in_study$p.value)`).
 
 <br>
 
@@ -2777,7 +2793,7 @@ ggsurvplot_fit_dg_tr_fis_in_study
 
 <br>
 
-Compared with users with no psychiatric diagnostics at baseline, users that had a psychiatric condition in study had an incidence rate of readmission was `r round(as.numeric(irrs_cie_10$estimate[1]),2)` (95% IC `r round(irrs_cie_10$conf.int[1],2)`-`r round(irrs_cie_10$conf.int[2],2)`, p = `r sprintf("%1.4f",irrs_cie_10$p.value)`).
+Compared to users with no psychiatric diagnosis at baseline, users that had a psychiatric condition in study had an incidence rate of readmission of `r round(as.numeric(irrs_cie_10$estimate[1]),2)` (95% IC `r round(irrs_cie_10$conf.int[1],2)`-`r round(irrs_cie_10$conf.int[2],2)`, p = `r sprintf("%1.4f",irrs_cie_10$p.value)`).
 
 <br>
 
@@ -2828,7 +2844,7 @@ ggsurvplot_fit_dg_tr_cie_10
 
 <br>
 
-Compared with users with no psychiatric diagnostics at baseline, users that had a psychiatric condition in study had an incidence rate of readmission was `r round(as.numeric(irrs_cie_10_in_study$estimate[1]),2)` (95% IC `r round(irrs_cie_10_in_study$conf.int[1],2)`-`r round(irrs_cie_10_in_study$conf.int[2],2)`, p = `r sprintf("%1.4f",irrs_cie_10_in_study$p.value)`).
+Compared to users with no psychiatric diagnosis at baseline, users that had a psychiatric condition in study had an incidence rate of readmission of `r round(as.numeric(irrs_cie_10_in_study$estimate[1]),2)` (95% IC `r round(irrs_cie_10_in_study$conf.int[1],2)`-`r round(irrs_cie_10_in_study$conf.int[2],2)`, p = `r sprintf("%1.4f",irrs_cie_10_in_study$p.value)`).
 
 <br>
 
@@ -2879,7 +2895,7 @@ ggsurvplot_fit_dg_tr_cie_10_in_study
 
 <br>
 
-Compared with users with no other problems related to mental health conditions worth clinical surveillance, users that had other problems related to mental health conditions had an incidence rate of readmission was `r round(as.numeric(irrs_otros_pr_sm$estimate[1]),2)` (95% IC `r round(irrs_otros_pr_sm$conf.int[1],2)`-`r round(irrs_otros_pr_sm$conf.int[2],2)`, p = `r sprintf("%1.4f",irrs_otros_pr_sm$p.value)`).
+Compared to users with no other problems related to mental health conditions worth clinical surveillance, users that had other problems related to mental health conditions had an incidence rate of readmission of `r round(as.numeric(irrs_otros_pr_sm$estimate[1]),2)` (95% IC `r round(irrs_otros_pr_sm$conf.int[1],2)`-`r round(irrs_otros_pr_sm$conf.int[2],2)`, p = `r sprintf("%1.4f",irrs_otros_pr_sm$p.value)`).
 
 <br>
 
@@ -2930,7 +2946,7 @@ ggsurvplot_fit_otros_probl_at_sm
 
 <br>
 
-Compared with users with hazardous consumption, users with a drug dependence had an incidence rate of readmission was `r round(as.numeric(irrs_dg_trs_cons_sus_or$estimate[1]),2)` (95% IC `r round(irrs_dg_trs_cons_sus_or$conf.int[1],2)`-`r round(irrs_dg_trs_cons_sus_or$conf.int[2],2)`, p = `r sprintf("%1.4f",irrs_dg_trs_cons_sus_or$p.value)`).
+Compared to users with hazardous consumption, users with a drug dependence had an incidence rate of readmission of `r round(as.numeric(irrs_dg_trs_cons_sus_or$estimate[1]),2)` (95% IC `r round(irrs_dg_trs_cons_sus_or$conf.int[1],2)`-`r round(irrs_dg_trs_cons_sus_or$conf.int[2],2)`, p = `r sprintf("%1.4f",irrs_dg_trs_cons_sus_or$p.value)`).
 
 <br>
 
@@ -2979,46 +2995,6 @@ ggsurvplot_fit_dg_trs_cons_sus_or
  # scale_y_continuous(breaks = sort(c(seq(0, 100, 10), 56)))
 ```
 
-
-
-```{r seq1, warning=FALSE}
-
-invisible("https://cran.r-project.org/web/packages/riskCommunicator/vignettes/Vignette_newbieRusers.html#continuous-exposure-example")
-
-prueba2_imp2<-
-cbind.data.frame(prueba2_imp,
-      dplyr::select(prueba2,cum_dias_trat_sin_na_1, cum_dias_trat_sin_na_2, cum_dias_trat_sin_na_3, cum_dias_trat_sin_na_4, cum_dias_trat_sin_na_5, cum_dias_trat_sin_na_6, cum_dias_trat_sin_na_7, cum_dias_trat_sin_na_8, cum_dias_trat_sin_na_9, cum_dias_trat_sin_na_10, dias_treat_imp_sin_na_1, dias_treat_imp_sin_na_2, dias_treat_imp_sin_na_3, dias_treat_imp_sin_na_4, dias_treat_imp_sin_na_5, dias_treat_imp_sin_na_6, dias_treat_imp_sin_na_7, dias_treat_imp_sin_na_8, dias_treat_imp_sin_na_9, dias_treat_imp_sin_na_10, cum_diff_bet_treat_1, cum_diff_bet_treat_2, cum_diff_bet_treat_3, cum_diff_bet_treat_4, cum_diff_bet_treat_5, cum_diff_bet_treat_6, cum_diff_bet_treat_7, cum_diff_bet_treat_8, cum_diff_bet_treat_9, cum_diff_bet_treat_10),
-      dplyr::select(prueba2, fech_ing, fech_egres_imp, sus_principal_mod, cat_ocupacional_corr, cnt_diagnostico_trs_fisico, cnt_otros_probl_at_sm_or, dg_cie_10_rec, abandono_temprano, duplicates_filtered, max_cum_dias_trat_sin_na, max_cum_diff_bet_treat, cnt_mod_cie_10_dg_cons_sus_or, cnt_mod_cie_10_or, dg_total_cie_10, dias_treat_imp_sin_na_four, diff_bet_treat_four, cum_dias_trat_sin_na_four, cum_diff_bet_treat_four, mean_cum_dias_trat_sin_na_four, mean_cum_diff_bet_treat_four, n_treats, sex_abuse, dom_violence, motivodeegreso_mod_imp)) %>% 
-  dplyr::mutate(person_years=(as.numeric(as.Date("2019-11-13"))- as.numeric(fech_ing))/365.25,
-                max_cum_dias_trat_sin_na_adj= max_cum_dias_trat_sin_na/person_years,
-                duplicates_filtered_adj= duplicates_filtered/person_years)#
-#n_treats= readmissiones
-
-tablas_inc<-
-rbind(data.frame(biostat3::survRate(Surv(person_years, n_treats=="01") ~ con_quien_vive_joel, data=prueba2_imp2)),
-      data.frame(biostat3::survRate(Surv(person_years, n_treats=="02") ~ con_quien_vive_joel, data=prueba2_imp2)),
-      data.frame(biostat3::survRate(Surv(person_years, n_treats=="03") ~ con_quien_vive_joel, data=prueba2_imp2)),
-      data.frame(biostat3::survRate(Surv(person_years, grepl("01|02",n_treats)) ~ con_quien_vive_joel, data=prueba2_imp2)),
-      data.frame(biostat3::survRate(Surv(person_years, grepl("01|02|03",n_treats)) ~ con_quien_vive_joel, data=prueba2_imp2)),
-      data.frame(biostat3::survRate(Surv(person_years, n_treats=="04 or more") ~ con_quien_vive_joel, data=prueba2_imp2)),
-      data.frame(biostat3::survRate(Surv(person_years, grepl("Drop", motivodeegreso_mod_imp)) ~ con_quien_vive_joel, data=prueba2_imp2)))
-
-data.table::data.table(tablas_inc, keep.rownames = F)%>% 
-  dplyr::mutate(rate=round(rate*1000,0),lower=round(lower*1000,0), upper=round(upper*1000,0))%>% 
-knitr::kable(format="html",caption= "Table 8. Summary of incidence rates of events depending on whom patients live with")%>%
-  kableExtra::add_footnote(c("Note. Events per 1,000 person-years"), notation = "none")%>%
-  kableExtra::kable_classic() %>% 
-  kableExtra::group_rows("Only one treatment",1,3)%>% 
-  kableExtra::group_rows("Two treatments",4,6)%>%
-  kableExtra::group_rows("Three treatment",7,9)%>% 
-  kableExtra::group_rows("One & two treatments",10,12)%>%
-  kableExtra::group_rows("One, two & three treatments",13,15)%>%
-  kableExtra::group_rows("Four or more treatments",16,18)%>% 
-  kableExtra::group_rows("Drop-out from the first treatment",19,21)%>% 
-  kableExtra::scroll_box(width = "100%", height = "600px")
-
-```
-
 <br>
 
 ```{r change labels,echo=T, paged.print=TRUE, eval=T}
@@ -3032,19 +3008,19 @@ knitr::kable(format="html",caption= "Table 8. Summary of incidence rates of even
 codebook::var_label(CONS_C1_df_dup_SEP_2020) <- list(
 row= 'Numerador de los eventos presentes en la Base de Datos (Último registro)/Events in the Dataset (Last Entry)',
 row_cont_entries= 'Numerador de los eventos presentes en la Base de Datos(*)/Events in the Dataset(*)',
-hash_key= 'Codificación del RUT/Masked Identifier (RUT)',
-hash_rut_completo= 'HASH alternativo, en el escenario en que se asuma que el individuo al que se le codificó el RUT presente mayor edad/Alternative HASH-Key',
-id= 'Codigo Identificación de SENDA/SENDAs ID',
-id_mod= 'ID de SENDA para Presentación en Página Web (enmascara caracteres 5 y 6)/SENDAs ID (mask characters 5 & 6)',
+hash_key= 'Codificación del RUN/Masked Identifier (RUN)',
+hash_rut_completo= 'HASH alternativo, en el escenario en que se asuma que el individuo al que se le codificó el RUN presente mayor edad/Alternative HASH-Key',
+id= 'Codigo Identificación de SENDA/SENDA ID',
+id_mod= 'ID de SENDA para Presentación en Página Web (enmascara caracteres 5 y 6)/SENDA ID (mask characters 5 & 6)',
 fech_ing= 'Fecha de Ingreso a Tratamiento (Primera Entrada)/Date of Admission to Treatment (First Entry)',
 fech_egres_imp= 'Fecha de Egreso (Imputados KNN & Lógico) del Último Registro(b)/Date of Discharge (Imputed KNN & Logic) of the Last Entry(b)',
 tipo_de_plan_2= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry',
 tipo_de_plan_2_largest_treat= 'Tipo de Plan del Registro Más Largo entre entradas intermedias(f)/Type of Plan of the Largest Entry Among Intermediate Entries(f)',
 tipo_de_plan_2_concat_a= 'Tipo de Plan(*)/Type of Plan(*)', 
 tipo_de_programa_2= 'Tipo de Programa del Registro Más Largo entre Entradas Intermedias/Type of Program of the Largest Entry Among Intermediate Entries',
-id_centro= 'ID de Centro(b)/Center ID(b)',
+id_centro= 'ID de Centro(b)/Treatment center ID(b)',
 nombre_centro= 'Nombre del Centro de Tratamiento(*)/Treatment Center(*)',
-id_centro_concat_a= 'ID de Centro(*)/Center ID(*)',
+id_centro_concat_a= 'ID de Centro(*)/Treatment center ID(*)',
 tipo_centro= 'Tipo de Centro del Último Registro/Type of Center of the Last Entry',
 servicio_de_salud= 'Servicio de Salud(*)/Health Service(*)',
 senda= 'SENDA del Último Registro/SENDA of the Last Entry',
@@ -3213,36 +3189,126 @@ dg_total_cie_10= "Conteo de Diagnósticos CIE-10(sólo diagnósticos)/Count of I
 dg_total_dsm_iv= "Conteo de Diagnósticos DSM-IV(sólo diagnósticos)/Count of DSM-IV Diagnostics(only diagnoses)",
 
 condicion_ocupacional_corr= 'Condición Ocupacional Criterio Corregido(f)/Occupational Status Corrected(f)',
-cat_ocupacional_corr= 'Categoría Ocupacional Criterio Corregido(f)/Occupational Category Corrected(f)'
+cat_ocupacional_corr= 'Categoría Ocupacional Criterio Corregido(f)/Occupational Category Corrected(f)',
+#2022
+dias_trat_alta_temprana= 'Si el tratamiento duró 90 días o más (1= <90d)/If the treatment lasted 90 days or more (1= Less than 90d)',
+
+tipo_de_plan_2_1= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (1st Treatment)',
+tipo_de_plan_2_2= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (2nd Treatment)',
+tipo_de_plan_2_3= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (3rd Treatment)',
+tipo_de_plan_2_4= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (4th Treatment)',
+tipo_de_plan_2_5= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (5th Treatment)',
+tipo_de_plan_2_6= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (6th Treatment)',
+tipo_de_plan_2_7= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (7th Treatment)',
+tipo_de_plan_2_8= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (8th Treatment)',
+tipo_de_plan_2_9= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (9th Treatment)',
+tipo_de_plan_2_10= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (10th Treatment)',
+
+motivodeegreso_mod_imp_1= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (1st Treatment)',
+motivodeegreso_mod_imp_2= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (2nd Treatment)', 
+motivodeegreso_mod_imp_3= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (3th Treatment)',
+motivodeegreso_mod_imp_4= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (4th Treatment)',
+motivodeegreso_mod_imp_5= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (5th Treatment)',
+motivodeegreso_mod_imp_6= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (6th Treatment)',
+motivodeegreso_mod_imp_7= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (7th Treatment)',
+motivodeegreso_mod_imp_8= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (8th Treatment)',
+motivodeegreso_mod_imp_9= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (9th Treatment)',
+motivodeegreso_mod_imp_10= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (10th Treatment)',
+
+dias_treat_imp_sin_na_1= "Days of Treatment (1st Treatment)",
+dias_treat_imp_sin_na_2= "Days of Treatment (2nd Treatment)",
+dias_treat_imp_sin_na_3= "Days of Treatment (3rd Treatment)",
+dias_treat_imp_sin_na_4= "Days of Treatment (4th Treatment)",
+dias_treat_imp_sin_na_5= "Days of Treatment (5th Treatment)",
+dias_treat_imp_sin_na_6= "Days of Treatment (6th Treatment)",
+dias_treat_imp_sin_na_7= "Days of Treatment (7th Treatment)",
+dias_treat_imp_sin_na_8= "Days of Treatment (8th Treatment)",
+dias_treat_imp_sin_na_9= "Days of Treatment (9th Treatment)",
+dias_treat_imp_sin_na_10="Days of Treatment (10th Treatment)",
+
+diff_bet_treat_1= "Diff Between Treatments (1st Treatment)",
+diff_bet_treat_2= "Diff Between Treatments (2nd Treatment)",
+diff_bet_treat_3= "Diff Between Treatments (3rd Treatment)",
+diff_bet_treat_4= "Diff Between Treatments (4th Treatment)",
+diff_bet_treat_5= "Diff Between Treatments (5th Treatment)",
+diff_bet_treat_6= "Diff Between Treatments (6th Treatment)",
+diff_bet_treat_7= "Diff Between Treatments (7th Treatment)",
+diff_bet_treat_8= "Diff Between Treatments (8th Treatment)",
+diff_bet_treat_9= "Diff Between Treatments (9th Treatment)",
+diff_bet_treat_10="Diff Between Treatments (10th Treatment)",
+
+cum_dias_trat_sin_na_1= "Cum. Days of Treatment (1st Treatment)",
+cum_dias_trat_sin_na_2= "Cum. Days of Treatment (2nd Treatment)",
+cum_dias_trat_sin_na_3= "Cum. Days of Treatment (3rd Treatment)",
+cum_dias_trat_sin_na_4= "Cum. Days of Treatment (4th Treatment)",
+cum_dias_trat_sin_na_5= "Cum. Days of Treatment (5th Treatment)",
+cum_dias_trat_sin_na_6= "Cum. Days of Treatment (6th Treatment)",
+cum_dias_trat_sin_na_7= "Cum. Days of Treatment (7th Treatment)",
+cum_dias_trat_sin_na_8= "Cum. Days of Treatment (8th Treatment)",
+cum_dias_trat_sin_na_9= "Cum. Days of Treatment (9th Treatment)",
+cum_dias_trat_sin_na_10="Cum. Days of Treatment (10th Treatment)",
+
+mean_cum_dias_trat_sin_na_1= "Avg. Cum. Days of Treatment (1st Treatment)",
+mean_cum_dias_trat_sin_na_2= "Avg. Cum. Days of Treatment (2nd Treatment)",
+mean_cum_dias_trat_sin_na_3= "Avg. Cum. Days of Treatment (3rd Treatment)",
+mean_cum_dias_trat_sin_na_4= "Avg. Cum. Days of Treatment (4th Treatment)",
+mean_cum_dias_trat_sin_na_5= "Avg. Cum. Days of Treatment (5th Treatment)",
+mean_cum_dias_trat_sin_na_6= "Avg. Cum. Days of Treatment (6th Treatment)",
+mean_cum_dias_trat_sin_na_7= "Avg. Cum. Days of Treatment (7th Treatment)",
+mean_cum_dias_trat_sin_na_8= "Avg. Cum. Days of Treatment (8th Treatment)",
+mean_cum_dias_trat_sin_na_9= "Avg. Cum. Days of Treatment (9th Treatment)",
+mean_cum_dias_trat_sin_na_10="Avg. Cum. Days of Treatment (10th Treatment)",
+
+cum_diff_bet_treat_1= "Cum. Diff Between Treatments (1st Treatment)",
+cum_diff_bet_treat_2= "Cum. Diff Between Treatments (2nd Treatment)",
+cum_diff_bet_treat_3= "Cum. Diff Between Treatments (3rd Treatment)",
+cum_diff_bet_treat_4= "Cum. Diff Between Treatments (4th Treatment)",
+cum_diff_bet_treat_5= "Cum. Diff Between Treatments (5th Treatment)",
+cum_diff_bet_treat_6= "Cum. Diff Between Treatments (6th Treatment)",
+cum_diff_bet_treat_7= "Cum. Diff Between Treatments (7th Treatment)",
+cum_diff_bet_treat_8= "Cum. Diff Between Treatments (8th Treatment)",
+cum_diff_bet_treat_9= "Cum. Diff Between Treatments (9th Treatment)",
+cum_diff_bet_treat_10="Cum. Diff Between Treatments (10th Treatment)",
+
+mean_cum_diff_bet_treat_1= "Avg. Cum. Diff Between Treatments (1st Treatment)",
+mean_cum_diff_bet_treat_2= "Avg. Cum. Diff Between Treatments (2nd Treatment)",
+mean_cum_diff_bet_treat_3= "Avg. Cum. Diff Between Treatments (3rd Treatment)",
+mean_cum_diff_bet_treat_4= "Avg. Cum. Diff Between Treatments (4th Treatment)",
+mean_cum_diff_bet_treat_5= "Avg. Cum. Diff Between Treatments (5th Treatment)",
+mean_cum_diff_bet_treat_6= "Avg. Cum. Diff Between Treatments (6th Treatment)",
+mean_cum_diff_bet_treat_7= "Avg. Cum. Diff Between Treatments (7th Treatment)",
+mean_cum_diff_bet_treat_8= "Avg. Cum. Diff Between Treatments (8th Treatment)",
+mean_cum_diff_bet_treat_9= "Avg. Cum. Diff Between Treatments (9th Treatment)",
+mean_cum_diff_bet_treat_10="Avg. Cum. Diff Between Treatments (10th Treatment)"
 )
 
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
-no_mostrar_nunca=0
-if(no_mostrar_nunca==1){
-df_def<-
-data.frame(cbind(var_name= names(codebook_data),var_def=data.table(codebook::var_label(codebook_data), keep.rownames = T), type=data.table(sapply(codebook_data, class)),can_be_na=data.table(rep(FALSE,length(names(codebook_data))))))%>%
-  dplyr::rename("var_def"="var_def.V1","type"="type.V1","can_be_na"="can_be_na.V1")
-}    
-
-#####to_export_labels
-table_labels<-
-  tibble::rownames_to_column(data.frame(Hmisc::label(CONS_C1_df_dup_SEP_2020)))%>% data.frame() %>%
-  dplyr::rename("code" = !!names(.[1]), "label" = !!names(.[2]))%>% data.frame()%>%
-  dplyr::mutate(first= "cap label variable")%>%
-  dplyr::mutate(final= paste0(first, " ",code,' "',label,'"'))%>%
-  dplyr::select(-code,-label,-first)%>%
-  rbind('cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_SEP_2020.dta", replace')%>%
-  rbind('cap drop id id_mod nombre_centro consentimiento_informado')%>%
-  rbind('cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_SEP_2020_exp.dta", replace')
-
-table_labels<-
-  data.frame(final='use "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_SEP_2020.dta", clear')%>%
-  rbind(table_labels)%>%
-  rename("*final"="final") 
-  #write.csv2(table_labels,"__labels_to_stata_C1_jun_2020.do",row.names =F)
-  write.table(table_labels, file = "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/_label_var_to_stata.do", sep = "",
-            row.names = FALSE, quote = FALSE,fileEncoding="UTF-8")
+# no_mostrar_nunca=0
+# if(no_mostrar_nunca==1){
+# df_def<-
+# data.frame(cbind(var_name= names(codebook_data),var_def=data.table(codebook::var_label(codebook_data), keep.rownames = T), type=data.table(sapply(codebook_data, class)),can_be_na=data.table(rep(FALSE,length(names(codebook_data))))))%>%
+#   dplyr::rename("var_def"="var_def.V1","type"="type.V1","can_be_na"="can_be_na.V1")
+# }    
+# 
+# #####to_export_labels
+# table_labels<-
+#   tibble::rownames_to_column(data.frame(Hmisc::label(CONS_C1_df_dup_SEP_2020)))%>% data.frame() %>%
+#   dplyr::rename("code" = !!names(.[1]), "label" = !!names(.[2]))%>% data.frame()%>%
+#   dplyr::mutate(first= "cap label variable")%>%
+#   dplyr::mutate(final= paste0(first, " ",code,' "',label,'"'))%>%
+#   dplyr::select(-code,-label,-first)%>%
+#   rbind('cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_SEP_2020.dta", replace')%>%
+#   rbind('cap drop id id_mod nombre_centro consentimiento_informado')%>%
+#   rbind('cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_SEP_2020_exp.dta", replace')
+# 
+# table_labels<-
+#   data.frame(final='use "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_SEP_2020.dta", clear')%>%
+#   rbind(table_labels)%>%
+#   rename("*final"="final") 
+#   #write.csv2(table_labels,"__labels_to_stata_C1_jun_2020.do",row.names =F)
+#   write.table(table_labels, file = "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/_label_var_to_stata.do", sep = "",
+#             row.names = FALSE, quote = FALSE,fileEncoding="UTF-8")
 
  # dplyr::filter(label!="") %>%
 #  bind_rows(data.frame("code"=c("fech_egres_imp", 
@@ -3252,12 +3318,32 @@ table_labels<-
 ##                                                                     "Days of Treatment (Imputed)",
 #                                                                     "Days of Treatment for Early Withdrawal (Imputed)",
 #                                                                     "Cause of Discharge w/ Early or Late Withdrawal (Imputed)"))) %>% 
+# 
+# CONS_C1_df_dup_SEP_2020%>%
+#   dplyr::arrange(hash_key, fech_ing)%>% 
+#   rio::export(file = "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_SEP_2020.dta")
+
+#save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9_2021.RData")
+
+#Agregar nuevas variables al codebook
+#hacer codebook
+#Agregar procesos a strobe
+#Poner olr y arriba pondría los otros modelos.
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+#2022
+time_after_desc<-Sys.time()
+
+paste0("Time in markdown: ");time_after_desc-time_before_desc
 
 CONS_C1_df_dup_SEP_2020%>%
-  dplyr::arrange(hash_key, fech_ing)%>% 
-  rio::export(file = "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_SEP_2020.dta")
+   dplyr::arrange(hash_key, fech_ing)%>% 
+   rio::export(file = paste0(path,"/CONS_C1_df_dup_SEP_2020.dta"))
 
-save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9_2021.RData")
+#save.image(paste0(gsub("SUD_CL/Desc_2021.Rmd","",path),"9_2021.RData"))
+
+save.image(paste0(path,"/8.RData"))
 
 #Agregar nuevas variables al codebook
 #hacer codebook
@@ -3265,11 +3351,36 @@ save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9_2021.RData")
 #Poner olr y arriba pondría los otros modelos.
 ```
 
+```{r label_to_stata, echo=T, paged.print=TRUE}
+export_lab_stata<-
+  tibble::rownames_to_column(data.frame(Hmisc::label(CONS_C1_df_dup_SEP_2020)))%>% data.frame() %>%
+  dplyr::rename("code" = !!names(.[1]), "label" = !!names(.[2]))%>% data.frame()%>%
+  dplyr::mutate(first= "cap noi label variable")%>%
+  dplyr::mutate(final= paste0(first, " ",code,' "',label,'"'))%>%
+  dplyr::select(-code,-label,-first)%>%
+  dplyr::rename("*clear all"="final") %>% 
+  rbind(paste0('cap noi save "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_SEP_2020.dta", replace'))%>%
+  rbind('cap noi drop id id_mod nombre_centro consentimiento_informado')%>%
+  rbind('cap noi drop id id_mod nombre_centro')%>%
+  rbind(paste0('cap noi save "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_SEP_2020_exp.dta", replace'))
+
+rbind(paste0('cap noi use "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_SEP_2020.dta", clear'),export_lab_stata) %>% knitr::kable("html") %>% 
+    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size =10) %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px")
+
+write.table(rbind(paste0('cap noi use "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_SEP_2020.dta",clear'),export_lab_stata), file = paste0(path,"/SUD_CL/_label_var_to_stata.do"), sep = "",row.names = FALSE, quote = FALSE, fileEncoding="UTF-8")
+
+```
+
 <br>
 
-```{stata 2, collectcode=TRUE,results="hide", eval=T}
-cap do _label_var_to_stata.do
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+
+```{stata 2, collectcode=F, include=T, error=T, cleanlog=F}
+cap noi do _label_var_to_stata.do
 ```
+
+</div>
 
 <br>
 

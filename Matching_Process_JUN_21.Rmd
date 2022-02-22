@@ -1,6 +1,6 @@
 ---
 title: "Ambulatory or residential? a multi-state analysis of treatments for substance use disorders (Step 1)"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
+date: "`r withr::with_locale(new = c('LC_TIME' = 'C'), code =format(Sys.time(),'%B %d, %Y'))`"
 output:
   html_document:
     code_folding: hide  
@@ -414,7 +414,7 @@ digraph causal {
 
 # Balance
 
-We selected treatments at baseline for each user, leaving `r CONS_C1_df_dup_SEP_2020 %>% janitor::tabyl(dup) %>% slice(1) %>% dplyr::select(n) %>% as.numeric(n)%>%  format(big.mark=",")` observations. Then, we distinguished between residential `r CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(dup==1, tipo_de_plan_2 %in% c("PG-PR","M-PR")) %>% nrow() %>%  format(big.mark=",")` and ambulatory (`r CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(dup==1, tipo_de_plan_2 %in% c("PG-PAI","M-PAI","PG-PAB","M-PAB")) %>% nrow() %>%  format(big.mark=",")`) treatments. We imputed cases that did not have a defined treatment assigned `r CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(dup==1, is.na(tipo_de_plan_2)) %>% nrow() %>% format(big.mark=",")`.
+We selected treatments at baseline for each user, leaving `r CONS_C1_df_dup_SEP_2020 %>% janitor::tabyl(dup) %>% slice(1) %>% dplyr::select(n) %>% as.numeric(n)%>%  format(big.mark=",")` observations. Then, we distinguished between residential (n= `r CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(dup==1, tipo_de_plan_2 %in% c("PG-PR","M-PR")) %>% nrow() %>%  format(big.mark=",")`) and ambulatory (n= `r CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(dup==1, tipo_de_plan_2 %in% c("PG-PAI","M-PAI","PG-PAB","M-PAB")) %>% nrow() %>%  format(big.mark=",")`) treatments. We imputed cases that did not have a defined treatment assigned (n=`r CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(dup==1, is.na(tipo_de_plan_2)) %>% nrow() %>% format(big.mark=",")`).
 
 <!---This leave us with `r CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(dup==1, tipo_de_plan_2 %in% c("PG-PR","M-PR","PG-PAI","M-PAI","PG-PAB","M-PAB")) %>% distinct(hash_key) %>% nrow() %>%  format(big.mark=",")` observations.--->
 
@@ -769,7 +769,7 @@ missing.values %>%
 
 <br>
 
-From the figure above, we could see that the starting substance (`sus_ini_mvv`), the onset of drug use (`edad_ini_cons`) and the evaluation of the therapeutic process (`evaluacindelprocesoteraputico`) had around 6% of missing data. These values should be imputed. We first focused on the age of onset of drug use. It is important to consider that the evaluation of the therapeutic process could be distorted due to censoring (many users did not finish their treatment, and did not have this evaluation in the study period).
+From the figure above, we could see that the starting substance (`sus_ini_mvv`), the onset of drug use (`edad_ini_cons`), and the evaluation of the therapeutic process (`evaluacindelprocesoteraputico`) counted for approximately 6% of the missing data. These values should be imputed. We first focused on the age of onset of drug use. It is important to consider that the evaluation of the therapeutic process could be distorted due to censoring (many users did not finish their treatment, and did not have this evaluation in the study period).
 
 <br>
 
@@ -850,7 +850,7 @@ amelia_fit <- amelia(CONS_C1_df_dup_SEP_2020_match_miss[,-c("abandono_temprano_r
 
 ### Age at Admission
 
-We started looking over the missing values in the age at admission (n`r missing.values %>% dplyr::select(edad_al_ing) %>% as.numeric()`). Since `r ifelse(CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::group_by(hash_key) %>%  dplyr::mutate(miss_edad_al_ing=ifelse(is.na(edad_al_ing),1,0),sum_miss_edad_al_ing=sum(miss_edad_al_ing,na.rm=T)) %>% dplyr::ungroup() %>% dplyr::filter(sum_miss_edad_al_ing>0, duplicates_filtered>1) %>% nrow()==0," there were not cases with more than one treatment that had not an age of admission, we did not have to impute taking into account serial dependencies in the dates of treatment.","**there were some users that had more than one treatment, it is necessary to analyse serial dependencies into the dates that were candidates to imputation**.")`
+We started looking over the missing values in the age at admission (n= `r missing.values %>% dplyr::select(edad_al_ing) %>% as.numeric()`). Since `r ifelse(CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::group_by(hash_key) %>%  dplyr::mutate(miss_edad_al_ing=ifelse(is.na(edad_al_ing),1,0),sum_miss_edad_al_ing=sum(miss_edad_al_ing,na.rm=T)) %>% dplyr::ungroup() %>% dplyr::filter(sum_miss_edad_al_ing>0, duplicates_filtered>1) %>% nrow()==0," there were not cases with more than one treatment that did not have an age of admission, we did not have to impute taking into account serial dependencies in the dates of treatment.","**there were some users that had more than one treatment, it is necessary to analyse serial dependencies into the dates that were candidates to imputation**.")`
 
 
 ```{r mice2_age_at_admission, warning=F,message=F,fig.align='center', fig.cap="Figure 5. Density Estimation of Distributions of Age at Admission & Imputed Age at Admission", error=F}
@@ -859,7 +859,7 @@ compare.density(amelia_fit,var="edad_al_ing")
 
 <br>
 
-As seen in the Figure above, distributions seem to differ. However, considering the low amount of missing values in this variable, we proceeded with the imputation with the mean, despite the differences found. The imputed values must not be greater than the age of onset of drug use and may not be lower than 16 years old. Values lower than this age may be considered less likely to receive treatment for adult population, so it would be most probably incorrect that they would be in this database.
+As seen in the Figure above, distributions seem to differ. However, considering the low amount of missing values in this variable, we proceeded with the imputation of the mean, despite the minor differences found. The imputed values must not be greater than the age of onset of drug use and may not be less than 16 years old. Values lower than this age may be considered less likely to receive treatment within adult population, so it is probable that it is incorrect that they would be in this database.
 
 <br>
 
@@ -982,7 +982,7 @@ compare.density(amelia_fit,var="edad_ini_cons")
 
 <br>
 
-Based on the figure above, the age of onset of drug use was similar between the imputed values and the observed. However, we followed the rules stated in `Duplicates` process ([link](https://fondecytacc.github.io/SUD_health_Chile.github.io/Duplicates)). There were three logical conditions to fulfill in order to replace adequately these values in the database: the age of onset must not be greater than the age of onset of drug use in the primary substance at admission (1), may not be greater than the age of admission to treatment (2), and the age of onset of drug use must be greater than 4 years old. Then, we selected the minimum value of age of onset of drug use among the imputed, because one user could not have more than one age of onset of drug use. 
+Based on the figure above, the age of onset of drug use was similar between the imputed values and the observed. However, we followed the rules stated in the `Duplicates` process ([link](https://fondecytacc.github.io/SUD_health_Chile.github.io/Duplicates)). There were three logical conditions to fulfill in order to adequately replace these values in the database: the age of onset must not be greater than the age of onset of drug use in the primary substance at admission (1), the age of oonset may not be greater than the age of admission to treatment (2), and the age of onset of drug use must be greater than 4 years. Then, we selected the minimum value of age of onset of drug use among the imputed values, because one user could not have more than one age of onset of drug use. 
 
 <br>
 
@@ -1125,13 +1125,13 @@ CONS_C1_df_dup_SEP_2020_match_miss0 %>%
 
 #is.na(edad_ini_cons) & is.na(edad_ini_sus_prin) & is.na(min_edad_al_ing)~as.numeric(avg),
 #table(is.na(CONS_C1_df_dup_SEP_2020_match_miss1$edad_ini_cons))
-paste0("Number of rows with values that did not fulfilled the conditions: ",CONS_C1_df_dup_SEP_2020_match_miss1 %>% 
+paste0("Number of rows with values that did not fulfill the conditions: ",CONS_C1_df_dup_SEP_2020_match_miss1 %>% 
     dplyr::filter(is.na(edad_ini_cons)) %>% 
     dplyr::select(hash_key, edad_ini_cons, edad_al_ing,edad_ini_sus_prin) %>% nrow())
 
 #Lo importante es tener en cuenta que las imputaciones se hicieron por filas; no, en cambio, ahora debemos reemplazar aquellos casos que tienen perdidos (no cumplieron con las condiciones) con el valor mínimo
 
-paste0("Number of rows with values that did not fulfilled the conditions after replacement with the minimum by users: ",CONS_C1_df_dup_SEP_2020_match_miss1 %>% 
+paste0("Number of rows with values that did not fulfill the conditions after replacement with the minimum by users: ",CONS_C1_df_dup_SEP_2020_match_miss1 %>% 
     dplyr::filter(is.na(edad_ini_cons)) %>% 
     dplyr::select(hash_key, edad_ini_cons, edad_al_ing,edad_ini_sus_prin) %>% nrow())
 
@@ -1147,13 +1147,13 @@ paste0("Number of users that had different age of onset of drug use after replac
 
 <br>
 
-There were `r CONS_C1_df_dup_SEP_2020_match_miss1 %>% dplyr::filter(is.na(edad_ini_cons)) %>% nrow()` cases of imputed ages of onset of drug use that did not fulfilled the conditions necessary to replace the missing values with the imputed ones.
+There were `r CONS_C1_df_dup_SEP_2020_match_miss1 %>% dplyr::filter(is.na(edad_ini_cons)) %>% nrow()` cases of imputed ages of onset of drug use that did not fulfill the conditions necessary to replace the missing values with the imputed ones.
 
 <br>
 
 ### Starting Substance
 
-Then we selected the most vulnerable value among the candidates of imputations of the starting substance (First, Cocaine paste, Cocaine hydrochloride or snort cocaine, Marijuana, Alcohol, and Other).
+Then we selected the most vulnerable value among the candidates of the imputations of the starting substance (First, Cocaine paste, Cocaine hydrochloride or snort cocaine, Marijuana, Alcohol, and Other).
 
 <br>
 
@@ -1318,7 +1318,7 @@ CONS_C1_df_dup_SEP_2020_match_miss2 %>%
 
 ### Educational Attainment
 
-Another variable that is worth imputing is the Educational Attainment (n= `r CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::filter(is.na(escolaridad_rec)) %>% nrow()`). we followed the rules stated in `Duplicates4` process ([link](https://fondecytacc.github.io/SUD_health_Chile.github.io/Duplicates4)). We were particularly cautious to impute attainments that would follow a progression from primary school to more than high school. For this purpose, we first looked over the actual values per user, filling intermediate gaps in educational attainment in users with intermediate null values (a), we overcame with the difficulty of the incorrect imputations, by logically selecting if there were any .
+Another variable that is worth imputing is the Educational Attainment (n= `r CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::filter(is.na(escolaridad_rec)) %>% nrow()`). We followed the rules stated in the `Duplicates4` process ([link](https://fondecytacc.github.io/SUD_health_Chile.github.io/Duplicates4)). We were particularly cautious to impute attainments that would follow a progression from primary school to more than high school. For this purpose, we first looked over the actual values per user, filling intermediate gaps in educational attainment of users with intermediate null values (a), we overcame the difficulty of the incorrect imputations by logically selecting them if there were any.
 
 <br>
 
@@ -1788,7 +1788,7 @@ paste("Check inconsistencies with posterior educational attainments (0= No incon
 
 <br>
 
-We ended having `r CONS_C1_df_dup_SEP_2020_match_miss4 %>%  dplyr::filter(is.na(escolaridad_rec)) %>%  nrow()` missing values in educational attainment (users=`r CONS_C1_df_dup_SEP_2020_match_miss4 %>%  dplyr::filter(is.na(escolaridad_rec)) %>% dplyr::distinct(hash_key) %>% nrow()`), because the imputed values did not fulfilled the requirements of a progression of the educational attainment (eg., a user could not respond to have completed secondary school, but then answer that he had completed primary school only), for example, due to ties in the imputed values or no imputed values.
+We concluded with a total of `r CONS_C1_df_dup_SEP_2020_match_miss4 %>%  dplyr::filter(is.na(escolaridad_rec)) %>%  nrow()` missing values in educational attainment (users=`r CONS_C1_df_dup_SEP_2020_match_miss4 %>%  dplyr::filter(is.na(escolaridad_rec)) %>% dplyr::distinct(hash_key) %>% nrow()`), because the imputed values did not fulfill the requirements of a progression of the educational attainment (eg., a user could not respond to have completed secondary school, but then answer that he/she had completed primary school only), for example, due to ties in the imputed values or no imputed values.
 
 <br>
 
@@ -1898,7 +1898,7 @@ We could not resolve Marital status in  `r as.numeric(table(!is.na(CONS_C1_df_du
 
 ### Region & Type of Center (Public)
 
-We looked over possible imputations to region of the center (n=`r CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::filter(is.na(nombre_region)) %>% nrow()`) and type of the center (public or private) (n=`r CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::filter(is.na(tipo_centro_pub)) %>% nrow()`).
+We looked over possible imputations for region of the center (n=`r CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::filter(is.na(nombre_region)) %>% nrow()`) and type of the center (public or private) (n=`r CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::filter(is.na(tipo_centro_pub)) %>% nrow()`).
 
 <br>
 
@@ -2086,11 +2086,11 @@ CONS_C1_df_dup_SEP_2020_match_miss5 %>%
 
 <br>
 
-There were impossible to impute region of the center in `r as.numeric(table(is.na(CONS_C1_df_dup_SEP_2020_match_miss6$nombre_region)))[2]` cases due to ties in the different imputed values. In case of public or private center, `r ifelse(CONS_C1_df_dup_SEP_2020_match_miss6 %>% dplyr::filter(is.na(tipo_centro_pub)) %>% nrow()==0,paste0("there were no missing values once imputed."),paste0(" some values were not possible to impute (n=",CONS_C1_df_dup_SEP_2020_match_miss6 %>% dplyr::filter(is.na(tipo_centro_pub)) %>% nrow(),")"))`
+It was impossible to impute region of the center in `r as.numeric(table(is.na(CONS_C1_df_dup_SEP_2020_match_miss6$nombre_region)))[2]` cases due to ties in the different imputed values. In the case of public or private center, `r ifelse(CONS_C1_df_dup_SEP_2020_match_miss6 %>% dplyr::filter(is.na(tipo_centro_pub)) %>% nrow()==0,paste0("there were no missing values imputed."),paste0(" some values were not possible to impute (n=",CONS_C1_df_dup_SEP_2020_match_miss6 %>% dplyr::filter(is.na(tipo_centro_pub)) %>% nrow(),")"))`
 
 <br>
 
-### Diagnose of Drug Consumption
+### Diagnosis of Drug Consumption
 
 We looked over possible imputations to the diagnosis of drug consumption (n=`r CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::filter(is.na(dg_trs_cons_sus_or)) %>% nrow()`).
 
@@ -2262,7 +2262,7 @@ A total of `r CONS_C1_df_dup_SEP_2020_match_miss8 %>% dplyr::filter(is.na(motivo
 
 ### Evaluation of the Therapeutic Process
 
-Another variable that is worth imputing is the Evaluation of the Therapeutic Process at Discharge (n= `r CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::filter(is.na(evaluacindelprocesoteraputico)) %>% nrow() %>% format(big.mark=",")`). In case of ties, we selected the imputed values with the value with the minimum evaluation. Must consider that most of the null values could be explained by censoring or not completion of the treatment at the period of the study (n= `r CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(hash_key %in% unlist(unique(CONS_C1_df_dup_SEP_2020_match$hash_key))) %>% dplyr::filter(motivodeegreso_mod_imp=="Ongoing treatment", is.na(evaluacindelprocesoteraputico)) %>% nrow() %>% format(big.mark=",")`).
+Another variable that is worth imputing is the Evaluation of the Therapeutic Process at Discharge (n= `r CONS_C1_df_dup_SEP_2020_match_miss %>% dplyr::filter(is.na(evaluacindelprocesoteraputico)) %>% nrow() %>% format(big.mark=",")`). In case of ties, we selected the imputed values with the value with the minimum evaluation. It must be considered that most of the null values could be explained by censoring or by not completing the treatment within the period of the study (n= `r CONS_C1_df_dup_SEP_2020 %>% dplyr::filter(hash_key %in% unlist(unique(CONS_C1_df_dup_SEP_2020_match$hash_key))) %>% dplyr::filter(motivodeegreso_mod_imp=="Ongoing treatment", is.na(evaluacindelprocesoteraputico)) %>% nrow() %>% format(big.mark=",")`).
 
 <br>
 
@@ -2405,13 +2405,13 @@ CONS_C1_df_dup_SEP_2020_match_miss9 %>%
 #table(is.na(CONS_C1_df_dup_SEP_2020_match_miss6$nombre_region))
 ```
 
-As a result of the process of imputation, `r ifelse(CONS_C1_df_dup_SEP_2020_match_miss9 %>% dplyr::filter(is.na(tipo_de_plan_res)) %>% nrow()==0,paste0("there were no missing values once imputed."),paste0(" some values were not possible to impute (n=",CONS_C1_df_dup_SEP_2020_match_miss9 %>% dplyr::filter(is.na(tipo_de_plan_res)) %>% nrow(),")."))`
+As a result of the process of imputation, `r ifelse(CONS_C1_df_dup_SEP_2020_match_miss9 %>% dplyr::filter(is.na(tipo_de_plan_res)) %>% nrow()==0,paste0("there were no missing values imputed."),paste0(" some values were not possible to impute (n=",CONS_C1_df_dup_SEP_2020_match_miss9 %>% dplyr::filter(is.na(tipo_de_plan_res)) %>% nrow(),")."))`
 
 <br>
 
 ## Sample Characteristics
 
-We checked the characteristics of the sample depending on type of treatment (Residential or Outpatients).
+We checked the characteristics of the sample depending on type of treatment (Residential or Ambulatory/Outpatients).
 
 <br>
 
@@ -2471,7 +2471,7 @@ CONS_C1_df_dup_SEP_2020_match_miss_after_imp_conservados <-
 
 <br>
 
-Considering that some missing values were not able to imputation (due to ties in the candidate values for imputation or inconsistent values for imputations) (`r dim(CONS_C1_df_dup_SEP_2020_match_miss_after_imp_descartados)[1]`, users=`r length(unique(CONS_C1_df_dup_SEP_2020_match_miss_after_imp_descartados$hash_key))`), we ended  the process having `r nrow(CONS_C1_df_dup_SEP_2020_match_miss_after_imp_conservados) %>%  format(big.mark=",")` complete cases (users=`r length(unique(CONS_C1_df_dup_SEP_2020_match_miss_after_imp_conservados$hash_key))%>%  format(big.mark=",")`).  
+Considering that some missing values were not able to be imputed (due to ties in the candidate values for imputation or inconsistent values for imputations) (`r dim(CONS_C1_df_dup_SEP_2020_match_miss_after_imp_descartados)[1]`, users=`r length(unique(CONS_C1_df_dup_SEP_2020_match_miss_after_imp_descartados$hash_key))`), we ended the process with a total of `r nrow(CONS_C1_df_dup_SEP_2020_match_miss_after_imp_conservados) %>%  format(big.mark=",")` complete cases (users=`r length(unique(CONS_C1_df_dup_SEP_2020_match_miss_after_imp_conservados$hash_key))%>%  format(big.mark=",")`).  
 
 <br>
 
@@ -2656,7 +2656,7 @@ balance_prev %>% #data.table::data.table(keep.rownames = F)
 
 <br>
 
-We generated a plot to focus on unbalanced data.
+We generated a plot to focus on the unbalanced data.
 
 <br>
 
@@ -2685,7 +2685,7 @@ love.plot(bal2, binary = "std",
 
 # Specification
 
-First, we had to discretize categorical variables into logical parameters, and for continuous covariates, we divide them into 20 equal parts.
+First, we had to discretize categorical variables into logical parameters, and for continuous covariates, we divided them into 20 equal parts.
 
 <br>
 
@@ -3377,7 +3377,7 @@ irrs_min_ach<-irrs(x="min_ach" , z="outcome_to_readmission", db="CONS_C1_df_dup_
 
 <br>
 
-The incidence rate of readmission was `r round(as.numeric(irrs_early_drop$estimate[1]),2)` (95% IC `r round(irrs_early_drop$conf.int[1],2)`-`r round(irrs_early_drop$conf.int[2],2)`) in users that had at least an early dropout, compared with users that did not have a physical condition at baseline (p`r ifelse(sprintf("%1.3f",irrs_early_drop$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",irrs_early_drop$p.value)))`).
+The incidence rate of readmission was `r round(as.numeric(irrs_early_drop$estimate[1]),2)` (95% IC `r round(irrs_early_drop$conf.int[1],2)`-`r round(irrs_early_drop$conf.int[2],2)`) in users that had at least an early dropout, compared to users that did not have a physical condition at baseline (p`r ifelse(sprintf("%1.3f",irrs_early_drop$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",irrs_early_drop$p.value)))`).
 
 <br>
 
@@ -3419,7 +3419,7 @@ biostat3::survRate(Surv((admission_to_readmission), event==1) ~ tipo_de_plan_res
 #https://mail.google.com/mail/u/0/?tab=rm&ogbl#search/%22event%22+%22jos%C3%A9%22/FMfcgzGkXwLJKPwsCJJNSWTlgGlPQqKk
 ```
 
-Excluding censored cases, the incidence rate of readmission was significantly higher (`r round(as.numeric(comp_status_readmission$estimate[1]),2)`, 95% IC `r round(comp_status_readmission$conf.int[1],2)`-`r round(comp_status_readmission$conf.int[2],2)`) in users that had a Discharge without clinical advice, compared with users that had a Therapeutic discharge (p`r ifelse(sprintf("%1.3f",comp_status_readmission$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",comp_status_readmission$p.value)))`).
+Excluding censored cases, the incidence rate of readmission was significantly higher (`r round(as.numeric(comp_status_readmission$estimate[1]),2)`, 95% IC `r round(comp_status_readmission$conf.int[1],2)`-`r round(comp_status_readmission$conf.int[2],2)`) in users that had a Discharge without clinical advice, compared to users that had a Therapeutic discharge (p`r ifelse(sprintf("%1.3f",comp_status_readmission$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",comp_status_readmission$p.value)))`).
 
 <br>
 
@@ -3471,7 +3471,7 @@ ggsurvplot_fit_abandono_temprano_rec
 
 <br>
 
-The incidence rate of readmission was `r round(as.numeric(irrs_res_plan$estimate[1]),2)` (95% IC `r round(irrs_res_plan$conf.int[1],2)`-`r round(irrs_res_plan$conf.int[2],2)`) in users that had a residential plan, compared with users that had an ambulatory plan at baseline (p`r ifelse(sprintf("%1.3f",irrs_res_plan$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",irrs_res_plan$p.value)))`).
+The incidence rate of readmission was `r round(as.numeric(irrs_res_plan$estimate[1]),2)` (95% IC `r round(irrs_res_plan$conf.int[1],2)`-`r round(irrs_res_plan$conf.int[2],2)`) in users that had a residential plan, compared to users that had an ambulatory plan at baseline (p`r ifelse(sprintf("%1.3f",irrs_res_plan$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",irrs_res_plan$p.value)))`).
 
 <br>
 
@@ -3523,7 +3523,7 @@ ggsurvplot_fit_tipo_de_plan_res
 
 <br>
 
-The incidence rate of readmission was `r round(as.numeric(irrs_res_early$estimate[1]),2)` (95% IC `r round(irrs_res_early$conf.int[1],2)`-`r round(irrs_res_early$conf.int[2],2)`) in users that had a residential plan and an early dropout, compared with the rest of users at baseline (p`r ifelse(sprintf("%1.3f",irrs_res_early$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",irrs_res_early$p.value)))`).
+The incidence rate of readmission was `r round(as.numeric(irrs_res_early$estimate[1]),2)` (95% IC `r round(irrs_res_early$conf.int[1],2)`-`r round(irrs_res_early$conf.int[2],2)`) in users that had a residential plan and an early dropout, compared to the rest of users at baseline (p`r ifelse(sprintf("%1.3f",irrs_res_early$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",irrs_res_early$p.value)))`).
 
 <br>
 
@@ -3568,7 +3568,7 @@ ggsurvplot_fit_res_drop_out
 
 <br>
 
-The incidence rate of readmission was `r round(as.numeric(irrs_min_ach$estimate[1]),2)` (95% IC `r round(irrs_min_ach$conf.int[1],2)`-`r round(irrs_min_ach$conf.int[2],2)`) in users that had a minimum achievement of the therapeutic goals, compared with the rest of users at baseline (p`r ifelse(sprintf("%1.3f",irrs_min_ach$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",irrs_min_ach$p.value)))`).
+The incidence rate of readmission was `r round(as.numeric(irrs_min_ach$estimate[1]),2)` (95% IC `r round(irrs_min_ach$conf.int[1],2)`-`r round(irrs_min_ach$conf.int[2],2)`) in users that had a minimum achievement of the therapeutic goals, compared to the rest of users at baseline (p`r ifelse(sprintf("%1.3f",irrs_min_ach$p.value)=="0.000","<0.001",paste0("= ", sprintf("%1.3f",irrs_min_ach$p.value)))`).
 
 <br>
 

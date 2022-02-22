@@ -1,6 +1,6 @@
 ---
 title: "Duplicated/ Repeated Cases in SISTRAT C1 (part 4)"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
+date: "`r withr::with_locale(new = c('LC_TIME' = 'C'), code =format(Sys.time(),'%B %d, %Y'))`"
 output:
   html_document:
     code_folding: hide  
@@ -46,8 +46,20 @@ div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-ali
 </style>
 
 ```{r prev_setup, include = FALSE, cache=T}
+
 rm(list=ls());gc()
-load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/6.Rdata")
+if(!require(here)){install.packages("here")}
+warning(paste0(getwd()))
+Sys.setlocale("LC_TIME")
+
+unlink(paste0(here::here(),"/*_cache"), recursive = TRUE)
+
+path<-gsub("/SUD_CL","",here::here())
+
+check_obj<-function(x){if(!exists(x)){stop(paste0("The object ",x ," was not created"))}}
+
+#load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/6.Rdata")
+load(paste0(path,"/6.Rdata"))
 
 if(isTRUE(getOption('knitr.in.progress'))==T){
     nn_size= 1:5 # size= 1:5
@@ -135,66 +147,65 @@ copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
 #if(!require(matrixStats)){install.packages("matrixStats")}
 #if(!require(radiant)){install.packages("radiant", repos = "https://radiant-rstats.github.io/minicran/")}
 
-try(library(boot))
-library(matrixStats)
-library(knitr)
-library(tidyr)
-library(stringi)
-library(stringr)
-library(ggplot2)
-library(Hmisc)
-library(kableExtra)
-library(plotly)
-library(janitor)
-library(rbokeh)
-library(altair)
-library(zoo)
-library(broom)
-library(sqldf)
-library(devtools)
-library(Statamarkdown)
-library(codebook)
-library(data.table)
-library(dplyr)
-library(panelr)
-library(RColorBrewer)
-library(choroplethr)
-library(choroplethrMaps)
-library(choroplethrAdmin1)
-library(lsmeans)
-library(finalfit)
-library(chilemapas)
-suppressPackageStartupMessages(library(ggiraph))
-suppressPackageStartupMessages(library(sf))
-library(treemapify)
-library(dplyr)
-library(choroplethr)
-library(choroplethrMaps)
-library(choroplethrAdmin1)
-library(tidyverse)
+try(require(boot))
+require(matrixStats)
+require(knitr)
+require(tidyr)
+require(stringi)
+require(stringr)
+require(ggplot2)
+require(Hmisc)
+require(kableExtra)
+require(plotly)
+require(janitor)
+require(rbokeh)
+#2022: require(altair)
+require(zoo)
+require(broom)
+require(sqldf)
+require(devtools)
+require(Statamarkdown)
+require(codebook)
+require(data.table)
+require(panelr)
+require(RColorBrewer)
+require(lsmeans)
+require(finalfit)
+require(chilemapas)
+suppressPackageStartupMessages(require(ggiraph))
+suppressPackageStartupMessages(require(sf))
+require(treemapify)
+require(dplyr)
+require(tidylog)
+require(choroplethr)
+require(choroplethrMaps)
+require(choroplethrAdmin1)
+require(tidyverse)
 
-if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
+#if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
 #install.packages( repos = "https://radiant-rstats.github.io/minicran/")
 #install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")
 
 #tryCatch(source("https://raw.githubusercontent.com/radiant-rstats/minicran/gh-pages/update.R"), error = function(e) print("updated package, radiant"))
+time_before_dedup4<-Sys.time()
+
 ```
 
 <!--- SÍ O SÍ, HACER LA LIMPIEZA DE LOS SENDA NO, PRINCIPALMENTE DE LOS QUE SE SUPERPONGAN, TAMBIÉN PREGUNTAR A ACC SI LOS CON 0 DÍAS DE TRATAMIENTO SE BORRARÁN O NO; DE AHI EMPEZAR A NORMALIZAR LOS PROGRAMAS Y PLANES DE ACUERDO CON CRITERIOS MAUREEN, PARA NO GENERAR DIFERENCIAS AHI Y PODER DEDUPLICAR TRANQUILO --->
 
 <br>
 
-For the purpose of this page, we use the terms "rows" and "cases" as equal to refer to the entries of the dataset. In many of the processes made along the deduplication of entries in C1 dataset, we used unstandardized columns or many other data that was in fact duplicated by HASHs, that did not depend on events related to treatment.In order to find and delete duplicated data that does not add information relevant for the purposes of the study, we now may **use these standardized variables as a criteria to achieve the goal of having a unique event per HASH, by reducing its complexity based on irrelevant differences**.
+For the purpose of this page, we use the terms "rows" and "cases" interchangeably to refer to the entries of the dataset. In many of the processes made along the deduplication of entries in the C1 dataset, we used unstandardized columns or many other data that was in fact duplicated by HASHs that did not depend on events related to treatment. In order to find and delete duplicated data that does not add information relevant for the purposes of the study, we now may **use these standardized variables as a criteria to achieve the goal of having a unique event per HASH, by reducing its complexity based on irrelevant differences**.
 
 <br>
 
 <div class = "blue">
-As stated in the third part of the deduplication process, we identified and defined an amount of treatment days that would be suitable to link these entries, and several additional criteria to distinguish between what would be a different treatment from what would reflect a continuation of a treatment. In these stage, we defined **rules** to keep the most relevant information by each variable to collapse the intermediate events into a single entry that summaries the whole treatment and would let us distinguish posterior treatments.
+As stated in the third part of the deduplication process, we identified and defined an amount of treatment days that would be suitable to link these entries and several additional criteria to distinguish between what would be a different treatment from what would reflect a continuation of a treatment. In this stage, we defined **rules** to keep the most relevant information of each variable, collapsing the intermediate events into a single entry that summarizes the whole treatment and would let us distinguish posterior treatments.
 </div>
 
-## Structure of Treatments and Rules to Collapse Continuous Entries
+## Structure of treatments and rules to collapse continuous entries
 
-We got a general impression of the database to understand what would be the steps to follow to collapse entries into differentiated treatments. This is why we look at the relationship that the entries had with those that followed them.
+We concluded with a general impression of the database to understand which steps to follow to collapse entries into differentiated treatments. This is why we look at the relationship that the entries had with those that followed them.
 
 <br>
 
@@ -317,7 +328,7 @@ d -> {e f}
 ```
 <br>
 
-As seen in Figure 1, we could define that this pairs of events with the same users that could correspond to a continuous treatment, rather than different ones. We focused in these patterns to collapse them into treatments, particularly those related to cases with referrals in the first entry and less than 45 days of difference with a posterior entry.
+As seen in Figure 1, we could define that this pair of events with the same users could correspond to a continuous treatment, rather than different ones. We focused on these patterns to collapse them into treatments, particularly those related to cases with referrals in the first entry and less than 45 days of difference with a posterior entry.
 
 <br>
 
@@ -367,7 +378,7 @@ CONS_C1_df_dup_JUN_2020%>%
 
 <br>
 
-As seen in the Table above, most of the referrals that had a posterior treatment had a difference of 45 days or less, compared to other causes of admission. Considering that, we decided to get an impression over the amount of time that took to report another entry within users that had different causes of discharge in a previous treatment.
+As seen in the Table above, most of the referrals that had a posterior treatment had a difference of 45 days or less, compared to other causes of admission. Considering this, we decided to get an impression over the amount of time that took to report another entry within users that had different causes of discharge in a previous treatment.
 
 <br>                                                       
                                                        
@@ -466,7 +477,7 @@ mtext("Note. Users who did not finish their first treatment or did not show recu
 
 <br>
 
-From the Figure above, we can interpret that referrals had most entries with 0's or a minimum time with a posterior one. But how many entries could users had?, we generated a histogram distinguishing those cases that summed no more than 0 days of differences between entries (possibly part of the same treatment with only minor changes), from those with more days of treatment
+From the Figure above, we can interpret that referrals had most entries with 0's or a minimum time with a posterior one. But, how many entries could users have had? We generated a histogram distinguishing the cases that summed no more than 0 days of difference between entries (possibly part of the same treatment with only minor changes), from those with more days of treatment.
 
 <br>
 
@@ -585,11 +596,11 @@ p3
 
 <br>
 
-As seen in the Figure above, the users that had only one entry represent the greater amount of people that had no cumulative days of difference between another entry because there were no other. This is why we focused on users that had more than one treatment, and we could highlight **a small amount of users that had 2 entries with no days of difference between them, and a much smaller amount had three entries with no differences in days between them**. Possibly, we could consider that these users only had one treatment with minor changes between a different entry. Conversely, most of the users that had days of difference in entries within them, had 2 cases and exceptionally 3 (notice that many of these users could have a treatment with differences of 0 days between another, but a third treatment with more days, leading to have a total difference of more than 0). Must note that some user had 13 entries.
+As seen in the Figure above, the users that had only one entry represent the greater amount of people that had no cumulative days of difference between another entry, because there were no other treatment. This is why we focused on users that had more than one treatment, and we could highlight **a small amount of users that had 2 entries with no days of difference between them, and a much smaller amount had three entries with no differences in the days between them**. Ir is possible that we could consider that these users only had one treatment with minor changes between a different entry. Conversely, most of the users that had days of difference in entries within them had 2 cases and, some exceptional users had 3 cases (Notice that many of these users could have a treatment with differences of 0 days between another, but a third treatment with more days, leading to have a total difference of more than 0). It must be noted that some user had 13 entries.
 
 <br>
 
-Also, we considered necessary to get an overview of the distribution of changes by days (divided in 20 equal parts), and depending on the cause of discharge of the first entry, to get an impression of what are the major changes that are occurring between different entries of each user.
+Also, we considered necessary to get an overview of the distribution of changes by days (divided in 20 equal parts), and depending on the cause of discharge of the first entry, to get an impression of what the major changes are that are occurring between different entries of each user.
 
 <br>
 
@@ -624,7 +635,7 @@ p11<-
     geom_bar(stat='identity', alpha=.8) + 
     scale_x_discrete()+
     scale_fill_manual(name= "No. of changes",values=c("cornsilk3", "lightskyblue2", "#56B4E9", "steelblue","slategray4")) +
-    sjPlot::theme_sjplot2()+
+    theme_bw()+
     labs(x="",y="", fill="No. of changes")+
     #ylim(0,101)+
     #scale_y_continuous(limits=c(0,1),labels = scales::percent) +
@@ -663,9 +674,9 @@ From the Table above, we can add support to the fact that referrals had a great 
 
 <br>
 
-## Collapse Continuous or Almost Continuous Entries into Treatments
+## Collapse continuous or almost continuous entries into treatments
 
-We decided to collapse the different entries into a single treatment. This required to adopt different strategies to collapse values of variables of different types and characteristics.
+We decided to collapse the different entries into a single treatment. This required us to adopt different strategies to collapse variable values of different types and characteristics.
 
 <br>
 
@@ -762,7 +773,7 @@ We applied these criteria to all of the entries that shared common records that 
 
 <br>
 
-In case of variables such as the primary substance and other substances and educational attainment, we ordered this variables in terms of vulnerability, and replaced variables but giving priority to more vulnerable categories. For variables in which there were not a clear hierarchy to identify the more vulnerable category, we selected the values present in the entries in which the treatments lasted longer than the rest. In case of keeping values of days with the more than one maximum amount of days of treatment up to the date of retrieval, the rank took one of the corresponding rows randomly.
+In case of variables, such as the primary substance and other substances and educational attainment, we ordered these variables in terms of vulnerability and replaced variables, giving priority to more vulnerable categories. For variables in which there was not a clear hierarchy to identify the more vulnerable category, we selected the values present in the entries in which the treatments lasted longer than the rest. Instead of keeping values of days with more than one maximum amount of days of treatment up to the date of retrieval, the rank chose one of the corresponding rows randomly.
 
 <br>
 
@@ -1134,7 +1145,7 @@ row_id_redundantes_trat_completos<-
 
 <br>
 
-We started wtih `r nrow(CONS_C1_df_dup_JUN_2020_a_g) %>% formatC(big.mark=",")` entries of `r CONS_C1_df_dup_JUN_2020_a_g %>% distinct(hash_key) %>% nrow()%>% formatC(big.mark=",")` users that it would be appropriate to distinguish `r CONS_C1_df_dup_JUN_2020_a_g %>% distinct(concat_hash_id_treatments)%>% nrow()%>% formatC(big.mark=",")` groups of entries comprising single treatments.
+We started with `r nrow(CONS_C1_df_dup_JUN_2020_a_g) %>% formatC(big.mark=",")` entries of `r CONS_C1_df_dup_JUN_2020_a_g %>% distinct(hash_key) %>% nrow()%>% formatC(big.mark=",")` users that it would be appropriate to distinguish `r CONS_C1_df_dup_JUN_2020_a_g %>% distinct(concat_hash_id_treatments)%>% nrow()%>% formatC(big.mark=",")` groups of entries comprising single treatments.
 
 <br>
 
@@ -1142,7 +1153,7 @@ We started wtih `r nrow(CONS_C1_df_dup_JUN_2020_a_g) %>% formatC(big.mark=",")` 
 
 <br>
 
-We had to join the new entries of treatments into the original database (n= `r CONS_C1_df_dup_JUN_2020%>% nrow() %>% formatC(big.mark=",")`; users= `r CONS_C1_df_dup_JUN_2020%>% distinct(hash_key)%>% nrow()%>% formatC(big.mark=",")`), into a new one that collapsed continuous entries into single treatments (n= `r CONS_C1_df_dup_JUN_2020%>% dplyr::filter(!row %in%row_id_redundantes_trat_completos)%>% nrow() %>% formatC(big.mark=",")`;users= `r CONS_C1_df_dup_JUN_2020%>% dplyr::filter(!row %in%row_id_redundantes_trat_completos)%>% distinct(hash_key)%>% nrow()%>% formatC(big.mark=",")`).
+We had to join the new entries of treatments into the original database (n= `r CONS_C1_df_dup_JUN_2020%>% nrow() %>% formatC(big.mark=",")`; users= `r CONS_C1_df_dup_JUN_2020%>% distinct(hash_key)%>% nrow()%>% formatC(big.mark=",")`) into a new one that collapsed continuous entries into single treatments (n= `r CONS_C1_df_dup_JUN_2020%>% dplyr::filter(!row %in%row_id_redundantes_trat_completos)%>% nrow() %>% formatC(big.mark=",")`;users= `r CONS_C1_df_dup_JUN_2020%>% dplyr::filter(!row %in%row_id_redundantes_trat_completos)%>% distinct(hash_key)%>% nrow()%>% formatC(big.mark=",")`).
 
 <br>
 
@@ -1457,7 +1468,7 @@ invisible(c("15. Ver factores"))
 
 ## Standardization of variables
 
-We generated variables that compare each treatment with their following treatment (in case the user had more than one treatment) (`obs_cambios`). Also we calculated the days of treatment of each treatment (`dias_treat_imp_sin_na`), and in case the treatment did not have a date of discharge, we decided to get the difference of days between the date of admission and the date of retrieval of the dataset (2020-11-13). For analytic terms, we added two situations to the cause of discharge: the treatment is in course and does not have another observation, or is in course but the treatment exceeds 1095 days of treatment. We also included two variables to indicate whether a treatment had a difference of less than 45 (`menor_45_dias_diff`) or 60 (`menor_60_dias_diff`) days with the following treatment (if any). Finally, we generated the variable `abandono_temprano` to differentiate between treatment that lasted at least three months and those that did not.
+We generated variables that compare each treatment with their following treatment (in case the user had more than one treatment) (`obs_cambios`). Also we calculated the days of treatment of each treatment (`dias_treat_imp_sin_na`), and in case the treatment did not have a date of discharge, we decided to get the difference of days between the date of admission and the date of retrieval of the dataset (2019-11-13) (dates are in the format "years-month-day" in this document). For analytic terms, we added two situations to the cause of discharge: the treatment is in course and does not have another observation, or is in course but the treatment exceeds 1095 days of treatment. We also included two variables to indicate whether a treatment had a difference of less than 45 (`menor_45_dias_diff`) or 60 (`menor_60_dias_diff`) days with the following treatment (if any). Finally, we generated the variable `abandono_temprano` to differentiate between treatment that lasted at least three months and those that did not.
 
 <br>
 
@@ -1522,7 +1533,7 @@ CONS_C1_df_dup_JUL_2020_cons%>%
 
 <br>
 
-We replaced the number of children/dependents (`numero_de_hijos_mod`) if the number of children/dependents is 0 and the number of children that are admitted to a residential treatment (`num_hijos_trat_res_mod`) is greated than 0. Also, we declared as invalid values if the user had no children but declares living with them. Additionally, we excluded the number of kids in a residential treatment if the user declared having no children/dependents but reported being admitted with at least one dependent. Finally, we collapsed the Age of Onset of Drug Use of Primary Substance in the variable `edad_ini_sus_prin_grupos`.
+We replaced the number of children/dependents (`numero_de_hijos_mod`) if the number of children/dependents is 0 and the number of children that are admitted to a residential treatment (`num_hijos_trat_res_mod`) is greater than 0. Also, we declared values invalid if the user had no children but declared living with them. Additionally, we excluded the number of kids in a residential treatment if the user declared having no children/dependents but reported being admitted with at least one dependent. Finally, we collapsed the Age of Onset of Drug Use of Primary Substance in the variable `edad_ini_sus_prin_grupos`.
 
 <br>
 
@@ -1569,7 +1580,7 @@ invisible(23+3+11+91+379+76+39+7+28+23945)
 
 <br>
 
-We replaced cases that reported having dependent children if in the question related to dependent children they responded at least one.
+We replaced cases that reported having dependent children if they responded at least one in the question related to dependent children.
 
 <br>
 
@@ -1589,11 +1600,11 @@ CONS_C1_df_dup_JUL_2020_cons3%>%
 
 <br>
 
-We focused on cases that had treatments with different gender identity, type of plan & type of program.  As noted by SENDAs professionals, the type of program is subordinated to the type of plan that each user might have. Possibly and despite we kept those cases that had a gender identity in intermediate treatments, it is possible that when the entries collapsed into treatments, some information might overlapped generating some inconsistencies. This is why we checked for them, particularly related to gender-related programs.
+We focused on cases that had treatments with different gender identity, type of plan & type of program.  As noted by SENDA professionals, the type of program is subordinated to the type of plan that each user might have. However, we kept the cases that had a gender identity in intermediate treatments; it is possible that when the entries collapsed into treatments, some information might have overlapped generating some inconsistencies. This is why we checked for them, particularly related to gender-related programs.
 
 <br>
 
-We assumed that women and users that reported a gender identity of a women could be in a women or a general-population program. However, men with a masculine or not reported identity could only be in a general-population program. **We are investigating to determine whether the assignment of the sex was wrong, or it corresponded to a problem of classification**.
+We assumed that women and users that reported a gender identity as a woman could be in a women or a general-population program. However, men with a masculine or not reported identity could only be in a general-population program. **We are investigating to determine whether there was an incorrect assignment of the sex, or if it corresponded to a problem of classification**.
 
 <br>
 
@@ -1643,7 +1654,7 @@ if(muestra==0) {
 invisible(c("a- no son mujeres, con identidad de género distinta a femenino y tienen un tipo de programa mujeres."))
 
 library(readxl)
-problema_plan_sexo_analisis <- read_excel("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/problema_plan_sexo analisis.xlsx",skip = 1)
+problema_plan_sexo_analisis <- read_excel(paste0(path,"/problema_plan_sexo analisis.xlsx"),skip = 1)
 #sexo_CAMBIOS SEXO (ID EMBARAZO NOMBE CENTRO Y OTRAS VARIABLES USER-INVARIANT DEBIESE SER POR HASH)
 #tipo_de_plan_CAMBIOS PLAN (ID EMBARAZO NOMBE CENTRO Y OTRAS VARIABLES USER-INVARIANT DEBIESE SER POR HASH)
 #tipo_de_programa_CAMBIOS PROGRAMA (ID EMBARAZO NOMBE CENTRO Y OTRAS VARIABLES USER-INVARIANT DEBIESE SER POR HASH)
@@ -1737,7 +1748,7 @@ CONS_C1_df_dup_JUL_2020_cons6%>% janitor::tabyl(discapacidad,opcion_discapacidad
 
 <br>
 
-We decided to order specific variables based on its severity or level of vulnerability, by adding an arbitrary greater number to those categories with a greater vulnerability or severity.
+We decided to order specific variables based on its severity or level of vulnerability by adding an arbitrary greater number to those categories with a greater vulnerability or severity.
 
 <br>
 
@@ -1777,7 +1788,7 @@ CONS_C1_df_dup_JUL_2020_cons7%>%
 
 <br>
 
-Additionally, we corrected the categories of other problems related to mental health (`otros_probl_at_sm_or`), and excluded if a user did not declare other elements related to mental health.
+Additionally, we corrected the categories of other problems related to mental health (`otros_probl_at_sm_or`) and excluded the categories if a user did not declare other elements related to mental health.
 
 <br>
 
@@ -1840,7 +1851,7 @@ assign("CONS_C1_df_dup_JUL_2020_cons13",., envir = .GlobalEnv)
 
 <br>
 
-In the first steps of the normalization of the database, collapsed the different plan types into the following: PG-PAB, PG-PAI, PG-PR, M-PAB, M-PAI, and M-PR. Other plans and programs were grouped into the General Population Programs due to their low prevalence (`r paste0(round(CONS_C1%>% filter(Tipo.de.Plan %in% c("CALLE","Otro", "PAI LV"))%>% nrow()/nrow(CONS_C1),3)*100,"%")`). Also, there are notations of the procedures of data normalization made by SENDAs professionals that indicates that the type of plan is followed by the type of program in terms of importance. This is why we changed the type of program, depending on the type of plan.
+In the first steps of the normalization of the database, we collapsed the different plan types into the following: PG-PAB, PG-PAI, PG-PR, M-PAB, M-PAI, and M-PR. Other plans and programs were grouped into the General Population Programs due to their low prevalence (`r paste0(round(CONS_C1%>% filter(Tipo.de.Plan %in% c("CALLE","Otro", "PAI LV"))%>% nrow()/nrow(CONS_C1),3)*100,"%")`). Also, there are notations of the procedures of data normalization made by SENDA professionals that indicates that the type of plan is followed by the type of program in terms of importance. This is why we changed the type of program, depending on the type of plan.
 
 <br>
 
@@ -1895,7 +1906,7 @@ CONS_C1_df_dup_JUL_2020_cons14 %>%
 
 ### Cases with more than 1095  days of treatment
 
-Finally, we focused on treatment days in some of the cases, due to the collapse of treatments may sum additional days to a treatment, resulting in extensive treatments (>1095 days) that would not be considered as valid treatments to SENDAs professionals. We distinguished between cases that corresponded to users that had more than one treatment, and cases that did not have an available date of discharge.
+Finally, we focused on treatment days in some of the cases. Due to the collapse of treatments, it may sum additional days to a treatment, resulting in extensive treatments (>1095 days) that would not be considered as valid treatments to SENDA professionals. We distinguished between cases that corresponded to users that had more than one treatment, and cases that did not have an available date of discharge.
 
 <br>
 
@@ -2004,7 +2015,7 @@ model<-
   geom_point(position=position_dodge(0.1), size=2)+
     xlab("Date of discharge is empty (=1)")+
     ylab("Days of treatment")+
-    sjPlot::theme_sjplot2() +
+    theme_bw() +
     geom_rect_interactive(alpha = 0.1, xmin=.1, xmax=.1, ymin=.1,ymax=.1) +
       # Remove plot elements added by geom_rect_interactive
     theme(legend.position="bottom")+
@@ -2018,7 +2029,7 @@ model<-
 
 <br>
 
-There were `r CONS_C1_df_dup_JUL_2020_cons14b%>%dplyr::filter(dias_treat_imp_sin_na>1095)%>% nrow()` entries with >1095 days, that affects `r CONS_C1_df_dup_JUL_2020_cons14b%>% dplyr::filter(hash_key %in% mas_1095_usuarios)%>% dplyr::select(hash_key, ano_bd_first, ano_bd_last, fech_ing, dias_treat_imp_sin_na, fech_egres_imp,tipo_de_plan_2,senda)%>% nrow()` users. As seen in the figure presented above, cases with more than 2000 days of treatment could be considered as anomalies, excepting in the group of those cases that showed only one entry by user and  date of discharge, in which more than 50% of the treatments show over than 1800 days of treatment.
+There were `r CONS_C1_df_dup_JUL_2020_cons14b%>%dplyr::filter(dias_treat_imp_sin_na>1095)%>% nrow()` entries with >1095 days, which affects `r CONS_C1_df_dup_JUL_2020_cons14b%>% dplyr::filter(hash_key %in% mas_1095_usuarios)%>% dplyr::select(hash_key, ano_bd_first, ano_bd_last, fech_ing, dias_treat_imp_sin_na, fech_egres_imp,tipo_de_plan_2,senda)%>% nrow()` users. As seen in the figure presented above, cases with more than 2000 days of treatment could be considered as anomalies, except for the group of the cases that showed only one entry by user and  date of discharge, in which more than 50% of the treatments show more than 1800 days of treatment.
 
 <br>
 
@@ -2084,7 +2095,7 @@ CONS_C1_df_dup_JUL_2020_cons14b%>%
 
 <br>
 
-### Consistencies in Age of Onset of Drug Use, Age of Onset of Drug Use in the Primary Substance at Admission, and Age at Admission
+### Consistencies in age of onset of drug use, age of onset of drug Use in the primary substance at admission, and age at admission
 
 As a result of collapsing treatments and the imputation of ages of onset (`edad_ini_cons` or `edad_ini_sus_prin`), some ages shown inconsistencies due to a greater Age of Onset of Drug Use posterior to the first date of admission by user (n=`r CONS_C1_df_dup_JUL_2020_cons15 %>% dplyr::group_by(hash_key) %>% dplyr::mutate(min_edad_al_ing=min(edad_al_ing,na.rm=T)) %>% dplyr::ungroup() %>%  dplyr::filter(edad_ini_cons>min_edad_al_ing, !is.na(edad_ini_sus_prin),!is.na(edad_ini_cons)) %>% nrow %>%  format(big.mark=",")`).
 
@@ -2094,7 +2105,7 @@ Also, there are many cases with an Age of Onset of Drug Use in the Primary Subst
 
 <br>
 
-We decided that both values should be declared as missing values. Must take note that there may still be inconsistencies within each user in terms of the age of onset of drug use in the primary substance. For this particular variable, we faced with a great mount of missing values, in part due to inconsistencies with the other ages reported. This is why we treated them as missing values, despite the efforts to generate a more reliable value.
+We decided that both values should be declared as missing values. Must take note that there may still be inconsistencies within each user in terms of the age of onset of drug use in the primary substance. For this particular variable, we were faced with a great mount of missing values, in part due to inconsistencies with the other ages reported. This is why we treated them as missing values, despite the efforts to generate a more reliable value.
 
 <br>
 
@@ -2141,13 +2152,13 @@ CONS_C1_df_dup_JUL_2020_cons15 %>%
 
 <br>
 
-### Information on Diagnoses
+### Information on diagnoses
 
-We ordered the ICD-10 and DSM-IV diagnostics of any given case, depending on how many different diagnoses each case may had. First we started recoding the sub categories. Once we had every distinct sub-cateogry, we looked for cases with no available sub-categories. If they had only a diagnose "In study" (*"En estudio"*), we conserved this general diagnose (category). It was not possible to work with subcategories, because an important part of the more general diagnostics did not have any diagnose on the subcategory. For example, in the first column of DSM-IV, a `r CONS_C1_df_dup_JUL_2020_cons15a%>% dplyr::mutate(dg_trs_psiq_sub_dsm_iv_or=!is.na(dg_trs_psiq_sub_dsm_iv_or))%>% janitor::tabyl(dg_trs_psiq_dsm_iv_or,dg_trs_psiq_sub_dsm_iv_or)%>% adorn_percentages()%>% data.frame()%>%dplyr::filter(dg_trs_psiq_dsm_iv_or!="Sin trastorno")%>%select(FALSE.)%>% summarise(not_empty=paste0(round(mean(FALSE.,na.rm=T),2)*100,"%"))` had a general diagnose but did not have a sub-category related. Same with ICD-10  (`r CONS_C1_df_dup_JUL_2020_cons15a%>% dplyr::mutate(x2_dg_trs_psiq_sub_cie_10_or=!is.na(x2_dg_trs_psiq_sub_cie_10_or))%>% janitor::tabyl(x2_dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_sub_cie_10_or)%>% adorn_percentages()%>% data.frame()%>%dplyr::filter(x2_dg_trs_psiq_cie_10_or!="Sin trastorno")%>%select(FALSE.)%>% summarise(not_empty=paste0(round(mean(FALSE.,na.rm=T),2)*100,"%"))`). **This lead us to conclude that diagnostic categories were not related to sub-categories, once these processes are done, in order to avoid to loose information. DSM-IV and ICD-10 Diagnoses and sub-categories are presented as a separated list of unique values by treatment, independently of one another**.
+We ordered the ICD-10 and DSM-IV diagnostics of any given case, depending on how many different diagnoses each case may had. First we started recoding the sub categories. Once we had every distinct sub-cateogry, we looked for cases with no available sub-categories. If they had only a diagnosis "In study" (*"En estudio"*), we conserved this general diagnosis (category). It was not possible to work with subcategories, because an important part of the more general diagnostics did not have any diagnosis on the subcategory. For example, in the first column of DSM-IV, a `r CONS_C1_df_dup_JUL_2020_cons15a%>% dplyr::mutate(dg_trs_psiq_sub_dsm_iv_or=!is.na(dg_trs_psiq_sub_dsm_iv_or))%>% janitor::tabyl(dg_trs_psiq_dsm_iv_or,dg_trs_psiq_sub_dsm_iv_or)%>% adorn_percentages()%>% data.frame()%>%dplyr::filter(dg_trs_psiq_dsm_iv_or!="Sin trastorno")%>%select(FALSE.)%>% summarise(not_empty=paste0(round(mean(FALSE.,na.rm=T),2)*100,"%"))` had a general diagnose but did not have a sub-category related. Same with ICD-10  (`r CONS_C1_df_dup_JUL_2020_cons15a%>% dplyr::mutate(x2_dg_trs_psiq_sub_cie_10_or=!is.na(x2_dg_trs_psiq_sub_cie_10_or))%>% janitor::tabyl(x2_dg_trs_psiq_cie_10_or,x2_dg_trs_psiq_sub_cie_10_or)%>% adorn_percentages()%>% data.frame()%>%dplyr::filter(x2_dg_trs_psiq_cie_10_or!="Sin trastorno")%>%select(FALSE.)%>% summarise(not_empty=paste0(round(mean(FALSE.,na.rm=T),2)*100,"%"))`). **This led us to conclude that diagnostic categories were not related to sub-categories, once these processes are completed, in order to avoid loosing information. DSM-IV and ICD-10 Diagnoses and sub-categories are presented as a separated list of unique values by treatment, independently from one another**.
 
 <br>
 
-Additionally, we generated a category to detect whether a user had at least one CIE-10 diagnose (`cie_10`). The same was done to DSM-IV diagnoses (`dsm_iv`). Also we tidied some secondary variables such as physical diagnose and other diagnoses. Lastly, we generated several variables to count how many different diagnoses each entry had.
+Additionally, we generated a category to detect whether a user had at least one CIE-10 diagnosis (`cie_10`). The same was done to DSM-IV diagnoses (`dsm_iv`). Also, we organized some secondary variables, such as physical diagnosis and other diagnoses. Lastly, we generated several variables to count how many different diagnoses each entry had.
 
 <br>
 
@@ -2159,7 +2170,7 @@ dg_trs_psiq_sub_dsm_iv_or_cat<-CONS_C1_df_dup_JUL_2020_cons15a%>%
   dplyr::select(dg_trs_psiq_sub_dsm_iv_or)%>% 
   dplyr::filter(!dg_trs_psiq_sub_dsm_iv_or %in% c(NA))%>% unlist()%>% as.character() 
 library(readxl)
-sub_dsm_iv_to_cie_10_comp_table <- read_excel("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/sub_dsm_iv_to_cie_10_comp_table.xlsx", col_names = c("original","mod"))
+sub_dsm_iv_to_cie_10_comp_table <- read_excel(paste0(path,"/sub_dsm_iv_to_cie_10_comp_table.xlsx"), col_names = c("original","mod"))
 #PARA DEJAR LAS CATEGORIAS GENERALES ACTUALIZADAS:  
 cat_dsm_iv_desde_sub_dsm_iv<-
   CONS_C1_df_dup_JUN_2020%>%
@@ -2336,7 +2347,7 @@ assign("CONS_C1_df_dup_JUL_2020_cons17",., envir = .GlobalEnv)
 
 ### Dates of treatments and continuity of their characteristics
   
-We corrected the dates of discharge of those treatment dates that were imputed into values larger than the study period (2020-11-13). Subsequently, we generated the numeric value of these dates for compatibility with other statistical software, and created variables of the treatment that follows, if any, and values relative to the difference between them.
+We corrected the dates of discharge of those treatment dates that were imputed into values larger than the study period (2019-11-13). Subsequently, we generated the numeric value of these dates for compatibility with other statistical software, and created variables of the treatment that follows, if any, and values relative to the difference between them.
   
 <br>  
   
@@ -2377,14 +2388,14 @@ CONS_C1_df_dup_JUL_2020_cons17%>%
   assign("CONS_C1_df_dup_JUL_2020_cons18",., envir = .GlobalEnv)
 
 if(CONS_C1_df_dup_JUL_2020_cons18%>%
-    dplyr::filter(fech_egres_imp>"2019-11-13") %>% nrow()>0){"there are still values over the date of retrieval of the data"}
+    dplyr::filter(fech_egres_imp>"2019-11-13") %>% nrow()>0){warning("there are still values over the date of retrieval of the data")}
 ```
 
-### Normalize Progression of Educational Attainment by Users
+### Normalize progression of educational attainment by users
 
 <br>
 
-Once treatments were defined between each other, we noticed that many users reported a determined educational attainment, but in a following treatment, registries shown inconsistent levels of educational attainment. This is why we decided to focus on the `r CONS_C1_df_dup_JUL_2020_cons18%>%dplyr::group_by(hash_key)%>%dplyr::mutate(esc_num=as.numeric(substring(as.character(escolaridad), 1, 1)))%>%dplyr::mutate(esc_num_lag=lag(esc_num))%>%dplyr::mutate(fech_ing_lag=lag(fech_ing))%>%dplyr::mutate(escolaridad_lag=lag(escolaridad))%>%dplyr::filter(esc_num_lag>esc_num)%>%nrow()%>% formatC(, format="f", big.mark=",", digits=0)` users with inconsistencies throughout their different treatments.
+Once treatments were from one another, we noticed that many users reported a determined educational attainment; however, in a following treatment, registries shown inconsistent levels of educational attainment. This is why we decided to focus on the `r CONS_C1_df_dup_JUL_2020_cons18%>%dplyr::group_by(hash_key)%>%dplyr::mutate(esc_num=as.numeric(substring(as.character(escolaridad), 1, 1)))%>%dplyr::mutate(esc_num_lag=lag(esc_num))%>%dplyr::mutate(fech_ing_lag=lag(fech_ing))%>%dplyr::mutate(escolaridad_lag=lag(escolaridad))%>%dplyr::filter(esc_num_lag>esc_num)%>%nrow()%>% formatC(, format="f", big.mark=",", digits=0)` users with inconsistencies throughout their different treatments.
 
 <br>
 
@@ -2659,14 +2670,14 @@ if(
     dplyr::filter(esc_num_lag>esc_num)%>% #El tratamiento posterior tiene menor escolaridad que el actual
     dplyr::select(row,hash_key,fech_ing, esc_num_lag,esc_num,escolaridad,escolaridad_lag,fech_ing_lag)%>%
     dplyr::distinct(hash_key)%>% nrow()
->0){"there are still levels of educational attainment left to normalize"}
+>0){warning("there are still levels of educational attainment left to normalize")}
 ```
 
 ### Generate values of the trajectories of users
 
 <br>
 
-We created variables to obtain a summary of each trajectory in terms of the days treated. One variable, `cum_dias_trat_sin_na` and their mean (`mean_cum_dias_trat_sin_na`) aim to get the cumulative days treated by each patient, depending on the number of treatments up to a determined treatment. Also, we added variables related to the cumulative difference between treatments (`cum_diff_bet_treat` and `mean_cum_diff_bet_treat`). These variables let us identify changes in the treatment lengths and time to readmission throughout the trajectory of each user in SENDA between 2010-2019. 
+We created variables to obtain a summary of each trajectory in terms of the days treated. One variable (`cum_dias_trat_sin_na`) and their mean (`mean_cum_dias_trat_sin_na`) aimed to get the cumulative days treated by each patient, depending on the number of treatments up to a determined treatment. Also, we added variables related to the cumulative difference between treatments (`cum_diff_bet_treat` and `mean_cum_diff_bet_treat`). These variables let us identify changes in treatment lengths and time to readmission throughout the trajectory of each user in SENDA between 2010-2019. 
 
 <br>
 
@@ -2754,19 +2765,19 @@ CONS_C1_df_dup_JUL_2020_cons20%>%
 codebook::var_label(CONS_C1_df_dup_JUL_2020) <- list(
 row= 'Numerador de los eventos presentes en la Base de Datos (Último registro)/Events in the Dataset (Last Entry)',
 row_cont_entries= 'Numerador de los eventos presentes en la Base de Datos(*)/Events in the Dataset(*)',
-hash_key= 'Codificación del RUT/Masked Identifier (RUT)',
-hash_rut_completo= 'HASH alternativo, en el escenario en que se asuma que el individuo al que se le codificó el RUT presente mayor edad/Alternative HASH-Key',
-id= 'Codigo Identificación de SENDA/SENDAs ID',
-id_mod= 'ID de SENDA para Presentación en Página Web (enmascara caracteres 5 y 6)/SENDAs ID (mask characters 5 & 6)',
+hash_key= 'Codificación del RUN/Masked Identifier (RUN)',
+hash_rut_completo= 'HASH alternativo, en el escenario en que se asuma que el individuo al que se le codificó el RUN presente mayor edad/Alternative HASH-Key',
+id= 'Codigo Identificación de SENDA/SENDA ID',
+id_mod= 'ID de SENDA para Presentación en Página Web (enmascara caracteres 5 y 6)/SENDA ID (mask characters 5 & 6)',
 fech_ing= 'Fecha de Ingreso a Tratamiento (Primera Entrada)/Date of Admission to Treatment (First Entry)',
 fech_egres_imp= 'Fecha de Egreso (Imputados KNN & Lógico) del Último Registro(b)/Date of Discharge (Imputed KNN & Logic) of the Last Entry(b)',
 tipo_de_plan_2= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry',
 tipo_de_plan_2_largest_treat= 'Tipo de Plan del Registro Más Largo entre entradas intermedias(f)/Type of Plan of the Largest Entry Among Intermediate Entries(f)',
 tipo_de_plan_2_concat_a= 'Tipo de Plan(*)/Type of Plan(*)', 
 tipo_de_programa_2= 'Tipo de Programa del Registro Más Largo entre Entradas Intermedias/Type of Program of the Largest Entry Among Intermediate Entries',
-id_centro= 'ID de Centro(b)/Center ID(b)',
+id_centro= 'ID de Centro(b)/Treatment center ID(b)',
 nombre_centro= 'Nombre del Centro de Tratamiento(*)/Treatment Center(*)',
-id_centro_concat_a= 'ID de Centro(*)/Center ID(*)',
+id_centro_concat_a= 'ID de Centro(*)/Treatment center ID(*)',
 tipo_centro= 'Tipo de Centro del Último Registro/Type of Center of the Last Entry',
 servicio_de_salud= 'Servicio de Salud(*)/Health Service(*)',
 senda= 'SENDA del Último Registro/SENDA of the Last Entry',
@@ -2894,36 +2905,141 @@ mean_cum_dias_trat_sin_na= 'Promedio acumulado de Días de Tratamiento por Usuar
 cum_diff_bet_treat= 'Suma acumulada de Diferencia en Días con Tratamiento Siguiente por Usuario/Cumulative sum of Days of difference between the Next Treatment by User',
 mean_cum_diff_bet_treat= 'Promedio acumulado de Diferencia en Días entre Tratamientos por Usuario/Cumulative Average Days of Differences Between Treatments By User',
 rn_hash= 'Número de Tratamientos por Usuario (menor, tratamiento más antiguo)/Number of Treatments by User (less, older treatment)',
-n_hash= 'Número total de Tratamientos por Usuario/Total Number of Treatments by User'  
+n_hash= 'Número total de Tratamientos por Usuario/Total Number of Treatments by User',
+#2022
+tipo_de_plan_2_1= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (1st Treatment)',
+tipo_de_plan_2_2= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (2nd Treatment)',
+tipo_de_plan_2_3= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (3rd Treatment)',
+tipo_de_plan_2_4= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (4th Treatment)',
+tipo_de_plan_2_5= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (5th Treatment)',
+tipo_de_plan_2_6= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (6th Treatment)',
+tipo_de_plan_2_7= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (7th Treatment)',
+tipo_de_plan_2_8= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (8th Treatment)',
+tipo_de_plan_2_9= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (9th Treatment)',
+tipo_de_plan_2_10= 'Tipo de Plan del Último Registro/Type of Plan of the Last Entry (10th Treatment)',
+
+motivodeegreso_mod_imp_1= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (1st Treatment)',
+motivodeegreso_mod_imp_2= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (2nd Treatment)', 
+motivodeegreso_mod_imp_3= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (3th Treatment)',
+motivodeegreso_mod_imp_4= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (4th Treatment)',
+motivodeegreso_mod_imp_5= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (5th Treatment)',
+motivodeegreso_mod_imp_6= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (6th Treatment)',
+motivodeegreso_mod_imp_7= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (7th Treatment)',
+motivodeegreso_mod_imp_8= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (8th Treatment)',
+motivodeegreso_mod_imp_9= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (9th Treatment)',
+motivodeegreso_mod_imp_10= 'Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic) of the Last Entry(b) (10th Treatment)',
+
+dias_treat_imp_sin_na_1= "Days of Treatment (1st Treatment)",
+dias_treat_imp_sin_na_2= "Days of Treatment (2nd Treatment)",
+dias_treat_imp_sin_na_3= "Days of Treatment (3rd Treatment)",
+dias_treat_imp_sin_na_4= "Days of Treatment (4th Treatment)",
+dias_treat_imp_sin_na_5= "Days of Treatment (5th Treatment)",
+dias_treat_imp_sin_na_6= "Days of Treatment (6th Treatment)",
+dias_treat_imp_sin_na_7= "Days of Treatment (7th Treatment)",
+dias_treat_imp_sin_na_8= "Days of Treatment (8th Treatment)",
+dias_treat_imp_sin_na_9= "Days of Treatment (9th Treatment)",
+dias_treat_imp_sin_na_10="Days of Treatment (10th Treatment)",
+
+diff_bet_treat_1= "Diff Between Treatments (1st Treatment)",
+diff_bet_treat_2= "Diff Between Treatments (2nd Treatment)",
+diff_bet_treat_3= "Diff Between Treatments (3rd Treatment)",
+diff_bet_treat_4= "Diff Between Treatments (4th Treatment)",
+diff_bet_treat_5= "Diff Between Treatments (5th Treatment)",
+diff_bet_treat_6= "Diff Between Treatments (6th Treatment)",
+diff_bet_treat_7= "Diff Between Treatments (7th Treatment)",
+diff_bet_treat_8= "Diff Between Treatments (8th Treatment)",
+diff_bet_treat_9= "Diff Between Treatments (9th Treatment)",
+diff_bet_treat_10="Diff Between Treatments (10th Treatment)",
+
+cum_dias_trat_sin_na_1= "Cum. Days of Treatment (1st Treatment)",
+cum_dias_trat_sin_na_2= "Cum. Days of Treatment (2nd Treatment)",
+cum_dias_trat_sin_na_3= "Cum. Days of Treatment (3rd Treatment)",
+cum_dias_trat_sin_na_4= "Cum. Days of Treatment (4th Treatment)",
+cum_dias_trat_sin_na_5= "Cum. Days of Treatment (5th Treatment)",
+cum_dias_trat_sin_na_6= "Cum. Days of Treatment (6th Treatment)",
+cum_dias_trat_sin_na_7= "Cum. Days of Treatment (7th Treatment)",
+cum_dias_trat_sin_na_8= "Cum. Days of Treatment (8th Treatment)",
+cum_dias_trat_sin_na_9= "Cum. Days of Treatment (9th Treatment)",
+cum_dias_trat_sin_na_10="Cum. Days of Treatment (10th Treatment)",
+
+mean_cum_dias_trat_sin_na_1= "Avg. Cum. Days of Treatment (1st Treatment)",
+mean_cum_dias_trat_sin_na_2= "Avg. Cum. Days of Treatment (2nd Treatment)",
+mean_cum_dias_trat_sin_na_3= "Avg. Cum. Days of Treatment (3rd Treatment)",
+mean_cum_dias_trat_sin_na_4= "Avg. Cum. Days of Treatment (4th Treatment)",
+mean_cum_dias_trat_sin_na_5= "Avg. Cum. Days of Treatment (5th Treatment)",
+mean_cum_dias_trat_sin_na_6= "Avg. Cum. Days of Treatment (6th Treatment)",
+mean_cum_dias_trat_sin_na_7= "Avg. Cum. Days of Treatment (7th Treatment)",
+mean_cum_dias_trat_sin_na_8= "Avg. Cum. Days of Treatment (8th Treatment)",
+mean_cum_dias_trat_sin_na_9= "Avg. Cum. Days of Treatment (9th Treatment)",
+mean_cum_dias_trat_sin_na_10="Avg. Cum. Days of Treatment (10th Treatment)",
+
+cum_diff_bet_treat_1= "Cum. Diff Between Treatments (1st Treatment)",
+cum_diff_bet_treat_2= "Cum. Diff Between Treatments (2nd Treatment)",
+cum_diff_bet_treat_3= "Cum. Diff Between Treatments (3rd Treatment)",
+cum_diff_bet_treat_4= "Cum. Diff Between Treatments (4th Treatment)",
+cum_diff_bet_treat_5= "Cum. Diff Between Treatments (5th Treatment)",
+cum_diff_bet_treat_6= "Cum. Diff Between Treatments (6th Treatment)",
+cum_diff_bet_treat_7= "Cum. Diff Between Treatments (7th Treatment)",
+cum_diff_bet_treat_8= "Cum. Diff Between Treatments (8th Treatment)",
+cum_diff_bet_treat_9= "Cum. Diff Between Treatments (9th Treatment)",
+cum_diff_bet_treat_10="Cum. Diff Between Treatments (10th Treatment)",
+
+mean_cum_diff_bet_treat_1= "Avg. Cum. Diff Between Treatments (1st Treatment)",
+mean_cum_diff_bet_treat_2= "Avg. Cum. Diff Between Treatments (2nd Treatment)",
+mean_cum_diff_bet_treat_3= "Avg. Cum. Diff Between Treatments (3rd Treatment)",
+mean_cum_diff_bet_treat_4= "Avg. Cum. Diff Between Treatments (4th Treatment)",
+mean_cum_diff_bet_treat_5= "Avg. Cum. Diff Between Treatments (5th Treatment)",
+mean_cum_diff_bet_treat_6= "Avg. Cum. Diff Between Treatments (6th Treatment)",
+mean_cum_diff_bet_treat_7= "Avg. Cum. Diff Between Treatments (7th Treatment)",
+mean_cum_diff_bet_treat_8= "Avg. Cum. Diff Between Treatments (8th Treatment)",
+mean_cum_diff_bet_treat_9= "Avg. Cum. Diff Between Treatments (9th Treatment)",
+mean_cum_diff_bet_treat_10="Avg. Cum. Diff Between Treatments (10th Treatment)"
 )
+#  bind_rows(data.frame("code"=c("fech_egres_imp", 
+##                                "dias_trat_imp",
+#                                "dias_trat_alta_temprana_imp",
+#                                "motivodeegreso_mod_imp"), "label"=c("Date of Discharge (Imputed)", 
+##                                                                     "Days of Treatment (Imputed)",
+#                                                                     "Days of Treatment for Early Withdrawal (Imputed)",
+#                                                                     "Cause of Discharge w/ Early or Late Withdrawal (Imputed)"))) %>% 
 
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+time_after_dedup4<-Sys.time()
 
-no_mostrar_nunca=0
-if(no_mostrar_nunca==1){
-df_def<-
-data.frame(cbind(var_name= names(codebook_data),var_def=data.table(codebook::var_label(codebook_data), keep.rownames = T), type=data.table(sapply(codebook_data, class)),can_be_na=data.table(rep(FALSE,length(names(codebook_data))))))%>%
-  dplyr::rename("var_def"="var_def.V1","type"="type.V1","can_be_na"="can_be_na.V1")
-}    
+paste0("Time in markdown: ");time_after_dedup4-time_before_dedup4
 
-#####to_export_labels
-table_labels<-
-  tibble::rownames_to_column(data.frame(Hmisc::label(CONS_C1_df_dup_JUL_2020)))%>% data.frame() %>%
-  dplyr::rename("code" = !!names(.[1]), "label" = !!names(.[2]))%>% data.frame()%>%
-  dplyr::mutate(first= "cap label variable")%>%
-  dplyr::mutate(final= paste0(first, " ",code,' "',label,'"'))%>%
-  dplyr::select(-code,-label,-first)%>%
-  rbind('cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020.dta", replace')%>%
-  rbind('cap drop id id_mod nombre_centro consentimiento_informado')%>%
-  rbind('cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020_exp.dta", replace')
+CONS_C1_df_dup_JUL_2020%>%
+   dplyr::arrange(hash_key, desc(fech_ing))%>% 
+   rio::export(file = paste0(path,"/CONS_C1_df_dup_JUL_2020.dta"))
 
-table_labels<-
-  data.frame(final='use "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020.dta", clear')%>%
-  rbind(table_labels)%>%
-  rename("*final"="final") 
-  #write.csv2(table_labels,"__labels_to_stata_C1_jun_2020.do",row.names =F)
-  write.table(table_labels, file = "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/_label_var_to_stata.do", sep = "",
-            row.names = FALSE, quote = FALSE,fileEncoding="UTF-8")
+#save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/8.RData")
+save.image(paste0(path,"/7.RData"))
+```
+
+```{r label_to_stata, echo=T, paged.print=TRUE}
+# no_mostrar_nunca=0
+# if(no_mostrar_nunca==1){
+# df_def<-
+# data.frame(cbind(var_name= names(codebook_data),var_def=data.table(codebook::var_label(codebook_data), keep.rownames = T), type=data.table(sapply(codebook_data, class)),can_be_na=data.table(rep(FALSE,length(names(codebook_data))))))%>%
+#   dplyr::rename("var_def"="var_def.V1","type"="type.V1","can_be_na"="can_be_na.V1")
+# }    
+# 
+# #####to_export_labels
+# table_labels<-
+#   tibble::rownames_to_column(data.frame(Hmisc::label(CONS_C1_df_dup_JUL_2020)))%>% data.frame() %>%
+#   dplyr::rename("code" = !!names(.[1]), "label" = !!names(.[2]))%>% data.frame()%>%
+#   dplyr::mutate(first= "cap label variable")%>%
+#   dplyr::mutate(final= paste0(first, " ",code,' "',label,'"'))%>%
+#   dplyr::select(-code,-label,-first)%>%
+#   rbind('cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020.dta", replace')%>%
+#   rbind('cap drop id id_mod nombre_centro consentimiento_informado')%>%
+#   rbind('cap save "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020_exp.dta", replace')
+# 
+# table_labels<-
+#   data.frame(final='use "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020.dta", clear')%>%
+#   rbind(table_labels)%>%
+#   rename("*final"="final") 
+#   #write.csv2(table_labels,"__labels_to_stata_C1_jun_2020.do",row.names =F)
+#   write.table(table_labels, file = "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/_label_var_to_stata.do", sep = "",row.names = FALSE, quote = FALSE,fileEncoding="UTF-8")
 
  # dplyr::filter(label!="") %>%
 #  bind_rows(data.frame("code"=c("fech_egres_imp", 
@@ -2934,27 +3050,42 @@ table_labels<-
 #                                                                     "Days of Treatment for Early Withdrawal (Imputed)",
 #                                                                     "Cause of Discharge w/ Early or Late Withdrawal (Imputed)"))) %>% 
 
-CONS_C1_df_dup_JUL_2020%>%
-  dplyr::arrange(hash_key, desc(fech_ing))%>% 
-  rio::export(file = "G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/CONS_C1_df_dup_JUL_2020.dta")
-
-save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/7.RData")
-
-rm(list=setdiff(ls(), c("CONS_C1_df_dup_JUL_2020","CONS_C1_df_dup_JUN_2020","CONS_C1_df","CONS_C1","CONS_C1_df_dup_FEB_2020","CONS_TOP_df_dup_ENE_2020_prev9","CONS_TOP_df")))
-
-save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/8.RData")
 
 #Agregar nuevas variables al codebook
 #hacer codebook
 #Agregar procesos a strobe
 #Poner olr y arriba pondría los otros modelos.
+
+export_lab_stata<-
+  tibble::rownames_to_column(data.frame(Hmisc::label(CONS_C1_df_dup_JUL_2020)))%>% data.frame() %>%
+  dplyr::rename("code" = !!names(.[1]), "label" = !!names(.[2]))%>% data.frame()%>%
+  dplyr::mutate(first= "cap noi label variable")%>%
+  dplyr::mutate(final= paste0(first, " ",code,' "',label,'"'))%>%
+  dplyr::select(-code,-label,-first)%>%
+  dplyr::rename("*clear all"="final") %>% 
+  rbind(paste0('cap noi save "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUL_2020.dta", replace'))%>%
+  rbind('cap noi drop id id_mod nombre_centro consentimiento_informado')%>%
+  rbind('cap noi drop id id_mod nombre_centro')%>%
+  rbind(paste0('cap noi save "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUL_2020_exp.dta", replace'))
+
+rbind(paste0('cap noi use "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUL_2020.dta", clear'),export_lab_stata) %>% knitr::kable("html") %>% 
+    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size =10) %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px")
+
+write.table(rbind(paste0('cap noi use "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUL_2020.dta", clear'),export_lab_stata), file = paste0(path,"/SUD_CL/_label_var_to_stata.do"), sep = "",row.names = FALSE, quote = FALSE, fileEncoding="UTF-8")
 ```
+
 
 <br>
 
-```{stata 2, collectcode=TRUE,results="hide", eval=T}
-cap do _label_var_to_stata.do
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+
+```{stata 2, collectcode=F, include=T, error=T, cleanlog=F}
+*should be in the same folder of the .Rmd to work
+cap noi do _label_var_to_stata.do
 ```
+
+</div>
 
 <br>
 
