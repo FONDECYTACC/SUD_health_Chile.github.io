@@ -1,19 +1,19 @@
 *clear all
-cap noi use "C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\CONS_C1_df_dup_SEP_2020.dta",clear
+cap noi use "C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\CONS_C1_df_dup_SEP_2020_2021.dta", clear
 cap noi label variable row "Numerador de los eventos presentes en la Base de Datos (Último registro)/Events in the Dataset (Last Entry)"
 cap noi label variable row_cont_entries "Numerador de los eventos presentes en la Base de Datos(*)/Events in the Dataset(*)"
 cap noi label variable hash_key "Codificación del RUN/Masked Identifier (RUN)"
-cap noi label variable hash_rut_completo "HASH alternativo, en el escenario en que se asuma que el individuo al que se le codificó el RUN presente mayor edad/Alternative HASH-Key"
-cap noi label variable id "Codigo Identificación de SENDA/SENDA ID"
-cap noi label variable id_mod "ID de SENDA para Presentación en Página Web (enmascara caracteres 5 y 6)/SENDA ID (mask characters 5 & 6)"
+cap noi label variable hash_rut_completo "HASH alternativo, en el escenario en que se asuma que el individuo al que se le codificó el RUT presente mayor edad/Alternative HASH-Key"
+cap noi label variable id "Codigo Identificación de SENDA/SENDAs ID"
+cap noi label variable id_mod "ID de SENDA para Presentación en Página Web (enmascara caracteres 5 y 6)/SENDAs ID (mask characters 5 & 6)"
 cap noi label variable fech_ing "Fecha de Ingreso a Tratamiento (Primera Entrada)/Date of Admission to Treatment (First Entry)"
 cap noi label variable fech_egres_imp "Fecha de Egreso (Imputados KNN & Lógico) del Último Registro(b)/Date of Discharge (Imputed KNN & Logic) of the Last Entry(b)"
 cap noi label variable tipo_de_plan_2_largest_treat "Tipo de Plan del Registro Más Largo entre entradas intermedias(f)/Type of Plan of the Largest Entry Among Intermediate Entries(f)"
 cap noi label variable tipo_de_plan_2_concat_a "Tipo de Plan(*)/Type of Plan(*)"
 cap noi label variable tipo_de_programa_2 "Tipo de Programa del Registro Más Largo entre Entradas Intermedias/Type of Program of the Largest Entry Among Intermediate Entries"
-cap noi label variable id_centro "ID de Centro(b)/Treatment center ID(b)"
+cap noi label variable id_centro "ID de Centro(b)/Center ID(b)"
 cap noi label variable nombre_centro "Nombre del Centro de Tratamiento(*)/Treatment Center(*)"
-cap noi label variable id_centro_concat_a "ID de Centro(*)/Treatment center ID(*)"
+cap noi label variable id_centro_concat_a "ID de Centro(*)/Center ID(*)"
 cap noi label variable tipo_centro "Tipo de Centro del Último Registro/Type of Center of the Last Entry"
 cap noi label variable servicio_de_salud "Servicio de Salud(*)/Health Service(*)"
 cap noi label variable senda "SENDA del Último Registro/SENDA of the Last Entry"
@@ -259,7 +259,7 @@ cap noi label variable otros_pr_sm_otros "Otros problemas de Atención de Salud 
 cap noi label variable otros_pr_sm_vif "Otros problemas de Atención de Salud Mental, Violencia Intrafamiliar/Other mental health problems, Domestic violence"
 cap noi label variable condicion_ocupacional_corr "Condición Ocupacional Criterio Corregido(f)/Occupational Status Corrected(f)"
 cap noi label variable cat_ocupacional_corr "Categoría Ocupacional Criterio Corregido(f)/Occupational Category Corrected(f)"
-cap noi save "C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\CONS_C1_df_dup_SEP_2020.dta", replace
+cap noi save "C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\CONS_C1_df_dup_SEP_2020_2021.dta", replace
 cap noi drop id id_mod nombre_centro consentimiento_informado
-cap noi drop id id_mod nombre_centro
-cap noi save "C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\CONS_C1_df_dup_SEP_2020_exp.dta", replace
+*cap noi drop id id_mod nombre_centro
+cap noi save "C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\CONS_C1_df_dup_SEP_2020_2021_exp.dta", replace
