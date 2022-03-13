@@ -1,0 +1,338 @@
+---
+title: "Chilean prosecutor's office Data merge, step 2"
+date: "`r withr::with_locale(new = c('LC_TIME' = 'C'), code =format(Sys.time(),'%B %d, %Y'))`"
+output:
+  html_document:
+    code_folding: hide  
+    toc: true # table of content true
+    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_float: true
+    theme: flatly
+---
+
+```{css zoom-lib-src, echo = FALSE}
+script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+```
+
+```{js zoom-jquery, echo = FALSE}
+ $(document).ready(function() {
+    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
+    // onClick function for all plots (img's)
+    $('img:not(.zoomImg)').click(function() {
+      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
+      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
+    });
+    // onClick function for zoomImg
+    $('img.zoomImg').click(function() {
+      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
+    });
+  });
+```
+
+```{=html}
+<style type="text/css">
+.tablelines table, .tablelines td, .tablelines th {
+        border: 1px solid black;
+        }
+.centrado {
+    text-align: center;
+}
+.table.center {
+    margin-left:auto; 
+    margin-right:auto;
+  }
+.table_wrapper{
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+code.r{
+  font-size: 8px;
+}
+body{ /* Normal  */
+      text-align: justify;
+  }
+.superbigimage{
+    overflow-y:scroll;
+    white-space: nowrap;
+}
+.superbigimage img{
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+</style>
+```
+```{=html}
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
+</style>
+```
+```{r prev_setup, include = FALSE, cache=T}
+rm(list=ls());gc()
+
+path<-dirname(rstudioapi::getSourceEditorContext()$path)
+
+if (grepl("CISS Fondecyt",path)==T){
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+  } else if (grepl("andre",path)==T){
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+  } else if (grepl("E:",path)==T){
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+  } else {
+    setwd(paste0(path,"/"));load(paste0(path,"/9.Rdata"))
+  }
+rm(list=setdiff(ls(), c("CONS_C1_df_dup_SEP_2020_match","CONS_C1_df_dup_SEP_2020","CONS_C1")))
+```
+
+```{r setup, include = FALSE, cache=T, error=T, echo=T}
+#Libraries used in the routine. Dont change the order
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
+  if(class(ungroup(x))[1]=="tbl_df"){
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)    
+        }
+  } else {
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)       
+  }
+ }
+}  
+
+if(!require(pacman)){install.packages("pacman")}
+pacman::p_load(withr, boot, matrixStats, knitr, tidyr, stringi,stringr, ggplot2, Hmisc, kableExtra, plotly, janitor, rbokeh, zoo, broom, sqldf, devtools, codebook, data.table, panelr, RColorBrewer, lsmeans, finalfit, ggiraph, sf, treemapify, dplyr, tidyverse, epiR, survminer, ggfortify, survMisc, foreign, reshape2, stargazer, tableone, MarchIt, cobalt, eha, igraph, Amelia, DiagrammeR, mstate, flexsurv, muhaz, Metrics, rpivotTable, caret, polycor, ClusterR, flextable, ggstatsplot, ggside, daff, explore, sjPlot,compareGroups,job)
+
+options(scipen=999) #display numbers rather scientific number
+
+#remotes::install_github("chjackson/flexsurv-dev", upgrade = "never")
+#devtools::install_github("stulacy/multistateutils", build_vignettes=TRUE, upgrade = "never")
+#devtools::install_github("hputter/mstate", upgrade = "never")
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#GET LOCAL
+#dir.create(paste0(getwd(),"/renv_local"))
+#Sys.setenv(RENV_PATHS_LOCAL = paste0(getwd(),"/renv_local"))
+#install.packages(paste0(getwd(),"/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+#install.packages(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+#Sys.getenv("R_LIBS_USER")
+
+fitstats.flexsurvreg = function(x){
+  ll = x$loglik
+  aic = x$AIC
+  k = length(x$coefficients)
+  n = sum(x$data$m["(weights)"])
+  aicc = aic + ((2 * k) * (k + 1) / (n - k - 1))
+  bic = - 2 * ll + (k * log(n))
+  data.frame(
+   Df = k,
+    "n2ll" = -2 * ll,
+    AIC = aic,
+    AICc = aicc,
+    BIC = bic
+  )
+}
+
+
+if(.Platform$OS.type == "windows") withAutoprint({
+  memory.size()
+  memory.size(TRUE)
+  memory.limit()
+})
+memory.limit(size=56000)
+```
+
+<div class = "blue">
+Several issues were found in the first stage of the exploration of the matches.
+ - 
+ -
+
+</div>
+
+
+<br>
+
+```{r fig1, image-ref-for-in-text, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 16.Summary of Process of Data Cleaning and Standardization, Imputation & Matching", fig.height=10, error=T, eval=T}
+
+#  dplyr::filter(motivodeegreso_mod_imp!="En curso")%>% #Sacar los tratamientos que estén en curso 
+
+
+tab1_lab<- paste0('Original C1 Dataset \n(n = ', formatC(nrow(CONS_C1), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1%>% dplyr::distinct(HASH_KEY)%>% nrow(), format='f', big.mark=',', digits=0),')')
+tab2_lab<- paste0('&#8226;Duplicated entries\\\\\\l&#8226;Overlapping treatments of users\\\\\\l&#8226;Intermediate events of treatment (continuous referrals)\\\\\\l')
+tab3_lab<- paste0('C1 Dataset \n(n = ', formatC(nrow(CONS_C1_df_dup_SEP_2020), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1_df_dup_SEP_2020%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+tab4_lab<- paste0('Original Prosecutors Office\n(n = ',format(nrow(Base_fiscalia_v2),big.mark=","), 
+        ';\nCauses: ',Base_fiscalia_v2%>% dplyr::distinct(ruc)%>% nrow() %>% format(big.mark=','),
+        ';\nRel.:',Base_fiscalia_v2%>%dplyr::distinct(idrelacion)%>%nrow()%>%format(big.mark=','),
+        ';\nRUC_Vic_Imp:',Base_fiscalia_v2%>%dplyr::mutate(rel=paste0(ruc,"_",idsujeto_victima,"_",idsujeto_imputado,"_","iddelito"))%>%dplyr::distinct(rel)%>%nrow()%>%format(big.mark=','),
+        ';\nusers: ',Base_fiscalia_v2%>% dplyr::distinct(rut_enc_saf)%>% nrow() %>% format(big.mark=','),')')
+
+Base_fiscalia_v2
+
+tab5_lab<- 2
+tab6_lab<- 3
+Base_fiscalia_v2
+lab_tab<- paste0("  Result of the matching on treatment setting\nNo. of treatments: ",table(table(t_id_1)) %>% formatC(big.mark = ","),"; No. of controls: ",table(table(c_id_1))%>% formatC(big.mark = ","))
+
+#https://stackoverflow.com/questions/46750364/diagrammer-and-graphviz
+#https://mikeyharper.uk/flowcharts-in-r-using-diagrammer/
+#http://blog.nguyenvq.com/blog/2012/05/29/better-decision-tree-graphics-for-rpart-via-party-and-partykit/
+#http://blog.nguyenvq.com/blog/2014/01/17/skeleton-to-create-fast-automatic-tree-diagrams-using-r-and-graphviz/
+#https://cran.r-project.org/web/packages/DiagrammeR/vignettes/graphviz-mermaid.html
+#https://stackoverflow.com/questions/39133058/how-to-use-graphviz-graphs-in-diagrammer-for-r
+#https://subscription.packtpub.com/book/big_data_and_business_intelligence/9781789802566/1/ch01lvl1sec21/creating-diagrams-via-the-diagrammer-package
+#https://justlegal.be/2019/05/using-flowcharts-to-display-legal-procedures/
+# paste0("No. of treatments: ",table(table(t_id_1)) %>% formatC(big.mark = ","),"; No. of controls: ",table(table(c_id_1))%>% formatC(big.mark = ","))
+#
+library(DiagrammeR) #⋉
+grViz("digraph flowchart {
+      # node definitions with substituted label text
+      node [fontname = Times, shape = rectangle,fontsize = 9]        
+      tab1 [label = '@@1']
+      blank [label = '', width = 0.0001, height = 0.0001]
+      tab2 [label = '@@3']
+      tab3 [label = '@@2',fontsize = 7]
+      
+      tab4 [label = '@@4']
+      blank2 [label = '', width = 0.0001, height = 0.0001]
+      blank3 [label = '', width = 0.0001, height = 0.0001]
+      tab5 [label = '@@6',fontsize = 7]
+      tab6 [label= '@@6']
+
+      # edge definitions with the node IDs
+      tab1 -> blank [arrowhead = none,label='  Data wrangling and normalization process',fontsize = 8];
+      blank -> tab3
+      blank -> tab2
+                  subgraph {
+              rank = same; tab3; blank;
+            }
+      tab4 -> blank2 [arrowhead = none,label='  Data wrangling and normalization process',fontsize = 8];
+      blank2 -> tab6
+      blank2 -> tab5
+                        subgraph {
+              rank = same; tab6; blank2;
+            }
+      }
+
+      [1]:  tab1_lab
+      [2]:  tab2_lab
+      [3]:  tab3_lab
+      [4]:  ''
+      [5]:  ''
+      [6]:  ''
+      [7]:  ''
+      ")
+#      {rank=same; 'tab2'' -> tab3 [label='',fontsize = 11]}; #⋉
+#CONS_C1_df_dup_SEP_2020_irrs_healt
+
+```
+
+<br>
+
+
+# Obtain the database
+
+<br>
+
+We recoded the region to lower letters for Metropolitan Region sectors. Additionally, we generated the `_simple` columns with the dates with a more common format.
+
+<br>
+
+# Session Info
+
+```{r session_info, echo=T, error=T, paged.print=TRUE}
+Sys.getenv("R_LIBS_USER")
+
+paste0("Editor context: ", path)
+
+if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.RData")
+  } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/andre/Desktop/SUD_CL/10.RData")
+  } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.RData")
+  } else {
+    save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.RData")
+  }
+
+sessionInfo()
+sesion_info <- devtools::session_info()
+dplyr::select(
+  tibble::as_tibble(sesion_info$packages),
+  c(package, loadedversion, source)
+) %>% 
+  DT::datatable(filter = 'top', colnames = c('Row number' =1,'Variable' = 2, 'Percentage'= 3),
+              caption = htmltools::tags$caption(
+        style = 'caption-side: top; text-align: left;',
+        '', htmltools::em('Packages')),
+      options=list(
+initComplete = htmlwidgets::JS(
+      "function(settings, json) {",
+      "$(this.api().tables().body()).css({'font-size': '80%'});",
+      "}")))
+```
+
+# Exportar
+
+```{r export, warning=FALSE, echo=T}
+  Base_fiscalia_v2 %>% 
+  dplyr::mutate(accused=dplyr::case_when(encontrado_como_victima=="SI" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 encontrado_como_victima=="NO" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 T~"VICTIMA")) %>% 
+  dplyr::filter(accused=="VICTIMA") %>% 
+    rio::export(file = paste0(gsub("SUD_CL/Fiscalia_merge.Rmd","",path),"fiscalia_mariel_ago_2022.dta"))
+```
+
+
+```{r label_to_stata, echo=T, paged.print=TRUE}
+
+export_lab_stata_merge<-
+  tibble::rownames_to_column(data.frame(Hmisc::label(CONS_C1_df_dup_JUN_2020)))%>% data.frame() %>%
+  dplyr::rename("code" = !!names(.[1]), "label" = !!names(.[2]))%>% data.frame()%>%
+  dplyr::mutate(first= "cap noi label variable")%>%
+  dplyr::mutate(final= paste0(first, " ",code,' "',label,'"'))%>%
+  dplyr::select(-code,-label,-first)%>%
+  dplyr::rename("*clear all"="final") %>% 
+  rbind(paste0('cap noi save "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUN_2020.dta", replace'))%>%
+  rbind('cap noi drop id id_mod nombre_centro consentimiento_informado')%>%
+  rbind('cap noi drop id id_mod nombre_centro')%>%
+  rbind(paste0('cap noi save "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUN_2020_exp.dta", replace'))
+
+rbind(paste0('cap noi use "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUN_2020.dta", clear'),export_lab_stata) %>% knitr::kable("html") %>% 
+    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size =10) %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px")
+
+write.table(rbind(paste0('cap noi use "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUN_2020.dta", clear'),export_lab_stata), file = paste0(path,"/SUD_CL/_label_var_to_stata.do"), sep = "",row.names = FALSE, quote = FALSE, fileEncoding="UTF-8")
+```
+
+
+<br>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+
+```{stata 2, collectcode=F, include=T, error=T, cleanlog=F}
+*should be in the same folder of the .Rmd to work
+cap noi do _label_var_to_stata.do
+```
+
+</div>
