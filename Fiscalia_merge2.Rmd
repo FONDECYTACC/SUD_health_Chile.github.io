@@ -70,18 +70,17 @@ div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-ali
 ```{r prev_setup, include = FALSE, cache=T}
 rm(list=ls());gc()
 
-path<-dirname(rstudioapi::getSourceEditorContext()$path)
+path<-getwd()
 
 if (grepl("CISS Fondecyt",path)==T){
-    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.Rdata")
   } else if (grepl("andre",path)==T){
-    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.Rdata")
   } else if (grepl("E:",path)==T){
-    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.Rdata")
   } else {
-    setwd(paste0(path,"/"));load(paste0(path,"/9.Rdata"))
+    setwd(paste0(path,"/"));load(paste0(path,"/10.Rdata"))
   }
-rm(list=setdiff(ls(), c("CONS_C1_df_dup_SEP_2020_match","CONS_C1_df_dup_SEP_2020","CONS_C1")))
 ```
 
 ```{r setup, include = FALSE, cache=T, error=T, echo=T}
@@ -165,34 +164,43 @@ memory.limit(size=56000)
 
 <div class = "blue">
 Several issues were found in the first stage of the exploration of the matches.
- - 
- -
-
+ - Duplicated entries (relationships) 
+ - Cases that are victims and imputed at the same time
+ - Unspecified dates
+ - Correct imputed birth dates & sex of the users
+ - Define the a date of censorship
 </div>
 
 
 <br>
 
-```{r fig1, image-ref-for-in-text, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 16.Summary of Process of Data Cleaning and Standardization, Imputation & Matching", fig.height=10, error=T, eval=T}
+```{r prev_define_censorship, echo=T, fig.align='center', message=FALSE, error=T, eval=T}
 
-#  dplyr::filter(motivodeegreso_mod_imp!="En curso")%>% #Sacar los tratamientos que estén en curso 
+paste0("relationships with judicial proceedings ending after November 13, 2019\n n=",
+       format(as.numeric(table(Base_fiscalia_v2$termino_relacion_simple<"2019-11-13"))[1],big.mark=","),"; ",
+       scales::percent(as.numeric(prop.table(table(Base_fiscalia_v2$termino_relacion_simple<"2019-11-13"))), accuracy=0.1)[1])
+
+cat("Information of P.O. using only relationships that ended before November 13, 2019")
+paste0('Original Prosecutors Office\n(n = ',format(nrow(subset(Base_fiscalia_v2, termino_relacion_simple<"2019-11-13")),big.mark=","), 
+        ';\nCauses= ',subset(Base_fiscalia_v2, termino_relacion_simple<"2019-11-13")%>% dplyr::distinct(ruc)%>% nrow() %>% format(big.mark=','),
+        ';\nRel.=',subset(Base_fiscalia_v2, termino_relacion_simple<"2019-11-13")%>%dplyr::distinct(idrelacion)%>%nrow()%>%format(big.mark=','),
+        ';\nRUC_Vic_Imp=',subset(Base_fiscalia_v2, termino_relacion_simple<"2019-11-13")%>%dplyr::mutate(rel=paste0(ruc,"_",idsujeto_victima,"_",idsujeto_imputado,"_","iddelito"))%>%dplyr::distinct(rel)%>%nrow()%>%format(big.mark=','),
+        ';\nusers= ',subset(Base_fiscalia_v2, termino_relacion_simple<"2019-11-13")%>% dplyr::distinct(rut_enc_saf)%>% nrow() %>% format(big.mark=','),')')
+
+```
 
 
+```{r fig1, image-ref-for-in-text, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 1.Summary of Process of Data Cleaning and Standardization, Imputation & Matching", fig.height=10, error=T, eval=T, dpi=320}
 tab1_lab<- paste0('Original C1 Dataset \n(n = ', formatC(nrow(CONS_C1), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1%>% dplyr::distinct(HASH_KEY)%>% nrow(), format='f', big.mark=',', digits=0),')')
-tab2_lab<- paste0('&#8226;Duplicated entries\\\\\\l&#8226;Overlapping treatments of users\\\\\\l&#8226;Intermediate events of treatment (continuous referrals)\\\\\\l')
-tab3_lab<- paste0('C1 Dataset \n(n = ', formatC(nrow(CONS_C1_df_dup_SEP_2020), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1_df_dup_SEP_2020%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+tab2_lab<- paste0('&#8226;Remove duplicated entries\\\\\\l&#8226;Overlapping treatments of users\\\\\\l&#8226;Intermediate events of treatment (continuous referrals)\\\\\\l')
+tab3_lab<- paste0('      C1 Dataset          \n(n = ', formatC(nrow(CONS_C1_df_dup_SEP_2020), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1_df_dup_SEP_2020%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
 tab4_lab<- paste0('Original Prosecutors Office\n(n = ',format(nrow(Base_fiscalia_v2),big.mark=","), 
-        ';\nCauses: ',Base_fiscalia_v2%>% dplyr::distinct(ruc)%>% nrow() %>% format(big.mark=','),
-        ';\nRel.:',Base_fiscalia_v2%>%dplyr::distinct(idrelacion)%>%nrow()%>%format(big.mark=','),
-        ';\nRUC_Vic_Imp:',Base_fiscalia_v2%>%dplyr::mutate(rel=paste0(ruc,"_",idsujeto_victima,"_",idsujeto_imputado,"_","iddelito"))%>%dplyr::distinct(rel)%>%nrow()%>%format(big.mark=','),
-        ';\nusers: ',Base_fiscalia_v2%>% dplyr::distinct(rut_enc_saf)%>% nrow() %>% format(big.mark=','),')')
-
-Base_fiscalia_v2
-
-tab5_lab<- 2
-tab6_lab<- 3
-Base_fiscalia_v2
-lab_tab<- paste0("  Result of the matching on treatment setting\nNo. of treatments: ",table(table(t_id_1)) %>% formatC(big.mark = ","),"; No. of controls: ",table(table(c_id_1))%>% formatC(big.mark = ","))
+        ';\nCauses= ',Base_fiscalia_v2%>% dplyr::distinct(ruc)%>% nrow() %>% format(big.mark=','),
+        ';\nRel.=',Base_fiscalia_v2%>%dplyr::distinct(idrelacion)%>%nrow()%>%format(big.mark=','),
+        ';\nRUC_Vic_Imp=',Base_fiscalia_v2%>%dplyr::mutate(rel=paste0(ruc,"_",idsujeto_victima,"_",idsujeto_imputado,"_","iddelito"))%>%dplyr::distinct(rel)%>%nrow()%>%format(big.mark=','),
+        ';\nusers= ',Base_fiscalia_v2%>% dplyr::distinct(rut_enc_saf)%>% nrow() %>% format(big.mark=','),')')
+tab5_lab<- paste0('&#8226;Remove duplicated entries\\\\\\l&#8226;Long-to-wide relationships/crimes, end of judicial proceedings, penalty\\\\\\l&#8226;Correct dates (birth, comission of crime, end of judicial proceedings)\\\\\\l&#8226;Define cases that acted as victims & imputed in a cause\\\\\\l')
+tab6_lab<- paste0("O.P. Dataset \n(n = ????;\n","","users= ",Base_fiscalia_v2%>% dplyr::distinct(rut_enc_saf)%>% nrow()%>% formatC(big.mark = ","),")")
 
 #https://stackoverflow.com/questions/46750364/diagrammer-and-graphviz
 #https://mikeyharper.uk/flowcharts-in-r-using-diagrammer/
@@ -202,61 +210,369 @@ lab_tab<- paste0("  Result of the matching on treatment setting\nNo. of treatmen
 #https://stackoverflow.com/questions/39133058/how-to-use-graphviz-graphs-in-diagrammer-for-r
 #https://subscription.packtpub.com/book/big_data_and_business_intelligence/9781789802566/1/ch01lvl1sec21/creating-diagrams-via-the-diagrammer-package
 #https://justlegal.be/2019/05/using-flowcharts-to-display-legal-procedures/
-# paste0("No. of treatments: ",table(table(t_id_1)) %>% formatC(big.mark = ","),"; No. of controls: ",table(table(c_id_1))%>% formatC(big.mark = ","))
-#
+#      
+
 library(DiagrammeR) #⋉
 grViz("digraph flowchart {
       # node definitions with substituted label text
       node [fontname = Times, shape = rectangle,fontsize = 9]        
       tab1 [label = '@@1']
       blank [label = '', width = 0.0001, height = 0.0001]
-      tab2 [label = '@@3']
-      tab3 [label = '@@2',fontsize = 7]
+      tab2 [label = '@@2',fontsize = 7]
+      tab3 [label = '@@3']
       
-      tab4 [label = '@@4']
+      tab4 [label = '@@4',fontsize = 8]
       blank2 [label = '', width = 0.0001, height = 0.0001]
-      blank3 [label = '', width = 0.0001, height = 0.0001]
-      tab5 [label = '@@6',fontsize = 7]
+      tab5 [label = '@@5',fontsize = 7]
       tab6 [label= '@@6']
-
+      
+      blank3 [label = '', width = 0.0001, height = 0.0001]
+      blank4 [label = '', width = 0.0001, height = 0.0001]      
+      blank5 [label = '', width = 0.0001, height = 0.0001] 
+      
+      blank6 [label = '', width = 0.0001, height = 0.0001]
+      tab7 [label = '@@7',fontsize = 7]
+      tab8 [label= '@@8']
+      
       # edge definitions with the node IDs
-      tab1 -> blank [arrowhead = none,label='  Data wrangling and normalization process',fontsize = 8];
-      blank -> tab3
-      blank -> tab2
+      rankdir='TB'; rank= same; tab1 -> blank [arrowhead = none,label='  Data wrangling and normalization process',fontsize = 8];
+      rankdir='TB'; rank= same; tab1; tab3;   
+      blank -> tab2;
                   subgraph {
-              rank = same; tab3; blank;
-            }
+              rank = same; tab2; blank;
+                  }
+      rankdir='TB'; rank= same; blank -> tab3;      
+            
       tab4 -> blank2 [arrowhead = none,label='  Data wrangling and normalization process',fontsize = 8];
-      blank2 -> tab6
       blank2 -> tab5
-                        subgraph {
-              rank = same; tab6; blank2;
-            }
+      blank2 -> tab6
+      blank4 -> blank6 [arrowhead= none, label='⋉']
+      blank6 -> tab7
+                  subgraph {
+        rank = same; blank6; tab7;
+                  }
+      blank6 -> tab8
+                  subgraph {
+        rank = same; tab5; blank2;
+                  }
+                  subgraph {
+      rank= same; tab3 -> blank3 -> blank4 -> blank5 -> tab6 [arrowhead= none]
+                  }
       }
+                  subgraph {
+        rank = same; tab3; tab6;
+                  }
+                  subgraph {
+        rank = same; tab1; tab4;
+                  }         
+                  subgraph {
+        rank = same; tab2; tab5;
+                  } 
+                  subgraph {
+        rank = same; tab1; tab3;
+        rankdir=TB
+        rank=same
+                  }
+                  subgraph {
+        rank = same; tab4; tab6;
+        rankdir=TB
+        rank=same
+                  }                     
 
       [1]:  tab1_lab
       [2]:  tab2_lab
       [3]:  tab3_lab
-      [4]:  ''
-      [5]:  ''
-      [6]:  ''
-      [7]:  ''
+      [4]:  tab4_lab
+      [5]:  tab5_lab
+      [6]:  tab6_lab
+      [7]:  ' - asdasd- asdasdad'
+      [8]:  'Merged database'
       ")
-#      {rank=same; 'tab2'' -> tab3 [label='',fontsize = 11]}; #⋉
-#CONS_C1_df_dup_SEP_2020_irrs_healt
+
+#https://stackoverflow.com/questions/1554635/graphviz-how-to-have-a-subgraph-be-left-to-right-when-main-graph-is-top-to-bot
+#https://stackoverflow.com/questions/65509087/diagrammer-flowchart-align-vertical-nodes
+#https://stackoverflow.com/questions/39451158/how-to-specify-vertical-alignment-of-nodes-in-r-package-diagrammer
+#https://stackoverflow.com/questions/64323943/graphviz-and-dot-files-horizontal-and-vertical-node-alignment-intervening-node
+#https://stackoverflow.com/questions/5424555/changing-edge-direction-in-dot
+#https://graphviz.org/docs/attrs/rankdir/
+#
+```
+
+<br>
+
+# Correct dates
+
+```{r paso1_dates, fig.align='center', fig.caption="Figure 16.Summary of Process of Data Cleaning and Standardization, Imputation & Matching", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+paste0("Patients with more than one date of birth in P.O. DB: ",
+Base_fiscalia_v2 %>% 
+  dplyr::group_by(rut_enc_saf) %>% 
+  dplyr::mutate(n_fec=n_distinct(fec_nacimiento_simple)) %>% 
+  dplyr::filter(n_fec>1) %>% nrow())
+
+
+fech_nac_fisc_vs_senda<-
+Base_fiscalia_v2 %>% 
+    dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("hash_key","fech_nac", "edad_al_ing", "edad_ini_cons")] %>% dplyr::distinct(hash_key, .keep_all = T),by=c("rut_enc_saf"="hash_key")) %>%
+    dplyr::mutate(fech_nac=as.Date(fech_nac)) %>% 
+    dplyr::select(rut_enc_saf,fec_nacimiento_simple,fec_comision_simple, termino_relacion_simple,fech_nac, edad_al_ing, edad_ini_cons) %>% 
+    dplyr::filter(dplyr::case_when(fec_nacimiento_simple!=fech_nac~T,T~F)) %>% 
+    dplyr::mutate(obs=dplyr::case_when(rut_enc_saf %in% unlist(C1_fech_nac_nas)~"previous problems (Duplicates1)",T~"")) %>% 
+  dplyr::distinct(rut_enc_saf, .keep_all = T) %>% 
+  #si es fecha inválida, se asume que está bien la de SENDA. Si no, se analiza la diferencia.
+  dplyr::mutate(diff=ifelse(fec_nacimiento_simple=="1900-01-01",NA,abs(fec_nacimiento_simple-fech_nac)))
+#90,037 casos, pero 11,511 RUTs únicos
+fech_nac_fisc_vs_senda %>% 
+  ggplot()+
+  geom_histogram(aes(x=diff), bins=40)+
+  theme_538()+
+  xlim(0,20000)+
+  ylim(0,2000)+
+  labs(caption=paste0("Note. Users with discrepancies are the", scales::percent(nrow(fech_nac_fisc_vs_senda)/length(unique(Base_fiscalia_v2$rut_enc_saf)))," of the sample;\nDifferences due to missing values were not listed (n=",as.numeric(table(is.na(fech_nac_fisc_vs_senda$diff))[2]),");\nMedian= ",median(fech_nac_fisc_vs_senda$diff,na.rm=T)," [",quantile(fech_nac_fisc_vs_senda$diff,.25,na.rm=T),", ",quantile(fech_nac_fisc_vs_senda$diff,.75,na.rm=T),"] days"), ylab="Count", xlab("Abs. difference between date of birth in PO vs. SENDA"))
+```
+
+- Define a tolerance value
+
+- Replace with PO in case age was imputed by the research team
+
+- 
+
+
+```{r paso2_dates, echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+#C1_fech_nac_nas
+
+invisible("Ver cómo impacta a las edades imputadas como el edad de inicio de consumo y esas cosas")
+#1.4. Replaced invalid ages with same users within the dataset
+#1.7.04. Invalid Age Of Onset of Primary Substance, Higher than age
+#1.7.05. Invalid Age Of Onset of Drug Use
+#3.01.0b.HASH w/ more than one distinct Age of Onset of Drug Use.Minor differences within users,replaced with mean
+#3.02.0b.HASH w/ more than one distinct Age of Onset of Drug Use Prim Subs. Minor differences within users,replaced with mea
+#3.02.3.HASH w/ more than one distinct Age of Onset of Drug Use Prim Subs.Other;
+#3.03.3.XX.HASH w/ more than one distinct Age of Onset Drug Use Primary Substance.Neural network imputation of ties
+#1.6.XX.2.Age at admission less 18 years & had another date of birth that could be replaced
+#	;1.5. Replaced invalid ages with TOP information
+#1.6.02.0b;1.7.04. Invalid Age Of Onset of Primary Substance, Higher than age;
+#
+#1.6.03.1a;1.7.03. Invalid Age Of Onset of Drug Use, Higher than age;
+#1.6.03.1a;1.7.04. Invalid Age Of Onset of Primary Substance, Higher than age;2
+#1.6.03.1a;1.7.05. Invalid Age Of Onset of Drug Use, < 5 yrs age;
+#1.6.05.2b1;1.7.06. Invalid Age Of Onset of Primary Substance, < 5 yrs age
+#1.6.XX.2.Age at admission less 18 years & had another date of birth that could be replaced
+#1.7.03. Invalid Age Of Onset of Drug Use, Higher than age
+#1.7.04. Invalid Age Of Onset of Primary Substance, Higher than age
+#1.7.05. Invalid Age Of Onset of Drug Use, < 5 yrs age
+#1.7.06. Invalid Age Of Onset of Primary Substance, < 5 yrs age
+#C1_fech_nac_nas
+```
+
+
+```{r bpmn, echo=T, cache= T, paged.print=TRUE, eval=F, error=T, dpi=320, fig.align="center"}
+paste0("n= ", format(length(unique(Base_fiscalia_v2$rut_enc_saf)),big.mark=","),"; ",scales::percent(length(unique(Base_fiscalia_v2$rut_enc_saf))/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
+
+paste0("n= ",format(nrow(fech_nac_fisc_vs_senda),big.mark=","),";\n",
+       scales::percent(nrow(fech_nac_fisc_vs_senda)/length(unique(Base_fiscalia_v2$rut_enc_saf))),
+       "; ",scales::percent(nrow(fech_nac_fisc_vs_senda)/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
+
+paste0("n= ",format(length(unique(Base_fiscalia_v2$rut_enc_saf))-nrow(fech_nac_fisc_vs_senda),big.mark=","),";\n",
+       scales::percent((length(unique(Base_fiscalia_v2$rut_enc_saf))-nrow(fech_nac_fisc_vs_senda))/length(unique(Base_fiscalia_v2$rut_enc_saf))),"; ",
+       scales::percent((length(unique(Base_fiscalia_v2$rut_enc_saf))-nrow(fech_nac_fisc_vs_senda))/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
+
 
 ```
 
 <br>
 
+# Label
 
-# Obtain the database
+```{r change labels,echo=T, paged.print=TRUE, eval=F}
 
-<br>
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
-We recoded the region to lower letters for Metropolitan Region sectors. Additionally, we generated the `_simple` columns with the dates with a more common format.
-
-<br>
+Base_fiscalia_v2%>%
+dplyr::mutate_at(c('dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_cie_10_or','x3_dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_sub_cie_10_or','x3_dg_trs_psiq_sub_cie_10_or','compromiso_biopsicosocial','pais_nacimiento','nacionalidad','dg_trs_psiq_sub_dsm_iv_or','x2_dg_trs_psiq_sub_dsm_iv_or','x3_dg_trs_psiq_sub_dsm_iv_or','dg_trs_psiq_sub_cie_10_or','etnia_cor_2','motivodeegreso_mod_imp','fecha_ultimo_tratamiento','fecha_ultimo_tratamiento','tiene_menores_de_edad_a_cargo'),~as.factor(.)) %>%
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(at_least_one_cont_entry=sum(!is.na(diff_bet_treat)))%>%
+  ungroup()%>%
+  dplyr::mutate(at_least_one_cont_entry= ifelse(at_least_one_cont_entry>0,1,0))%>%
+  dplyr::mutate(menor_45_dias_diff= ifelse(diff_bet_treat<45,1,0))%>%
+  dplyr::mutate(at_least_one_cont_entry= recode(as.character(at_least_one_cont_entry),"0"="User with no cont. entry","1"="User with cont. entry"))%>%
+  dplyr::mutate(menor_45_dias_diff= recode(as.character(menor_45_dias_diff),"0"=">= 45 Days of Difference Between Entries","1"="<45 Days of Difference Between Entries"))%>%
+  dplyr::mutate(menor_60_dias_diff= recode(as.character(menor_60_dias_diff),"0"=">= 60 Days of Difference Between Entries","1"="<60 Days of Difference Between Entries"))%>%
+  dplyr::mutate(obs_cambios_ninguno= recode(as.character(obs_cambios_ninguno),"0"="At least 1 Change w/ the Next Entry","1"="No Changes w/ the Next Entry"))%>%
+  dplyr::mutate(motivoegreso_derivacion= recode(as.character(motivoegreso_derivacion),"0"="Other causes of discharge","1"="Referral"))%>%
+  dplyr::mutate_at(vars(at_least_one_cont_entry,menor_45_dias_diff,menor_60_dias_diff,obs_cambios_ninguno,motivoegreso_derivacion,obs_cambios),~as.factor(.))%>%
+  assign("Base_fiscalia_v2",., envir = .GlobalEnv)
+  
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_  
+  
+codebook::var_label(Base_fiscalia_v2) <- list(
+row= 'Numerador de los eventos presentes en la Base de Datos/Events in the Dataset',
+table= 'Origen de los Datos (de los archivos por año)/Source of Data (of files per year)',
+hash_key= 'Codificación del RUN/Masked Identifier (RUN)',
+ano_bd= 'Año de la Base de Datos/Year of the Dataset (Source)',
+id= 'Codigo Identificación de SENDA/SENDA ID',
+nombre_centro= 'Nombre del Centro de Tratamiento/Treatment Center',
+tipo_centro= 'Tipo de Centro/Type of Center',
+region_del_centro= '(original, Recodificado en nombre_region)/',
+servicio_de_salud= 'Servicio de Salud/Health Service',
+tipo_de_programa= '(original, Recodificado en tipo_de_programa_2)/',
+tipo_de_plan= '(original, Recodificado en tipo_de_plan_2)/',
+senda= 'SENDA/SENDA',
+dias_trat= 'Días de Tratamiento/Days of Treatment',
+nmesesentratamiento= 'Número de Meses en Tratamiento/Number of Months in Treatment',
+dias_en_senda= 'Días en SENDA/Days in SENDA',
+n_meses_en_senda= 'Número de Meses en SENDA/Number of Months in SENDA',
+sexo= '(original, Recodificado en sexo_2)/',
+edad= 'Edad (número entero)/Age (In years, Discrete Number)',
+nombre_usuario= 'Nombre del Usuario (OCULTO y no accesible)/Name of the User (Not Accessible)',
+comuna_residencia= '(original, Recodificado en comuna_residencia_cod)/',
+origen_de_ingreso= '(original, Recodificado en origen_ingreso)/',
+pais_nacimiento= 'País de Nacimiento/Country of Birth',
+nacionalidad= 'Nacionalidad/Nationality',
+etnia= '(original, recodificado en etnia_cor)/',
+estado_conyugal= '(original, Recodificado en estado_conyugal_2)/',
+numero_de_hijos= 'Número de Hijos/Number of Children',
+num_hijos_ing_trat_res= 'Número de Hijos para Ingreso a Tratamiento Residencial/Number of Children to Residential Treatment',
+parentesco_con_el_jefe_de_hogar= '(Sólo presenta valores perdidos)/',
+num_trat_ant= 'Número de Tratamientos Anteriores/Number of Previous Treatments',
+fecha_ultimo_tratamiento= 'Fecha del Último Tratamiento/Date of the Last Treatment',
+sustancia_de_inicio= '(original, Recodificado en sus_ini)/',
+edad_inicio_consumo= '(original, Recodificado en edad_ini_cons)/', 
+x_se_trata_mujer_emb= 'Mujer Embarazada al Ingreso/Pregnant at Admission',
+escolaridad_ultimo_ano_cursado= '(original, Recodificado en escolaridad)/', 
+condicion_ocupacional= '(original, Recodificado en estatus_ocupacional)/', 
+categoria_ocupacional= '(original, Recodificado en cat_ocupacional)/',
+rubro_trabaja= '(original, Recodificado en rubro_trabaja_mod)/',
+con_quien_vive= 'Persona con la que vive el Usuario/People that Share Household with the User',
+tipo_de_vivienda= '(original, Recodificado en tipo_de_vivienda_mod)/',
+tenencia_de_la_vivienda= '(original, Recodificado en tenencia_de_la_vivienda_mod)/',
+sustancia_principal= '(original, Recodificado en sus_principal)/',
+`otras_sustancias_nº1`= '(original, Recodificado en otras_sus1)/',
+`otras_sustancias_nº2`= '(original, Recodificado en otras_sus2)/',
+`otras_sustancias_nº3`= '(original, Recodificado en otras_sus3)/',
+freq_cons_sus_prin_original= '(original, Recodificado en freq_cons_sus_prin)/',
+edad_inicio_sustancia_principal= '(original, Recodificado en edad_ini_sus_prin)/',
+via_adm_sus_prin_original= '(original, Recodificado en via_adm_sus_prin)/',
+dg_trs_cons_sus_or= 'Diagnósico de Trastorno por Consumo de Sustancias/Diagnosed of Substance Use Disorder',
+dg_trs_psiq_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV/Diagnosis of Psychiatric Disorders, DSM-IV criteria',
+dg_trs_psiq_sub_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification)',
+x2_dg_trs_psiq_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (2)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (2)',
+x2_dg_trs_psiq_sub_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion) (2)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification) (2)',
+x3_dg_trs_psiq_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (3)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (3)',
+x3_dg_trs_psiq_sub_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion) (3)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification) (3)',
+dg_trs_psiq_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10/Diagnosis of Psychiatric Disorders, CIE-10 criteria',
+dg_trs_psiq_sub_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification)',
+x2_dg_trs_psiq_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (2)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (2)',
+x2_dg_trs_psiq_sub_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion) (2)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification) (2)',
+x3_dg_trs_psiq_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (3)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (3)',
+x3_dg_trs_psiq_sub_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion) (3)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification) (3)',
+diagnostico_trs_fisico= 'Diagnóstico de Trastorno Físico/Diagnosis of Physical Disorder',
+otros_probl_at_sm_or= 'Otros Problemas de Atención Vinculados a Salud Mental/Other problems linked to Mental Health',
+compromiso_biopsicosocial= 'Compromiso Biopsicosocial/Biopsychosocial Involvement',
+dg_global_nec_int_soc_or= 'Diagnóstico Global de Necesidades de Integración Social (Al Ingreso)/Global Diagnosis of Social Integration (At Admission)',
+dg_nec_int_soc_cap_hum_or= 'Diagnóstico de Necesidades de Integración Social en Capital Humano (Al Ingreso)/Global Diagnosis of Social Integration in Human Capital (At Admission)',
+dg_nec_int_soc_cap_fis_or= 'Diagnóstico de Necesidades de Integración Social en Capital Físico (Al Ingreso)/Global Diagnosis of Social Integration in Physical Capital (At Admission)',
+dg_nec_int_soc_cap_soc_or= 'Diagnóstico de Necesidades de Integración Social en Capital Social (Al Ingreso)/Global Diagnosis of Social Integration in Social Capital (At Admission)',
+fech_ing= 'Fecha de Ingreso a Tratamiento/Date of Admission to Treatment',
+fecha_ingreso_a_convenio_senda= 'Fecha de Ingreso a Convenio SENDA (aún no formateada como fecha)/Date of Admission to SENDA Agreement',
+usuario_tribunal_trat_droga= 'Usuario de modalidad Tribunales de Tratamiento de Drogas/User of Drug Treatment Courts Modality',
+consentimiento_informado= 'Consentimiento Informado/Informed Consent',
+fech_egres= 'Fecha de Egreso de Tratamiento/Date of Discharge from Treatment',
+motivodeegreso= 'Motivo de Egreso/Cause of Discharge',
+tipo_centro_derivacion= 'Tipo de Centro al que el Usuario es Derivado/Type of Center of Derivation',
+evaluacindelprocesoteraputico= 'Evaluación del Proceso Terapéutico/Evaluation of the Therapeutic Process',
+eva_consumo= 'Evaluación al Egreso Respecto al Patrón de consumo/Evaluation at Discharge regarding to Consumption Pattern',
+eva_fam= 'Evaluación al Egreso Respecto a Situación Familiar/Evaluation at Discharge regarding to Family Situation',
+eva_relinterp= 'Evaluación al Egreso Respecto a Relaciones Interpersonales/Evaluation at Discharge regarding to Interpersonal Relations',
+eva_ocupacion= 'Evaluación al Egreso Respecto a Situación Ocupacional/Evaluation at Discharge regarding to Occupational Status',
+eva_sm= 'Evaluación al Egreso Respecto a Salud Mental/Evaluation at Discharge regarding to Mental Health',
+eva_fisica= 'Evaluación al Egreso Respecto a Salud Física/Evaluation at Discharge regarding to Physical Health',
+eva_transgnorma= 'Evaluación al Egreso Respecto a Trasgresión a la Norma Social/Evaluation at Discharge regarding to Transgression to the Norm',
+dg_trs_psiq_cie_10_egres_or= '(Sólo presenta valores perdidos)/',
+dg_global_nec_int_soc_or_1= 'Diagnóstico Global de Necesidades de Integración Social (Al Egreso)/Global Diagnosis of Social Integration (At Discharge)',
+dg_nec_int_soc_cap_hum_or_1= 'Diagnóstico de Necesidades de Integración Social en Capital Humano (Al Egreso)/Global Diagnosis of Social Integration in Human Capital (At Discharge)',
+dg_nec_int_soc_cap_fis_or_1= 'Diagnóstico de Necesidades de Integración Social en Capital Físico (Al Egreso)/Global Diagnosis of Social Integration in Physical Capital (At Discharge)',
+dg_nec_int_soc_cap_soc_or_1= 'Diagnóstico de Necesidades de Integración Social en Capital Social (Al Egreso)/Global Diagnosis of Social Integration in Social Capital (At Discharge)',
+tiene_menores_de_edad_a_cargo= 'Menores de Edad A Cargo/Minor Dependants',
+mot_egres_alt_adm_or= 'Motivo de Egreso Alta Administrativa/Cause of Administrative Discharge',
+consorcio=  'Sociedades de Tratamiento Servicios de Salud- Fundaciones- entre otras entidades encargadas de los centros/Consortium',
+id_centro= 'ID de Centro/Treatment center ID',
+ha_estado_embarazada_egreso= '¿Ha estado embarazada? (al Egreso)/Have you been Pregnant (at Discharge)',
+identidad_de_genero= 'Identidad de Género/Gender Identity',
+discapacidad= 'Presenta Discapacidad/Disability',
+hash_rut_completo= 'HASH alternativo, en el escenario en que se asuma que el individuo al que se le codificó el RUN presente mayor edad/Alternative HASH-Key',
+opcion_discapacidad= 'Origen de Discapacidad/Cause of Disability',
+sexo_2= 'Sexo Usuario/Sex of User',
+embarazo= 'Embarazo al Ingreso /Pregnant at Admission',
+tipo_de_plan_2= 'Tipo de Plan/Type of Plan',
+tipo_de_programa_2= 'Tipo de Programa de Tratamiento/Type of Program',
+fech_egres_sin_fmt= 'Fecha de Egreso de Tratamiento (Sin Formato de Fecha)/Date of Discharge',
+id_mod= 'ID de SENDA para Presentación en Página Web (enmascara caracteres 5 y 6)/SENDA ID (mask characters 5 & 6)',
+ano_nac= 'Año de Nacimiento (numérico)/Year of Birth (numeric)',
+fech_ing_ano= 'Año de Ingreso (numérico)/Year of Admission (numeric)',
+fech_ing_mes= 'Mes de Ingreso (numérico)/Month of Admission (numeric)',
+fech_ing_dia= 'Día de Ingreso (numérico)/Day of Admission (numeric)',
+concat= 'ID de SENDA y HASH Concatenado (permite discriminar más de un HASH en un mismo ID)/Combination of SENDA ID & HASH',
+obs= 'Observaciones al Proceso de Limpieza y Estandarización de Casos/Observations to the Process of Data Tidying & Standardization',
+dias_trat_inv= 'Días de Tratamiento Invertidos (fecha más reciente, menor valor numérico)/Treatment Days (Reversed)',
+fech_nac= 'Fecha de Nacimiento/Date of Birth',
+edad_al_ing= 'Edad a la Fecha de Ingreso a Tratamiento (numérico continuo)/Age at Admission to Treatment',
+edad_ini_cons= 'Edad de Inicio de Consumo/Age of the Onset of Drug Use',
+edad_ini_sus_prin=  'Edad de Inicio de Consumo Sustancia Principal/Age of the Onset of Drug Use of Primary Substance',
+dias_trat_alta_temprana= 'Días de tratamiento (<90)/Less than 90 days in treatment',
+motivodeegreso_mod= 'Motivo de Egreso (con abandono temprano y tardío)/Cause of Discharge (with late and early withdrawal)',
+sus_principal= 'Sustancia Principal de Consumo/Primary or Main Substance of Consumption at Admission',
+otras_sus1= 'Otras Sustancias (1)/Other Substances (1)',
+otras_sus2= 'Otras Sustancias (2)/Other Substances (2)',
+otras_sus3= 'Otras Sustancias (3)/Other Substances (3)',
+sus_ini= 'Sustancia de Inicio/Starting Substance',
+estado_conyugal_2= 'Estado Conyugal/Marital Status',
+estatus_ocupacional= 'Condición Ocupacional/Occupational Status',
+cat_ocupacional= 'Categoría Ocupacional/Occupational Category',
+edad_grupos= 'Edad agrupada/Age in groups',
+origen_ingreso= "(modificado en origen_ingreso_mod)/",
+escolaridad= 'Escolaridad: Nivel Eduacional/Educational Attainment',
+via_adm_sus_prin= 'Vía de Administración de la Sustancia Principal/Route of Administration of the Primary or Main Substance',
+freq_cons_sus_prin= 'Frecuencia de Consumo de la Sustancia Principal (30 días previos a la admisión)/Frequency of Consumption of the Primary or Main Substance (30 days previous to admission)',
+dias_trat_knn_imp= 'Días de Tratamiento (Imputados KNN)/Days of Treatment (Imputed KNN)',
+fech_egres_knn_imp= 'Fecha de Egreso (Imputados KNN)/Date of Discharge (Imputed KNN)',
+dias_trat_alta_temprana_knn_imp= 'Días de Tratamiento con Alta Temprana (<90) (Imputados KNN)/Days of Treatment w Early Withdrawal (Imputed KNN)',
+fech_egres_imp= 'Fecha de Egreso (Imputados KNN & Lógico)/Date of Discharge (Imputed KNN & Logic)',
+motivodeegreso_imp= 'Motivo de Egreso(Imputados KNN & Lógico)/Cause of Discharge (Imputed KNN & Logic)',
+motivodeegreso_mod_imp= 'Motivo de Egreso (con abandono temprano y tardío)(Imputados KNN & Lógico)/Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic)',
+dias_trat_imp= 'Días de Tratamiento (Imputados KNN & Lógico)/Days of Treatment (Imputed KNN & Logic)', 
+dias_trat_alta_temprana_imp= 'Días de Tratamiento con Alta Temprana (<90) (Imputados KNN & Lógico)/Days of Treatment w Early Withdrawal (Imputed KNN & Logic)',
+via_adm_sus_prin_act= 'Vía de Administración de la Sustancia Principal (Se aplicaron criterios de limpieza)/Route of Administration of the Primary or Main Substance (Tidy)',
+etnia_cor= 'Etnia/Ethnic Group',
+nacionalidad_2= 'Segunda Nacionalidad/Second Nationality',
+etnia_cor_2= 'Etnia (2)/Second Ethnic Group',
+sus_ini_2= 'Segunda Sustancia de Inicio/Second Starting Substance',
+sus_ini_3= 'Tercera Sustancia de Inicio/Third Starting Substance',
+concat_hash_sus_prin= 'Combination of User & Primary Substance',
+macrozona= "Macrozona/Macrozones",
+nombre_region= " Región del Centro/Chilean Region of the Center",
+comuna_residencia_cod= "Comuna de Residencia/Municipality or District of Residence",
+sus_ini_mod= "Sustancia de Inicio (Sólo más frecuentes)/Starting Substance (Only more frequent)",
+sus_principal_mod= 'Sustancia Principal de Consumo (Sólo más frecuentes)/Primary or Main Substance of Consumption at Admission (Only more frequent)',
+origen_ingreso_mod= 'Origen de Ingreso/Motive of Admission to Treatment',
+tipo_de_vivienda_mod= 'Tipo de Vivienda/Type of Housing', 
+tenencia_de_la_vivienda_mod= 'Tenencia de la Vivienda/Tenure status of Households',
+rubro_trabaja_mod= 'Rubro de Trabajo/Area of Work',
+edad_al_ing_grupos= 'Edad a la Fecha de Ingreso a Tratamiento en Grupos/Age at Admission to Treatment In Groups',
+menor_60_dias_diff= 'Menor a 60 días de diferencia con el registro posterior/Menor a 60 days of difference between the next entry',
+menor_45_dias_diff= 'Menor a 45 días de diferencia con el registro posterior/Less than 45 days of difference between the next entry',
+diff_bet_treat= 'Días de diferencia con el registro posterior/Days of difference between the next entry',
+id_centro_sig_trat= "ID del Centro del registro posterior/Center ID of the Next Treatment",
+tipo_plan_sig_trat= "Tipo de Plan del registro posterior/Type of Plan of the Next Entry",
+tipo_programa_sig_trat= "Tipo de Programa del registro posterior/Type of Program of the Next Entry", 
+senda_sig_trat= "SENDA del registro posterior/SENDA of the Next Entry",
+motivoegreso_derivacion= "Motivo de Egreso= Derivación/Cause of Discharge= Derivación",
+obs_cambios= "Cambios del tratamiento en comparación al registro posterior/Changes in treatment compared to the Next Entry",
+obs_cambios_ninguno= "Sin cambios del tratamiento en comparación al registro posterior/No changes in treatment compared to the Next Entry",
+obs_cambios_num= "Recuento de cambios del tratamiento en comparación al registro posterior/Count of changes in treatment compared to the Next Entry",
+obs_cambios_fac= "Recuento de cambios del tratamiento en comparación al registro posterior(factor)/Count of changes in treatment compared to the Next Entry(factor)",
+at_least_one_cont_entry= "Casos de Usuarios con más de una entrada después de otra/Cases of users with more than one entry after another one"
+)
+```
 
 # Session Info
 
@@ -266,13 +582,13 @@ Sys.getenv("R_LIBS_USER")
 paste0("Editor context: ", path)
 
 if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
-    save.image("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.RData")
+    save.image("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2022 (github)/11.RData")
   } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
-    save.image("C:/Users/andre/Desktop/SUD_CL/10.RData")
+    save.image("C:/Users/andre/Desktop/SUD_CL/11.RData")
   } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
-    save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.RData")
+    save.image("E:/Mi unidad/Alvacast/SISTRAT 2022 (github)/11.RData")
   } else {
-    save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.RData")
+    save.image(paste0(sub("SUD_CL","",path),"11.RData"))
   }
 
 sessionInfo()
@@ -300,31 +616,30 @@ initComplete = htmlwidgets::JS(
                                  encontrado_como_victima=="NO" & encontrado_como_imputado=="SI"~"IMPUTADO",
                                  T~"VICTIMA")) %>% 
   dplyr::filter(accused=="VICTIMA") %>% 
-    rio::export(file = paste0(gsub("SUD_CL/Fiscalia_merge.Rmd","",path),"fiscalia_mariel_ago_2022.dta"))
+    rio::export(file = paste0(gsub("SUD_CL","",path),"fiscalia_mariel_ago_2022.dta"))
 ```
 
 
 ```{r label_to_stata, echo=T, paged.print=TRUE}
 
 export_lab_stata_merge<-
-  tibble::rownames_to_column(data.frame(Hmisc::label(CONS_C1_df_dup_JUN_2020)))%>% data.frame() %>%
+  tibble::rownames_to_column(data.frame(Hmisc::label(Base_fiscalia_v2)))%>% data.frame() %>%
   dplyr::rename("code" = !!names(.[1]), "label" = !!names(.[2]))%>% data.frame()%>%
   dplyr::mutate(first= "cap noi label variable")%>%
   dplyr::mutate(final= paste0(first, " ",code,' "',label,'"'))%>%
   dplyr::select(-code,-label,-first)%>%
   dplyr::rename("*clear all"="final") %>% 
-  rbind(paste0('cap noi save "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUN_2020.dta", replace'))%>%
+  rbind(paste0('cap noi save "', gsub('/', '\\', path, fixed=T),'\\fiscalia_mariel_ago_2022.dta", replace'))%>%
   rbind('cap noi drop id id_mod nombre_centro consentimiento_informado')%>%
   rbind('cap noi drop id id_mod nombre_centro')%>%
-  rbind(paste0('cap noi save "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUN_2020_exp.dta", replace'))
+  rbind(paste0('cap noi save "', gsub('/', '\\', path, fixed=T),'\\fiscalia_mariel_ago_2022.dta", replace'))
 
-rbind(paste0('cap noi use "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUN_2020.dta", clear'),export_lab_stata) %>% knitr::kable("html") %>% 
+rbind(paste0('cap noi use "', gsub('/', '\\', path, fixed=T),'\\fiscalia_mariel_ago_2022.dta", clear'),export_lab_stata_merge) %>% knitr::kable("html") %>% 
     kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size =10) %>% 
   kableExtra::scroll_box(width = "100%", height = "375px")
 
-write.table(rbind(paste0('cap noi use "', gsub('/', '\\', path, fixed=T),'\\CONS_C1_df_dup_JUN_2020.dta", clear'),export_lab_stata), file = paste0(path,"/SUD_CL/_label_var_to_stata.do"), sep = "",row.names = FALSE, quote = FALSE, fileEncoding="UTF-8")
+write.table(rbind(paste0('cap noi use "', gsub('/', '\\', path, fixed=T),'\\fiscalia_mariel_ago_2022.dta", clear'),export_lab_stata_merge), file = paste0(path,"/SUD_CL/_label_var_to_stata.do"), sep = "",row.names = FALSE, quote = FALSE, fileEncoding="UTF-8")
 ```
-
 
 <br>
 
