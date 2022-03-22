@@ -69,7 +69,7 @@ div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-ali
 ```
 ```{r prev_setup, include = FALSE, cache=T}
 rm(list=ls());gc()
-
+if(!grepl("4.1.2",R.version.string)){stop("Different version (must be 4.1.2)")}
 path<-getwd()
 
 if (grepl("CISS Fondecyt",path)==T){
@@ -199,7 +199,7 @@ tab4_lab<- paste0('Original Prosecutors Office\n(n = ',format(nrow(Base_fiscalia
         ';\nRel.=',Base_fiscalia_v2%>%dplyr::distinct(idrelacion)%>%nrow()%>%format(big.mark=','),
         ';\nRUC_Vic_Imp=',Base_fiscalia_v2%>%dplyr::mutate(rel=paste0(ruc,"_",idsujeto_victima,"_",idsujeto_imputado,"_","iddelito"))%>%dplyr::distinct(rel)%>%nrow()%>%format(big.mark=','),
         ';\nusers= ',Base_fiscalia_v2%>% dplyr::distinct(rut_enc_saf)%>% nrow() %>% format(big.mark=','),')')
-tab5_lab<- paste0('&#8226;Remove duplicated entries\\\\\\l&#8226;Long-to-wide relationships/crimes, end of judicial proceedings, penalty\\\\\\l&#8226;Correct dates (birth, comission of crime, end of judicial proceedings)\\\\\\l&#8226;Define cases that acted as victims & imputed in a cause\\\\\\l')
+tab5_lab<- paste0('&#8226;Filter crimes committed after study follow-up period\\\\\\l&#8226;Remove duplicated entries\\\\\\l&#8226;Long-to-wide relationships/crimes, end of judicial proceedings, penalty\\\\\\l&#8226;Correct dates (birth, comission of crime, end of judicial proceedings)\\\\\\l&#8226;Define cases that acted as victims & imputed in a cause\\\\\\l')
 tab6_lab<- paste0("O.P. Dataset \n(n = ????;\n","","users= ",Base_fiscalia_v2%>% dplyr::distinct(rut_enc_saf)%>% nrow()%>% formatC(big.mark = ","),")")
 
 #https://stackoverflow.com/questions/46750364/diagrammer-and-graphviz
@@ -302,46 +302,132 @@ grViz("digraph flowchart {
 
 # Correct dates
 
-```{r paso1_dates, fig.align='center', fig.caption="Figure 16.Summary of Process of Data Cleaning and Standardization, Imputation & Matching", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
-paste0("Patients with more than one date of birth in P.O. DB: ",
+First, we look at the entries in which a crime was committed after the date of retrieval of the first database (November 13th, 2019) (`r paste0("n= ",format(nrow(dplyr::filter(Base_fiscalia_v2,fec_comision_simple>as.Date("2019-11-13"))),big.mark=","),", ",scales::percent(nrow(dplyr::filter(Base_fiscalia_v2,fec_comision_simple>as.Date("2019-11-13")))/nrow(Base_fiscalia_v2),accuracy=0.1))`). Additionally, we look at the cases in which a judiciary process was terminated after the date of retrieval (`r paste0("n= ",format(nrow(dplyr::filter(Base_fiscalia_v2,termino_relacion_simple>as.Date("2019-11-13"))),big.mark=","),", ",scales::percent(nrow(dplyr::filter(Base_fiscalia_v2,termino_relacion_simple>as.Date("2019-11-13")))/nrow(Base_fiscalia_v2),accuracy=0.1))`).
+
+<br>
+
+```{r pas0_erase_cases_after_followup, echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+
+Base_fiscalia_v3 <-
 Base_fiscalia_v2 %>% 
+  dplyr::filter(fec_comision_simple<=as.Date("2019-11-13"))
+```
+
+Check the consistency of SENDA and POs dates of birth. We arranged the PO database ordered by RUN and date of comission of the crime (from the oldest to the the most recent).
+
+<br>
+
+```{r paso1_dates, fig.align='center', fig.caption="Figure. Absolute differences between SENDA and POs date of birth", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+paste0("Patients with more than one date of birth in P.O. DB: ",
+Base_fiscalia_v3 %>% 
   dplyr::group_by(rut_enc_saf) %>% 
   dplyr::mutate(n_fec=n_distinct(fec_nacimiento_simple)) %>% 
   dplyr::filter(n_fec>1) %>% nrow())
 
-
 fech_nac_fisc_vs_senda<-
-Base_fiscalia_v2 %>% 
-    dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("hash_key","fech_nac", "edad_al_ing", "edad_ini_cons")] %>% dplyr::distinct(hash_key, .keep_all = T),by=c("rut_enc_saf"="hash_key")) %>%
+Base_fiscalia_v3 %>% 
+    dplyr::arrange(rut_enc_saf, fec_comision_simple) %>% 
+    dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("hash_key","fech_nac", "edad_al_ing", "edad_ini_cons", "obs")] %>% dplyr::distinct(hash_key, .keep_all = T),by=c("rut_enc_saf"="hash_key")) %>%
     dplyr::mutate(fech_nac=as.Date(fech_nac)) %>% 
-    dplyr::select(rut_enc_saf,fec_nacimiento_simple,fec_comision_simple, termino_relacion_simple,fech_nac, edad_al_ing, edad_ini_cons) %>% 
+    dplyr::select(rut_enc_saf,gls_tipo_sujeto_vic,fec_nacimiento_simple,fec_comision_simple, termino_relacion_simple,fech_nac, edad_al_ing, edad_ini_cons,contains("rpa"), obs) %>% 
     dplyr::filter(dplyr::case_when(fec_nacimiento_simple!=fech_nac~T,T~F)) %>% 
-    dplyr::mutate(obs=dplyr::case_when(rut_enc_saf %in% unlist(C1_fech_nac_nas)~"previous problems (Duplicates1)",T~"")) %>% 
+    dplyr::mutate(obs=dplyr::case_when(rut_enc_saf %in% unlist(C1_fech_nac_nas)~"KNN",
+                                       grepl("1.4.", obs)~"1.4.",grepl("1.5.", obs)~"1.5.",grepl("1.6.XX.", obs)~"1.6.xx",T~"")) %>% 
+  dplyr::group_by(rut_enc_saf) %>% 
+  dplyr::mutate(n_dis_rucs=n_distinct(ruc)) %>% 
+  dplyr::ungroup() %>% 
   dplyr::distinct(rut_enc_saf, .keep_all = T) %>% 
   #si es fecha inválida, se asume que está bien la de SENDA. Si no, se analiza la diferencia.
   dplyr::mutate(diff=ifelse(fec_nacimiento_simple=="1900-01-01",NA,abs(fec_nacimiento_simple-fech_nac)))
 #90,037 casos, pero 11,511 RUTs únicos
+
+paste0("Must take note that ",
+CONS_C1_df_dup_SEP_2020 %>% 
+    dplyr::filter(hash_key %in% unlist(C1_fech_nac_nas)) %>% 
+    dplyr::select(hash_key, obs) %>% 
+    dplyr::filter(!grepl("1.6.XX.",obs)) %>% nrow() %>% format(big.mark=","),
+" cases that were selected to KNN imputation had not an observation of 1.6.XX process")
 
 fech_nac_fisc_vs_senda %>% 
   ggplot()+
   geom_histogram(aes(x=diff), bins=40)+
   sjPlot::theme_sjplot()+
   xlim(0,20000)+
-  ylim(0,2000)+
+  ylim(c(0,1600))+
   scale_x_continuous(breaks=seq(0,30000,by=365*3), labels=seq(0,30000,by=365*3)/365, limits=c(0,20000))+
-  labs(x="Differences in years",caption=paste0("Note. Users with discrepancies are the", scales::percent(nrow(fech_nac_fisc_vs_senda)/length(unique(Base_fiscalia_v2$rut_enc_saf)))," of the sample;\nDifferences due to missing values were not listed (n=",as.numeric(table(is.na(fech_nac_fisc_vs_senda$diff))[2]),");\nMedian= ",median(fech_nac_fisc_vs_senda$diff,na.rm=T)," [",quantile(fech_nac_fisc_vs_senda$diff,.25,na.rm=T),", ",quantile(fech_nac_fisc_vs_senda$diff,.75,na.rm=T),"] days"), ylab="Count", xlab("Abs. difference between date of birth in PO vs. SENDA"))
+  labs(x="Differences in years",caption=paste0("Note. Users with discrepancies are the", scales::percent(nrow(fech_nac_fisc_vs_senda)/length(unique(Base_fiscalia_v3$rut_enc_saf)))," of the sample;\nDifferences due to missing values were not listed (n=",as.numeric(table(is.na(fech_nac_fisc_vs_senda$diff))[2]),");\nMedian= ",median(fech_nac_fisc_vs_senda$diff,na.rm=T)," [",quantile(fech_nac_fisc_vs_senda$diff,.25,na.rm=T),", ",quantile(fech_nac_fisc_vs_senda$diff,.75,na.rm=T),"] days"), ylab="Count", xlab("Abs. difference between date of birth in PO vs. SENDA"))
+```
+
+```{r paso1_dates2, fig.align='center', fig.caption="Figure. SENDA patients with differences in the dates of birth of SENDA DB. Number of distinct dates of comission of crimes", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+Base_fiscalia_v3 %>% 
+    dplyr::filter(rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda)) %>% 
+    dplyr::group_by(rut_enc_saf) %>% 
+    dplyr::mutate(n_dis_fec=n_distinct(fec_comision)) %>% 
+    ggplot(aes(x=n_dis_fec)) + 
+    geom_histogram(aes(x=n_dis_fec))+
+    labs( caption="Note. 11,511 patients, 90,037 entries", x="Number of distinct dates by patient")+
+    stat_summary(aes(y = 1, xintercept = after_stat(x)), fun = quantile, fun.args = list(probs = c(0.025, 0.975)), geom = "vline", orientation = "y") +
+sjPlot::theme_sjplot()
+
+Base_fiscalia_v3 %>% 
+    dplyr::filter(rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda)) %>% 
+    dplyr::group_by(rut_enc_saf) %>% 
+    dplyr::mutate(n_dis_fec=n_distinct(fec_comision)) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::summarise(n=n(), min=min(n_dis_fec, na.rm=T), p10= quantile(n_dis_fec,.1,na.rm=T),p25=quantile(n_dis_fec,.25,na.rm=T),p50=quantile(n_dis_fec,.5,na.rm=T),p75=quantile(n_dis_fec,.75,na.rm=T),p90=quantile(n_dis_fec,.9,na.rm=T), max=max(n_dis_fec,na.rm=T))
+```
+
+
+```{r paso1_dates3, fig.align='center', fig.caption="Figure. SENDA patients with differences in the dates of birth of SENDA DB. Distribution of age at comission of crime", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+Base_fiscalia_v3 %>% 
+    dplyr::filter(rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda)) %>% 
+    dplyr::mutate(years_crime=dplyr::case_when(grepl("SI",encontrado_como_imputado)~as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25, T~NA_real_)) %>% 
+    dplyr::group_by(rut_enc_saf) %>% 
+    dplyr::slice_min(years_crime) %>% 
+    dplyr::ungroup() %>% 
+    ggplot(aes(x=years_crime)) + 
+    geom_histogram(aes(x=years_crime))+
+    labs(caption="Note. 11,511 patients, 90,037 entries", x="Comission of crime age")+
+    stat_summary(aes(y = 1, xintercept = after_stat(x)), fun = quantile, fun.args = list(probs = c(0.025, 0.975)), geom = "vline", orientation = "y") +
+    sjPlot::theme_sjplot()
+
+#see the minimum age at crime comission
+Base_fiscalia_v3 %>% 
+    dplyr::filter(rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda)) %>% 
+    dplyr::mutate(years_crime=dplyr::case_when(grepl("SI",encontrado_como_imputado)~as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25, T~NA_real_)) %>% 
+    dplyr::group_by(rut_enc_saf) %>% 
+    dplyr::slice_min(years_crime) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::summarise(n=n(), min=min(years_crime, na.rm=T), p10= quantile(years_crime,.1,na.rm=T),p25=quantile(years_crime,.25,na.rm=T),p50=quantile(years_crime,.5,na.rm=T),p75=quantile(years_crime,.75,na.rm=T),p90=quantile(years_crime,.9,na.rm=T), max=max(years_crime,na.rm=T))
+
+#see the second age at crime comission
+Base_fiscalia_v3 %>% 
+    dplyr::filter(rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda)) %>% 
+    dplyr::mutate(years_crime=dplyr::case_when(grepl("SI",encontrado_como_imputado)~as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25, T~NA_real_)) %>% 
+    dplyr::group_by(rut_enc_saf) %>% 
+    dplyr::slice_min(years_crime,n=2) %>% 
+    dplyr::slice_max(years_crime,n=1) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::summarise(n=n(), min=min(years_crime, na.rm=T), p10= quantile(years_crime,.1,na.rm=T),p25=quantile(years_crime,.25,na.rm=T),p50=quantile(years_crime,.5,na.rm=T),p75=quantile(years_crime,.75,na.rm=T),p90=quantile(years_crime,.9,na.rm=T), max=max(years_crime,na.rm=T))
+
+paste0("Patients w/ discrepancies that only have been victims: ",
+Base_fiscalia_v3 %>% 
+    dplyr::filter(rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda)) %>% 
+    dplyr::mutate(years_crime=dplyr::case_when(grepl("SI",encontrado_como_imputado)~as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25, T~NA_real_)) %>% 
+    dplyr::group_by(rut_enc_saf) %>% 
+    dplyr::summarise(n_na=length(years_crime[is.na(years_crime)]),n_not_na=length(years_crime[!is.na(years_crime)])) %>% 
+    dplyr::filter(n_not_na==0) %>% nrow() %>% format(big.mark=","))
 ```
 
 - See whether PO data was mistyped or invalid for other reasons (e.g., invalid age) 
 - Replace with PO in case age was imputed by the research team
 - Define a tolerance value
- 
 
 
 ```{r paso2_dates, echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
 #C1_fech_nac_nas
-
-invisible("Ver cómo impacta a las edades imputadas como el edad de inicio de consumo y esas cosas")
+#1.4. 1.5.1.6.xx
+invisible("Ver cómo  impacta a las edades imputadas como el edad de inicio de consumo y esas cosas")
 #1.4. Replaced invalid ages with same users within the dataset
 #1.7.04. Invalid Age Of Onset of Primary Substance, Higher than age
 #1.7.05. Invalid Age Of Onset of Drug Use
@@ -367,27 +453,106 @@ invisible("Ver cómo impacta a las edades imputadas como el edad de inicio de co
 
 
 ```{r bpmn, echo=T, cache= T, paged.print=TRUE, eval=F, error=T, dpi=320, fig.align="center",fig.cap="Figure . Decision Tree to correct dates of birth"}
-paste0("n= ", format(length(unique(Base_fiscalia_v2$rut_enc_saf)),big.mark=","),"; ",scales::percent(length(unique(Base_fiscalia_v2$rut_enc_saf))/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
 
-paste0("n= ",format(nrow(fech_nac_fisc_vs_senda),big.mark=","),";\n",
-       scales::percent(nrow(fech_nac_fisc_vs_senda)/length(unique(Base_fiscalia_v2$rut_enc_saf))),
+paste0("Paired SENDA patients with POs\n(n= ", format(length(unique(Base_fiscalia_v3$rut_enc_saf)),big.mark=","),"; ",scales::percent(length(unique(Base_fiscalia_v3$rut_enc_saf))/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
+
+paste0("Paired w/ discrepancies \n(n= ",format(nrow(fech_nac_fisc_vs_senda),big.mark=","),";\n",
+       scales::percent(nrow(fech_nac_fisc_vs_senda)/length(unique(Base_fiscalia_v3$rut_enc_saf))),
        "; ",scales::percent(nrow(fech_nac_fisc_vs_senda)/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
 
-paste0("n= ",format(length(unique(Base_fiscalia_v2$rut_enc_saf))-nrow(fech_nac_fisc_vs_senda),big.mark=","),";\n",
-       scales::percent((length(unique(Base_fiscalia_v2$rut_enc_saf))-nrow(fech_nac_fisc_vs_senda))/length(unique(Base_fiscalia_v2$rut_enc_saf))),"; ",
-       scales::percent((length(unique(Base_fiscalia_v2$rut_enc_saf))-nrow(fech_nac_fisc_vs_senda))/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
-}
+paste0("No changes needed\n (n= ",format(length(unique(Base_fiscalia_v3$rut_enc_saf))-nrow(fech_nac_fisc_vs_senda),big.mark=","),";\n",
+       scales::percent((length(unique(Base_fiscalia_v3$rut_enc_saf))-nrow(fech_nac_fisc_vs_senda))/length(unique(Base_fiscalia_v3$rut_enc_saf))),"; ",
+       scales::percent((length(unique(Base_fiscalia_v3$rut_enc_saf))-nrow(fech_nac_fisc_vs_senda))/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
+
+
+paste0("as.numeric(as.Date('2019-11-13')-as.Date('2003-11-13'))/365.25 = ",as.numeric(as.Date('2019-11-13')-as.Date('2003-11-13'))/365.25," years")
+
+paste0("1.Cases with less than 16 years old when they committed the crime: ",
+fech_nac_fisc_vs_senda %>% 
+  dplyr::mutate(years_crime=as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25) %>% 
+  dplyr::filter(years_crime<14) %>% nrow()
+)
+paste0("1.a.Cases <14 years old when they committed the crime, but SENDA says that they were >14: ",
+fech_nac_fisc_vs_senda %>% 
+  dplyr::mutate(years_crime_po=as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25,
+                years_crime_senda=as.numeric(fec_comision_simple-fech_nac)/365.25) %>% 
+  dplyr::filter(years_crime_po<14,years_crime_senda>14) %>% nrow()
+)
+paste0("1.b. Cases with <14 years old when they committed the crime, but SENDA says that they were >18 : ",
+fech_nac_fisc_vs_senda %>% 
+  dplyr::mutate(years_crime_po=as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25,
+                years_crime_senda=as.numeric(fec_comision_simple-fech_nac)/365.25) %>% 
+  dplyr::filter(years_crime_po<14,years_crime_senda>18) %>% nrow()
+)
+
+paste0("2.Cases >=14 years old when they committed the crime: ",
+fech_nac_fisc_vs_senda %>% 
+  dplyr::mutate(years_crime=as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25) %>% 
+  dplyr::filter(years_crime>=14) %>% nrow()
+)
+
+paste0("2.a.Cases >=14 years old when they committed the crime, previous problems in SENDA database: ",
+fech_nac_fisc_vs_senda %>% 
+  dplyr::mutate(years_crime=as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25) %>% 
+  dplyr::filter(years_crime>=14, nchar(obs)>1) %>% nrow()
+)
+paste0("2.a.1.Cases >=14 years old when they committed the crime, previous problems in SENDA database, <14 SENDA: ",
+fech_nac_fisc_vs_senda %>% 
+  dplyr::mutate(years_crime=as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25) %>% 
+  dplyr::filter(years_crime>=14, nchar(obs)>1, edad_al_ing<14) %>% nrow()
+)
+paste0("2.a.2.Cases >=14 years old when they committed the crime, previous problems in SENDA database >=14 SENDA: ",
+fech_nac_fisc_vs_senda %>% 
+  dplyr::mutate(years_crime=as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25) %>% 
+  dplyr::filter(years_crime>=14, nchar(obs)>1, edad_al_ing>=14) %>% nrow()
+)
+
+paste0("2.b.Cases >=14 years old when they committed the crime, previous problems in SENDA database: ",
+fech_nac_fisc_vs_senda %>% 
+  dplyr::mutate(years_crime=as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25) %>% 
+  dplyr::filter(years_crime>=14, nchar(obs)>1) %>% nrow()
+)
 
 #Ñ#Ñ#Ñ#Ñ#Ñ#Ñ#Ñ#Ñ#Ñ
 #Ñ#Ñ#Ñ#Ñ#Ñ#Ñ#Ñ#Ñ#Ñ++++++
 knitr::include_graphics(paste0(path, "/SUD_CL/Figures/.svg"))
 ```
 
-```
+## Apply rules
+
+
 
 <br>
 
 # Correct sex
+
+
+```{r paso1_sex, fig.align='center', fig.caption="Figure 16.Summary of Process of Data Cleaning and Standardization, Imputation & Matching", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+paste0("Patients with more than one sex in P.O. DB: ",
+Base_fiscalia_v3 %>% 
+  dplyr::group_by(rut_enc_saf) %>% 
+  dplyr::mutate(n_sex=n_distinct(sexo)) %>% 
+  dplyr::filter(n_sex>1) %>% nrow())
+
+sex_fisc_vs_senda<-
+Base_fiscalia_v3 %>% 
+    dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("hash_key","fech_nac", "sexo_2", "embarazo","centro_muj")] %>% dplyr::distinct(hash_key, .keep_all = T),by=c("rut_enc_saf"="hash_key")) %>%
+    dplyr::select(rut_enc_saf,sexo,sexo, sexo_2,embarazo, centro_muj) %>% 
+    dplyr::mutate(sexo_2=dplyr::case_when(sexo_2=="Men"~"MASCULINO",sexo_2=="Women"~"FEMENINO",T~NA_character_))%>% 
+    dplyr::filter(dplyr::case_when(sexo!=sexo_2~T,T~F)) %>% 
+    dplyr::mutate(obs=dplyr::case_when(rut_enc_saf %in% unlist(unique(CONS_C1_df_dup_SEP_2020$hash_key[grepl("2.6.01",CONS_C1_df_dup_SEP_2020$obs)]))~"previous problems (Duplicates2)",T~"")) %>% 
+  dplyr::group_by(rut_enc_saf) %>% 
+  dplyr::mutate(n_dis_rucs=n_distinct(ruc)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::distinct(rut_enc_saf, .keep_all = T) 
+```
+
+```{r sex, echo=T, cache= T, paged.print=TRUE, eval=F, error=T}
+unique(CONS_C1_df_dup_SEP_2020$obs[grepl("2.6.01",CONS_C1_df_dup_SEP_2020$obs)])
+
+#2.6.01.1a.HASH w/ more than one distinct Sex. Recent db
+```
+
 
 # Label
 
