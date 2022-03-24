@@ -526,6 +526,7 @@ knitr::include_graphics(paste0(path, "/SUD_CL/Figures/.svg"))
 
 # Correct sex
 
+The label in observations with code `2.6.01` identified people with inconsistencies in the records regarding their sex.
 
 ```{r paso1_sex, fig.align='center', fig.caption="Figure 16.Summary of Process of Data Cleaning and Standardization, Imputation & Matching", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
 paste0("Patients with more than one sex in P.O. DB: ",
@@ -533,6 +534,17 @@ Base_fiscalia_v3 %>%
   dplyr::group_by(rut_enc_saf) %>% 
   dplyr::mutate(n_sex=n_distinct(sexo)) %>% 
   dplyr::filter(n_sex>1) %>% nrow())
+
+#table(CONS_C1$Nombre.Centro);table(CONS_C1$Ha.estado.embarazada.egreso.);table(CONS_C1$X.Se.trata.de.una.mujer.embarazada.)
+
+CONS_C1_res_muj<-
+    CONS_C1 %>% 
+    dplyr::group_by(HASH_KEY) %>% 
+    dplyr::summarise(prop_cen_muj= length(Nombre.Centro[grepl("Mujeres",Nombre.Centro)])/n(),
+                     prop_sex_muj= length(Sexo[grepl("Mujer",Sexo)])/n(),
+                     prop_emb1= length(Ha.estado.embarazada.egreso.[grepl("si",Ha.estado.embarazada.egreso.)])/n(),
+                     prop_emb2= length(X.Se.trata.de.una.mujer.embarazada.[grepl("Si",X.Se.trata.de.una.mujer.embarazada.)])/n()) %>% 
+    dplyr::mutate_if(is.numeric,funs(round(.,2)))
 
 sex_fisc_vs_senda<-
 Base_fiscalia_v3 %>% 
@@ -544,7 +556,14 @@ Base_fiscalia_v3 %>%
   dplyr::group_by(rut_enc_saf) %>% 
   dplyr::mutate(n_dis_rucs=n_distinct(ruc)) %>% 
   dplyr::ungroup() %>% 
-  dplyr::distinct(rut_enc_saf, .keep_all = T) 
+  dplyr::distinct(rut_enc_saf, .keep_all = T)
+
+sex_fisc_vs_senda2<-
+sex_fisc_vs_senda %>% 
+  dplyr::left_join(CONS_C1_res_muj, by=c("rut_enc_saf"="HASH_KEY"))
+
+
+#CONS_TOP HASH_KEY Edad 
 ```
 
 ```{r sex, echo=T, cache= T, paged.print=TRUE, eval=F, error=T}
@@ -552,6 +571,10 @@ unique(CONS_C1_df_dup_SEP_2020$obs[grepl("2.6.01",CONS_C1_df_dup_SEP_2020$obs)])
 
 #2.6.01.1a.HASH w/ more than one distinct Sex. Recent db
 ```
+
+<br>
+
+## Apply rules
 
 
 # Label

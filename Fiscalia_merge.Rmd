@@ -70,18 +70,20 @@ div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-ali
 ```{r prev_setup, include = FALSE, cache=T}
 rm(list=ls());gc()
 if(!grepl("4.1.2",R.version.string)){stop("Different version (must be 4.1.2)")}
-path<-dirname(rstudioapi::getSourceEditorContext()$path)
+paste0("The folder od the markdown is in: ",dirname(rstudioapi::getSourceEditorContext()$path))
 
-if (grepl("CISS Fondecyt",path)==T){
+path_dir<-dirname(rstudioapi::getSourceEditorContext()$path)
+
+if (grepl("CISS Fondecyt",path_dir)==T){
     setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/8.Rdata")
-  } else if (grepl("andre",path)==T){
+  } else if (grepl("andre",path_dir)==T){
     setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/8.Rdata")
-  } else if (grepl("E:",path)==T){
+  } else if (grepl("E:",path_dir)==T){
     setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/8.Rdata")
   } else {
-    setwd(paste0(path,"/"));load(paste0(path,"/8.Rdata"))
+    setwd(paste0(path_dir,"/"));load(paste0(path_dir,"/8.Rdata"))
   }
-rm(list=setdiff(ls(), c("CONS_C1_df_dup_SEP_2020_match","CONS_C1_df_dup_SEP_2020","CONS_C1","C1_fech_nac_nas","CONS_C1_df_dup_FEB_2020_prev25b")))
+rm(list=setdiff(ls(), c("CONS_C1_df_dup_SEP_2020_match","CONS_C1_df_dup_SEP_2020","CONS_C1","C1_fech_nac_nas","CONS_C1_df_dup_FEB_2020_prev25b", "CONS_TOP", "path_dir")))
 ```
 
 ```{r setup, include = FALSE, cache=T, error=T, echo=T}
@@ -179,7 +181,7 @@ We recoded the region to lower letters for Metropolitan Region sectors. Addition
 `%>%`<-magrittr:: `%>%`
 
 library(readxl)
-base_fiscalia_orig <- read_excel(gsub("/Fiscalia_merge.Rmd","/BASE.xlsx",dirname(rstudioapi::getSourceEditorContext()$path)), 
+base_fiscalia_orig <- read_excel(gsub("/SUD_CL","/BASE.xlsx",path_dir), 
     sheet = "BASE", skip = 4, guess_max = min(1000000, Inf)) %>% janitor::clean_names() %>% 
   dplyr::mutate(gls_region=dplyr::case_when(gls_region=="REGION METROPOLITANA CENTRO NORTE"~ "RM Centro Norte",
                                             gls_region=="REGION METROPOLITANA OCCIDENTE"~ "RM Occidente",
@@ -198,7 +200,7 @@ base_fiscalia_orig <- read_excel(gsub("/Fiscalia_merge.Rmd","/BASE.xlsx",dirname
 
 
 library(readxl)
-Base_fiscalia_v2 <- read_excel(gsub("/SUD_CL/Fiscalia_merge.Rmd","/Base_v3_dic_2021.xlsx",dirname(rstudioapi::getSourceEditorContext()$path)), 
+Base_fiscalia_v2 <- read_excel(gsub("/SUD_CL","/Base_v3_dic_2021.xlsx",path_dir), 
 sheet = "Base", skip = 4, guess_max = min(1000000, Inf))%>% janitor::clean_names() %>% 
   dplyr::mutate(gls_region=dplyr::case_when(gls_region=="REGION METROPOLITANA CENTRO NORTE"~ "RM Centro Norte",
                                             gls_region=="REGION METROPOLITANA OCCIDENTE"~ "RM Occidente",
@@ -1677,20 +1679,34 @@ codebook(codebook_data)
 ```{r session_info, echo=T, error=T, paged.print=TRUE}
 Sys.getenv("R_LIBS_USER")
 
-rstudioapi::getSourceEditorContext()
-#save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
-
-if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
+if (grepl("CISS Fondecyt",path_dir)==T){
     save.image("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.RData")
-  } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
+  } else if (grepl("andre",path_dir)==T){
     save.image("C:/Users/andre/Desktop/SUD_CL/10.RData")
-  } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
+  } else if (grepl("E:",path_dir)==T){
     save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.RData")
   } else {
-    save.image(paste0(sub("SUD_CL","",path),"10.RData"))
+    save.image(paste0(sub("SUD_CL","",path_dir),"10.RData"))
   }
+```
 
+```{r}
 sessionInfo()
+
+sesion_info <- devtools::session_info()
+dplyr::select(
+  tibble::as_tibble(sesion_info$packages),
+  c(package, loadedversion, source)
+) %>% 
+  DT::datatable(filter = 'top', colnames = c('Row number' =1,'Variable' = 2, 'Percentage'= 3),
+              caption = htmltools::tags$caption(
+        style = 'caption-side: top; text-align: left;',
+        '', htmltools::em('Paquetes estadísticos utilizados')),
+      options=list(
+initComplete = htmlwidgets::JS(
+      "function(settings, json) {",
+      "$(this.api().tables().body()).css({'font-size': '80%'});",
+      "}")))
 ```
 
 # Exportar
@@ -1720,5 +1736,5 @@ if(no_mostrar==0){
                                  encontrado_como_victima=="NO" & encontrado_como_imputado=="SI"~"IMPUTADO",
                                  T~"VICTIMA")) %>% 
   dplyr::filter(accused=="VICTIMA") %>% 
-    rio::export(file = paste0(gsub("SUD_CL","",path),"fiscalia_mariel_ago_2021.dta"))
+    rio::export(file = gsub("SUD_CL","fiscalia_mariel_ago_2021.dta",path_dir))
 ```
