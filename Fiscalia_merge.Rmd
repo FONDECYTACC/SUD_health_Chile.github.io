@@ -1011,6 +1011,56 @@ knitr::kable(size=11, first.strip=T, hide.no="no",
 
 <br>
 
+# Estimate EGA
+
+```{r paso_ega_1,eval=T, echo=T, paged.print=TRUE, eval=T, include=T, error=T}
+#https://towardsdatascience.com/exploratory-graph-analysis-3d4f9c63e92f
+library(devtools)
+#devtools::install_github('hfgolino/EGAnet')
+library(EGAnet)
+#lid_des_eam naq_eam
+#Base_fiscalia_v2$pais encontrado_como_victima gls_tipo_sujeto_vic gls_tipo_imputado gls_region familia_delito relacion_vifsaf gls_parentesco agrupa_terminos sexo edad_comision region_delito
+set.seed(2125)
+ega_data <- EGA(
+               data.matrix(Base_fiscalia_v2[c("pais", "encontrado_como_victima", "gls_tipo_sujeto_vic", "gls_tipo_imputado", "gls_region", "familia_delito", "agrupa_terminos", "sexo", "edad_comision", "region_delito")]), #sacamos el ítem 3
+               uni.method = "LE", #es la última opción que eligió el autor
+               corr = "cor_auto", #elige entre spearman y pearson
+               model = "glasso",
+               algorithm = "walktrap",
+               plot.EGA = TRUE,
+               plot.type = "qgraph"
+               )
+```
+
+We captured 4 clusters. The types we finish each judiciary process (`agrupa_terminos`) are much related to the age when a crime was committed by/against the patient (`edad_comision`) and the sex of the patient (`sex`).
+
+<br>
+
+```{r paso_ega_2,eval=T, echo=T, paged.print=TRUE, eval=T, include=T, error=T}
+boot_data <- bootEGA(
+                    data.matrix(Base_fiscalia_v2[c("pais", "encontrado_como_victima", "gls_tipo_sujeto_vic", "gls_tipo_imputado", "gls_region", "familia_delito", "relacion_vifsaf", "gls_parentesco", "agrupa_terminos", "sexo", "edad_comision", "region_delito")]),
+                    iter= 1000, 
+                    type = "resampling" #no-paramétrico
+                    )
+
+dplyr::bind_rows(cbind(model="DLS",boot_data$summary.table))%>% 
+knitr::kable("html", caption="Tabla. Información sobre las dimensiones en el remuestreo") %>% 
+  kableExtra::kable_classic()
+```
+
+A partir de la tabla anterior, podemos observar que la escala de Liderazgo Destructivo está compuesta por 2 dimensiones. En cambio, el NAQ-R tiene una mediana de 4 (95% IC: 1,64- 6,35).
+
+<br>
+
+```{r paso_ega_3,eval=T, echo=T, paged.print=TRUE, eval=T, include=T, error=T}
+ic.naq <- itemStability(boot_naq)
+ic.dls <- itemStability(boot_dls)
+```
+
+Los ítems menos replicables para el modelo de 4 factores, son el 11, 20, 14, 22 y 17. Por ejemplo, el ítem 11 se replica un 35%.
+
+<br>
+
 # Preliminary Analyses for SER 2022
 
 ```{r 1_ser, echo=T, error=T, paged.print=TRUE}

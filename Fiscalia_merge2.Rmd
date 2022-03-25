@@ -302,6 +302,39 @@ grViz("digraph flowchart {
 
 # Correct dates
 
+
+```{r fig1_date_of_birth, fig.align='center', fig.pos='H', fig.caption="Figure 1.Date of birth", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+plot_dob<-
+Base_fiscalia_v2  %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(fec_nacimiento_simple)) %>%
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::summarise(n=n())%>%
+    dplyr::ungroup()%>%
+    dplyr::mutate(label_text=paste0(fec_nacimiento_qrt,"\nn= ",format(n,big.mark=","))) %>% 
+    ggplot2::ggplot(aes(x = fec_nacimiento_qrt, y = n, label= label_text))+
+    geom_line()+
+    sjPlot::theme_sjplot2() +
+    scale_x_yearqtr(format="%YQ%q", n=18,
+                    limits=c(zoo::as.yearqtr("1900-01-01"), 
+                             max=zoo::as.yearqtr("2019-11-13")))+
+    theme(legend.position="bottom")+
+    guides(fill=guide_legend(ncol=3))+
+    theme(legend.text = element_text(size=10))+
+    theme(legend.title = element_blank(),
+          panel.grid.minor = element_blank(), 
+          panel.grid.major = element_blank(), 
+          panel.grid.major.x = element_blank(),
+          panel.background = element_blank(),
+          axis.title.x = element_blank())+
+    theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), plot.caption=element_text(hjust=0)) 
+
+   ggplotly(plot_dob, tooltip = c("label_text"))%>% layout(xaxis= list(showticklabels = T), height = 600, width=800) 
+```
+
+<br>
+
+From the Figure we can see that people in the first quarters of 2022 were much lower than the previous quarters. Also, much more people were born before 1940. Hence, many of the values beyond these dates could be the result of mistyping.
+
 First, we look at the entries in which a crime was committed after the date of retrieval of the first database (November 13th, 2019) (`r paste0("n= ",format(nrow(dplyr::filter(Base_fiscalia_v2,fec_comision_simple>as.Date("2019-11-13"))),big.mark=","),", ",scales::percent(nrow(dplyr::filter(Base_fiscalia_v2,fec_comision_simple>as.Date("2019-11-13")))/nrow(Base_fiscalia_v2),accuracy=0.1))`). Additionally, we look at the cases in which a judiciary process was terminated after the date of retrieval (`r paste0("n= ",format(nrow(dplyr::filter(Base_fiscalia_v2,termino_relacion_simple>as.Date("2019-11-13"))),big.mark=","),", ",scales::percent(nrow(dplyr::filter(Base_fiscalia_v2,termino_relacion_simple>as.Date("2019-11-13")))/nrow(Base_fiscalia_v2),accuracy=0.1))`).
 
 <br>
@@ -317,7 +350,7 @@ Check the consistency of SENDA and POs dates of birth. We arranged the PO databa
 
 <br>
 
-```{r paso1_dates, fig.align='center', fig.caption="Figure. Absolute differences between SENDA and POs date of birth", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+```{r paso1_dates, fig.align='center', fig.caption="Figure 2. Absolute differences between SENDA and POs date of birth", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
 paste0("Patients with more than one date of birth in P.O. DB: ",
 Base_fiscalia_v3 %>% 
   dplyr::group_by(rut_enc_saf) %>% 
@@ -329,7 +362,7 @@ Base_fiscalia_v3 %>%
     dplyr::arrange(rut_enc_saf, fec_comision_simple) %>% 
     dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("hash_key","fech_nac", "edad_al_ing", "edad_ini_cons", "obs")] %>% dplyr::distinct(hash_key, .keep_all = T),by=c("rut_enc_saf"="hash_key")) %>%
     dplyr::mutate(fech_nac=as.Date(fech_nac)) %>% 
-    dplyr::select(rut_enc_saf,gls_tipo_sujeto_vic,fec_nacimiento_simple,fec_comision_simple, termino_relacion_simple,fech_nac, edad_al_ing, edad_ini_cons,contains("rpa"), obs) %>% 
+    dplyr::select(rut_enc_saf,gls_tipo_sujeto_vic,fec_nacimiento_simple,fec_comision_simple, gls_parentesco, termino_relacion_simple,fech_nac, edad_al_ing, edad_ini_cons,contains("rpa"), obs) %>% 
     dplyr::filter(dplyr::case_when(fec_nacimiento_simple!=fech_nac~T,T~F)) %>% 
     dplyr::mutate(obs=dplyr::case_when(rut_enc_saf %in% unlist(C1_fech_nac_nas)~"KNN",
                                        grepl("1.4.", obs)~"1.4.",grepl("1.5.", obs)~"1.5.",grepl("1.6.XX.", obs)~"1.6.xx",T~"")) %>% 
@@ -341,12 +374,54 @@ Base_fiscalia_v3 %>%
   dplyr::mutate(diff=ifelse(fec_nacimiento_simple=="1900-01-01",NA,abs(fec_nacimiento_simple-fech_nac)))
 #90,037 casos, pero 11,511 RUTs únicos
 
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
 paste0("Must take note that ",
 CONS_C1_df_dup_SEP_2020 %>% 
     dplyr::filter(hash_key %in% unlist(C1_fech_nac_nas)) %>% 
     dplyr::select(hash_key, obs) %>% 
     dplyr::filter(!grepl("1.6.XX.",obs)) %>% nrow() %>% format(big.mark=","),
 " cases that were selected to KNN imputation had not an observation of 1.6.XX process")
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+CONS_C1_res_edad<-
+CONS_C1 %>% 
+dplyr::mutate(fech_nac=lubridate::parse_date_time(stringi::stri_sub(`Codigo.Identificación`,-8,-1),"dmY"),
+              fech_nac=as.Date(as.character(fech_nac)),
+              fech_nac_num=unclass(fech_nac))%>% 
+dplyr::group_by(HASH_KEY) %>% 
+dplyr::summarise(median_fech_nac= median(fech_nac_num, na.rm=T),
+                 mean_fech_nac= mean(fech_nac_num, na.rm=T))%>% 
+dplyr::mutate_if(is.numeric,funs(round(.,2)))
+
+TOP_edad<-
+CONS_TOP%>% 
+dplyr::mutate(fech_nac=as.Date(`Fecha.Nacimiento`, format="%d/%m/%Y"),
+              fech_nac=unclass(fech_nac)) %>% 
+dplyr::group_by(HASH_KEY) %>% 
+dplyr::summarise(median_fech_nac_top= median(fech_nac, na.rm=T),
+                 mean_fech_nac_top= mean(fech_nac, na.rm=T))%>% 
+dplyr::mutate_if(is.numeric,funs(round(.,2)))
+
+fech_nac_fisc_vs_senda2<-
+fech_nac_fisc_vs_senda %>% 
+  dplyr::left_join(CONS_C1_res_edad, by=c("rut_enc_saf"="HASH_KEY")) %>% 
+  dplyr::left_join(TOP_edad, by=c("rut_enc_saf"="HASH_KEY")) %>% 
+  dplyr::mutate(fech_nacimiento_num=unclass(fec_nacimiento_simple)) %>% 
+  dplyr::mutate(diff2_mdn=ifelse(fec_nacimiento_simple=="1900-01-01",NA,abs(fech_nacimiento_num-median_fech_nac))) %>% 
+  dplyr::mutate(diff2_m=ifelse(fec_nacimiento_simple=="1900-01-01",NA,abs(fech_nacimiento_num-mean_fech_nac)))%>% 
+  dplyr::mutate(diff3_mdn=ifelse(fec_nacimiento_simple=="1900-01-01",NA,abs(fech_nacimiento_num-median_fech_nac_top))) %>% 
+  dplyr::mutate(diff3_m=ifelse(fec_nacimiento_simple=="1900-01-01",NA,abs(fech_nacimiento_num-mean_fech_nac_top)))
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
 
 fech_nac_fisc_vs_senda %>% 
   ggplot()+
@@ -358,7 +433,7 @@ fech_nac_fisc_vs_senda %>%
   labs(x="Differences in years",caption=paste0("Note. Users with discrepancies are the", scales::percent(nrow(fech_nac_fisc_vs_senda)/length(unique(Base_fiscalia_v3$rut_enc_saf)))," of the sample;\nDifferences due to missing values were not listed (n=",as.numeric(table(is.na(fech_nac_fisc_vs_senda$diff))[2]),");\nMedian= ",median(fech_nac_fisc_vs_senda$diff,na.rm=T)," [",quantile(fech_nac_fisc_vs_senda$diff,.25,na.rm=T),", ",quantile(fech_nac_fisc_vs_senda$diff,.75,na.rm=T),"] days"), ylab="Count", xlab("Abs. difference between date of birth in PO vs. SENDA"))
 ```
 
-```{r paso1_dates2, fig.align='center', fig.caption="Figure. SENDA patients with differences in the dates of birth of SENDA DB. Number of distinct dates of comission of crimes", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+```{r paso1_dates2, fig.align='center', fig.caption="Figure 3. SENDA patients with differences in the dates of birth of SENDA DB. Number of distinct dates of comission of crimes", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
 Base_fiscalia_v3 %>% 
     dplyr::filter(rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda)) %>% 
     dplyr::group_by(rut_enc_saf) %>% 
@@ -374,7 +449,8 @@ Base_fiscalia_v3 %>%
     dplyr::group_by(rut_enc_saf) %>% 
     dplyr::mutate(n_dis_fec=n_distinct(fec_comision)) %>% 
     dplyr::ungroup() %>% 
-    dplyr::summarise(n=n(), min=min(n_dis_fec, na.rm=T), p10= quantile(n_dis_fec,.1,na.rm=T),p25=quantile(n_dis_fec,.25,na.rm=T),p50=quantile(n_dis_fec,.5,na.rm=T),p75=quantile(n_dis_fec,.75,na.rm=T),p90=quantile(n_dis_fec,.9,na.rm=T), max=max(n_dis_fec,na.rm=T))
+    dplyr::summarise(n=n(), min=min(n_dis_fec, na.rm=T), p10= quantile(n_dis_fec,.1,na.rm=T),p25=quantile(n_dis_fec,.25,na.rm=T),p50=quantile(n_dis_fec,.5,na.rm=T),p75=quantile(n_dis_fec,.75,na.rm=T),p90=quantile(n_dis_fec,.9,na.rm=T), max=max(n_dis_fec,na.rm=T)) %>%  knitr::kable("markdown")
+#CONS_TOP
 ```
 
 
@@ -391,6 +467,7 @@ Base_fiscalia_v3 %>%
     stat_summary(aes(y = 1, xintercept = after_stat(x)), fun = quantile, fun.args = list(probs = c(0.025, 0.975)), geom = "vline", orientation = "y") +
     sjPlot::theme_sjplot()
 
+rbind(c("Minimum age at crime comission",
 #see the minimum age at crime comission
 Base_fiscalia_v3 %>% 
     dplyr::filter(rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda)) %>% 
@@ -398,9 +475,10 @@ Base_fiscalia_v3 %>%
     dplyr::group_by(rut_enc_saf) %>% 
     dplyr::slice_min(years_crime) %>% 
     dplyr::ungroup() %>% 
-    dplyr::summarise(n=n(), min=min(years_crime, na.rm=T), p10= quantile(years_crime,.1,na.rm=T),p25=quantile(years_crime,.25,na.rm=T),p50=quantile(years_crime,.5,na.rm=T),p75=quantile(years_crime,.75,na.rm=T),p90=quantile(years_crime,.9,na.rm=T), max=max(years_crime,na.rm=T))
+    dplyr::summarise(n=n(), min=min(years_crime, na.rm=T), p10= quantile(years_crime,.1,na.rm=T),p25=quantile(years_crime,.25,na.rm=T),p50=quantile(years_crime,.5,na.rm=T),p75=quantile(years_crime,.75,na.rm=T),p90=quantile(years_crime,.9,na.rm=T), max=max(years_crime,na.rm=T))),
 
 #see the second age at crime comission
+c("Second minimum age at crime comission",
 Base_fiscalia_v3 %>% 
     dplyr::filter(rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda)) %>% 
     dplyr::mutate(years_crime=dplyr::case_when(grepl("SI",encontrado_como_imputado)~as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25, T~NA_real_)) %>% 
@@ -408,7 +486,7 @@ Base_fiscalia_v3 %>%
     dplyr::slice_min(years_crime,n=2) %>% 
     dplyr::slice_max(years_crime,n=1) %>% 
     dplyr::ungroup() %>% 
-    dplyr::summarise(n=n(), min=min(years_crime, na.rm=T), p10= quantile(years_crime,.1,na.rm=T),p25=quantile(years_crime,.25,na.rm=T),p50=quantile(years_crime,.5,na.rm=T),p75=quantile(years_crime,.75,na.rm=T),p90=quantile(years_crime,.9,na.rm=T), max=max(years_crime,na.rm=T))
+    dplyr::summarise(n=n(), min=min(years_crime, na.rm=T), p10= quantile(years_crime,.1,na.rm=T),p25=quantile(years_crime,.25,na.rm=T),p50=quantile(years_crime,.5,na.rm=T),p75=quantile(years_crime,.75,na.rm=T),p90=quantile(years_crime,.9,na.rm=T), max=max(years_crime,na.rm=T))))
 
 paste0("Patients w/ discrepancies that only have been victims: ",
 Base_fiscalia_v3 %>% 
@@ -528,7 +606,7 @@ knitr::include_graphics(paste0(path, "/SUD_CL/Figures/.svg"))
 
 The label in observations with code `2.6.01` identified people with inconsistencies in the records regarding their sex.
 
-```{r paso1_sex, fig.align='center', fig.caption="Figure 16.Summary of Process of Data Cleaning and Standardization, Imputation & Matching", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+```{r paso1_sex, fig.align='center', fig.caption="Figure.Summary of Process of Data Cleaning and Standardization, Imputation & Matching", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
 paste0("Patients with more than one sex in P.O. DB: ",
 Base_fiscalia_v3 %>% 
   dplyr::group_by(rut_enc_saf) %>% 
@@ -546,24 +624,45 @@ CONS_C1_res_muj<-
                      prop_emb2= length(X.Se.trata.de.una.mujer.embarazada.[grepl("Si",X.Se.trata.de.una.mujer.embarazada.)])/n()) %>% 
     dplyr::mutate_if(is.numeric,funs(round(.,2)))
 
+CONS_TOP_res_muj<-
+    CONS_TOP %>% 
+    dplyr::group_by(HASH_KEY) %>% 
+    dplyr::summarise(prop_cen_muj_top= length(Nombre.del.Centro[grepl("Mujeres",Nombre.del.Centro)])/n(),
+                     prop_sex_muj_top= length(Sexo[grepl("Mujer",Sexo)])/n()) %>% 
+    dplyr::mutate_if(is.numeric,funs(round(.,2)))
+
 sex_fisc_vs_senda<-
 Base_fiscalia_v3 %>% 
     dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("hash_key","fech_nac", "sexo_2", "embarazo","centro_muj")] %>% dplyr::distinct(hash_key, .keep_all = T),by=c("rut_enc_saf"="hash_key")) %>%
-    dplyr::select(rut_enc_saf,sexo,sexo, sexo_2,embarazo, centro_muj) %>% 
+    dplyr::select(rut_enc_saf,sexo,sexo, sexo_2,embarazo, centro_muj,gls_parentesco,encontrado_como_imputado) %>% 
     dplyr::mutate(sexo_2=dplyr::case_when(sexo_2=="Men"~"MASCULINO",sexo_2=="Women"~"FEMENINO",T~NA_character_))%>% 
     dplyr::filter(dplyr::case_when(sexo!=sexo_2~T,T~F)) %>% 
     dplyr::mutate(obs=dplyr::case_when(rut_enc_saf %in% unlist(unique(CONS_C1_df_dup_SEP_2020$hash_key[grepl("2.6.01",CONS_C1_df_dup_SEP_2020$obs)]))~"previous problems (Duplicates2)",T~"")) %>% 
   dplyr::group_by(rut_enc_saf) %>% 
-  dplyr::mutate(n_dis_rucs=n_distinct(ruc)) %>% 
+  dplyr::mutate(n_dis_rucs=n_distinct(ruc), prop_gls_parentezco_imp_m= length(gls_parentesco[grepl("MADR|NUERA",gls_parentesco)&grepl("SI",encontrado_como_imputado)]),prop_gls_parentezco_imp_h= length(gls_parentesco[grepl("PADR",gls_parentesco)&grepl("SI",encontrado_como_imputado)])) %>%  
   dplyr::ungroup() %>% 
   dplyr::distinct(rut_enc_saf, .keep_all = T)
 
 sex_fisc_vs_senda2<-
 sex_fisc_vs_senda %>% 
-  dplyr::left_join(CONS_C1_res_muj, by=c("rut_enc_saf"="HASH_KEY"))
+  dplyr::left_join(CONS_C1_res_muj, by=c("rut_enc_saf"="HASH_KEY")) %>% 
+  dplyr::left_join(CONS_TOP_res_muj, by=c("rut_enc_saf"="HASH_KEY"))
 
 
 #CONS_TOP HASH_KEY Edad 
+paste0("Paired w/ discrepancies \n(n= ",format(nrow(sex_fisc_vs_senda2),big.mark=","),";\n",
+       scales::percent(nrow(sex_fisc_vs_senda2)/length(unique(Base_fiscalia_v3$rut_enc_saf))),
+       "; ",scales::percent(nrow(sex_fisc_vs_senda2)/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
+
+paste0("No changes needed\n (n= ",format(length(unique(Base_fiscalia_v3$rut_enc_saf))-nrow(sex_fisc_vs_senda2),big.mark=","),";\n",
+       scales::percent((length(unique(Base_fiscalia_v3$rut_enc_saf))-nrow(sex_fisc_vs_senda2))/length(unique(Base_fiscalia_v3$rut_enc_saf))),"; ",
+       scales::percent((length(unique(Base_fiscalia_v3$rut_enc_saf))-nrow(sex_fisc_vs_senda2))/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
+
+
+paste0("Imputed previously\n (n= ",format(sex_fisc_vs_senda2 %>% dplyr::filter(nchar(obs)>1) %>% nrow()-nrow(sex_fisc_vs_senda2),big.mark=","),";\n",
+       scales::percent((sex_fisc_vs_senda2 %>% dplyr::filter(nchar(obs)>1) %>% nrow()-nrow(sex_fisc_vs_senda2))/length(unique(Base_fiscalia_v3$rut_enc_saf))),"; ",
+       scales::percent((sex_fisc_vs_senda2 %>% dplyr::filter(nchar(obs)>1) %>% nrow()-nrow(sex_fisc_vs_senda2))/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
+
 ```
 
 ```{r sex, echo=T, cache= T, paged.print=TRUE, eval=F, error=T}
@@ -575,6 +674,126 @@ unique(CONS_C1_df_dup_SEP_2020$obs[grepl("2.6.01",CONS_C1_df_dup_SEP_2020$obs)])
 <br>
 
 ## Apply rules
+
+# Explore relationships
+
+
+
+```{r fig1_imp_fech_nac, fig.align='center', fig.pos='H', fig.caption="Figure.Date of birth and suspicious of commiting a crime", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+
+#c("pais", "encontrado_como_victima", "gls_tipo_sujeto_vic", "gls_tipo_imputado", "gls_region", "familia_delito", "agrupa_terminos", "sexo", "edad_comision", "region_delito")
+i<- "encontrado_como_imputado"
+  casos_no_cubiertos<-
+    Base_fiscalia_v2 %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(fec_nacimiento)) %>%
+    dplyr::mutate(grupo_var=get(i))%>%
+    dplyr::group_by(fec_nacimiento_qrt, grupo_var)%>%
+    dplyr::summarise(n_2_grupos=n())%>%
+    dplyr::ungroup()%>%
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::mutate(freq = (n_2_grupos / sum(n_2_grupos)))%>%
+    dplyr::filter(fec_nacimiento_qrt<1930|fec_nacimiento_qrt>=2002) %>%
+    dplyr::ungroup()%>%
+    dplyr::summarise(sum_total=sum(n_2_grupos))%>%
+    unlist()
+
+Base_fiscalia_v2 %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(fec_nacimiento)) %>%
+    dplyr::mutate(grupo_var=get(i))%>%
+    dplyr::group_by(fec_nacimiento_qrt, grupo_var)%>%
+    dplyr::summarise(n_2_grupos=n())%>%
+    dplyr::ungroup()%>%
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::mutate(freq = (n_2_grupos / sum(n_2_grupos)))%>%
+    dplyr::filter(fec_nacimiento_qrt>=1930) %>%
+    ggplot2::ggplot(aes(x = fec_nacimiento_qrt, y = freq,fill=grupo_var))+
+    geom_area(alpha=0.6 , size=.5, colour="white") +
+    viridis::scale_fill_viridis(discrete = T, direction = -1) +
+    sjPlot::theme_sjplot2() +
+    scale_x_yearqtr(format="%YQ%q", n=18,
+                    limits=c(zoo::as.yearqtr("1940-01-01"), 
+                             max=zoo::as.yearqtr("2001-01-01")))+
+    scale_y_continuous(limits=c(0,1),labels = scales::percent)+
+    labs(x="",y="Porcentajes",
+         caption= paste0("Nota. Se ignoraron ", casos_no_cubiertos,
+                         " casos con una fecha de admisión anterior al año 1940 al 2001;\n", 
+                         "Porcentajes por año y trimestre"))+
+    #ylim(0,101)+
+    # scale_y_continuous(limits=c(0,1),labels = scales::percent) +
+    theme(legend.position="bottom")+
+    guides(fill=guide_legend(ncol=3))+
+    theme(legend.text = element_text(size=10))+
+    theme(legend.title = element_blank(),
+          panel.grid.minor = element_blank(), 
+          panel.grid.major = element_blank(), 
+          panel.grid.major.x = element_blank(),
+          panel.background = element_blank(),
+          axis.title.x = element_blank())+
+    theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), plot.caption=element_text(hjust=0)) 
+
+if(isTRUE(getOption('knitr.in.progress'))==T){
+    
+} else {ggsave(paste0(i,".png"),dpi=320)}
+
+```
+
+
+```{r fig1_imp_fech_nac, fig.align='center', fig.pos='H', fig.caption="Figure.Date of birth and found as an imputed", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+
+#c("pais", "encontrado_como_victima", "gls_tipo_sujeto_vic", "gls_tipo_imputado", "gls_region", "familia_delito", "agrupa_terminos", "sexo", "edad_comision", "region_delito")
+i<- "familia_delito"
+ casos_no_cubiertos<-
+    Base_fiscalia_v2 %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(fec_nacimiento)) %>%
+    dplyr::mutate(grupo_var=get(i))%>%
+    dplyr::group_by(fec_nacimiento_qrt, grupo_var)%>%
+    dplyr::summarise(n_2_grupos=n())%>%
+    dplyr::ungroup()%>%
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::mutate(freq = (n_2_grupos / sum(n_2_grupos)))%>%
+    dplyr::filter(fec_nacimiento_qrt<1930|fec_nacimiento_qrt>=2002) %>%
+    dplyr::ungroup()%>%
+    dplyr::summarise(sum_total=sum(n_2_grupos))%>%
+    unlist()
+
+Base_fiscalia_v2 %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(fec_nacimiento)) %>%
+    dplyr::mutate(grupo_var=get(i))%>%
+    dplyr::group_by(fec_nacimiento_qrt, grupo_var)%>%
+    dplyr::summarise(n_2_grupos=n())%>%
+    dplyr::ungroup()%>%
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::mutate(freq = (n_2_grupos / sum(n_2_grupos)))%>%
+    dplyr::filter(fec_nacimiento_qrt>=1930) %>%
+    ggplot2::ggplot(aes(x = fec_nacimiento_qrt, y = freq,fill=grupo_var))+
+    geom_area(alpha=0.6 , size=.5, colour="white") +
+    viridis::scale_fill_viridis(discrete = T, direction = -1) +
+    sjPlot::theme_sjplot2() +
+    scale_x_yearqtr(format="%YQ%q", n=18,
+                    limits=c(zoo::as.yearqtr("1940-01-01"), 
+                             max=zoo::as.yearqtr("2001-01-01")))+
+    scale_y_continuous(limits=c(0,1),labels = scales::percent)+
+    labs(x="",y="Porcentajes",
+         caption= paste0("Nota. Se ignoraron ", casos_no_cubiertos,
+                         " casos con una fecha de admisión anterior al año 1940 al 2001;\n", 
+                         "Porcentajes por año y trimestre"))+
+    #ylim(0,101)+
+    # scale_y_continuous(limits=c(0,1),labels = scales::percent) +
+    theme(legend.position="bottom")+
+    guides(fill=guide_legend(ncol=3))+
+    theme(legend.text = element_text(size=10))+
+    theme(legend.title = element_blank(),
+          panel.grid.minor = element_blank(), 
+          panel.grid.major = element_blank(), 
+          panel.grid.major.x = element_blank(),
+          panel.background = element_blank(),
+          axis.title.x = element_blank())+
+    theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), plot.caption=element_text(hjust=0)) 
+
+if(isTRUE(getOption('knitr.in.progress'))==T){
+    
+} else {ggsave(paste0(i,".png"),dpi=320)}
+```
 
 
 # Label
