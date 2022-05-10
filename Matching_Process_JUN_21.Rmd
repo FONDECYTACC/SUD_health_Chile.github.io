@@ -71,15 +71,15 @@ if(!grepl("4.0.2",R.version.string)){stop("Different version (must be 4.0.2)")}
 path<-rstudioapi::getSourceEditorContext()$path
 
 if (grepl("CISS Fondecyt",path)==T){
-    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/8.Rdata")
   } else if (grepl("andre",path)==T){
-    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/8.Rdata")
   } else if (grepl("E:",path)==T){
-    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/8.Rdata")
   } else {
-    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/9.Rdata")
+    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/8.Rdata")
   }
-rm(list=setdiff(ls(), c("CONS_C1_df_dup_SEP_2020_match","CONS_C1_df_dup_SEP_2020","CONS_C1")))
+rm(list=setdiff(ls(), c("CONS_C1_df_dup_SEP_2020_match","CONS_C1_df_dup_SEP_2020","CONS_C1","path")))
 ```
 
 ```{r setup, include = FALSE, cache=T}
@@ -158,7 +158,6 @@ library(kableExtra)
 library(plotly)
 library(janitor)
 library(rbokeh)
-library(altair)
 library(zoo)
 library(broom)
 library(sqldf)
@@ -168,7 +167,6 @@ library(data.table)
 library(dplyr)
 library(panelr)
 library(RColorBrewer)
-library(choroplethr)
 library(choroplethrMaps)
 library(choroplethrAdmin1)
 library(lsmeans)
@@ -178,9 +176,6 @@ suppressPackageStartupMessages(library(ggiraph))
 suppressPackageStartupMessages(library(sf))
 library(treemapify)
 library(dplyr)
-library(choroplethr)
-library(choroplethrMaps)
-library(choroplethrAdmin1)
 library(tidyverse)
 library(epiR)
 library(survminer)
@@ -204,22 +199,20 @@ library(sensitivity2x2xk)
 library(sensitivityfull)
 library(cobalt)
 library(eha)
-library(survHE)
 library(flexsurv)
-library(frailtyEM)
-library(frailtypack)
-library(Rfast)
 library(etm)
+library(compareGroups)
+library(polycor)
 
-library(frailtypack)
-library(TraMineR)
-library(RColorBrewer)
-library(TraMineRextras)
-library(WeightedCluster)
-library(cluster)
-library(parcats)
-library(easyalluvial)
-library(data.tree)
+# if(!require(TraMineR)){install.packages("TraMineR")}
+# if(!require(RColorBrewer)){install.packages("RColorBrewer")}
+# if(!require(TraMineRextras)){install.packages("TraMineRextras")}
+# if(!require(cluster)){install.packages("cluster")}
+# if(!require(easyalluvial)){install.packages("easyalluvial")}
+# if(!require(easyalluvial)){install.packages("easyalluvial")}
+# if(!require(data.tree)){install.packages("data.tree")}
+# if(!require(ggh4x)){install.packages("ggh4x")}
+
 library(ggh4x)
 #devtools::install_github('ChristopherLucas/MatchingFrontier')
 
@@ -294,14 +287,9 @@ eval_fork <- function(..., timeout=60){
 
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 #GET LOCAL
-#dir.create(paste0(getwd(),"/renv_local"))
-#Sys.setenv(RENV_PATHS_LOCAL = paste0(getwd(),"/renv_local"))
-#install.packages(paste0(getwd(),"/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
-#install.packages(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
 library(gurobi)
-#"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)"
 #Sys.getenv("R_LIBS_USER")
-#ACTUALIZADO install.packages(paste0(gsub("\\\\","/",Sys.getenv("GUROBI_HOME")),"/R/gurobi_9.1-2.zip"), repos = NULL, type="source")
+#ACTUALIZADO install.packages(paste0(gsub("\\\\","/",Sys.getenv("GUROBI_HOME")),"/R/gurobi_9.5-1.zip"), repos = NULL, type="source")
 #BUSCAR EN C:\gurobi si está actualizado
 
 fitstats.flexsurvreg = function(x){
@@ -422,30 +410,31 @@ We selected treatments at baseline for each user, leaving `r CONS_C1_df_dup_SEP_
 
 We selected the following variables of interest:
 
-- "Starting Substance" (`sus_ini_mvv`)
+- "Primary Substance at Admission" (`sus_principal_mod`)
+- "First Substance Used" (`sus_ini_mod_mvv`)
 - "Marital Status" (`estado_conyugal_2`)
 - "Educational Attainment" (`escolaridad_rec`)
-- "Age of Onset of Drug Use" (`edad_ini_cons`)
-- "Frequency of use of primary drug" (`freq_cons_sus_prin`)
-- "Motive of Admission to Treatment" (`origen_ingreso_mod`)
-- "Psychiatric co-morbidity" (`dg_cie_10_rec`)
-- "Drug Dependence" (`dg_trs_cons_sus_or`)
-- "Chilean Region of the Center" (`nombre_region`)
+- "Substance Use Onset Age" (`edad_ini_cons`)
+- "Primary Substance at Admission Usage Frequency" (`freq_cons_sus_prin`)
+- "Treatment Admission Motive" (`origen_ingreso_mod`)
+- "Psychiatric comorbidity" (`dg_cie_10_rec`)
+- "Drug Dependence Diagnosis" (`dg_trs_cons_sus_or`)
+- "Regional Location of Center" (`nombre_region`)
 - "Type of Center (Public)" (`tipo_centro_pub`)
 - "Sex" (`sexo_2`)
-- "Age at Admission to Treatment" (`edad_al_ing`)
-- "Date of Admission to Treatment" (`fech_ing_num`) 
+- "Admission Age" (`edad_al_ing`)
+- "Admission Date" (`fech_ing_num`) 
 - "Evaluation of the Therapeutic Process" (*)  (`evaluacindelprocesoteraputico`)
 - "Early Dropout (Against Staff Advice)" (`abandono_temprano_rec`) (Y)
 - "Residential Type of Plan" (`tipo_de_plan_res`) (Z)
-<!--- - "No. of Previous Treatments" (`prev_treat`) --->
+- "Tenure status of household" (`tenencia_de_la_vivienda_mod`) (*)
+- "Employment Status" (`condicion_ocupacional_corr`)
+
 
 <br>
 
-```{r tab1_descr_c1_baseline_vs_type_treatd,dpi = 96, message=F, error=T,eval=T, warnings=F}
-library(compareGroups)
-
-match.on_tot <- c("row", "hash_key","sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","edad_ini_cons","freq_cons_sus_prin","origen_ingreso_mod","dg_cie_10_rec","nombre_region","tipo_centro_pub","sexo_2","edad_al_ing","fech_ing_num","abandono_temprano_rec","tipo_de_plan_res","duplicates_filtered","dg_trs_cons_sus_or","evaluacindelprocesoteraputico")
+```{r tab1_descr_c1_baseline_vs_type_treatd,dpi = 96, message=F, error=T, eval=T, warnings=F}
+match.on_tot <- c("row", "hash_key","sus_principal_mod","sus_ini_mod_mvv","estado_conyugal_2","escolaridad_rec","edad_ini_cons","freq_cons_sus_prin","origen_ingreso_mod","dg_cie_10_rec","nombre_region","tipo_centro_pub","sexo_2","edad_al_ing","fech_ing_num","abandono_temprano_rec","tipo_de_plan_res","duplicates_filtered","dg_trs_cons_sus_or","evaluacindelprocesoteraputico", "tenencia_de_la_vivienda_mod", "condicion_ocupacional_corr")
 #dg_trs_cons_sus_or
 
 CONS_C1_df_dup_SEP_2020_match<-
@@ -466,6 +455,15 @@ CONS_C1_df_dup_SEP_2020_match<-
 dplyr::mutate(freq_cons_sus_prin=parse_factor(as.character(freq_cons_sus_prin),levels=c('Did not use', 'Less than 1 day a week','2 to 3 days a week','4 to 6 days a week','1 day a week or more','Daily'), ordered =T,trim_ws=T,include_na =F, locale=locale(encoding = "UTF-8"))) %>% 
   dplyr::mutate(evaluacindelprocesoteraputico=dplyr::case_when(grepl("1",as.character(evaluacindelprocesoteraputico))~'1-High Achievement',grepl("2",as.character(evaluacindelprocesoteraputico))~'2-Medium Achievement',grepl("3",as.character(evaluacindelprocesoteraputico))~'3-Minimum Achievement', TRUE~as.character(evaluacindelprocesoteraputico))) %>% 
   dplyr::mutate(evaluacindelprocesoteraputico=parse_factor(as.character(evaluacindelprocesoteraputico),levels=c('1-High Achievement', '2-Medium Achievement','3-Minimum Achievement'), ordered =T,trim_ws=T,include_na =F, locale=locale(encoding = "UTF-8"))) %>% 
+    dplyr::mutate(tenencia_de_la_vivienda_mod=
+                  factor(dplyr::case_when(tenencia_de_la_vivienda_mod=="Allegado"~"Stays temporarily with a relative",
+                                 tenencia_de_la_vivienda_mod=="Arrienda"~"Renting",
+                                 tenencia_de_la_vivienda_mod=="Cedida"~"Owner/Transferred dwellings/Pays Dividends",
+                                 tenencia_de_la_vivienda_mod=="Ocupación Irregular"~"Illegal Settlement",
+                                 tenencia_de_la_vivienda_mod=="Otros"~"Others",
+                                 tenencia_de_la_vivienda_mod=="Paga dividendo"~"Owner/Transferred dwellings/Pays Dividends",
+                                 tenencia_de_la_vivienda_mod=="Propia"~"Owner/Transferred dwellings/Pays Dividends",
+                                 T~NA_character_))) %>% 
   dplyr::select_(.dots = match.on_tot) %>% 
   dplyr::mutate(more_one_treat=factor(ifelse(duplicates_filtered>1,1,0))) %>% 
   data.table::data.table()
@@ -478,27 +476,32 @@ invisible("Decidí no incluir diagnóstico de enferemedad física, porque hay al
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 
-attr(CONS_C1_df_dup_SEP_2020_match$sus_ini_mod_mvv,"label")<-"Starting Substance"
+attr(CONS_C1_df_dup_SEP_2020_match$sus_principal_mod,"label")<-"Primary Substance at Admission"
+attr(CONS_C1_df_dup_SEP_2020_match$sus_ini_mod_mvv,"label")<-"First Substance Used"
 attr(CONS_C1_df_dup_SEP_2020_match$estado_conyugal_2,"label")<-"Marital Status"
 attr(CONS_C1_df_dup_SEP_2020_match$escolaridad_rec,"label")<-"Educational Attainment"
-attr(CONS_C1_df_dup_SEP_2020_match$edad_ini_cons,"label")<-"Age of Onset of Drug Use"
-attr(CONS_C1_df_dup_SEP_2020_match$freq_cons_sus_prin,"label")<-"Frequency of use of primary drug"
-attr(CONS_C1_df_dup_SEP_2020_match$origen_ingreso_mod,"label")<-"Motive of Admission to Treatment"
+attr(CONS_C1_df_dup_SEP_2020_match$edad_ini_cons,"label")<-"Substance Use Onset Age"
+attr(CONS_C1_df_dup_SEP_2020_match$freq_cons_sus_prin,"label")<-"Primary Substance at Admission Usage Frequency"
+attr(CONS_C1_df_dup_SEP_2020_match$origen_ingreso_mod,"label")<-"Treatment Admission Motive"
 attr(CONS_C1_df_dup_SEP_2020_match$dg_cie_10_rec,"label")<-"Psychiatric co-morbidity"
-attr(CONS_C1_df_dup_SEP_2020_match$nombre_region,"label")<-"Chilean Region of the Center"
+attr(CONS_C1_df_dup_SEP_2020_match$nombre_region,"label")<-"Regional Location of Center"
 attr(CONS_C1_df_dup_SEP_2020_match$tipo_centro_pub,"label")<-"Type of Center (Public)"
 attr(CONS_C1_df_dup_SEP_2020_match$sexo_2,"label")<-"Sex"
-attr(CONS_C1_df_dup_SEP_2020_match$edad_al_ing,"label")<-"Age at Admission"
-attr(CONS_C1_df_dup_SEP_2020_match$fech_ing_num,"label")<-"Date of Admission to Treatment"
+attr(CONS_C1_df_dup_SEP_2020_match$edad_al_ing,"label")<-"Admission Age"
+attr(CONS_C1_df_dup_SEP_2020_match$fech_ing_num,"label")<-"Admission Date"
 attr(CONS_C1_df_dup_SEP_2020_match$abandono_temprano_rec,"label")<-"Early Dropout"
 attr(CONS_C1_df_dup_SEP_2020_match$tipo_de_plan_res,"label")<-"Residential Type of Plan"
 attr(CONS_C1_df_dup_SEP_2020_match$duplicates_filtered,"label")<-"No. of Treatments in the Database"
-attr(CONS_C1_df_dup_SEP_2020_match$dg_trs_cons_sus_or,"label")<-"Drug Dependence"
+attr(CONS_C1_df_dup_SEP_2020_match$dg_trs_cons_sus_or,"label")<-"Drug Dependence Diagnosis"
 attr(CONS_C1_df_dup_SEP_2020_match$evaluacindelprocesoteraputico,"label")<-"Evaluation of the Therapeutic Process"
+attr(CONS_C1_df_dup_SEP_2020_match$condicion_ocupacional_corr,"label")<-"Employment Status"
+attr(CONS_C1_df_dup_SEP_2020_match$tenencia_de_la_vivienda_mod,"label")<-"Tenure status of household"
 
-knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
 
-table1_all <- suppressWarnings(compareGroups(tipo_de_plan_res ~ sus_ini_mod_mvv+ estado_conyugal_2+ escolaridad_rec+ edad_ini_cons+ freq_cons_sus_prin+ origen_ingreso_mod+ dg_cie_10_rec+ nombre_region+ tipo_centro_pub+ sexo_2+ dg_trs_cons_sus_or+ edad_al_ing+ fech_ing_num+ abandono_temprano_rec+ duplicates_filtered+ dg_trs_cons_sus_or+ evaluacindelprocesoteraputico, method= c(
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+
+table1_all <- suppressWarnings(compareGroups(tipo_de_plan_res ~ sus_principal_mod+ sus_ini_mod_mvv+ estado_conyugal_2+ escolaridad_rec+ edad_ini_cons+ freq_cons_sus_prin+ origen_ingreso_mod+ dg_cie_10_rec+ nombre_region+ tipo_centro_pub+ sexo_2+ dg_trs_cons_sus_or+ edad_al_ing+ fech_ing_num+ abandono_temprano_rec+ duplicates_filtered+ dg_trs_cons_sus_or+ evaluacindelprocesoteraputico+ condicion_ocupacional_corr+ tenencia_de_la_vivienda_mod, method= c(
+                                            sus_principal_mod=3,
                                             sus_ini_mod_mvv=3,
                                             estado_conyugal_2=3,
                                             escolaridad_rec=3,
@@ -520,7 +523,8 @@ table1_all <- suppressWarnings(compareGroups(tipo_de_plan_res ~ sus_ini_mod_mvv+
                        include.miss = T,
                        var.equal=T)
 )
-table1_more_one <- suppressWarnings(compareGroups(tipo_de_plan_res ~ sus_ini_mod_mvv+ estado_conyugal_2+ escolaridad_rec+ edad_ini_cons+ freq_cons_sus_prin+ origen_ingreso_mod+ dg_cie_10_rec+ dg_trs_cons_sus_or+ nombre_region+ tipo_centro_pub+ sexo_2+ dg_trs_cons_sus_or+ edad_al_ing+ fech_ing_num+ abandono_temprano_rec+ evaluacindelprocesoteraputico, method= c(
+table1_more_one <- suppressWarnings(compareGroups(tipo_de_plan_res ~ sus_principal_mod+ sus_ini_mod_mvv+ estado_conyugal_2+ escolaridad_rec+ edad_ini_cons+ freq_cons_sus_prin+ origen_ingreso_mod+ dg_cie_10_rec+ dg_trs_cons_sus_or+ nombre_region+ tipo_centro_pub+ sexo_2+ dg_trs_cons_sus_or+ edad_al_ing+ fech_ing_num+ abandono_temprano_rec+ evaluacindelprocesoteraputico+ condicion_ocupacional_corr+ tenencia_de_la_vivienda_mod, method= c(
+                                            sus_principal_mod=3,
                                             sus_ini_mod_mvv=3,
                                             estado_conyugal_2=3,
                                             escolaridad_rec=3,
@@ -542,7 +546,8 @@ table1_more_one <- suppressWarnings(compareGroups(tipo_de_plan_res ~ sus_ini_mod
                        var.equal=T,
                        subset= more_one_treat==1)
 )
-table1_only_one <- suppressWarnings(compareGroups(tipo_de_plan_res ~ sus_ini_mod_mvv+ estado_conyugal_2+ escolaridad_rec+ edad_ini_cons+ freq_cons_sus_prin+ origen_ingreso_mod+ dg_cie_10_rec+ dg_trs_cons_sus_or+ nombre_region+ tipo_centro_pub+ sexo_2+ dg_trs_cons_sus_or+ edad_al_ing+ fech_ing_num+ abandono_temprano_rec+ evaluacindelprocesoteraputico, method= c(
+table1_only_one <- suppressWarnings(compareGroups(tipo_de_plan_res ~ sus_principal_mod+ sus_ini_mod_mvv+ estado_conyugal_2+ escolaridad_rec+ edad_ini_cons+ freq_cons_sus_prin+ origen_ingreso_mod+ dg_cie_10_rec+ dg_trs_cons_sus_or+ nombre_region+ tipo_centro_pub+ sexo_2+ dg_trs_cons_sus_or+ edad_al_ing+ fech_ing_num+ abandono_temprano_rec+ evaluacindelprocesoteraputico+ tenencia_de_la_vivienda_mod, method= c(
+                                            sus_principal_mod=3,
                                             sus_ini_mod_mvv=3,
                                             estado_conyugal_2=3,
                                             escolaridad_rec=3,
@@ -575,7 +580,8 @@ pvals1 <- getResults(table1_all)
  export2md(restab1_all, size=11, first.strip=T, hide.no="no", position="center",
            format="html",caption= "Table 1. Summary descriptives at baseline, between Users with Residential and Ambulatory Treatments from 2010-2019",col.names=c("Variables","Residential", "Ambulatory", "p-value"))%>%
   kableExtra::add_footnote(c("Note. Continuous variables are presented as Medians and Percentiles 25 and 75 were shown;", "Categorical variables are presented as number (%)"), notation = "none")%>%
-  kableExtra::scroll_box(width = "100%", height = "375px")
+  kableExtra::scroll_box(width = "100%", height = "375px") %>% 
+   kableExtra::kable_classic()
 ```
 
 <br>
@@ -599,77 +605,13 @@ hetcor_mat<-hetcor(CONS_C1_df_dup_SEP_2020_match[,-c("hash_key","row","more_one_
 tiempo_despues_hetcor<-Sys.time()
 tiempo_hetcor<-tiempo_despues_hetcor-tiempo_antes_hetcor
 
-attr(hetcor_mat$correlations,"dimnames")[[2]][1]<-"Starting Substance"
-attr(hetcor_mat$correlations,"dimnames")[[2]][2]<-"Marital Status"
-attr(hetcor_mat$correlations,"dimnames")[[2]][3]<-"Educational Attainment"
-attr(hetcor_mat$correlations,"dimnames")[[2]][4]<-"Age of Onset of Drug Use"
-attr(hetcor_mat$correlations,"dimnames")[[2]][5]<-"Frequency of use of primary drug"
-attr(hetcor_mat$correlations,"dimnames")[[2]][6]<-"Motive of Admission to Treatment"
-attr(hetcor_mat$correlations,"dimnames")[[2]][7]<-"Psychiatric comorbidity"
-#attr(hetcor_mat$correlations,"dimnames")[[2]][8]<-"Physical comorbidity"
-attr(hetcor_mat$correlations,"dimnames")[[2]][8]<-"Chilean Region of the Center"
-attr(hetcor_mat$correlations,"dimnames")[[2]][9]<-"Type of Center (Public)"
-attr(hetcor_mat$correlations,"dimnames")[[2]][10]<-"Sex"
-attr(hetcor_mat$correlations,"dimnames")[[2]][11]<-"Age at Admission"
-attr(hetcor_mat$correlations,"dimnames")[[2]][12]<-"Date of Admission"
-attr(hetcor_mat$correlations,"dimnames")[[2]][13]<-"Early Drop out"
-attr(hetcor_mat$correlations,"dimnames")[[2]][14]<-"Residential Treatment"
-attr(hetcor_mat$correlations,"dimnames")[[2]][15]<-"Drug Dependence"
-attr(hetcor_mat$correlations,"dimnames")[[2]][16]<-"Evaluation of the Therapeutic Process"
-
-attr(hetcor_mat$correlations,"dimnames")[[1]][1]<-"Starting Substance"
-attr(hetcor_mat$correlations,"dimnames")[[1]][2]<-"Marital Status"
-attr(hetcor_mat$correlations,"dimnames")[[1]][3]<-"Educational Attainment"
-attr(hetcor_mat$correlations,"dimnames")[[1]][4]<-"Age of Onset of Drug Use"
-attr(hetcor_mat$correlations,"dimnames")[[1]][5]<-"Frequency of use of primary drug"
-attr(hetcor_mat$correlations,"dimnames")[[1]][6]<-"Motive of Admission to Treatment"
-attr(hetcor_mat$correlations,"dimnames")[[1]][7]<-"Psychiatric comorbidity"
-#attr(hetcor_mat$correlations,"dimnames")[[1]][8]<-"Physical comorbidity"
-attr(hetcor_mat$correlations,"dimnames")[[1]][8]<-"Chilean Region of the Center"
-attr(hetcor_mat$correlations,"dimnames")[[1]][9]<-"Type of Center (Public)"
-attr(hetcor_mat$correlations,"dimnames")[[1]][10]<-"Sex"
-attr(hetcor_mat$correlations,"dimnames")[[1]][11]<-"Age at Admission"
-attr(hetcor_mat$correlations,"dimnames")[[1]][12]<-"Date of Admission"
-attr(hetcor_mat$correlations,"dimnames")[[1]][13]<-"Early Drop out"
-attr(hetcor_mat$correlations,"dimnames")[[1]][14]<-"Residential Treatment"
-attr(hetcor_mat$correlations,"dimnames")[[1]][15]<-"Drug Dependence"
-attr(hetcor_mat$correlations,"dimnames")[[1]][16]<-"Evaluation of the Therapeutic Process"
-
-attr(hetcor_mat$tests,"dimnames")[[2]][1]<-"Starting Substance"
-attr(hetcor_mat$tests,"dimnames")[[2]][2]<-"Marital Status"
-attr(hetcor_mat$tests,"dimnames")[[2]][3]<-"Educational Attainment"
-attr(hetcor_mat$tests,"dimnames")[[2]][4]<-"Age of Onset of Drug Use"
-attr(hetcor_mat$tests,"dimnames")[[2]][5]<-"Frequency of use of primary drug"
-attr(hetcor_mat$tests,"dimnames")[[2]][6]<-"Motive of Admission to Treatment"
-attr(hetcor_mat$tests,"dimnames")[[2]][7]<-"Psychiatric comorbidity"
-#attr(hetcor_mat$tests,"dimnames")[[2]][8]<-"Physical comorbidity"
-attr(hetcor_mat$tests,"dimnames")[[2]][8]<-"Chilean Region of the Center"
-attr(hetcor_mat$tests,"dimnames")[[2]][9]<-"Type of Center (Public)"
-attr(hetcor_mat$tests,"dimnames")[[2]][10]<-"Sex"
-attr(hetcor_mat$tests,"dimnames")[[2]][11]<-"Age at Admission"
-attr(hetcor_mat$tests,"dimnames")[[2]][12]<-"Date of Admission"
-attr(hetcor_mat$tests,"dimnames")[[2]][13]<-"Early Drop out"
-attr(hetcor_mat$tests,"dimnames")[[2]][14]<-"Residential Treatment"
-attr(hetcor_mat$tests,"dimnames")[[2]][15]<-"Drug Dependence"
-attr(hetcor_mat$tests,"dimnames")[[2]][16]<-"Evaluation of the Therapeutic Process"
-
-attr(hetcor_mat$tests,"dimnames")[[1]][1]<-"Starting Substance"
-attr(hetcor_mat$tests,"dimnames")[[1]][2]<-"Marital Status"
-attr(hetcor_mat$tests,"dimnames")[[1]][3]<-"Educational Attainment"
-attr(hetcor_mat$tests,"dimnames")[[1]][4]<-"Age of Onset of Drug Use"
-attr(hetcor_mat$tests,"dimnames")[[1]][5]<-"Frequency of use of primary drug"
-attr(hetcor_mat$tests,"dimnames")[[1]][6]<-"Motive of Admission to Treatment"
-attr(hetcor_mat$tests,"dimnames")[[1]][7]<-"Psychiatric comorbidity"
-#attr(hetcor_mat$tests,"dimnames")[[1]][8]<-"Physical comorbidity"
-attr(hetcor_mat$tests,"dimnames")[[1]][8]<-"Chilean Region of the Center"
-attr(hetcor_mat$tests,"dimnames")[[1]][9]<-"Type of Center (Public)"
-attr(hetcor_mat$tests,"dimnames")[[1]][10]<-"Sex"
-attr(hetcor_mat$tests,"dimnames")[[1]][11]<-"Age at Admission"
-attr(hetcor_mat$tests,"dimnames")[[1]][12]<-"Date of Admission"
-attr(hetcor_mat$tests,"dimnames")[[1]][13]<-"Early Drop out"
-attr(hetcor_mat$tests,"dimnames")[[1]][14]<-"Residential Treatment"
-attr(hetcor_mat$tests,"dimnames")[[1]][15]<-"Drug Dependence"
-attr(hetcor_mat$tests,"dimnames")[[1]][16]<-"Evaluation of the Therapeutic Process"
+for (i in 1:length(match.on_tot[!match.on_tot %in% c("row","hash_key","more_one_treat","duplicates_filtered")])){
+    x<- match.on_tot[!match.on_tot %in% c("row","hash_key","more_one_treat","duplicates_filtered")][i]
+    attr(hetcor_mat$correlations,"dimnames")[[2]][i]<- attr(CONS_C1_df_dup_SEP_2020_match[[x]],"label")
+    attr(hetcor_mat$correlations,"dimnames")[[1]][i]<- attr(CONS_C1_df_dup_SEP_2020_match[[x]],"label")
+    attr(hetcor_mat$tests,"dimnames")[[2]][i]<- attr(CONS_C1_df_dup_SEP_2020_match[[x]],"label")
+    attr(hetcor_mat$tests,"dimnames")[[1]][i]<- attr(CONS_C1_df_dup_SEP_2020_match[[x]],"label")
+}
 
 hetcor_mat$tests[is.na(hetcor_mat$tests)]<-1
 

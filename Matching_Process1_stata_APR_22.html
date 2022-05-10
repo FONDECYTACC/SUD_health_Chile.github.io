@@ -1,0 +1,2605 @@
+<head>
+  <link rel="stylesheet" type="text/css" href="stmarkdown.css">
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML">
+</script>
+</head>
+<head>
+  <link rel="stylesheet" type="text/css" href="stmarkdown.css">
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML">
+</script>
+</head>
+<h1><a href="#database-step-1" id="database-step-1">Database (step 1)</a></h1>
+<p>Date created: 20:43:04 17 Apr 2022.</p>
+<p>Install commands that are unavailable or out of date.</p>
+<pre><code>. *&lt;&lt; dd_do : noout &gt; &gt;
+. clear all
+
+. *https://onlinelibrary.wiley.com/doi/epdf/10.1002/sim.8894
+. *https://pclambert.net/pdf/Stata_Nordic2019_Lambert.pdf
+. *https://slidetodoc.com/automated-reports-using-stata-chuck-huber-ph-d/
+. *~Mi unidad\Alvacast\SISTRAT 2019 (github)\_supp_mstates\stata\12874_2020_1192_MOESM1_ESM.docx
+. *https://opr.princeton.edu/workshops/Downloads/2015May_StataGraphicsKoffman.pdf
+. *http://www.bruunisejs.dk/StataHacks/My%20commands/matprint/matprint_demo/
+. *https://pure.au.dk/portal/files/140882936/ScientificWorkInStataGoneEasy.pdf
+. *https://www.stata.com/meeting/nordic-and-baltic18/slides/nordic-and-baltic18_Bruun.pdf
+. *https://github.com/dvorakt/TIER_exercises/blob/master/dyndoc_debt_growth/debt%20and%20growth%20stata%20dyndoc.do
+. 
+. cap noi which predictms
+c:\ado\plus\p\predictms.ado
+*! version 4.3.0 14mar2021 MJC
+
+. if _rc==111 {
+.         cap noi net install multistate, from(&quot;https://www.mjcrowther.co.uk/code/multistate&quot;) 
+.         }
+
+. cap noi which merlin
+c:\ado\plus\m\merlin.ado
+*! version 2.0.2 19mar2021 MJC
+
+. if _rc==111 {
+.         cap noi net install merlin, from(&quot;https://www.mjcrowther.co.uk/code/merlin/&quot;) 
+.         }
+
+. cap noi which sumat
+c:\ado\plus\s\sumat.ado
+*! Part of package matrixtools v. 0.28
+*! Support: Niels Henrik Bruun, niels.henrik.bruun@gmail.com
+*! 2021-01-03 toxl added
+
+. if _rc==111 {
+.         cap noi scc install matrixtools
+.         }
+
+. cap noi which estwrite
+c:\ado\plus\e\estwrite.ado
+*! version 1.2.4 04sep2009
+*! version 1.0.1 15may2007 (renamed from -eststo- to -estwrite-; -append- added)
+*! version 1.0.0 29apr2005 Ben Jann (ETH Zurich)
+
+. if _rc==111 {
+.         cap noi ssc install estwrite
+.         }
+
+. cap noi which winsor2
+c:\ado\plus\w\winsor2.ado
+*! Inspirit of -winsor-(NJ Cox) and -winsorizeJ-(J Caskey)
+*! Lian Yujun, arlionn@163.com, 2013-12-25
+*! 1.1 2014.12.16
+
+. if _rc==111 {
+.         cap noi ssc install winsor2
+.         }       
+
+.         
+</code></pre>
+<p>We need to obtain the file and the work folder.</p>
+<pre><code>. mata : st_numscalar(&quot;OK&quot;, direxists(&quot;/volumes/sdrive/data//&quot;))
+
+. if scalar(OK) == 1 {
+.         cap noi cd &quot;/volumes/sdrive/data//&quot;
+.         global pathdata &quot;/volumes/sdrive/data//&quot;
+.         di &quot;Location= ${pathdata}; Date: `c(current_date)', considering an OS `c(os)' for the user: `c(username)'&quot;
+. }
+
+. else display &quot;This file does not exist&quot;
+This file does not exist
+
+. 
+. mata : st_numscalar(&quot;OK&quot;, direxists(&quot;E:\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags\&quot;))
+
+. if scalar(OK) == 1 {
+.         cap noi cd &quot;E:\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags&quot;
+E:\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags
+.         global pathdata &quot;E:\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags&quot;
+.         global pathdata2 &quot;E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/&quot;
+.         di &quot;Location= ${pathdata}; Date: `c(current_date)', considering an OS `c(os)' for the user: `c(username)'&quot;
+Location= E:\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags; Date: 17 Apr 2022, considering an OS Windows for the user: andre
+. }
+
+. else display &quot;This file does not exist&quot;
+
+.         
+. mata : st_numscalar(&quot;OK&quot;, direxists(&quot;C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags\&quot;))
+
+. if scalar(OK) == 1 {
+.         cap noi cd &quot;C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)&quot;
+.         global pathdata &quot;C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags&quot;
+.         global pathdata2 &quot;C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/&quot;
+.         di &quot;Location= ${pathdata}; Date: `c(current_date)', considering an OS `c(os)' for the user: `c(username)'&quot;
+. }
+
+. else display &quot;This file does not exist&quot;
+This file does not exist
+
+. 
+. mata : st_numscalar(&quot;OK&quot;, direxists(&quot;C:\Users\andre\Desktop\_mult_state_ags\&quot;))
+
+. if scalar(OK) == 1 {
+.         cap noi cd &quot;C:\Users\andre\Desktop\_mult_state_ags&quot;
+.         global pathdata &quot;C:\Users\andre\Desktop\_mult_state_ags&quot;
+.         global pathdata2 &quot;C:/Users/andre/Desktop/_mult_state_ags/&quot;
+.         di &quot;Location= ${pathdata}; Date: `c(current_date)', considering an OS `c(os)' for the user: `c(username)'&quot;
+. }
+
+. else display &quot;This file does not exist&quot;
+This file does not exist
+
+. 
+. mata : st_numscalar(&quot;OK&quot;, direxists(&quot;C:\Users\CISS Fondecyt\OneDrive\Documentos\&quot;))
+
+. if scalar(OK) == 1 {
+.         cap noi cd &quot;C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags&quot;
+.         global pathdata &quot;C:\Users\CISS Fondecyt\Mi unidad\Alvacast\SISTRAT 2019 (github)\_mult_state_ags&quot;
+.         global pathdata2 &quot;C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/&quot;
+.         di &quot;Location= ${pathdata}; Date: `c(current_date)', considering an OS `c(os)' for the user: `c(username)'&quot;
+. }
+
+. else display &quot;This file does not exist&quot;
+This file does not exist
+
+. 
+</code></pre>
+<p>Path data= E:\Mi unidad\Alvacast\SISTRAT 2019 (github)_mult_state_ags;</p>
+<p>Timestamp: 17 Apr 2022, considering that is a Windows OS for the username: andre</p>
+<p>First we open the files and drop the variables that would mistakenly amplify the sample, and define labels.</p>
+<p>The file is located and named as: E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/five_st_msprep_apr22.dta</p>
+<p>Then we define the transition matrix:</p>
+<style>
+ #tbl2280563963585 tbody>tr:nth-child(1)>th:nth-child(1){text-align: left;} #tbl2280563963585 tbody>tr:nth-child(1)>th:nth-child(2){text-align: left;} #
+> tbl2280563963585 tbody>tr:nth-child(1)>th:nth-child(3){text-align: right;} #tbl2280563963585 tbody>tr:nth-child(1)>th:nth-child(4){text-align: right;}
+>  #tbl2280563963585 tbody>tr:nth-child(1)>th:nth-child(5){text-align: right;} #tbl2280563963585 tbody>tr:nth-child(1)>th:nth-child(6){text-align: right
+> ;} #tbl2280563963585 tbody>tr:nth-child(1)>th:nth-child(7){text-align: right;}
+ #tbl2280563963585 tbody>tr:nth-child(2)>th:nth-child(1){text-align: left;} #tbl2280563963585 tbody>tr:nth-child(2)>th:nth-child(2){text-align: left;} #
+> tbl2280563963585 tbody>tr:nth-child(2)>th:nth-child(3){text-align: right;} #tbl2280563963585 tbody>tr:nth-child(2)>th:nth-child(4){text-align: right;}
+>  #tbl2280563963585 tbody>tr:nth-child(2)>th:nth-child(5){text-align: right;} #tbl2280563963585 tbody>tr:nth-child(2)>th:nth-child(6){text-align: right
+> ;} #tbl2280563963585 tbody>tr:nth-child(2)>th:nth-child(7){text-align: right;}
+ #tbl2280563963585 tbody>tr:nth-child(1)>td:nth-child(1){text-align: left;} #tbl2280563963585 tbody>tr:nth-child(1)>td:nth-child(2){text-align: left;} #
+> tbl2280563963585 tbody>tr:nth-child(1)>td:nth-child(3){text-align: right;} #tbl2280563963585 tbody>tr:nth-child(1)>td:nth-child(4){text-align: right;}
+>  #tbl2280563963585 tbody>tr:nth-child(1)>td:nth-child(5){text-align: right;} #tbl2280563963585 tbody>tr:nth-child(1)>td:nth-child(6){text-align: right
+> ;} #tbl2280563963585 tbody>tr:nth-child(1)>td:nth-child(7){text-align: right;}
+ #tbl2280563963585 tbody>tr:nth-child(2)>td:nth-child(1){text-align: left;} #tbl2280563963585 tbody>tr:nth-child(2)>td:nth-child(2){text-align: left;} #
+> tbl2280563963585 tbody>tr:nth-child(2)>td:nth-child(3){text-align: right;} #tbl2280563963585 tbody>tr:nth-child(2)>td:nth-child(4){text-align: right;}
+>  #tbl2280563963585 tbody>tr:nth-child(2)>td:nth-child(5){text-align: right;} #tbl2280563963585 tbody>tr:nth-child(2)>td:nth-child(6){text-align: right
+> ;} #tbl2280563963585 tbody>tr:nth-child(2)>td:nth-child(7){text-align: right;}
+ #tbl2280563963585 tbody>tr:nth-child(3)>td:nth-child(1){text-align: left;} #tbl2280563963585 tbody>tr:nth-child(3)>td:nth-child(2){text-align: left;} #
+> tbl2280563963585 tbody>tr:nth-child(3)>td:nth-child(3){text-align: right;} #tbl2280563963585 tbody>tr:nth-child(3)>td:nth-child(4){text-align: right;}
+>  #tbl2280563963585 tbody>tr:nth-child(3)>td:nth-child(5){text-align: right;} #tbl2280563963585 tbody>tr:nth-child(3)>td:nth-child(6){text-align: right
+> ;} #tbl2280563963585 tbody>tr:nth-child(3)>td:nth-child(7){text-align: right;}
+ #tbl2280563963585 tbody>tr:nth-child(4)>td:nth-child(1){text-align: left;} #tbl2280563963585 tbody>tr:nth-child(4)>td:nth-child(2){text-align: left;} #
+> tbl2280563963585 tbody>tr:nth-child(4)>td:nth-child(3){text-align: right;} #tbl2280563963585 tbody>tr:nth-child(4)>td:nth-child(4){text-align: right;}
+>  #tbl2280563963585 tbody>tr:nth-child(4)>td:nth-child(5){text-align: right;} #tbl2280563963585 tbody>tr:nth-child(4)>td:nth-child(6){text-align: right
+> ;} #tbl2280563963585 tbody>tr:nth-child(4)>td:nth-child(7){text-align: right;}
+ #tbl2280563963585 tbody>tr:nth-child(5)>td:nth-child(1){text-align: left;} #tbl2280563963585 tbody>tr:nth-child(5)>td:nth-child(2){text-align: left;} #
+> tbl2280563963585 tbody>tr:nth-child(5)>td:nth-child(3){text-align: right;} #tbl2280563963585 tbody>tr:nth-child(5)>td:nth-child(4){text-align: right;}
+>  #tbl2280563963585 tbody>tr:nth-child(5)>td:nth-child(5){text-align: right;} #tbl2280563963585 tbody>tr:nth-child(5)>td:nth-child(6){text-align: right
+> ;} #tbl2280563963585 tbody>tr:nth-child(5)>td:nth-child(7){text-align: right;}
+#tbl2280563963585 {width: 95%; margin-left: auto; margin-right: auto;}
+#tbl2280563963585 tr:last-child>th{border-bottom: 2px solid black;}
+</style>
+<table id=tbl2280563963585 width="95%">
+<thead>
+<caption>Matriz de 4 estados</caption>
+<caption>Matriz de 4 estados</caption>
+<tr><th>&nbsp;&nbsp;   </th><th>                   </th><th>   to</th><th>                  </th><th>                   </th><th>                   </th
+> ><th>                   </th></tr>
+<tr><th>&nbsp;&nbsp;   </th><th>                   </th><th>start</th><th>Readmission_status</th><th>Readmission2_status</th><th>Readmission3_status</th
+> ><th>Readmission4_status</th></tr>
+</thead>
+<tbody>
+<tr><td>from</td><td>start              </td><td>     </td><td>                 1</td><td>                   </td><td>                   </td><td>      
+>              </td></tr>
+<tr><td>&nbsp;&nbsp;   </td><td>Readmission_status </td><td>     </td><td>                  </td><td>                  2</td><td>                   </td
+> ><td>                   </td></tr>
+<tr><td>&nbsp;&nbsp;   </td><td>Readmission2_status</td><td>     </td><td>                  </td><td>                   </td><td>                  3</td
+> ><td>                   </td></tr>
+<tr><td>&nbsp;&nbsp;   </td><td>Readmission3_status</td><td>     </td><td>                  </td><td>                   </td><td>                   </td
+> ><td>                  4</td></tr>
+<tr><td>&nbsp;&nbsp;   </td><td>Readmission4_status</td><td>     </td><td>                  </td><td>                   </td><td>                   </td
+> ><td>                   </td></tr>
+</tbody>
+</table>
+<p>and transform the database in a long format, according to the specifications and the transition matrix.</p>
+<pre><code>
+
+
+
+
+</code></pre>
+<p>Finally, the database adopt the following structure:</p>
+<pre><code>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</code></pre>
+<p><img src="auto_jun.svg" width="800" ></p>
+<pre><code></code></pre>
+<p>Set the database as a renewal time.</p>
+<pre><code>. *stset _stop, enter(_start) failure(_status=1) //* scale(365.25) id(id) 
+. 
+. *file:///G:/Mi%20unidad/Alvacast/SISTRAT%202019%20(github)/_supp_mstates/stata/crowther2017%20(1).pdf
+. stset _time, failure(_status==1)
+
+     failure event:  _status == 1
+obs. time interval:  (0, _time]
+ exit on or before:  failure
+
+------------------------------------------------------------------------------
+     31,455  total observations
+          0  exclusions
+------------------------------------------------------------------------------
+     31,455  observations remaining, representing
+      9,203  failures in single-record/single-failure data
+   43733824  total analysis time at risk and under observation
+                                                at risk from t =         0
+                                     earliest observed entry t =         0
+                                          last observed exit t =     4,592
+
+. 
+</code></pre>
+<pre><code>. stphplot if _trans==1, by(tipo_de_plan_res_1) ///
+&gt;         scheme(sj) graphregion(color(white)) ///
+&gt;         legend(pos(1) ring(0) col(1) symysize(zero) keygap(1) symxsize(large) order( 1 2) lab(1 &quot;Ambulatory&quot;) lab(2 &quot;Residential&quot;) size(small)) ///
+&gt;         note(&quot;{it:Note. Means and 95% CI's}&quot;,size(vsmall)) ///
+&gt;         title(&quot;Loglog Survival versus logtime by Treatment Modality (Transition =1)&quot;, size(small)) name(stphplot_res_1, replace) ///
+&gt;         saving(stphplot_res_1_22.gph, replace)
+
+         failure _d:  _status == 1
+   analysis time _t:  _time
+(file stphplot_res_1_22.gph saved)
+
+. 
+. stphplot if _trans==2, by(tipo_de_plan_res_1) ///
+&gt;         scheme(sj) graphregion(color(white)) ///
+&gt;         legend(pos(1) ring(0) col(1) symysize(zero) keygap(1) symxsize(large) order( 1 2) lab(1 &quot;Ambulatory&quot;) lab(2 &quot;Residential&quot;) size(small)) ///
+&gt;         note(&quot;{it:Note. Means and 95% CI's}&quot;,size(vsmall)) ///
+&gt;         title(&quot;Loglog Survival versus logtime by Treatment Modality (Transition =2)&quot;, size(small)) name(stphplot_res_2, replace) ///
+&gt;         saving(stphplot_res_2_22.gph, replace)
+
+         failure _d:  _status == 1
+   analysis time _t:  _time
+(file stphplot_res_2_22.gph saved)
+
+.         
+. stphplot if _trans==3, by(tipo_de_plan_res_1) ///
+&gt;         scheme(sj) graphregion(color(white)) ///
+&gt;         legend(pos(1) ring(0) col(1) symysize(zero) keygap(1) symxsize(large) order( 1 2) lab(1 &quot;Ambulatory&quot;) lab(2 &quot;Residential&quot;) size(small)) ///
+&gt;         note(&quot;{it:Note. Means and 95% CI's}&quot;,size(vsmall)) ///
+&gt;         title(&quot;Loglog Survival versus logtime by Treatment Modality (Transition =3)&quot;, size(small)) name(stphplot_res_3, replace) ///
+&gt;         saving(stphplot_res_3_22.gph, replace)
+
+         failure _d:  _status == 1
+   analysis time _t:  _time
+(file stphplot_res_3_22.gph saved)
+
+.         
+. stphplot if _trans==4, by(tipo_de_plan_res_1) ///
+&gt;         scheme(sj) graphregion(color(white)) ///
+&gt;         legend(pos(1) ring(0) col(1) symysize(zero) keygap(1) symxsize(large) order( 1 2) lab(1 &quot;Ambulatory&quot;) lab(2 &quot;Residential&quot;) size(small)) ///
+&gt;         note(&quot;{it:Note. Means and 95% CI's}&quot;,size(vsmall)) ///
+&gt;         title(&quot;Loglog Survival versus logtime by Treatment Modality (Transition =4)&quot;, size(small)) name(stphplot_res_4, replace) ///
+&gt;         saving(stphplot_res_4_22.gph, replace)
+
+         failure _d:  _status == 1
+   analysis time _t:  _time
+(file stphplot_res_4_22.gph saved)
+
+</code></pre>
+<pre><code>. graph combine &quot;${pathdata}\stphplot_res_1_22.gph&quot; &quot;${pathdata}\stphplot_res_2_22.gph&quot; &quot;${pathdata}\stphplot_res_3_22.gph&quot; &quot;${pathdata}\stphplot_res_4_
+&gt; 22.gph&quot;, ///
+&gt; colfirst ycommon xcommon iscale(*.7) imargin(tiny) graphregion(color(gs16)) ///
+&gt; title(&quot;Combination of −ln{−ln(survival)} vs. ln(analysis time)&quot; &quot;Renewal time&quot;, size(medium)) cols(2) /// *subtitle(&quot;{it:}&quot;, size(small)) ///
+&gt; note(&quot;{it:              Note: Ordered by columns, from up to down, left to right}&quot;, size(tiny)) ///
+&gt; name(_trans_ph_ln_surv_time_res_simp, replace)
+
+. graph export &quot;_trans_ph_ln_surv_time_res_simple_22.png&quot;, as(png) replace width(2000) height(1000)
+(file _trans_ph_ln_surv_time_res_simple_22.png written in PNG format)
+
+. graph export &quot;_trans_ph_ln_surv_time_res_simple_22.pdf&quot;, as(pdf) replace //*width(2000) height(2000) orientation(landscape)
+(file _trans_ph_ln_surv_time_res_simple_22.pdf written in PDF format)
+
+</code></pre>
+<p><img src="_tr_ph_ln_surv_t_res_simple_221.svg" width="800" ></p>
+<pre><code>. stphplot if _trans==1, by(tipo_de_plan_res_1) ///
+&gt;         scheme(sj) graphregion(color(white)) ///
+&gt;         legend(pos(1) ring(0) col(1) symysize(zero) keygap(1) symxsize(large) order( 1 2) lab(1 &quot;Ambulatory&quot;) lab(2 &quot;Residential&quot;) size(small)) ///
+&gt;         note(&quot;{it:Note. Means and 95% CI's}&quot;,size(vsmall)) ///
+&gt;         title(&quot;Loglog Survival versus logtime by Treatment Modality (Transition =1)&quot;, size(small)) name(stphplot_res_1_adj, replace) ///
+&gt;         saving(stphplot_res_1_adj_22.gph, replace)
+
+         failure _d:  _status == 1
+   analysis time _t:  _time
+(file stphplot_res_1_adj_22.gph saved)
+
+. 
+. stphplot if _trans==2, by(tipo_de_plan_res_1) ///
+&gt;         scheme(sj) graphregion(color(white)) ///
+&gt;         legend(pos(1) ring(0) col(1) symysize(zero) keygap(1) symxsize(large) order( 1 2) lab(1 &quot;Ambulatory&quot;) lab(2 &quot;Residential&quot;) size(small)) ///
+&gt;         note(&quot;{it:Note. Means and 95% CI's}&quot;,size(vsmall)) ///
+&gt;         title(&quot;Loglog Survival versus logtime by Treatment Modality (Transition =2)&quot;, size(small)) name(stphplot_res_2_adj, replace) ///
+&gt;         saving(stphplot_res_2_adj_22.gph, replace)
+
+         failure _d:  _status == 1
+   analysis time _t:  _time
+(file stphplot_res_2_adj_22.gph saved)
+
+.         
+. stphplot if _trans==3, by(tipo_de_plan_res_1) ///
+&gt;         scheme(sj) graphregion(color(white)) ///
+&gt;         legend(pos(1) ring(0) col(1) symysize(zero) keygap(1) symxsize(large) order( 1 2) lab(1 &quot;Ambulatory&quot;) lab(2 &quot;Residential&quot;) size(small)) ///
+&gt;         note(&quot;{it:Note. Means and 95% CI's}&quot;,size(vsmall)) ///
+&gt;         title(&quot;Loglog Survival versus logtime by Treatment Modality (Transition =3)&quot;, size(small)) name(stphplot_res_3_adj, replace) ///
+&gt;         saving(stphplot_res_3_adj_22.gph, replace)
+
+         failure _d:  _status == 1
+   analysis time _t:  _time
+(file stphplot_res_3_adj_22.gph saved)
+
+.         
+. stphplot if _trans==4, by(tipo_de_plan_res_1) ///
+&gt;         scheme(sj) graphregion(color(white)) ///
+&gt;         legend(pos(1) ring(0) col(1) symysize(zero) keygap(1) symxsize(large) order( 1 2) lab(1 &quot;Ambulatory&quot;) lab(2 &quot;Residential&quot;) size(small)) ///
+&gt;         note(&quot;{it:Note. Means and 95% CI's}&quot;,size(vsmall)) ///
+&gt;         title(&quot;Loglog Survival versus logtime by Treatment Modality (Transition =4)&quot;, size(small)) name(stphplot_res_4_adj, replace) ///
+&gt;         saving(stphplot_res_4_adj_22.gph, replace)
+
+         failure _d:  _status == 1
+   analysis time _t:  _time
+(file stphplot_res_4_adj_22.gph saved)
+
+</code></pre>
+<pre><code>. graph combine &quot;${pathdata}\stphplot_res_1_adj_22.gph&quot; &quot;${pathdata}\stphplot_res_2_adj_22.gph&quot; &quot;${pathdata}\stphplot_res_3_adj_22.gph&quot; &quot;${pathdata}\stp
+&gt; hplot_res_4_adj_22.gph&quot;, ///
+&gt; colfirst ycommon xcommon iscale(*.7) imargin(tiny) graphregion(color(gs16)) ///
+&gt; title(&quot;Combination of −ln{−ln(survival)} vs. ln(analysis time)&quot; &quot;Renewal time&quot;, size(medium)) cols(2) /// 
+&gt; subtitle(&quot;{it: Controlling for treatment outcomes &amp; time spent in the last transition}&quot;, size(small)) ///
+&gt; note(&quot;{it:              Note: Ordered by columns, from up to down, left to right}&quot;, size(tiny)) ///
+&gt; name(_trans_ph_ln_surv_time_res_adj, replace) 
+
+. graph export &quot;_trans_ph_ln_surv_time_res_adj_22.png&quot;, as(png) replace width(2000) height(1000)
+(file _trans_ph_ln_surv_time_res_adj_22.png written in PNG format)
+
+. graph export &quot;_trans_ph_ln_surv_time_res_adj_22.pdf&quot;, as(pdf) replace //*width(2000) height(2000) orientation(landscape)
+(file _trans_ph_ln_surv_time_res_adj_22.pdf written in PDF format)
+
+</code></pre>
+<p><img src="_tr_ph_ln_surv_t_res_adj_221.svg" width="800" ></p>
+<p>=============================================================================</p>
+<h2><a href="#aalen-johanssen-non-parametric-transition-probabilities" id="aalen-johanssen-non-parametric-transition-probabilities">Aalen-Johanssen, Non-parametric transition probabilities</a></h2>
+<p>=============================================================================</p>
+<p>Generated an Aalen-Johanssen estimator to obtain the transition probabilities of the data from the time 0 (from admission). For this, we separated the transition probabilities according to the setting at baseline.</p>
+<pre><code>. *http://fmwww.bc.edu/repec/bocode/m/msaj.ado
+. msaj, transmatrix(mat_five_states) by(tipo_de_plan_res_1) ci
+
+. rename (P_AJ_*) (ajprob*)
+
+</code></pre>
+<p>To generate figures, we select the valid transitions</p>
+<p><img src="auto1_jun_22.svg" width="800" ></p>
+<p><img src="auto2_jun_22.svg" width="800" ></p>
+<p><img src="auto3_jun_22.svg" width="800" ></p>
+<p><img src="auto4_jun_22.svg" width="800" ></p>
+<p>Calculate transition probabilities from a determined states in times 90, 365 (1 year), 1095 (3 years) &amp; 1826 (5 years).</p>
+<pre><code>variable trp_ajprob* not found
+
+
+
+</code></pre>
+<p>variable _t2 not found</p>
+<p>(16,572 real changes made)</p>
+<p>(file msaj_12_jun_22.gph saved)</p>
+<p><img src="auto5_jun_22.svg" width="800" ></p>
+<p>(file msaj_23_jun_22.gph saved)</p>
+<p><img src="auto6_jun_22.svg" width="800" ></p>
+<p>(file msaj_34_jun_22.gph saved)</p>
+<p><img src="auto7_jun_22.svg" width="800" ></p>
+<p>(file msaj_45_jun_22.gph saved)</p>
+<p><img src="auto8_jun_22.svg" width="800" ></p>
+<p>=============================================================================</p>
+<h2><a href="#parametric-models" id="parametric-models">Parametric Models</a></h2>
+<p>=============================================================================</p>
+<h3><a href="#intercept-only" id="intercept-only">Intercept-only</a></h3>
+<p>We generated a list of parametric and intercept-only survival models with different distributions (Exponential, Weibull, Gompertz, Log-logistic, Log-normal &amp; Generalized gamma. Aditionally, we defined a series of Royston-Parmar models with a function of restricted cubic splines, in which the knots (#df -1) are defined in each percentile of the distribution. We saved the estimates in the file called `parmodels_m_jun_22&rsquo;.</p>
+<pre><code>. forvalues i = 1/4 {
+  2.         // Exponential
+.         set seed 2125
+  3.         qui cap merlin (_time if _trans == `i', family(exponential, fail(_status)))
+  4.         estimates store m`i'_exp
+  5.         *estimates save &quot;${pathdata2}parmodels.ster&quot;, replace   
+.         // Weibull
+.         set seed 2125
+  6.         qui cap merlin (_time if _trans == `i', family(weibull, fail(_status)))
+  7.         estimates store m`i'_weib
+  8.         *estimates save &quot;${pathdata2}parmodels.ster&quot;, append    
+.         // Gompertz
+.         set seed 2125
+  9.         qui cap merlin (_time if _trans == `i', family(gompertz, fail(_status)))
+ 10.         estimates store m`i'_gom
+ 11.         *estimates save &quot;${pathdata2}parmodels.ster&quot;, append    
+.         // Log logistic
+.         set seed 2125
+ 12.         qui cap merlin (_time if _trans == `i', family(loglogistic, fail(_status)))
+ 13.         estimates store m`i'_logl
+ 14.         *estimates save &quot;${pathdata2}parmodels.ster&quot;, append    
+.         // Log normal
+.         set seed 2125
+ 15.         qui cap merlin (_time if _trans == `i', family(lognormal, fail(_status)))
+ 16.         estimates store m`i'_logn
+ 17.         *estimates save &quot;${pathdata2}parmodels.ster&quot;, append    
+.         // Generalised gamma
+.         set seed 2125
+ 18.         qui cap merlin (_time if _trans == `i', family(ggamma, fail(_status)))
+ 19.         estimates store m`i'_ggam
+ 20.         *estimates save &quot;${pathdata2}parmodels.ster&quot;, append    
+.         // Royston Parmar models
+.         set seed 2125
+ 21.         forvalues j=2/10 {
+ 22.                 qui cap merlin (_time if _trans == `i', family(rp, df(`j') fail(_status)))
+ 23.                 estimates store m`i'_rp`j'
+ 24.                 *estimates save &quot;${pathdata2}parmodels.ster&quot;, append    
+.         }       
+ 25. }
+
+. 
+. estwrite _all using &quot;${pathdata2}parmodels_m_jun_22.sters&quot;, replace
+(saving m1_exp)
+(saving m1_weib)
+(saving m1_gom)
+(saving m1_logl)
+(saving m1_logn)
+(saving m1_ggam)
+(saving m1_rp2)
+(saving m1_rp3)
+(saving m1_rp4)
+(saving m1_rp5)
+(saving m1_rp6)
+(saving m1_rp7)
+(saving m1_rp8)
+(saving m1_rp9)
+(saving m1_rp10)
+(saving m2_exp)
+(saving m2_weib)
+(saving m2_gom)
+(saving m2_logl)
+(saving m2_logn)
+(saving m2_ggam)
+(saving m2_rp2)
+(saving m2_rp3)
+(saving m2_rp4)
+(saving m2_rp5)
+(saving m2_rp6)
+(saving m2_rp7)
+(saving m2_rp8)
+(saving m2_rp9)
+(saving m2_rp10)
+(saving m3_exp)
+(saving m3_weib)
+(saving m3_gom)
+(saving m3_logl)
+(saving m3_logn)
+(saving m3_ggam)
+(saving m3_rp2)
+(saving m3_rp3)
+(saving m3_rp4)
+(saving m3_rp5)
+(saving m3_rp6)
+(saving m3_rp7)
+(saving m3_rp8)
+(saving m3_rp9)
+(saving m3_rp10)
+(saving m4_exp)
+(saving m4_weib)
+(saving m4_gom)
+(saving m4_logl)
+(saving m4_logn)
+(saving m4_ggam)
+(saving m4_rp2)
+(saving m4_rp3)
+(saving m4_rp4)
+(saving m4_rp5)
+(saving m4_rp6)
+(saving m4_rp7)
+(saving m4_rp8)
+(saving m4_rp9)
+(saving m4_rp10)
+(file E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/parmodels_m_jun_22.sters saved)
+
+</code></pre>
+<p>Selected the models with best AICs.</p>
+<pre><code></code></pre>
+<table border="0" width="*">
+<tr><td colspan=7><hr></td></tr>
+<tr><td>            </td><td>        comb</td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td></tr>
+<tr><td>            </td><td>           N</td><td>         ll0</td><td>          ll</td><td>          df</td><td>         AIC</td><td>         BIC</td></tr>
+<tr><td colspan=7><hr></td></tr>
+<tr><td>m1_exp      </td><td>        6373</td><td>           .</td><td>    -61086.6</td><td>           1</td><td>    122175.2</td><td>      122182</td></tr>
+<tr><td>m1_weib     </td><td>        6373</td><td>           .</td><td>   -60843.07</td><td>           2</td><td>    121690.1</td><td>    121703.7</td></tr>
+<tr><td>m1_gom      </td><td>        6373</td><td>           .</td><td>   -60392.93</td><td>           2</td><td>    120789.9</td><td>    120803.4</td></tr>
+<tr><td>m1_logl     </td><td>        6373</td><td>           .</td><td>   -60672.36</td><td>           2</td><td>    121348.7</td><td>    121362.2</td></tr>
+<tr><td>m1_logn     </td><td>        6373</td><td>           .</td><td>   -60672.36</td><td>           2</td><td>    121348.7</td><td>    121362.2</td></tr>
+<tr><td>m1_ggam     </td><td>        6373</td><td>           .</td><td>   -60278.63</td><td>           3</td><td>    120563.3</td><td>    120583.5</td></tr>
+<tr><td>m1_rp2      </td><td>        6373</td><td>           .</td><td>   -60173.42</td><td>           3</td><td>    120352.8</td><td>    120373.1</td></tr>
+<tr><td>m1_rp3      </td><td>        6373</td><td>           .</td><td>   -60168.93</td><td>           4</td><td>    120345.9</td><td>    120372.9</td></tr>
+<tr><td>m1_rp4      </td><td>        6373</td><td>           .</td><td>   -60162.34</td><td>           5</td><td>    120334.7</td><td>    120368.5</td></tr>
+<tr><td>m1_rp5      </td><td>        6373</td><td>           .</td><td>   -60152.55</td><td>           6</td><td>    120317.1</td><td>    120357.7</td></tr>
+<tr><td>m1_rp6      </td><td>        6373</td><td>           .</td><td>    -60154.2</td><td>           7</td><td>    120322.4</td><td>    120369.7</td></tr>
+<tr><td>m1_rp7      </td><td>        6373</td><td>           .</td><td>   -60149.37</td><td>           8</td><td>    120314.7</td><td>    120368.8</td></tr>
+<tr><td>m1_rp8      </td><td>        6373</td><td>           .</td><td>   -60150.28</td><td>           9</td><td>    120318.6</td><td>    120379.4</td></tr>
+<tr><td>m1_rp9      </td><td>        6373</td><td>           .</td><td>   -60148.99</td><td>          10</td><td>      120318</td><td>    120385.6</td></tr>
+<tr><td>m1_rp10     </td><td>        6373</td><td>           .</td><td>   -60148.44</td><td>          11</td><td>    120318.9</td><td>    120393.2</td></tr>
+<tr><td>m2_exp      </td><td>        1995</td><td>           .</td><td>   -18338.76</td><td>           1</td><td>    36679.51</td><td>    36685.11</td></tr>
+<tr><td>m2_weib     </td><td>        1995</td><td>           .</td><td>   -18302.19</td><td>           2</td><td>    36608.39</td><td>    36619.58</td></tr>
+<tr><td>m2_gom      </td><td>        1995</td><td>           .</td><td>   -18193.47</td><td>           2</td><td>    36390.93</td><td>    36402.13</td></tr>
+<tr><td>m2_logl     </td><td>        1995</td><td>           .</td><td>   -18241.15</td><td>           2</td><td>    36486.31</td><td>     36497.5</td></tr>
+<tr><td>m2_logn     </td><td>        1995</td><td>           .</td><td>   -18182.21</td><td>           2</td><td>    36368.41</td><td>    36379.61</td></tr>
+<tr><td>m2_ggam     </td><td>        1995</td><td>           .</td><td>   -18165.38</td><td>           3</td><td>    36336.75</td><td>    36353.55</td></tr>
+<tr><td>m2_rp2      </td><td>        1995</td><td>           .</td><td>      -18130</td><td>           3</td><td>    36266.01</td><td>     36282.8</td></tr>
+<tr><td>m2_rp3      </td><td>        1995</td><td>           .</td><td>   -18120.75</td><td>           4</td><td>    36249.51</td><td>     36271.9</td></tr>
+<tr><td>m2_rp4      </td><td>        1995</td><td>           .</td><td>   -18116.91</td><td>           5</td><td>    36243.83</td><td>    36271.82</td></tr>
+<tr><td>m2_rp5      </td><td>        1995</td><td>           .</td><td>   -18115.63</td><td>           6</td><td>    36243.26</td><td>    36276.85</td></tr>
+<tr><td>m2_rp6      </td><td>        1995</td><td>           .</td><td>   -18114.77</td><td>           7</td><td>    36243.54</td><td>    36282.73</td></tr>
+<tr><td>m2_rp7      </td><td>        1995</td><td>           .</td><td>      -18115</td><td>           8</td><td>    36245.99</td><td>    36290.78</td></tr>
+<tr><td>m2_rp8      </td><td>        1995</td><td>           .</td><td>    -18113.8</td><td>           9</td><td>    36245.59</td><td>    36295.98</td></tr>
+<tr><td>m2_rp9      </td><td>        1995</td><td>           .</td><td>   -18113.46</td><td>          10</td><td>    36246.91</td><td>    36302.89</td></tr>
+<tr><td>m2_rp10     </td><td>        1995</td><td>           .</td><td>   -18113.22</td><td>          11</td><td>    36248.43</td><td>    36310.02</td></tr>
+<tr><td>m3_exp      </td><td>         635</td><td>           .</td><td>   -5720.417</td><td>           1</td><td>    11442.83</td><td>    11447.29</td></tr>
+<tr><td>m3_weib     </td><td>         635</td><td>           .</td><td>   -5716.987</td><td>           2</td><td>    11437.97</td><td>    11446.88</td></tr>
+<tr><td>m3_gom      </td><td>         635</td><td>           .</td><td>   -5692.142</td><td>           2</td><td>    11388.28</td><td>    11397.19</td></tr>
+<tr><td>m3_logl     </td><td>         635</td><td>           .</td><td>   -5696.023</td><td>           2</td><td>    11396.05</td><td>    11404.95</td></tr>
+<tr><td>m3_logn     </td><td>         635</td><td>           .</td><td>   -5678.407</td><td>           2</td><td>    11360.81</td><td>    11369.72</td></tr>
+<tr><td>m3_ggam     </td><td>         635</td><td>           .</td><td>   -5674.402</td><td>           3</td><td>     11354.8</td><td>    11368.16</td></tr>
+<tr><td>m3_rp2      </td><td>         635</td><td>           .</td><td>   -5666.162</td><td>           3</td><td>    11338.32</td><td>    11351.68</td></tr>
+<tr><td>m3_rp3      </td><td>         635</td><td>           .</td><td>    -5664.29</td><td>           4</td><td>    11336.58</td><td>    11354.39</td></tr>
+<tr><td>m3_rp4      </td><td>         635</td><td>           .</td><td>   -5664.209</td><td>           5</td><td>    11338.42</td><td>    11360.69</td></tr>
+<tr><td>m3_rp5      </td><td>         635</td><td>           .</td><td>   -5663.967</td><td>           6</td><td>    11339.93</td><td>    11366.66</td></tr>
+<tr><td>m3_rp6      </td><td>         635</td><td>           .</td><td>   -5663.988</td><td>           7</td><td>    11341.98</td><td>    11373.15</td></tr>
+<tr><td>m3_rp7      </td><td>         635</td><td>           .</td><td>   -5662.601</td><td>           8</td><td>     11341.2</td><td>    11376.83</td></tr>
+<tr><td>m3_rp8      </td><td>         635</td><td>           .</td><td>   -5661.871</td><td>           9</td><td>    11341.74</td><td>    11381.82</td></tr>
+<tr><td>m3_rp9      </td><td>         635</td><td>           .</td><td>   -5660.968</td><td>          10</td><td>    11341.94</td><td>    11386.47</td></tr>
+<tr><td>m3_rp10     </td><td>         635</td><td>           .</td><td>   -5660.797</td><td>          11</td><td>    11343.59</td><td>    11392.58</td></tr>
+<tr><td>m4_exp      </td><td>         200</td><td>           .</td><td>   -1768.082</td><td>           1</td><td>    3538.165</td><td>    3541.463</td></tr>
+<tr><td>m4_weib     </td><td>         200</td><td>           .</td><td>    -1767.66</td><td>           2</td><td>     3539.32</td><td>    3545.917</td></tr>
+<tr><td>m4_gom      </td><td>         200</td><td>           .</td><td>   -92086.07</td><td>           0</td><td>    184172.1</td><td>    184172.1</td></tr>
+<tr><td>m4_logl     </td><td>         200</td><td>           .</td><td>   -1762.057</td><td>           2</td><td>    3528.113</td><td>     3534.71</td></tr>
+<tr><td>m4_logn     </td><td>         200</td><td>           .</td><td>   -1759.607</td><td>           2</td><td>    3523.213</td><td>     3529.81</td></tr>
+<tr><td>m4_ggam     </td><td>         200</td><td>           .</td><td>   -1759.607</td><td>           2</td><td>    3523.213</td><td>     3529.81</td></tr>
+<tr><td>m4_rp2      </td><td>         200</td><td>           .</td><td>   -1758.174</td><td>           3</td><td>    3522.348</td><td>    3532.243</td></tr>
+<tr><td>m4_rp3      </td><td>         200</td><td>           .</td><td>    -1755.19</td><td>           4</td><td>     3518.38</td><td>    3531.574</td></tr>
+<tr><td>m4_rp4      </td><td>         200</td><td>           .</td><td>   -1755.118</td><td>           5</td><td>    3520.237</td><td>    3536.728</td></tr>
+<tr><td>m4_rp5      </td><td>         200</td><td>           .</td><td>   -1755.052</td><td>           6</td><td>    3522.105</td><td>    3541.895</td></tr>
+<tr><td>m4_rp6      </td><td>         200</td><td>           .</td><td>   -1754.754</td><td>           7</td><td>    3523.508</td><td>    3546.596</td></tr>
+<tr><td>m4_rp7      </td><td>         200</td><td>           .</td><td>   -1754.406</td><td>           8</td><td>    3524.812</td><td>    3551.198</td></tr>
+<tr><td>m4_rp8      </td><td>         200</td><td>           .</td><td>   -1754.201</td><td>           9</td><td>    3526.402</td><td>    3556.087</td></tr>
+<tr><td>m4_rp9      </td><td>         200</td><td>           .</td><td>   -1753.976</td><td>          10</td><td>    3527.952</td><td>    3560.935</td></tr>
+<tr><td>m4_rp10     </td><td>         200</td><td>           .</td><td>    -1754.08</td><td>          11</td><td>     3530.16</td><td>    3566.441</td></tr>
+<tr><td colspan=7><hr></td></tr>
+</table>
+<pre><code></code></pre>
+<p>In case of the more flexible parametric models (non-standard), we selected the models that showed the best trade-off between lower complexity and better fit, and this is why we also considered the BIC. If a model with less parameters had greater or equal AIC but also had better BIC (&lt;=2), we favoured the model with less parameters.</p>
+<h3><a href="#with-covariates" id="with-covariates">With covariates</a></h3>
+<p>Posteriorly, we compared AICs by adding the setting at baseline, with the outcome of each treatment as (treatment completion, in 0/1 format) users pass through each transition. Equally, we added the time of arrival as a covariate to each transition (excluding the first). We saved the estimates in `parmodels_m2_jun_22&rsquo;.</p>
+<pre><code>. 
+. foreach num of numlist 1/4 {
+  2. gen td_`num'=TD_`num'
+  3. replace td_`num'=0 if _from&gt;`num'|_from&lt;`num'   
+  4. }
+(2,091 real changes made)
+(16,079 missing values generated)
+(18,034 real changes made)
+(24,835 missing values generated)
+(25,749 real changes made)
+(28,915 missing values generated)
+(29,263 real changes made)
+
+. * similares a los TD.1 en stata que son transition specific covariates. 
+</code></pre>
+<pre><code>. local stname `&quot; &quot;tipo_de_plan_res_1 TD_1 &quot; &quot;tipo_de_plan_res_1 TD_1 TD_2 _start&quot; &quot;tipo_de_plan_res_1 TD_1 TD_2 TD_3 _start&quot; &quot;tipo_de_plan_res_1 TD_1 T
+&gt; D_2 TD_3 TD_4 _start&quot; &quot;' 
+
+. 
+. forvalues i = 1/4 {
+  2.         gettoken state stname : stname 
+  3.         // Exponential
+.         set seed 2125
+  4.         qui cap merlin (_time `state' if _trans == `i', family(exponential, fail(_status)))
+  5.         estimates store m2_`i'_exp
+  6.         *estimates save &quot;${pathdata2}parmodels.ster&quot;, append    
+.         // Weibull
+.         set seed 2125
+  7.         qui cap merlin (_time `state' if _trans == `i', family(weibull, fail(_status)))
+  8.         estimates store m2_`i'_weib
+  9.         *estimates save &quot;${pathdata2}parmodels.ster&quot;, append    
+.         // Gompertz
+.         set seed 2125
+ 10.         qui cap merlin (_time `state' if _trans == `i', family(gompertz, fail(_status)))
+ 11.         estimates store m2_`i'_gom
+ 12.         *estimates save &quot;${pathdata2}parmodels.ster&quot;, append    
+.         // Log logistic
+.         set seed 2125
+ 13.         qui cap merlin (_time `state' if _trans == `i', family(loglogistic, fail(_status)))
+ 14.         estimates store m2_`i'_logl
+ 15.         *estimates save &quot;${pathdata2}parmodels.ster&quot;, append    
+.         // Log normal
+.         set seed 2125
+ 16.         qui cap merlin (_time `state' if _trans == `i', family(lognormal, fail(_status)))
+ 17.         estimates store m2_`i'_logn
+ 18.         *estimates save &quot;${pathdata2}parmodels.ster&quot;, append    
+.         // Generalised gamma
+.         set seed 2125
+ 19.         qui cap merlin (_time `state' if _trans == `i', family(ggamma, fail(_status)))
+ 20.         estimates store m2_`i'_ggam
+ 21.         *estimates save &quot;${pathdata2}parmodels.ster&quot;, append    
+.         // Royston Parmar models
+.         set seed 2125
+ 22.         forvalues j=2/10 {
+ 23.                 qui cap merlin (_time `state' if _trans == `i', family(rp, df(`j') fail(_status)))
+ 24.                 estimates store m2_`i'_rp`j'
+ 25.                 *estimates save &quot;${pathdata2}parmodels.ster&quot;, append    
+.         }       
+ 26. }
+
+. 
+. estwrite _all using &quot;${pathdata2}parmodels_m2_jun_22.sters&quot;, replace
+(saving m2_1_exp)
+(saving m2_1_weib)
+(saving m2_1_gom)
+(saving m2_1_logl)
+(saving m2_1_logn)
+(saving m2_1_ggam)
+(saving m2_1_rp2)
+(saving m2_1_rp3)
+(saving m2_1_rp4)
+(saving m2_1_rp5)
+(saving m2_1_rp6)
+(saving m2_1_rp7)
+(saving m2_1_rp8)
+(saving m2_1_rp9)
+(saving m2_1_rp10)
+(saving m2_2_exp)
+(saving m2_2_weib)
+(saving m2_2_gom)
+(saving m2_2_logl)
+(saving m2_2_logn)
+(saving m2_2_ggam)
+(saving m2_2_rp2)
+(saving m2_2_rp3)
+(saving m2_2_rp4)
+(saving m2_2_rp5)
+(saving m2_2_rp6)
+(saving m2_2_rp7)
+(saving m2_2_rp8)
+(saving m2_2_rp9)
+(saving m2_2_rp10)
+(saving m2_3_exp)
+(saving m2_3_weib)
+(saving m2_3_gom)
+(saving m2_3_logl)
+(saving m2_3_logn)
+(saving m2_3_ggam)
+(saving m2_3_rp2)
+(saving m2_3_rp3)
+(saving m2_3_rp4)
+(saving m2_3_rp5)
+(saving m2_3_rp6)
+(saving m2_3_rp7)
+(saving m2_3_rp8)
+(saving m2_3_rp9)
+(saving m2_3_rp10)
+(saving m2_4_exp)
+(saving m2_4_weib)
+(saving m2_4_gom)
+(saving m2_4_logl)
+(saving m2_4_logn)
+(saving m2_4_ggam)
+(saving m2_4_rp2)
+(saving m2_4_rp3)
+(saving m2_4_rp4)
+(saving m2_4_rp5)
+(saving m2_4_rp6)
+(saving m2_4_rp7)
+(saving m2_4_rp8)
+(saving m2_4_rp9)
+(saving m2_4_rp10)
+(file E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/parmodels_m2_jun_22.sters saved)
+
+</code></pre>
+<p>Selected the models with lower fit indices.</p>
+<pre><code></code></pre>
+<table border="0" width="*">
+<tr><td colspan=7><hr></td></tr>
+<tr><td>            </td><td>        comb</td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td></tr>
+<tr><td>            </td><td>           N</td><td>         ll0</td><td>          ll</td><td>          df</td><td>         AIC</td><td>         BIC</td></tr>
+<tr><td colspan=7><hr></td></tr>
+<tr><td>m2_1_exp    </td><td>        6373</td><td>           .</td><td>   -60960.15</td><td>           3</td><td>    121926.3</td><td>    121946.6</td></tr>
+<tr><td>m2_1_weib   </td><td>        6373</td><td>           .</td><td>   -60718.32</td><td>           4</td><td>    121444.6</td><td>    121471.7</td></tr>
+<tr><td>m2_1_gom    </td><td>        6373</td><td>           .</td><td>    -4438012</td><td>           0</td><td>     8876023</td><td>     8876023</td></tr>
+<tr><td>m2_1_logl   </td><td>        6373</td><td>           .</td><td>   -60520.78</td><td>           4</td><td>    121049.6</td><td>    121076.6</td></tr>
+<tr><td>m2_1_logn   </td><td>        6373</td><td>           .</td><td>   -60520.78</td><td>           4</td><td>    121049.6</td><td>    121076.6</td></tr>
+<tr><td>m2_1_ggam   </td><td>        6373</td><td>           .</td><td>   -60031.52</td><td>           5</td><td>      120073</td><td>    120106.8</td></tr>
+<tr><td>m2_1_rp2    </td><td>        6373</td><td>           .</td><td>   -60042.98</td><td>           5</td><td>      120096</td><td>    120129.8</td></tr>
+<tr><td>m2_1_rp3    </td><td>        6373</td><td>           .</td><td>    -60038.2</td><td>           6</td><td>    120088.4</td><td>      120129</td></tr>
+<tr><td>m2_1_rp4    </td><td>        6373</td><td>           .</td><td>   -60031.41</td><td>           7</td><td>    120076.8</td><td>    120124.1</td></tr>
+<tr><td>m2_1_rp5    </td><td>        6373</td><td>           .</td><td>   -60021.72</td><td>           8</td><td>    120059.4</td><td>    120113.5</td></tr>
+<tr><td>m2_1_rp6    </td><td>        6373</td><td>           .</td><td>   -60023.34</td><td>           9</td><td>    120064.7</td><td>    120125.5</td></tr>
+<tr><td>m2_1_rp7    </td><td>        6373</td><td>           .</td><td>   -60018.47</td><td>          10</td><td>    120056.9</td><td>    120124.5</td></tr>
+<tr><td>m2_1_rp8    </td><td>        6373</td><td>           .</td><td>   -60019.37</td><td>          11</td><td>    120060.7</td><td>    120135.1</td></tr>
+<tr><td>m2_1_rp9    </td><td>        6373</td><td>           .</td><td>   -60018.08</td><td>          12</td><td>    120060.2</td><td>    120141.3</td></tr>
+<tr><td>m2_1_rp10   </td><td>        6373</td><td>           .</td><td>   -60017.53</td><td>          13</td><td>    120061.1</td><td>    120148.9</td></tr>
+<tr><td>m2_2_exp    </td><td>        1995</td><td>           .</td><td>   -18329.38</td><td>           5</td><td>    36668.77</td><td>    36696.76</td></tr>
+<tr><td>m2_2_weib   </td><td>        1995</td><td>           .</td><td>   -18290.27</td><td>           6</td><td>    36592.53</td><td>    36626.12</td></tr>
+<tr><td>m2_2_gom    </td><td>        1995</td><td>           .</td><td>   -18174.83</td><td>           6</td><td>    36361.66</td><td>    36395.25</td></tr>
+<tr><td>m2_2_logl   </td><td>        1995</td><td>           .</td><td>   -18221.79</td><td>           6</td><td>    36455.59</td><td>    36489.18</td></tr>
+<tr><td>m2_2_logn   </td><td>        1995</td><td>           .</td><td>   -18158.32</td><td>           6</td><td>    36328.65</td><td>    36362.24</td></tr>
+<tr><td>m2_2_ggam   </td><td>        1995</td><td>           .</td><td>   -18137.23</td><td>           7</td><td>    36288.46</td><td>    36327.65</td></tr>
+<tr><td>m2_2_rp2    </td><td>        1995</td><td>           .</td><td>   -18110.56</td><td>           7</td><td>    36235.13</td><td>    36274.32</td></tr>
+<tr><td>m2_2_rp3    </td><td>        1995</td><td>           .</td><td>   -18100.45</td><td>           8</td><td>     36216.9</td><td>    36261.68</td></tr>
+<tr><td>m2_2_rp4    </td><td>        1995</td><td>           .</td><td>   -18096.62</td><td>           9</td><td>    36211.24</td><td>    36261.63</td></tr>
+<tr><td>m2_2_rp5    </td><td>        1995</td><td>           .</td><td>   -18095.31</td><td>          10</td><td>    36210.62</td><td>    36266.61</td></tr>
+<tr><td>m2_2_rp6    </td><td>        1995</td><td>           .</td><td>   -18094.45</td><td>          11</td><td>     36210.9</td><td>    36272.48</td></tr>
+<tr><td>m2_2_rp7    </td><td>        1995</td><td>           .</td><td>   -18094.67</td><td>          12</td><td>    36213.35</td><td>    36280.53</td></tr>
+<tr><td>m2_2_rp8    </td><td>        1995</td><td>           .</td><td>   -18093.48</td><td>          13</td><td>    36212.96</td><td>    36285.74</td></tr>
+<tr><td>m2_2_rp9    </td><td>        1995</td><td>           .</td><td>   -18093.14</td><td>          14</td><td>    36214.29</td><td>    36292.66</td></tr>
+<tr><td>m2_2_rp10   </td><td>        1995</td><td>           .</td><td>   -18092.91</td><td>          15</td><td>    36215.81</td><td>    36299.79</td></tr>
+<tr><td>m2_3_exp    </td><td>         635</td><td>           .</td><td>   -5716.222</td><td>           6</td><td>    11444.44</td><td>    11471.17</td></tr>
+<tr><td>m2_3_weib   </td><td>         635</td><td>           .</td><td>   -5712.607</td><td>           7</td><td>    11439.21</td><td>    11470.39</td></tr>
+<tr><td>m2_3_gom    </td><td>         635</td><td>           .</td><td>   -79558.85</td><td>           6</td><td>    159129.7</td><td>    159156.4</td></tr>
+<tr><td>m2_3_logl   </td><td>         635</td><td>           .</td><td>   -5687.959</td><td>           7</td><td>    11389.92</td><td>    11421.09</td></tr>
+<tr><td>m2_3_logn   </td><td>         635</td><td>           .</td><td>   -5666.764</td><td>           7</td><td>    11347.53</td><td>     11378.7</td></tr>
+<tr><td>m2_3_ggam   </td><td>         635</td><td>           .</td><td>   -5657.262</td><td>           8</td><td>    11330.52</td><td>    11366.15</td></tr>
+<tr><td>m2_3_rp2    </td><td>         635</td><td>           .</td><td>   -5659.817</td><td>           8</td><td>    11335.63</td><td>    11371.26</td></tr>
+<tr><td>m2_3_rp3    </td><td>         635</td><td>           .</td><td>   -5657.791</td><td>           9</td><td>    11333.58</td><td>    11373.67</td></tr>
+<tr><td>m2_3_rp4    </td><td>         635</td><td>           .</td><td>   -5657.715</td><td>          10</td><td>    11335.43</td><td>    11379.97</td></tr>
+<tr><td>m2_3_rp5    </td><td>         635</td><td>           .</td><td>   -5657.485</td><td>          11</td><td>    11336.97</td><td>    11385.96</td></tr>
+<tr><td>m2_3_rp6    </td><td>         635</td><td>           .</td><td>   -5657.504</td><td>          12</td><td>    11339.01</td><td>    11392.45</td></tr>
+<tr><td>m2_3_rp7    </td><td>         635</td><td>           .</td><td>   -5656.065</td><td>          13</td><td>    11338.13</td><td>    11396.03</td></tr>
+<tr><td>m2_3_rp8    </td><td>         635</td><td>           .</td><td>   -5655.321</td><td>          14</td><td>    11338.64</td><td>    11400.99</td></tr>
+<tr><td>m2_3_rp9    </td><td>         635</td><td>           .</td><td>   -5654.415</td><td>          15</td><td>    11338.83</td><td>    11405.64</td></tr>
+<tr><td>m2_3_rp10   </td><td>         635</td><td>           .</td><td>    -5654.25</td><td>          16</td><td>     11340.5</td><td>    11411.76</td></tr>
+<tr><td>m2_4_exp    </td><td>         200</td><td>           .</td><td>   -1765.685</td><td>           7</td><td>     3545.37</td><td>    3568.458</td></tr>
+<tr><td>m2_4_weib   </td><td>         200</td><td>           .</td><td>   -1764.783</td><td>           8</td><td>    3545.566</td><td>    3571.952</td></tr>
+<tr><td>m2_4_gom    </td><td>         200</td><td>           .</td><td>     -360746</td><td>           0</td><td>      721492</td><td>      721492</td></tr>
+<tr><td>m2_4_logl   </td><td>         200</td><td>           .</td><td>   -1757.921</td><td>           8</td><td>    3531.843</td><td>     3558.23</td></tr>
+<tr><td>m2_4_logn   </td><td>         200</td><td>           .</td><td>   -1754.384</td><td>           8</td><td>    3524.768</td><td>    3551.154</td></tr>
+<tr><td>m2_4_ggam   </td><td>         200</td><td>           .</td><td>   -1754.031</td><td>           9</td><td>    3526.062</td><td>    3555.746</td></tr>
+<tr><td>m2_4_rp2    </td><td>         200</td><td>           .</td><td>   -1753.783</td><td>           9</td><td>    3525.565</td><td>     3555.25</td></tr>
+<tr><td>m2_4_rp3    </td><td>         200</td><td>           .</td><td>   -1750.572</td><td>          10</td><td>    3521.145</td><td>    3554.128</td></tr>
+<tr><td>m2_4_rp4    </td><td>         200</td><td>           .</td><td>   -1750.492</td><td>          11</td><td>    3522.984</td><td>    3559.266</td></tr>
+<tr><td>m2_4_rp5    </td><td>         200</td><td>           .</td><td>   -1750.435</td><td>          12</td><td>    3524.871</td><td>    3564.451</td></tr>
+<tr><td>m2_4_rp6    </td><td>         200</td><td>           .</td><td>   -1750.153</td><td>          13</td><td>    3526.307</td><td>    3569.185</td></tr>
+<tr><td>m2_4_rp7    </td><td>         200</td><td>           .</td><td>   -1749.831</td><td>          14</td><td>    3527.662</td><td>    3573.839</td></tr>
+<tr><td>m2_4_rp8    </td><td>         200</td><td>           .</td><td>   -1749.639</td><td>          15</td><td>    3529.278</td><td>    3578.753</td></tr>
+<tr><td>m2_4_rp9    </td><td>         200</td><td>           .</td><td>   -1749.444</td><td>          16</td><td>    3530.889</td><td>    3583.662</td></tr>
+<tr><td>m2_4_rp10   </td><td>         200</td><td>           .</td><td>   -1749.553</td><td>          17</td><td>    3533.106</td><td>    3589.177</td></tr>
+<tr><td colspan=7><hr></td></tr>
+</table>
+<pre><code>. estread &quot;${pathdata2}parmodels_m2_jun_22.sters&quot;
+
+-----------------------------------------------------------------------------
+        name | command      depvar       npar  title 
+-------------+---------------------------------------------------------------
+    m2_1_exp | merlin       no depvar       3  Fixed effects regression model
+   m2_1_weib | merlin       no depvar       4  Fixed effects regression model
+    m2_1_gom | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logl | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logn | merlin       no depvar       4  Fixed effects regression model
+   m2_1_ggam | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp2 | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp3 | merlin       no depvar       6  Fixed effects regression model
+    m2_1_rp4 | merlin       no depvar       7  Fixed effects regression model
+    m2_1_rp5 | merlin       no depvar       8  Fixed effects regression model
+    m2_1_rp6 | merlin       no depvar       9  Fixed effects regression model
+    m2_1_rp7 | merlin       no depvar      10  Fixed effects regression model
+    m2_1_rp8 | merlin       no depvar      11  Fixed effects regression model
+    m2_1_rp9 | merlin       no depvar      12  Fixed effects regression model
+   m2_1_rp10 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_exp | merlin       no depvar       5  Fixed effects regression model
+   m2_2_weib | merlin       no depvar       6  Fixed effects regression model
+    m2_2_gom | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logl | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logn | merlin       no depvar       6  Fixed effects regression model
+   m2_2_ggam | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp2 | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp3 | merlin       no depvar       8  Fixed effects regression model
+    m2_2_rp4 | merlin       no depvar       9  Fixed effects regression model
+    m2_2_rp5 | merlin       no depvar      10  Fixed effects regression model
+    m2_2_rp6 | merlin       no depvar      11  Fixed effects regression model
+    m2_2_rp7 | merlin       no depvar      12  Fixed effects regression model
+    m2_2_rp8 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_rp9 | merlin       no depvar      14  Fixed effects regression model
+   m2_2_rp10 | merlin       no depvar      15  Fixed effects regression model
+    m2_3_exp | merlin       no depvar       6  Fixed effects regression model
+   m2_3_weib | merlin       no depvar       7  Fixed effects regression model
+    m2_3_gom | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logl | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logn | merlin       no depvar       7  Fixed effects regression model
+   m2_3_ggam | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp2 | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp3 | merlin       no depvar       9  Fixed effects regression model
+    m2_3_rp4 | merlin       no depvar      10  Fixed effects regression model
+    m2_3_rp5 | merlin       no depvar      11  Fixed effects regression model
+    m2_3_rp6 | merlin       no depvar      12  Fixed effects regression model
+    m2_3_rp7 | merlin       no depvar      13  Fixed effects regression model
+    m2_3_rp8 | merlin       no depvar      14  Fixed effects regression model
+    m2_3_rp9 | merlin       no depvar      15  Fixed effects regression model
+   m2_3_rp10 | merlin       no depvar      16  Fixed effects regression model
+    m2_4_exp | merlin       no depvar       7  Fixed effects regression model
+   m2_4_weib | merlin       no depvar       8  Fixed effects regression model
+    m2_4_gom | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logl | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logn | merlin       no depvar       8  Fixed effects regression model
+   m2_4_ggam | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp2 | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp3 | merlin       no depvar      10  Fixed effects regression model
+    m2_4_rp4 | merlin       no depvar      11  Fixed effects regression model
+    m2_4_rp5 | merlin       no depvar      12  Fixed effects regression model
+    m2_4_rp6 | merlin       no depvar      13  Fixed effects regression model
+    m2_4_rp7 | merlin       no depvar      14  Fixed effects regression model
+    m2_4_rp8 | merlin       no depvar      15  Fixed effects regression model
+    m2_4_rp9 | merlin       no depvar      16  Fixed effects regression model
+   m2_4_rp10 | merlin       no depvar      17  Fixed effects regression model
+-----------------------------------------------------------------------------
+
+. 
+. 
+. local models `&quot; &quot;m2_1_ggam&quot; &quot;m2_1_rp5&quot; &quot;m2_2_ggam&quot; &quot;m2_2_rp4&quot; &quot;m2_3_ggam&quot; &quot;m2_3_rp2&quot; &quot;m2_4_logn&quot; &quot;m2_4_rp3&quot;&quot;' 
+
+. *to check the number of parameters to request
+. local stname `&quot; &quot;std&quot; &quot;rp&quot; &quot;std&quot; &quot;rp&quot; &quot;std2&quot; &quot;rp&quot; &quot;std2&quot; &quot;rp&quot; &quot;' 
+
+. foreach model in `models' {
+  2.                 scalar HR =.
+  3.                 scalar HR_lo =.
+  4.                 scalar HR_up =.
+  5.                 scalar par1 =.
+  6.                 scalar par1_lo =.
+  7.                 scalar par1_up =.
+  8.                 scalar par2 =.
+  9.                 scalar par2_lo =.
+ 10.                 scalar par2_up =.
+ 11.                 *max knots selected
+.                 scalar knot_n1 =.
+ 12.                 scalar knot_n2 =.
+ 13.                 scalar knot_n3 =.
+ 14.                 scalar knot_n4 =.
+ 15.                 scalar knot_n5 =.
+ 16.                 scalar knot_n6 =.
+ 17.                 
+.                 gettoken std_rp stname : stname 
+ 18.         cap qui noi estimates restore `model'
+ 19.                 *di e(ll)
+.                 *di e(N)
+.                 *di e(knots1)
+.                 scalar knot = e(knots1)
+ 20.                 di &quot;Knots are placed in the following log(t):`=scalar(knot)'&quot;
+ 21.                 cap qui ereturn display
+ 22.                 *cap qui noi matrix list r(table)
+.                 *di r(table)[1,1]
+.                 *di r(table)[5,1]
+.                 *di r(table)[6,1]
+.                 * %5.2f 
+.                 scalar HR = exp(r(table)[&quot;b&quot;,&quot;_cmp_1_1_1:_cons&quot;])
+ 23.                 scalar HR= round(`=scalar(HR)', .01)
+ 24.                 scalar HR_lo = exp(r(table)[&quot;ll&quot;,&quot;_cmp_1_1_1:_cons&quot;])
+ 25.                 scalar HR_lo= round(`=scalar(HR_lo)', .01)
+ 26.                 scalar HR_up = exp(r(table)[&quot;ul&quot;,&quot;_cmp_1_1_1:_cons&quot;])
+ 27.                 scalar HR_up = round(`=scalar(HR_up)', .01)
+ 28.                 
+.                 scalar cons =round(r(table)[&quot;b&quot;,&quot;cons1: _cons&quot;], .01)
+ 29.                 scalar cons_lo=round(r(table)[&quot;ll&quot;,&quot;cons1: _cons&quot;], .01)
+ 30.                 scalar cons_up=round(r(table)[&quot;ul&quot;,&quot;cons1: _cons&quot;], .01)
+ 31.                         
+.         if &quot;`std_rp'&quot; == &quot;std2&quot; {
+ 32.                         scalar par1 =round(r(table)[&quot;b&quot;,&quot;dap1_1: _cons&quot;], .01)
+ 33.                         scalar par1_lo=round(r(table)[&quot;ll&quot;,&quot;dap1_1: _cons&quot;], .01)
+ 34.                         scalar par1_up=round(r(table)[&quot;ul&quot;,&quot;dap1_1: _cons&quot;], .01)
+ 35.                         forval i = 1/6 {
+ 36.                                 scalar knot_n`count' = .
+ 37.                                 }
+ 38.                         }
+ 39.         if &quot;`std_rp'&quot; == &quot;std&quot; {
+ 40.                 scalar par1 =round(r(table)[&quot;b&quot;,&quot;dap1_1: _cons&quot;], .01)
+ 41.                         scalar par1_lo=round(r(table)[&quot;ll&quot;,&quot;dap1_1: _cons&quot;], .01)
+ 42.                         scalar par1_up=round(r(table)[&quot;ul&quot;,&quot;dap1_1: _cons&quot;], .01)
+ 43.                         scalar par2 =round(r(table)[&quot;b&quot;,&quot;dap1_2: _cons&quot;], .01)
+ 44.                         scalar par2_lo=round(r(table)[&quot;ll&quot;,&quot;dap1_2: _cons&quot;], .01)
+ 45.                         scalar par2_up=round(r(table)[&quot;ul&quot;,&quot;dap1_2: _cons&quot;], .01)
+ 46.                         forval i = 1/6 {
+ 47.                                 scalar knot_n`count' = .
+ 48.                                 }
+ 49.                         } 
+ 50.         if &quot;`std_rp'&quot; == &quot;rp&quot; {
+ 51.                                                 
+.                         *identify the knots:                            
+.                                         tokenize &quot;`=scalar(knot)'&quot;, parse(&quot; &quot;) // `1', `2', ... will hold the elements of the big macro
+ 52.                                         local done = 0
+ 53.                                         local i = 0
+ 54.                                         local count = 0
+ 55.                                         while !`done' {  
+ 56.                                            local ++i
+ 57.                                                 local next = &quot;``i''&quot;
+ 58.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
+ 59.                                            // Include elements that are not the parsing character itself.
+.                                                  if (&quot;`next'&quot; != &quot;,&quot;) &amp; (!`done') {
+ 60.                                                    local ++count
+ 61.                                                    scalar knot_n`count' = &quot;`next'&quot;
+ 62.                                                 }  
+ 63.                                         }
+ 64.                                         //
+.                                         di &quot;`count' knots&quot;
+ 65.                                         forval i = 1/`count' {
+ 66.                                           scalar knot_n`i' = round(`=scalar(knot_n`i')',.01)
+ 67.                                           di &quot;`=scalar(knot_n`i')'&quot;
+ 68.                                         }                       
+ 69.                         }       
+ 70.                         
+. cap noi matrix comb_`model' = (e(ll), e(N), `=scalar(HR)', `=scalar(HR_lo)',  `=scalar(HR_up)', `=scalar(cons)', `=scalar(cons_lo)', `=scalar(cons_up)
+&gt; ', `=scalar(par1)', `=scalar(par1_lo)', `=scalar(par1_up)', `=scalar(par2)', `=scalar(par2_lo)', `=scalar(par2_up)', `=scalar(knot_n1)', `=scalar(knot
+&gt; _n2)', `=scalar(knot_n3)', `=scalar(knot_n4)', `=scalar(knot_n5)', `=scalar(knot_n6)')
+ 71. matrix rownames comb_`model' = `model'
+ 72. }
+(results m2_1_ggam are active now)
+Knots are placed in the following log(t):.
+(results m2_1_rp5 are active now)
+Knots are placed in the following log(t):0 5.488938 6.054439 6.570883 7.088409 8.243546
+6 knots
+0
+5.49
+6.05
+6.57
+7.09
+8.24
+(results m2_2_ggam are active now)
+Knots are placed in the following log(t):.
+(results m2_2_rp4 are active now)
+Knots are placed in the following log(t):.6931472 5.549076 6.148468 6.767343 8.104401
+5 knots
+.6900000000000001
+5.55
+6.15
+6.77
+8.1
+(results m2_3_ggam are active now)
+Knots are placed in the following log(t):.
+(results m2_3_rp2 are active now)
+Knots are placed in the following log(t):.6931472 6.12905 7.885329
+3 knots
+.6900000000000001
+6.13
+7.890000000000001
+(results m2_4_logn are active now)
+Knots are placed in the following log(t):.
+(results m2_4_rp3 are active now)
+Knots are placed in the following log(t):1.609438 5.66296 6.388561 7.803435
+4 knots
+1.61
+5.66
+6.390000000000001
+7.8
+
+. 
+. matrix comb_bs = (comb_m2_1_ggam \ comb_m2_1_rp5 \ comb_m2_2_ggam \ comb_m2_2_rp4 \ comb_m2_3_ggam \ comb_m2_3_rp2 \ comb_m2_4_logn \ comb_m2_4_rp3)
+
+. matrix colnames comb_bs = ll N HR HR_lo HR_up cons cons_lo cons_up par1 par1_lo par1_up par2 par2_lo par2_up knot1 knot2 knot3 knot4 knot5 knot6
+
+. 
+. esttab matrix(comb_bs) using &quot;${pathdata2}parameters_final_models_jun_22.html&quot;, replace
+(output written to E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/_mult_state_ags/parameters_final_models_jun_22.html)
+
+. 
+</code></pre>
+<p>The selected models and their parameters can be summarised here:</p>
+<table border="0" width="*">
+<tr><td colspan=21><hr></td></tr>
+<tr><td>            </td><td>     comb_bs</td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td></tr>
+<tr><td>            </td><td>          ll</td><td>           N</td><td>          HR</td><td>       HR_lo</td><td>       HR_up</td><td>        cons</td><td>     cons_lo</td><td>     cons_up</td><td>        par1</td><td>     par1_lo</td><td>     par1_up</td><td>        par2</td><td>     par2_lo</td><td>     par2_up</td><td>       knot1</td><td>       knot2</td><td>       knot3</td><td>       knot4</td><td>       knot5</td><td>       knot6</td></tr>
+<tr><td colspan=21><hr></td></tr>
+<tr><td>m2_1_ggam   </td><td>   -60031.52</td><td>       22452</td><td>         .53</td><td>         .49</td><td>         .56</td><td>        7.89</td><td>        7.79</td><td>           8</td><td>         .88</td><td>         .86</td><td>          .9</td><td>       -1.28</td><td>       -1.39</td><td>       -1.17</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td></tr>
+<tr><td>m2_1_rp5    </td><td>   -60021.72</td><td>       22452</td><td>        1.48</td><td>        1.41</td><td>        1.56</td><td>        -1.7</td><td>       -1.74</td><td>       -1.66</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           0</td><td>        5.49</td><td>        6.05</td><td>        6.57</td><td>        7.09</td><td>        8.24</td></tr>
+<tr><td>m2_2_ggam   </td><td>   -18137.23</td><td>        6373</td><td>         .97</td><td>         .87</td><td>         1.1</td><td>        7.48</td><td>        7.31</td><td>        7.64</td><td>         .73</td><td>         .68</td><td>         .78</td><td>        -.58</td><td>        -.75</td><td>         -.4</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td></tr>
+<tr><td>m2_2_rp4    </td><td>   -18096.62</td><td>        6373</td><td>        1.03</td><td>         .94</td><td>        1.13</td><td>       -1.32</td><td>       -1.41</td><td>       -1.22</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>         .69</td><td>        5.55</td><td>        6.15</td><td>        6.77</td><td>         8.1</td><td>           .</td></tr>
+<tr><td>m2_3_ggam   </td><td>   -5657.262</td><td>        1995</td><td>         .82</td><td>         .67</td><td>         .99</td><td>         7.1</td><td>         6.8</td><td>        7.41</td><td>         .64</td><td>         .57</td><td>         .72</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td></tr>
+<tr><td>m2_3_rp2    </td><td>   -5659.817</td><td>        1995</td><td>        1.09</td><td>         .93</td><td>        1.29</td><td>       -1.37</td><td>       -1.58</td><td>       -1.17</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>         .69</td><td>        6.13</td><td>        7.89</td><td>           .</td><td>           .</td><td>           .</td></tr>
+<tr><td>m2_4_logn   </td><td>   -1754.384</td><td>         635</td><td>         .94</td><td>         .67</td><td>        1.33</td><td>        7.05</td><td>        6.58</td><td>        7.53</td><td>          .5</td><td>         .39</td><td>         .61</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td></tr>
+<tr><td>m2_4_rp3    </td><td>   -1750.572</td><td>         635</td><td>        1.12</td><td>         .83</td><td>        1.51</td><td>       -1.13</td><td>       -1.55</td><td>        -.71</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>           .</td><td>        1.61</td><td>        5.66</td><td>        6.39</td><td>         7.8</td><td>           .</td><td>           .</td></tr>
+<tr><td colspan=21><hr></td></tr>
+</table>
+<p>=============================================================================</p>
+<h2><a href="#transition-probabilities-lengths-of-stay-parametric-models" id="transition-probabilities-lengths-of-stay-parametric-models">Transition probabilities &amp; Lengths of Stay, Parametric Models</a></h2>
+<p>=============================================================================</p>
+<p>(31,275 missing values generated)</p>
+<pre><code>. 
+. estread &quot;${pathdata2}parmodels_m2_jun_22.sters&quot;
+
+-----------------------------------------------------------------------------
+        name | command      depvar       npar  title 
+-------------+---------------------------------------------------------------
+    m2_1_exp | merlin       no depvar       3  Fixed effects regression model
+   m2_1_weib | merlin       no depvar       4  Fixed effects regression model
+    m2_1_gom | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logl | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logn | merlin       no depvar       4  Fixed effects regression model
+   m2_1_ggam | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp2 | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp3 | merlin       no depvar       6  Fixed effects regression model
+    m2_1_rp4 | merlin       no depvar       7  Fixed effects regression model
+    m2_1_rp5 | merlin       no depvar       8  Fixed effects regression model
+    m2_1_rp6 | merlin       no depvar       9  Fixed effects regression model
+    m2_1_rp7 | merlin       no depvar      10  Fixed effects regression model
+    m2_1_rp8 | merlin       no depvar      11  Fixed effects regression model
+    m2_1_rp9 | merlin       no depvar      12  Fixed effects regression model
+   m2_1_rp10 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_exp | merlin       no depvar       5  Fixed effects regression model
+   m2_2_weib | merlin       no depvar       6  Fixed effects regression model
+    m2_2_gom | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logl | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logn | merlin       no depvar       6  Fixed effects regression model
+   m2_2_ggam | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp2 | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp3 | merlin       no depvar       8  Fixed effects regression model
+    m2_2_rp4 | merlin       no depvar       9  Fixed effects regression model
+    m2_2_rp5 | merlin       no depvar      10  Fixed effects regression model
+    m2_2_rp6 | merlin       no depvar      11  Fixed effects regression model
+    m2_2_rp7 | merlin       no depvar      12  Fixed effects regression model
+    m2_2_rp8 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_rp9 | merlin       no depvar      14  Fixed effects regression model
+   m2_2_rp10 | merlin       no depvar      15  Fixed effects regression model
+    m2_3_exp | merlin       no depvar       6  Fixed effects regression model
+   m2_3_weib | merlin       no depvar       7  Fixed effects regression model
+    m2_3_gom | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logl | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logn | merlin       no depvar       7  Fixed effects regression model
+   m2_3_ggam | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp2 | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp3 | merlin       no depvar       9  Fixed effects regression model
+    m2_3_rp4 | merlin       no depvar      10  Fixed effects regression model
+    m2_3_rp5 | merlin       no depvar      11  Fixed effects regression model
+    m2_3_rp6 | merlin       no depvar      12  Fixed effects regression model
+    m2_3_rp7 | merlin       no depvar      13  Fixed effects regression model
+    m2_3_rp8 | merlin       no depvar      14  Fixed effects regression model
+    m2_3_rp9 | merlin       no depvar      15  Fixed effects regression model
+   m2_3_rp10 | merlin       no depvar      16  Fixed effects regression model
+    m2_4_exp | merlin       no depvar       7  Fixed effects regression model
+   m2_4_weib | merlin       no depvar       8  Fixed effects regression model
+    m2_4_gom | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logl | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logn | merlin       no depvar       8  Fixed effects regression model
+   m2_4_ggam | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp2 | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp3 | merlin       no depvar      10  Fixed effects regression model
+    m2_4_rp4 | merlin       no depvar      11  Fixed effects regression model
+    m2_4_rp5 | merlin       no depvar      12  Fixed effects regression model
+    m2_4_rp6 | merlin       no depvar      13  Fixed effects regression model
+    m2_4_rp7 | merlin       no depvar      14  Fixed effects regression model
+    m2_4_rp8 | merlin       no depvar      15  Fixed effects regression model
+    m2_4_rp9 | merlin       no depvar      16  Fixed effects regression model
+   m2_4_rp10 | merlin       no depvar      17  Fixed effects regression model
+-----------------------------------------------------------------------------
+
+. 
+. predictms, transmatrix(mat_five_states) models(m2_1_ggam m2_2_ggam m2_3_ggam m2_4_logn) ///
+&gt;         timevar(timevar0) /// mint(0) maxt(1826) timevar() cannot be specified with mint()/maxt()/obs()
+&gt;         seed(2125) n(100000) prob los diff ratio /// * si agrego bootstrap, at#() limit reached, or unrecognised option
+&gt;         from(1) ci at1(tipo_de_plan_res_1 0 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) at2(tipo_de_plan_res_1 1 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) reset
+&gt;  bootstrap m(1000)   //* es una forma de hacer bootstrap 
+
+Calculating CIs via parametric bootstrap for at1() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+Calculating CIs via parametric bootstrap for at2() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+. 
+. graphms,from(1) nstates(5) timevar(timevar0) at(1)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From Admission(1), Ambulatory
+
+</code></pre>
+<p><img src="predictms1a_jun_22.svg" width="800" ></p>
+<pre><code>. graphms,from(1) nstates(5) timevar(timevar0) at(2)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From Admission(1), Residential
+
+</code></pre>
+<p><img src="predictms1b_jun_22.svg" width="800" ></p>
+<pre><code>. rename (_prob_at1_1_*lci) (fprob_from1a_*lci_0)
+
+. rename (_prob_at1_1_*uci) (fprob_from1a_*uci_0)
+
+. rename (_prob_at1_1_*) (fprob_from1a_*_0)
+
+. 
+. rename (_los_at1_1_*lci) (flos_from1a_*lci_0)
+
+. rename (_los_at1_1_*uci) (flos_from1a_*uci_0)
+
+. rename (_los_at1_1_*) (flos_from1a_*_0)
+
+. 
+. rename (_prob_at2_1_*lci) (fprob_from1b_*lci_0)
+
+. rename (_prob_at2_1_*uci) (fprob_from1b_*uci_0)
+
+. rename (_prob_at2_1_*) (fprob_from1b_*_0)
+
+. 
+. rename (_los_at2_1_*lci) (flos_from1b_*lci_0)
+
+. rename (_los_at2_1_*uci) (flos_from1b_*uci_0)
+
+. rename (_los_at2_1_*) (flos_from1b_*_0)
+
+. 
+. rename (_ratio_prob_at2_1_*_lci) (fratio_prob_from1_*_lci_0)
+
+. rename (_ratio_prob_at2_1_*_uci) (fratio_prob_from1_*_uci_0)
+
+. rename (_ratio_prob_at2_1_*) (fratio_prob_from1_*_0)
+
+. rename (_diff_prob_at2_1_*_lci) (fdiff_prob_from1_*_lci_0)
+
+. rename (_diff_prob_at2_1_*_uci) (fdiff_prob_from1_*_uci_0)
+
+. rename (_diff_prob_at2_1_*) (fdiff_prob_from1_*_0)  
+
+. 
+. rename (_ratio_los_at2_1_*_lci) (fratio_los_from1_*_lci_0)
+
+. rename (_ratio_los_at2_1_*_uci) (fratio_los_from1_*_uci_0)
+
+. rename (_ratio_los_at2_1_*) (fratio_los_from1_*_0)
+
+. rename (_diff_los_at2_1_*_lci) (fdiff_los_from1_*_lci_0)
+
+. rename (_diff_los_at2_1_*_uci) (fdiff_los_from1_*_uci_0)
+
+. rename (_diff_los_at2_1_*) (fdiff_los_from1_*_0)  
+
+. 
+. estread &quot;${pathdata2}parmodels_m2_jun_22.sters&quot;
+
+-----------------------------------------------------------------------------
+        name | command      depvar       npar  title 
+-------------+---------------------------------------------------------------
+    m2_1_exp | merlin       no depvar       3  Fixed effects regression model
+   m2_1_weib | merlin       no depvar       4  Fixed effects regression model
+    m2_1_gom | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logl | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logn | merlin       no depvar       4  Fixed effects regression model
+   m2_1_ggam | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp2 | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp3 | merlin       no depvar       6  Fixed effects regression model
+    m2_1_rp4 | merlin       no depvar       7  Fixed effects regression model
+    m2_1_rp5 | merlin       no depvar       8  Fixed effects regression model
+    m2_1_rp6 | merlin       no depvar       9  Fixed effects regression model
+    m2_1_rp7 | merlin       no depvar      10  Fixed effects regression model
+    m2_1_rp8 | merlin       no depvar      11  Fixed effects regression model
+    m2_1_rp9 | merlin       no depvar      12  Fixed effects regression model
+   m2_1_rp10 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_exp | merlin       no depvar       5  Fixed effects regression model
+   m2_2_weib | merlin       no depvar       6  Fixed effects regression model
+    m2_2_gom | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logl | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logn | merlin       no depvar       6  Fixed effects regression model
+   m2_2_ggam | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp2 | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp3 | merlin       no depvar       8  Fixed effects regression model
+    m2_2_rp4 | merlin       no depvar       9  Fixed effects regression model
+    m2_2_rp5 | merlin       no depvar      10  Fixed effects regression model
+    m2_2_rp6 | merlin       no depvar      11  Fixed effects regression model
+    m2_2_rp7 | merlin       no depvar      12  Fixed effects regression model
+    m2_2_rp8 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_rp9 | merlin       no depvar      14  Fixed effects regression model
+   m2_2_rp10 | merlin       no depvar      15  Fixed effects regression model
+    m2_3_exp | merlin       no depvar       6  Fixed effects regression model
+   m2_3_weib | merlin       no depvar       7  Fixed effects regression model
+    m2_3_gom | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logl | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logn | merlin       no depvar       7  Fixed effects regression model
+   m2_3_ggam | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp2 | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp3 | merlin       no depvar       9  Fixed effects regression model
+    m2_3_rp4 | merlin       no depvar      10  Fixed effects regression model
+    m2_3_rp5 | merlin       no depvar      11  Fixed effects regression model
+    m2_3_rp6 | merlin       no depvar      12  Fixed effects regression model
+    m2_3_rp7 | merlin       no depvar      13  Fixed effects regression model
+    m2_3_rp8 | merlin       no depvar      14  Fixed effects regression model
+    m2_3_rp9 | merlin       no depvar      15  Fixed effects regression model
+   m2_3_rp10 | merlin       no depvar      16  Fixed effects regression model
+    m2_4_exp | merlin       no depvar       7  Fixed effects regression model
+   m2_4_weib | merlin       no depvar       8  Fixed effects regression model
+    m2_4_gom | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logl | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logn | merlin       no depvar       8  Fixed effects regression model
+   m2_4_ggam | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp2 | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp3 | merlin       no depvar      10  Fixed effects regression model
+    m2_4_rp4 | merlin       no depvar      11  Fixed effects regression model
+    m2_4_rp5 | merlin       no depvar      12  Fixed effects regression model
+    m2_4_rp6 | merlin       no depvar      13  Fixed effects regression model
+    m2_4_rp7 | merlin       no depvar      14  Fixed effects regression model
+    m2_4_rp8 | merlin       no depvar      15  Fixed effects regression model
+    m2_4_rp9 | merlin       no depvar      16  Fixed effects regression model
+   m2_4_rp10 | merlin       no depvar      17  Fixed effects regression model
+-----------------------------------------------------------------------------
+
+. 
+. predictms, transmatrix(mat_five_states) models(m2_1_ggam m2_2_ggam m2_3_ggam m2_4_logn) ///
+&gt;         timevar(timevar0) /// mint(0) maxt(1826) timevar() cannot be specified with mint()/maxt()/obs()
+&gt;         seed(2125) n(100000) prob los diff ratio /// * si agrego bootstrap, at#() limit reached, or unrecognised option
+&gt;         from(2) ci at1(tipo_de_plan_res_1 0 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) at2(tipo_de_plan_res_1 1 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) reset
+&gt;  bootstrap m(1000)   //* es una forma de hacer bootstrap 
+
+Calculating CIs via parametric bootstrap for at1() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+Calculating CIs via parametric bootstrap for at2() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+. 
+. graphms,from(2) nstates(5) timevar(timevar0) at(1)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From First Readmission(2), Ambulatory
+
+</code></pre>
+<p><img src="predictms2a_jun_22.svg" width="800" ></p>
+<pre><code>. graphms,from(2) nstates(5) timevar(timevar0) at(2)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From First Readmission(2), Residential
+
+</code></pre>
+<p><img src="predictms2b_jun_22.svg" width="800" ></p>
+<pre><code>. rename (_prob_at1_2_*lci) (fprob_from2a_*lci_0)
+
+. rename (_prob_at1_2_*uci) (fprob_from2a_*uci_0)
+
+. rename (_prob_at1_2_*) (fprob_from2a_*_0)
+
+. 
+. rename (_los_at1_2_*lci) (flos_from2a_*lci_0)
+
+. rename (_los_at1_2_*uci) (flos_from2a_*uci_0)
+
+. rename (_los_at1_2_*) (flos_from2a_*_0)
+
+. 
+. rename (_prob_at2_2_*lci) (fprob_from2b_*lci_0)
+
+. rename (_prob_at2_2_*uci) (fprob_from2b_*uci_0)
+
+. rename (_prob_at2_2_*) (fprob_from2b_*_0)
+
+. 
+. rename (_los_at2_2_*lci) (flos_from2b_*lci_0)
+
+. rename (_los_at2_2_*uci) (flos_from2b_*uci_0)
+
+. rename (_los_at2_2_*) (flos_from2b_*_0)
+
+. 
+. rename (_ratio_prob_at2_2_*_lci) (fratio_prob_from2_*_lci_0)
+
+. rename (_ratio_prob_at2_2_*_uci) (fratio_prob_from2_*_uci_0)
+
+. rename (_ratio_prob_at2_2_*) (fratio_prob_from2_*_0)
+
+. rename (_diff_prob_at2_2_*_lci) (fdiff_prob_from2_*_lci_0)
+
+. rename (_diff_prob_at2_2_*_uci) (fdiff_prob_from2_*_uci_0)
+
+. rename (_diff_prob_at2_2_*) (fdiff_prob_from2_*_0)  
+
+. 
+. rename (_ratio_los_at2_2_*_lci) (fratio_los_from2_*_lci_0)
+
+. rename (_ratio_los_at2_2_*_uci) (fratio_los_from2_*_uci_0)
+
+. rename (_ratio_los_at2_2_*) (fratio_los_from2_*_0)
+
+. rename (_diff_los_at2_2_*_lci) (fdiff_los_from2_*_lci_0)
+
+. rename (_diff_los_at2_2_*_uci) (fdiff_los_from2_*_uci_0)
+
+. rename (_diff_los_at2_2_*) (fdiff_los_from2_*_0) 
+
+. 
+. estread &quot;${pathdata2}parmodels_m2_jun_22.sters&quot;
+
+-----------------------------------------------------------------------------
+        name | command      depvar       npar  title 
+-------------+---------------------------------------------------------------
+    m2_1_exp | merlin       no depvar       3  Fixed effects regression model
+   m2_1_weib | merlin       no depvar       4  Fixed effects regression model
+    m2_1_gom | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logl | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logn | merlin       no depvar       4  Fixed effects regression model
+   m2_1_ggam | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp2 | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp3 | merlin       no depvar       6  Fixed effects regression model
+    m2_1_rp4 | merlin       no depvar       7  Fixed effects regression model
+    m2_1_rp5 | merlin       no depvar       8  Fixed effects regression model
+    m2_1_rp6 | merlin       no depvar       9  Fixed effects regression model
+    m2_1_rp7 | merlin       no depvar      10  Fixed effects regression model
+    m2_1_rp8 | merlin       no depvar      11  Fixed effects regression model
+    m2_1_rp9 | merlin       no depvar      12  Fixed effects regression model
+   m2_1_rp10 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_exp | merlin       no depvar       5  Fixed effects regression model
+   m2_2_weib | merlin       no depvar       6  Fixed effects regression model
+    m2_2_gom | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logl | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logn | merlin       no depvar       6  Fixed effects regression model
+   m2_2_ggam | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp2 | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp3 | merlin       no depvar       8  Fixed effects regression model
+    m2_2_rp4 | merlin       no depvar       9  Fixed effects regression model
+    m2_2_rp5 | merlin       no depvar      10  Fixed effects regression model
+    m2_2_rp6 | merlin       no depvar      11  Fixed effects regression model
+    m2_2_rp7 | merlin       no depvar      12  Fixed effects regression model
+    m2_2_rp8 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_rp9 | merlin       no depvar      14  Fixed effects regression model
+   m2_2_rp10 | merlin       no depvar      15  Fixed effects regression model
+    m2_3_exp | merlin       no depvar       6  Fixed effects regression model
+   m2_3_weib | merlin       no depvar       7  Fixed effects regression model
+    m2_3_gom | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logl | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logn | merlin       no depvar       7  Fixed effects regression model
+   m2_3_ggam | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp2 | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp3 | merlin       no depvar       9  Fixed effects regression model
+    m2_3_rp4 | merlin       no depvar      10  Fixed effects regression model
+    m2_3_rp5 | merlin       no depvar      11  Fixed effects regression model
+    m2_3_rp6 | merlin       no depvar      12  Fixed effects regression model
+    m2_3_rp7 | merlin       no depvar      13  Fixed effects regression model
+    m2_3_rp8 | merlin       no depvar      14  Fixed effects regression model
+    m2_3_rp9 | merlin       no depvar      15  Fixed effects regression model
+   m2_3_rp10 | merlin       no depvar      16  Fixed effects regression model
+    m2_4_exp | merlin       no depvar       7  Fixed effects regression model
+   m2_4_weib | merlin       no depvar       8  Fixed effects regression model
+    m2_4_gom | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logl | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logn | merlin       no depvar       8  Fixed effects regression model
+   m2_4_ggam | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp2 | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp3 | merlin       no depvar      10  Fixed effects regression model
+    m2_4_rp4 | merlin       no depvar      11  Fixed effects regression model
+    m2_4_rp5 | merlin       no depvar      12  Fixed effects regression model
+    m2_4_rp6 | merlin       no depvar      13  Fixed effects regression model
+    m2_4_rp7 | merlin       no depvar      14  Fixed effects regression model
+    m2_4_rp8 | merlin       no depvar      15  Fixed effects regression model
+    m2_4_rp9 | merlin       no depvar      16  Fixed effects regression model
+   m2_4_rp10 | merlin       no depvar      17  Fixed effects regression model
+-----------------------------------------------------------------------------
+
+. 
+. predictms, transmatrix(mat_five_states) models(m2_1_ggam m2_2_ggam m2_3_ggam m2_4_logn) ///
+&gt;         timevar(timevar0) /// mint(0) maxt(1826) timevar() cannot be specified with mint()/maxt()/obs()
+&gt;         seed(2125) n(100000) prob los diff ratio /// * si agrego bootstrap, at#() limit reached, or unrecognised option
+&gt;         from(3) ci at1(tipo_de_plan_res_1 0 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) at2(tipo_de_plan_res_1 1 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) reset
+&gt;  bootstrap m(1000)   //* es una forma de hacer bootstrap 
+
+Calculating CIs via parametric bootstrap for at1() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+Calculating CIs via parametric bootstrap for at2() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+. 
+. graphms,from(3) nstates(5) timevar(timevar0) at(1)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From Second Readmission(3), Ambulatory
+
+</code></pre>
+<p><img src="predictms3a_jun_22.svg" width="800" ></p>
+<pre><code>. graphms,from(3) nstates(5) timevar(timevar0) at(2)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From Second Readmission(3), Residential
+
+</code></pre>
+<p><img src="predictms3b_jun_22.svg" width="800" ></p>
+<pre><code>. rename (_prob_at1_3_*lci) (fprob_from3a_*lci_0)
+
+. rename (_prob_at1_3_*uci) (fprob_from3a_*uci_0)
+
+. rename (_prob_at1_3_*) (fprob_from3a_*_0)
+
+. 
+. rename (_los_at1_3_*lci) (flos_from3a_*lci_0)
+
+. rename (_los_at1_3_*uci) (flos_from3a_*uci_0)
+
+. rename (_los_at1_3_*) (flos_from3a_*_0)
+
+. 
+. rename (_prob_at2_3_*lci) (fprob_from3b_*lci_0)
+
+. rename (_prob_at2_3_*uci) (fprob_from3b_*uci_0)
+
+. rename (_prob_at2_3_*) (fprob_from3b_*_0)
+
+. 
+. rename (_los_at2_3_*lci) (flos_from3b_*lci_0)
+
+. rename (_los_at2_3_*uci) (flos_from3b_*uci_0)
+
+. rename (_los_at2_3_*) (flos_from3b_*_0)
+
+. 
+. rename (_ratio_prob_at2_3_*_lci) (fratio_prob_from3_*_lci_0)
+
+. rename (_ratio_prob_at2_3_*_uci) (fratio_prob_from3_*_uci_0)
+
+. rename (_ratio_prob_at2_3_*) (fratio_prob_from3_*_0)
+
+. rename (_diff_prob_at2_3_*_lci) (fdiff_prob_from3_*_lci_0)
+
+. rename (_diff_prob_at2_3_*_uci) (fdiff_prob_from3_*_uci_0)
+
+. rename (_diff_prob_at2_3_*) (fdiff_prob_from3_*_0)  
+
+. 
+. rename (_ratio_los_at2_3_*_lci) (fratio_los_from3_*_lci_0)
+
+. rename (_ratio_los_at2_3_*_uci) (fratio_los_from3_*_uci_0)
+
+. rename (_ratio_los_at2_3_*) (fratio_los_from3_*_0)
+
+. rename (_diff_los_at2_3_*_lci) (fdiff_los_from3_*_lci_0)
+
+. rename (_diff_los_at2_3_*_uci) (fdiff_los_from3_*_uci_0)
+
+. rename (_diff_los_at2_3_*) (fdiff_los_from3_*_0) 
+
+. 
+. estread &quot;${pathdata2}parmodels_m2_jun_22.sters&quot;
+
+-----------------------------------------------------------------------------
+        name | command      depvar       npar  title 
+-------------+---------------------------------------------------------------
+    m2_1_exp | merlin       no depvar       3  Fixed effects regression model
+   m2_1_weib | merlin       no depvar       4  Fixed effects regression model
+    m2_1_gom | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logl | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logn | merlin       no depvar       4  Fixed effects regression model
+   m2_1_ggam | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp2 | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp3 | merlin       no depvar       6  Fixed effects regression model
+    m2_1_rp4 | merlin       no depvar       7  Fixed effects regression model
+    m2_1_rp5 | merlin       no depvar       8  Fixed effects regression model
+    m2_1_rp6 | merlin       no depvar       9  Fixed effects regression model
+    m2_1_rp7 | merlin       no depvar      10  Fixed effects regression model
+    m2_1_rp8 | merlin       no depvar      11  Fixed effects regression model
+    m2_1_rp9 | merlin       no depvar      12  Fixed effects regression model
+   m2_1_rp10 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_exp | merlin       no depvar       5  Fixed effects regression model
+   m2_2_weib | merlin       no depvar       6  Fixed effects regression model
+    m2_2_gom | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logl | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logn | merlin       no depvar       6  Fixed effects regression model
+   m2_2_ggam | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp2 | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp3 | merlin       no depvar       8  Fixed effects regression model
+    m2_2_rp4 | merlin       no depvar       9  Fixed effects regression model
+    m2_2_rp5 | merlin       no depvar      10  Fixed effects regression model
+    m2_2_rp6 | merlin       no depvar      11  Fixed effects regression model
+    m2_2_rp7 | merlin       no depvar      12  Fixed effects regression model
+    m2_2_rp8 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_rp9 | merlin       no depvar      14  Fixed effects regression model
+   m2_2_rp10 | merlin       no depvar      15  Fixed effects regression model
+    m2_3_exp | merlin       no depvar       6  Fixed effects regression model
+   m2_3_weib | merlin       no depvar       7  Fixed effects regression model
+    m2_3_gom | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logl | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logn | merlin       no depvar       7  Fixed effects regression model
+   m2_3_ggam | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp2 | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp3 | merlin       no depvar       9  Fixed effects regression model
+    m2_3_rp4 | merlin       no depvar      10  Fixed effects regression model
+    m2_3_rp5 | merlin       no depvar      11  Fixed effects regression model
+    m2_3_rp6 | merlin       no depvar      12  Fixed effects regression model
+    m2_3_rp7 | merlin       no depvar      13  Fixed effects regression model
+    m2_3_rp8 | merlin       no depvar      14  Fixed effects regression model
+    m2_3_rp9 | merlin       no depvar      15  Fixed effects regression model
+   m2_3_rp10 | merlin       no depvar      16  Fixed effects regression model
+    m2_4_exp | merlin       no depvar       7  Fixed effects regression model
+   m2_4_weib | merlin       no depvar       8  Fixed effects regression model
+    m2_4_gom | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logl | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logn | merlin       no depvar       8  Fixed effects regression model
+   m2_4_ggam | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp2 | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp3 | merlin       no depvar      10  Fixed effects regression model
+    m2_4_rp4 | merlin       no depvar      11  Fixed effects regression model
+    m2_4_rp5 | merlin       no depvar      12  Fixed effects regression model
+    m2_4_rp6 | merlin       no depvar      13  Fixed effects regression model
+    m2_4_rp7 | merlin       no depvar      14  Fixed effects regression model
+    m2_4_rp8 | merlin       no depvar      15  Fixed effects regression model
+    m2_4_rp9 | merlin       no depvar      16  Fixed effects regression model
+   m2_4_rp10 | merlin       no depvar      17  Fixed effects regression model
+-----------------------------------------------------------------------------
+
+. 
+. predictms, transmatrix(mat_five_states) models(m2_1_ggam m2_2_ggam m2_3_ggam m2_4_logn) ///
+&gt;         timevar(timevar0) /// mint(0) maxt(1826) timevar() cannot be specified with mint()/maxt()/obs()
+&gt;         seed(2125) n(100000) prob los diff ratio /// * si agrego bootstrap, at#() limit reached, or unrecognised option
+&gt;         from(4) ci at1(tipo_de_plan_res_1 0 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) at2(tipo_de_plan_res_1 1 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) reset
+&gt;  bootstrap m(1000)   //* es una forma de hacer bootstrap 
+
+Calculating CIs via parametric bootstrap for at1() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+Calculating CIs via parametric bootstrap for at2() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+. 
+. graphms,from(4) nstates(5) timevar(timevar0) at(1)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From Third Readmission(4), Ambulatory
+
+</code></pre>
+<p><img src="predictms4a_jun_22.svg" width="800" ></p>
+<pre><code>. graphms,from(4) nstates(5) timevar(timevar0) at(2)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From Third Readmission(4), Residential
+
+</code></pre>
+<p><img src="predictms4b_jun_22.svg" width="800" ></p>
+<pre><code>. rename (_prob_at1_4_*lci) (fprob_from4a_*lci_0)
+
+. rename (_prob_at1_4_*uci) (fprob_from4a_*uci_0)
+
+. rename (_prob_at1_4_*) (fprob_from4a_*_0)
+
+. 
+. rename (_los_at1_4_*lci) (flos_from4a_*lci_0)
+
+. rename (_los_at1_4_*uci) (flos_from4a_*uci_0)
+
+. rename (_los_at1_4_*) (flos_from4a_*_0)
+
+. 
+. rename (_prob_at2_4_*lci) (fprob_from4b_*lci_0)
+
+. rename (_prob_at2_4_*uci) (fprob_from4b_*uci_0)
+
+. rename (_prob_at2_4_*) (fprob_from4b_*_0)
+
+. 
+. rename (_los_at2_4_*lci) (flos_from4b_*lci_0)
+
+. rename (_los_at2_4_*uci) (flos_from4b_*uci_0)
+
+. rename (_los_at2_4_*) (flos_from4b_*_0)
+
+. 
+. rename (_ratio_prob_at2_4_*_lci) (fratio_prob_from4_*_lci_0)
+
+. rename (_ratio_prob_at2_4_*_uci) (fratio_prob_from4_*_uci_0)
+
+. rename (_ratio_prob_at2_4_*) (fratio_prob_from4_*_0)
+
+. rename (_diff_prob_at2_4_*_lci) (fdiff_prob_from4_*_lci_0)
+
+. rename (_diff_prob_at2_4_*_uci) (fdiff_prob_from4_*_uci_0)
+
+. rename (_diff_prob_at2_4_*) (fdiff_prob_from4_*_0)  
+
+. 
+. rename (_ratio_los_at2_4_*_lci) (fratio_los_from4_*_lci_0)
+
+. rename (_ratio_los_at2_4_*_uci) (fratio_los_from4_*_uci_0)
+
+. rename (_ratio_los_at2_4_*) (fratio_los_from4_*_0)
+
+. rename (_diff_los_at2_4_*_lci) (fdiff_los_from4_*_lci_0)
+
+. rename (_diff_los_at2_4_*_uci) (fdiff_los_from4_*_uci_0)
+
+. rename (_diff_los_at2_4_*) (fdiff_los_from4_*_0) 
+
+. 
+</code></pre>
+<p>=============================================================================</p>
+<h2><a href="#transition-probabilities-length-of-stay-parametric-models-rp" id="transition-probabilities-length-of-stay-parametric-models-rp">Transition Probabilities &amp; Length of Stay, Parametric Models (RP)</a></h2>
+<p>=============================================================================</p>
+<pre><code>. 
+. estread &quot;${pathdata2}parmodels_m2_jun_22.sters&quot;
+
+-----------------------------------------------------------------------------
+        name | command      depvar       npar  title 
+-------------+---------------------------------------------------------------
+    m2_1_exp | merlin       no depvar       3  Fixed effects regression model
+   m2_1_weib | merlin       no depvar       4  Fixed effects regression model
+    m2_1_gom | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logl | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logn | merlin       no depvar       4  Fixed effects regression model
+   m2_1_ggam | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp2 | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp3 | merlin       no depvar       6  Fixed effects regression model
+    m2_1_rp4 | merlin       no depvar       7  Fixed effects regression model
+    m2_1_rp5 | merlin       no depvar       8  Fixed effects regression model
+    m2_1_rp6 | merlin       no depvar       9  Fixed effects regression model
+    m2_1_rp7 | merlin       no depvar      10  Fixed effects regression model
+    m2_1_rp8 | merlin       no depvar      11  Fixed effects regression model
+    m2_1_rp9 | merlin       no depvar      12  Fixed effects regression model
+   m2_1_rp10 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_exp | merlin       no depvar       5  Fixed effects regression model
+   m2_2_weib | merlin       no depvar       6  Fixed effects regression model
+    m2_2_gom | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logl | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logn | merlin       no depvar       6  Fixed effects regression model
+   m2_2_ggam | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp2 | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp3 | merlin       no depvar       8  Fixed effects regression model
+    m2_2_rp4 | merlin       no depvar       9  Fixed effects regression model
+    m2_2_rp5 | merlin       no depvar      10  Fixed effects regression model
+    m2_2_rp6 | merlin       no depvar      11  Fixed effects regression model
+    m2_2_rp7 | merlin       no depvar      12  Fixed effects regression model
+    m2_2_rp8 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_rp9 | merlin       no depvar      14  Fixed effects regression model
+   m2_2_rp10 | merlin       no depvar      15  Fixed effects regression model
+    m2_3_exp | merlin       no depvar       6  Fixed effects regression model
+   m2_3_weib | merlin       no depvar       7  Fixed effects regression model
+    m2_3_gom | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logl | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logn | merlin       no depvar       7  Fixed effects regression model
+   m2_3_ggam | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp2 | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp3 | merlin       no depvar       9  Fixed effects regression model
+    m2_3_rp4 | merlin       no depvar      10  Fixed effects regression model
+    m2_3_rp5 | merlin       no depvar      11  Fixed effects regression model
+    m2_3_rp6 | merlin       no depvar      12  Fixed effects regression model
+    m2_3_rp7 | merlin       no depvar      13  Fixed effects regression model
+    m2_3_rp8 | merlin       no depvar      14  Fixed effects regression model
+    m2_3_rp9 | merlin       no depvar      15  Fixed effects regression model
+   m2_3_rp10 | merlin       no depvar      16  Fixed effects regression model
+    m2_4_exp | merlin       no depvar       7  Fixed effects regression model
+   m2_4_weib | merlin       no depvar       8  Fixed effects regression model
+    m2_4_gom | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logl | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logn | merlin       no depvar       8  Fixed effects regression model
+   m2_4_ggam | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp2 | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp3 | merlin       no depvar      10  Fixed effects regression model
+    m2_4_rp4 | merlin       no depvar      11  Fixed effects regression model
+    m2_4_rp5 | merlin       no depvar      12  Fixed effects regression model
+    m2_4_rp6 | merlin       no depvar      13  Fixed effects regression model
+    m2_4_rp7 | merlin       no depvar      14  Fixed effects regression model
+    m2_4_rp8 | merlin       no depvar      15  Fixed effects regression model
+    m2_4_rp9 | merlin       no depvar      16  Fixed effects regression model
+   m2_4_rp10 | merlin       no depvar      17  Fixed effects regression model
+-----------------------------------------------------------------------------
+
+. 
+. predictms, transmatrix(mat_five_states) models(m2_1_rp5 m2_2_rp4 m2_3_rp2 m2_4_rp3) ///
+&gt;         timevar(timevar0) /// mint(0) maxt(1826) timevar() cannot be specified with mint()/maxt()/obs()
+&gt;         seed(2125) n(100000) prob los diff ratio /// * si agrego bootstrap, at#() limit reached, or unrecognised option
+&gt;         from(1) ci at1(tipo_de_plan_res_1 0 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) at2(tipo_de_plan_res_1 1 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) reset
+&gt;  bootstrap m(1000)   //* es una forma de hacer bootstrap 
+
+Calculating CIs via parametric bootstrap for at1() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+Calculating CIs via parametric bootstrap for at2() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+. 
+. graphms,from(1) nstates(5) timevar(timevar0) at(1)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From Admission(1), Ambulatory (RP)
+
+</code></pre>
+<p><img src="predictms1a_jun_rp_22.svg" width="800" ></p>
+<pre><code>. graphms,from(1) nstates(5) timevar(timevar0) at(2)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From Admission(1), Residential (RP)
+
+</code></pre>
+<p><img src="predictms1b_jun_rp_22.svg" width="800" ></p>
+<pre><code>. rename (_prob_at1_1_*lci) (fprob_from1a_*lci_0_rp)
+
+. rename (_prob_at1_1_*uci) (fprob_from1a_*uci_0_rp)
+
+. rename (_prob_at1_1_*) (fprob_from1a_*_0_rp)
+
+. 
+. rename (_los_at1_1_*lci) (flos_from1a_*lci_0_rp)
+
+. rename (_los_at1_1_*uci) (flos_from1a_*uci_0_rp)
+
+. rename (_los_at1_1_*) (flos_from1a_*_0_rp)
+
+. 
+. rename (_prob_at2_1_*lci) (fprob_from1b_*lci_0_rp)
+
+. rename (_prob_at2_1_*uci) (fprob_from1b_*uci_0_rp)
+
+. rename (_prob_at2_1_*) (fprob_from1b_*_0_rp)
+
+. 
+. rename (_los_at2_1_*lci) (flos_from1b_*lci_0_rp)
+
+. rename (_los_at2_1_*uci) (flos_from1b_*uci_0_rp)
+
+. rename (_los_at2_1_*) (flos_from1b_*_0_rp)
+
+. 
+. rename (_ratio_prob_at2_1_*_lci) (fratio_prob_from1_*_lci_0_rp)
+
+. rename (_ratio_prob_at2_1_*_uci) (fratio_prob_from1_*_uci_0_rp)
+
+. rename (_ratio_prob_at2_1_*) (fratio_prob_from1_*_0_rp)
+
+. rename (_diff_prob_at2_1_*_lci) (fdiff_prob_from1_*_lci_0_rp)
+
+. rename (_diff_prob_at2_1_*_uci) (fdiff_prob_from1_*_uci_0_rp)
+
+. rename (_diff_prob_at2_1_*) (fdiff_prob_from1_*_0_rp) 
+
+. 
+. rename (_ratio_los_at2_1_*_lci) (fratio_los_from1_*_lci_0_rp)
+
+. rename (_ratio_los_at2_1_*_uci) (fratio_los_from1_*_uci_0_rp)
+
+. rename (_ratio_los_at2_1_*) (fratio_los_from1_*_0_rp)
+
+. rename (_diff_los_at2_1_*_lci) (fdiff_los_from1_*_lci_0_rp)
+
+. rename (_diff_los_at2_1_*_uci) (fdiff_los_from1_*_uci_0_rp)
+
+. rename (_diff_los_at2_1_*) (fdiff_los_from1_*_0_rp)
+
+. 
+. estread &quot;${pathdata2}parmodels_m2_jun_22.sters&quot;
+
+-----------------------------------------------------------------------------
+        name | command      depvar       npar  title 
+-------------+---------------------------------------------------------------
+    m2_1_exp | merlin       no depvar       3  Fixed effects regression model
+   m2_1_weib | merlin       no depvar       4  Fixed effects regression model
+    m2_1_gom | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logl | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logn | merlin       no depvar       4  Fixed effects regression model
+   m2_1_ggam | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp2 | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp3 | merlin       no depvar       6  Fixed effects regression model
+    m2_1_rp4 | merlin       no depvar       7  Fixed effects regression model
+    m2_1_rp5 | merlin       no depvar       8  Fixed effects regression model
+    m2_1_rp6 | merlin       no depvar       9  Fixed effects regression model
+    m2_1_rp7 | merlin       no depvar      10  Fixed effects regression model
+    m2_1_rp8 | merlin       no depvar      11  Fixed effects regression model
+    m2_1_rp9 | merlin       no depvar      12  Fixed effects regression model
+   m2_1_rp10 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_exp | merlin       no depvar       5  Fixed effects regression model
+   m2_2_weib | merlin       no depvar       6  Fixed effects regression model
+    m2_2_gom | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logl | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logn | merlin       no depvar       6  Fixed effects regression model
+   m2_2_ggam | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp2 | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp3 | merlin       no depvar       8  Fixed effects regression model
+    m2_2_rp4 | merlin       no depvar       9  Fixed effects regression model
+    m2_2_rp5 | merlin       no depvar      10  Fixed effects regression model
+    m2_2_rp6 | merlin       no depvar      11  Fixed effects regression model
+    m2_2_rp7 | merlin       no depvar      12  Fixed effects regression model
+    m2_2_rp8 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_rp9 | merlin       no depvar      14  Fixed effects regression model
+   m2_2_rp10 | merlin       no depvar      15  Fixed effects regression model
+    m2_3_exp | merlin       no depvar       6  Fixed effects regression model
+   m2_3_weib | merlin       no depvar       7  Fixed effects regression model
+    m2_3_gom | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logl | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logn | merlin       no depvar       7  Fixed effects regression model
+   m2_3_ggam | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp2 | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp3 | merlin       no depvar       9  Fixed effects regression model
+    m2_3_rp4 | merlin       no depvar      10  Fixed effects regression model
+    m2_3_rp5 | merlin       no depvar      11  Fixed effects regression model
+    m2_3_rp6 | merlin       no depvar      12  Fixed effects regression model
+    m2_3_rp7 | merlin       no depvar      13  Fixed effects regression model
+    m2_3_rp8 | merlin       no depvar      14  Fixed effects regression model
+    m2_3_rp9 | merlin       no depvar      15  Fixed effects regression model
+   m2_3_rp10 | merlin       no depvar      16  Fixed effects regression model
+    m2_4_exp | merlin       no depvar       7  Fixed effects regression model
+   m2_4_weib | merlin       no depvar       8  Fixed effects regression model
+    m2_4_gom | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logl | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logn | merlin       no depvar       8  Fixed effects regression model
+   m2_4_ggam | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp2 | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp3 | merlin       no depvar      10  Fixed effects regression model
+    m2_4_rp4 | merlin       no depvar      11  Fixed effects regression model
+    m2_4_rp5 | merlin       no depvar      12  Fixed effects regression model
+    m2_4_rp6 | merlin       no depvar      13  Fixed effects regression model
+    m2_4_rp7 | merlin       no depvar      14  Fixed effects regression model
+    m2_4_rp8 | merlin       no depvar      15  Fixed effects regression model
+    m2_4_rp9 | merlin       no depvar      16  Fixed effects regression model
+   m2_4_rp10 | merlin       no depvar      17  Fixed effects regression model
+-----------------------------------------------------------------------------
+
+. 
+. predictms, transmatrix(mat_five_states) models(m2_1_rp5 m2_2_rp4 m2_3_rp2 m2_4_rp3) ///
+&gt;         timevar(timevar0) /// mint(0) maxt(1826) timevar() cannot be specified with mint()/maxt()/obs()
+&gt;         seed(2125) n(100000) prob los diff ratio /// * si agrego bootstrap, at#() limit reached, or unrecognised option
+&gt;         from(2) ci at1(tipo_de_plan_res_1 0 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) at2(tipo_de_plan_res_1 1 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) reset
+&gt;  bootstrap m(1000)   //* es una forma de hacer bootstrap 
+
+Calculating CIs via parametric bootstrap for at1() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+Calculating CIs via parametric bootstrap for at2() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+. 
+. graphms,from(2) nstates(5) timevar(timevar0) at(1)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From First Readmission(2), Ambulatory (RP)
+
+</code></pre>
+<p><img src="predictms2a_jun_rp_22.svg" width="800" ></p>
+<pre><code>. graphms,from(2) nstates(5) timevar(timevar0) at(2)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From First Readmission(2), Residential (RP)
+
+</code></pre>
+<p><img src="predictms2b_jun_rp_22.svg" width="800" ></p>
+<pre><code>. rename (_prob_at1_2_*lci) (fprob_from2a_*lci_0_rp)
+
+. rename (_prob_at1_2_*uci) (fprob_from2a_*uci_0_rp)
+
+. rename (_prob_at1_2_*) (fprob_from2a_*_0_rp)
+
+. 
+. rename (_los_at1_2_*lci) (flos_from2a_*lci_0_rp)
+
+. rename (_los_at1_2_*uci) (flos_from2a_*uci_0_rp)
+
+. rename (_los_at1_2_*) (flos_from2a_*_0_rp)
+
+. 
+. rename (_prob_at2_2_*lci) (fprob_from2b_*lci_0_rp)
+
+. rename (_prob_at2_2_*uci) (fprob_from2b_*uci_0_rp)
+
+. rename (_prob_at2_2_*) (fprob_from2b_*_0_rp)
+
+. 
+. rename (_los_at2_2_*lci) (flos_from2b_*lci_0_rp)
+
+. rename (_los_at2_2_*uci) (flos_from2b_*uci_0_rp)
+
+. rename (_los_at2_2_*) (flos_from2b_*_0_rp)
+
+. 
+. rename (_ratio_prob_at2_2_*_lci) (fratio_prob_from2_*_lci_0_rp)
+
+. rename (_ratio_prob_at2_2_*_uci) (fratio_prob_from2_*_uci_0_rp)
+
+. rename (_ratio_prob_at2_2_*) (fratio_prob_from2_*_0_rp)
+
+. rename (_diff_prob_at2_2_*_lci) (fdiff_prob_from2_*_lci_0_rp)
+
+. rename (_diff_prob_at2_2_*_uci) (fdiff_prob_from2_*_uci_0_rp)
+
+. rename (_diff_prob_at2_2_*) (fdiff_prob_from2_*_0_rp) 
+
+. 
+. rename (_ratio_los_at2_2_*_lci) (fratio_los_from2_*_lci_0_rp)
+
+. rename (_ratio_los_at2_2_*_uci) (fratio_los_from2_*_uci_0_rp)
+
+. rename (_ratio_los_at2_2_*) (fratio_los_from2_*_0_rp)
+
+. rename (_diff_los_at2_2_*_lci) (fdiff_los_from2_*_lci_0_rp)
+
+. rename (_diff_los_at2_2_*_uci) (fdiff_los_from2_*_uci_0_rp)
+
+. rename (_diff_los_at2_2_*) (fdiff_los_from2_*_0_rp)
+
+. 
+. estread &quot;${pathdata2}parmodels_m2_jun_22.sters&quot;
+
+-----------------------------------------------------------------------------
+        name | command      depvar       npar  title 
+-------------+---------------------------------------------------------------
+    m2_1_exp | merlin       no depvar       3  Fixed effects regression model
+   m2_1_weib | merlin       no depvar       4  Fixed effects regression model
+    m2_1_gom | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logl | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logn | merlin       no depvar       4  Fixed effects regression model
+   m2_1_ggam | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp2 | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp3 | merlin       no depvar       6  Fixed effects regression model
+    m2_1_rp4 | merlin       no depvar       7  Fixed effects regression model
+    m2_1_rp5 | merlin       no depvar       8  Fixed effects regression model
+    m2_1_rp6 | merlin       no depvar       9  Fixed effects regression model
+    m2_1_rp7 | merlin       no depvar      10  Fixed effects regression model
+    m2_1_rp8 | merlin       no depvar      11  Fixed effects regression model
+    m2_1_rp9 | merlin       no depvar      12  Fixed effects regression model
+   m2_1_rp10 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_exp | merlin       no depvar       5  Fixed effects regression model
+   m2_2_weib | merlin       no depvar       6  Fixed effects regression model
+    m2_2_gom | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logl | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logn | merlin       no depvar       6  Fixed effects regression model
+   m2_2_ggam | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp2 | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp3 | merlin       no depvar       8  Fixed effects regression model
+    m2_2_rp4 | merlin       no depvar       9  Fixed effects regression model
+    m2_2_rp5 | merlin       no depvar      10  Fixed effects regression model
+    m2_2_rp6 | merlin       no depvar      11  Fixed effects regression model
+    m2_2_rp7 | merlin       no depvar      12  Fixed effects regression model
+    m2_2_rp8 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_rp9 | merlin       no depvar      14  Fixed effects regression model
+   m2_2_rp10 | merlin       no depvar      15  Fixed effects regression model
+    m2_3_exp | merlin       no depvar       6  Fixed effects regression model
+   m2_3_weib | merlin       no depvar       7  Fixed effects regression model
+    m2_3_gom | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logl | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logn | merlin       no depvar       7  Fixed effects regression model
+   m2_3_ggam | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp2 | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp3 | merlin       no depvar       9  Fixed effects regression model
+    m2_3_rp4 | merlin       no depvar      10  Fixed effects regression model
+    m2_3_rp5 | merlin       no depvar      11  Fixed effects regression model
+    m2_3_rp6 | merlin       no depvar      12  Fixed effects regression model
+    m2_3_rp7 | merlin       no depvar      13  Fixed effects regression model
+    m2_3_rp8 | merlin       no depvar      14  Fixed effects regression model
+    m2_3_rp9 | merlin       no depvar      15  Fixed effects regression model
+   m2_3_rp10 | merlin       no depvar      16  Fixed effects regression model
+    m2_4_exp | merlin       no depvar       7  Fixed effects regression model
+   m2_4_weib | merlin       no depvar       8  Fixed effects regression model
+    m2_4_gom | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logl | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logn | merlin       no depvar       8  Fixed effects regression model
+   m2_4_ggam | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp2 | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp3 | merlin       no depvar      10  Fixed effects regression model
+    m2_4_rp4 | merlin       no depvar      11  Fixed effects regression model
+    m2_4_rp5 | merlin       no depvar      12  Fixed effects regression model
+    m2_4_rp6 | merlin       no depvar      13  Fixed effects regression model
+    m2_4_rp7 | merlin       no depvar      14  Fixed effects regression model
+    m2_4_rp8 | merlin       no depvar      15  Fixed effects regression model
+    m2_4_rp9 | merlin       no depvar      16  Fixed effects regression model
+   m2_4_rp10 | merlin       no depvar      17  Fixed effects regression model
+-----------------------------------------------------------------------------
+
+. 
+. predictms, transmatrix(mat_five_states) models(m2_1_rp5 m2_2_rp4 m2_3_rp2 m2_4_rp3) ///
+&gt;         timevar(timevar0) /// mint(0) maxt(1826) timevar() cannot be specified with mint()/maxt()/obs()
+&gt;         seed(2125) n(100000) prob los diff ratio /// * si agrego bootstrap, at#() limit reached, or unrecognised option
+&gt;         from(3) ci at1(tipo_de_plan_res_1 0 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) at2(tipo_de_plan_res_1 1 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) reset
+&gt;  bootstrap m(1000)   //* es una forma de hacer bootstrap 
+
+Calculating CIs via parametric bootstrap for at1() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+Calculating CIs via parametric bootstrap for at2() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+. 
+. graphms,from(3) nstates(5) timevar(timevar0) at(1)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From Second Readmission(3), Ambulatory (RP)
+
+</code></pre>
+<p><img src="predictms3a_jun_rp_22.svg" width="800" ></p>
+<pre><code>. graphms,from(3) nstates(5) timevar(timevar0) at(2)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From Second Readmission(3), Residential (RP)
+
+</code></pre>
+<p><img src="predictms3b_jun_rp_22.svg" width="800" ></p>
+<pre><code>. rename (_prob_at1_3_*lci) (fprob_from3a_*lci_0_rp)
+
+. rename (_prob_at1_3_*uci) (fprob_from3a_*uci_0_rp)
+
+. rename (_prob_at1_3_*) (fprob_from3a_*_0_rp)
+
+. 
+. rename (_los_at1_3_*lci) (flos_from3a_*lci_0_rp)
+
+. rename (_los_at1_3_*uci) (flos_from3a_*uci_0_rp)
+
+. rename (_los_at1_3_*) (flos_from3a_*_0_rp)
+
+. 
+. rename (_prob_at2_3_*lci) (fprob_from3b_*lci_0_rp)
+
+. rename (_prob_at2_3_*uci) (fprob_from3b_*uci_0_rp)
+
+. rename (_prob_at2_3_*) (fprob_from3b_*_0_rp)
+
+. 
+. rename (_los_at2_3_*lci) (flos_from3b_*lci_0_rp)
+
+. rename (_los_at2_3_*uci) (flos_from3b_*uci_0_rp)
+
+. rename (_los_at2_3_*) (flos_from3b_*_0_rp)
+
+. 
+. rename (_ratio_prob_at2_3_*_lci) (fratio_prob_from3_*_lci_0_rp)
+
+. rename (_ratio_prob_at2_3_*_uci) (fratio_prob_from3_*_uci_0_rp)
+
+. rename (_ratio_prob_at2_3_*) (fratio_prob_from3_*_0_rp)
+
+. rename (_diff_prob_at2_3_*_lci) (fdiff_prob_from3_*_lci_0_rp)
+
+. rename (_diff_prob_at2_3_*_uci) (fdiff_prob_from3_*_uci_0_rp)
+
+. rename (_diff_prob_at2_3_*) (fdiff_prob_from3_*_0_rp) 
+
+. 
+. rename (_ratio_los_at2_3_*_lci) (fratio_los_from3_*_lci_0_rp)
+
+. rename (_ratio_los_at2_3_*_uci) (fratio_los_from3_*_uci_0_rp)
+
+. rename (_ratio_los_at2_3_*) (fratio_los_from3_*_0_rp)
+
+. rename (_diff_los_at2_3_*_lci) (fdiff_los_from3_*_lci_0_rp)
+
+. rename (_diff_los_at2_3_*_uci) (fdiff_los_from3_*_uci_0_rp)
+
+. rename (_diff_los_at2_3_*) (fdiff_los_from3_*_0_rp)
+
+. 
+. estread &quot;${pathdata2}parmodels_m2_jun_22.sters&quot;
+
+-----------------------------------------------------------------------------
+        name | command      depvar       npar  title 
+-------------+---------------------------------------------------------------
+    m2_1_exp | merlin       no depvar       3  Fixed effects regression model
+   m2_1_weib | merlin       no depvar       4  Fixed effects regression model
+    m2_1_gom | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logl | merlin       no depvar       4  Fixed effects regression model
+   m2_1_logn | merlin       no depvar       4  Fixed effects regression model
+   m2_1_ggam | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp2 | merlin       no depvar       5  Fixed effects regression model
+    m2_1_rp3 | merlin       no depvar       6  Fixed effects regression model
+    m2_1_rp4 | merlin       no depvar       7  Fixed effects regression model
+    m2_1_rp5 | merlin       no depvar       8  Fixed effects regression model
+    m2_1_rp6 | merlin       no depvar       9  Fixed effects regression model
+    m2_1_rp7 | merlin       no depvar      10  Fixed effects regression model
+    m2_1_rp8 | merlin       no depvar      11  Fixed effects regression model
+    m2_1_rp9 | merlin       no depvar      12  Fixed effects regression model
+   m2_1_rp10 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_exp | merlin       no depvar       5  Fixed effects regression model
+   m2_2_weib | merlin       no depvar       6  Fixed effects regression model
+    m2_2_gom | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logl | merlin       no depvar       6  Fixed effects regression model
+   m2_2_logn | merlin       no depvar       6  Fixed effects regression model
+   m2_2_ggam | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp2 | merlin       no depvar       7  Fixed effects regression model
+    m2_2_rp3 | merlin       no depvar       8  Fixed effects regression model
+    m2_2_rp4 | merlin       no depvar       9  Fixed effects regression model
+    m2_2_rp5 | merlin       no depvar      10  Fixed effects regression model
+    m2_2_rp6 | merlin       no depvar      11  Fixed effects regression model
+    m2_2_rp7 | merlin       no depvar      12  Fixed effects regression model
+    m2_2_rp8 | merlin       no depvar      13  Fixed effects regression model
+    m2_2_rp9 | merlin       no depvar      14  Fixed effects regression model
+   m2_2_rp10 | merlin       no depvar      15  Fixed effects regression model
+    m2_3_exp | merlin       no depvar       6  Fixed effects regression model
+   m2_3_weib | merlin       no depvar       7  Fixed effects regression model
+    m2_3_gom | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logl | merlin       no depvar       7  Fixed effects regression model
+   m2_3_logn | merlin       no depvar       7  Fixed effects regression model
+   m2_3_ggam | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp2 | merlin       no depvar       8  Fixed effects regression model
+    m2_3_rp3 | merlin       no depvar       9  Fixed effects regression model
+    m2_3_rp4 | merlin       no depvar      10  Fixed effects regression model
+    m2_3_rp5 | merlin       no depvar      11  Fixed effects regression model
+    m2_3_rp6 | merlin       no depvar      12  Fixed effects regression model
+    m2_3_rp7 | merlin       no depvar      13  Fixed effects regression model
+    m2_3_rp8 | merlin       no depvar      14  Fixed effects regression model
+    m2_3_rp9 | merlin       no depvar      15  Fixed effects regression model
+   m2_3_rp10 | merlin       no depvar      16  Fixed effects regression model
+    m2_4_exp | merlin       no depvar       7  Fixed effects regression model
+   m2_4_weib | merlin       no depvar       8  Fixed effects regression model
+    m2_4_gom | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logl | merlin       no depvar       8  Fixed effects regression model
+   m2_4_logn | merlin       no depvar       8  Fixed effects regression model
+   m2_4_ggam | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp2 | merlin       no depvar       9  Fixed effects regression model
+    m2_4_rp3 | merlin       no depvar      10  Fixed effects regression model
+    m2_4_rp4 | merlin       no depvar      11  Fixed effects regression model
+    m2_4_rp5 | merlin       no depvar      12  Fixed effects regression model
+    m2_4_rp6 | merlin       no depvar      13  Fixed effects regression model
+    m2_4_rp7 | merlin       no depvar      14  Fixed effects regression model
+    m2_4_rp8 | merlin       no depvar      15  Fixed effects regression model
+    m2_4_rp9 | merlin       no depvar      16  Fixed effects regression model
+   m2_4_rp10 | merlin       no depvar      17  Fixed effects regression model
+-----------------------------------------------------------------------------
+
+. 
+. predictms, transmatrix(mat_five_states) models(m2_1_rp5 m2_2_rp4 m2_3_rp2 m2_4_rp3) ///
+&gt;         timevar(timevar0) /// mint(0) maxt(1826) timevar() cannot be specified with mint()/maxt()/obs()
+&gt;         seed(2125) n(100000) prob los diff ratio /// * si agrego bootstrap, at#() limit reached, or unrecognised option
+&gt;         from(4) ci at1(tipo_de_plan_res_1 0 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) at2(tipo_de_plan_res_1 1 TD_1 0 TD_2 0 TD_3 0 TD_4 0 _start 0) reset
+&gt;  bootstrap m(1000)   //* es una forma de hacer bootstrap 
+
+Calculating CIs via parametric bootstrap for at1() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+Calculating CIs via parametric bootstrap for at2() (1000)
+----+--- 1 ---+--- 2 ---+--- 3 ---+--- 4 ---+--- 5 
+..................................................    50
+..................................................   100
+..................................................   150
+..................................................   200
+..................................................   250
+..................................................   300
+..................................................   350
+..................................................   400
+..................................................   450
+..................................................   500
+..................................................   550
+..................................................   600
+..................................................   650
+..................................................   700
+..................................................   750
+..................................................   800
+..................................................   850
+..................................................   900
+..................................................   950
+..................................................  1000
+
+. 
+. graphms,from(4) nstates(5) timevar(timevar0) at(1)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From Third Readmission(4), Ambulatory (RP)
+
+</code></pre>
+<p><img src="predictms4a_jun_rp_22.svg" width="800" ></p>
+<pre><code>. graphms,from(4) nstates(5) timevar(timevar0) at(2)
+
+. gr_edit .style.editstyle boxstyle(shadestyle(color(white))) editcopy
+
+. gr_edit subtitle.text = {}
+
+. gr_edit subtitle.text.Arrpush From Third Readmission(4), Residential (RP)
+
+</code></pre>
+<p><img src="predictms4b_jun_rp_22.svg" width="800" ></p>
+<pre><code>. rename (_prob_at1_4_*lci) (fprob_from4a_*lci_0_rp)
+
+. rename (_prob_at1_4_*uci) (fprob_from4a_*uci_0_rp)
+
+. rename (_prob_at1_4_*) (fprob_from4a_*_0_rp)
+
+. 
+. rename (_los_at1_4_*lci) (flos_from4a_*lci_0_rp)
+
+. rename (_los_at1_4_*uci) (flos_from4a_*uci_0_rp)
+
+. rename (_los_at1_4_*) (flos_from4a_*_0_rp)
+
+. 
+. rename (_prob_at2_4_*lci) (fprob_from4b_*lci_0_rp)
+
+. rename (_prob_at2_4_*uci) (fprob_from4b_*uci_0_rp)
+
+. rename (_prob_at2_4_*) (fprob_from4b_*_0_rp)
+
+. 
+. rename (_los_at2_4_*lci) (flos_from4b_*lci_0_rp)
+
+. rename (_los_at2_4_*uci) (flos_from4b_*uci_0_rp)
+
+. rename (_los_at2_4_*) (flos_from4b_*_0_rp)
+
+. 
+. rename (_ratio_prob_at2_4_*_lci) (fratio_prob_from4_*_lci_0_rp)
+
+. rename (_ratio_prob_at2_4_*_uci) (fratio_prob_from4_*_uci_0_rp)
+
+. rename (_ratio_prob_at2_4_*) (fratio_prob_from4_*_0_rp)
+
+. rename (_diff_prob_at2_4_*_lci) (fdiff_prob_from4_*_lci_0_rp)
+
+. rename (_diff_prob_at2_4_*_uci) (fdiff_prob_from4_*_uci_0_rp)
+
+. rename (_diff_prob_at2_4_*) (fdiff_prob_from4_*_0_rp) 
+
+. 
+. rename (_ratio_los_at2_4_*_lci) (fratio_los_from4_*_lci_0_rp)
+
+. rename (_ratio_los_at2_4_*_uci) (fratio_los_from4_*_uci_0_rp)
+
+. rename (_ratio_los_at2_4_*) (fratio_los_from4_*_0_rp)
+
+. rename (_diff_los_at2_4_*_lci) (fdiff_los_from4_*_lci_0_rp)
+
+. rename (_diff_los_at2_4_*_uci) (fdiff_los_from4_*_uci_0_rp)
+
+. rename (_diff_los_at2_4_*) (fdiff_los_from4_*_0_rp)
+
+. 
+</code></pre>
+<p>Saved at= 16:24:54 18 Apr 2022</p>
+<pre><code>
+</code></pre>

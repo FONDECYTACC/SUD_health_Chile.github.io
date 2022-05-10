@@ -1,0 +1,1062 @@
+---
+title: "Ambulatory or residential? a multi-state analysis of treatments for substance use disorders (Step 5)"
+date: "`r withr::with_locale(new = c('LC_TIME' = 'C'), code =format(Sys.time(),'%B %d, %Y'))`"
+output:
+  html_document:
+    code_folding: hide  
+    toc: true # table of content true
+    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_float: true
+---
+
+
+```{css zoom-lib-src, echo = FALSE}
+script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+```
+
+```{js zoom-jquery, echo = FALSE}
+ $(document).ready(function() {
+    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
+    // onClick function for all plots (img's)
+    $('img:not(.zoomImg)').click(function() {
+      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
+      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
+    });
+    // onClick function for zoomImg
+    $('img.zoomImg').click(function() {
+      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
+    });
+  });
+```
+
+```{=html}
+<style type="text/css">
+.tablelines table, .tablelines td, .tablelines th {
+        border: 1px solid black;
+        }
+.centrado {
+    text-align: center;
+}
+.table.center {
+    margin-left:auto; 
+    margin-right:auto;
+  }
+.table_wrapper{
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+code.r{
+  font-size: 8px;
+}
+body{ /* Normal  */
+      text-align: justify;
+  }
+.superbigimage{
+    overflow-y:scroll;
+    white-space: nowrap;
+}
+.superbigimage img{
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+</style>
+```
+```{=html}
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
+</style>
+```
+```{r prev_setup, include = FALSE, cache=T}
+rm(list=ls());gc()
+if(!grepl("4.0.2",R.version.string)){stop("Different version (must be 4.0.2)")}
+path<-rstudioapi::getSourceEditorContext()$path
+#load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_apr22.RData")
+#load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_5_jun.RData")
+if (grepl("CISS Fondecyt",path)==T){
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_4_jun.RData")
+  } else if (grepl("andre",path)==T){
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_4_jun.RData")
+  } else if (grepl("E:",path)==T){
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_4_jun.RData")
+  } else {
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_4_jun.RData")
+  }
+
+#getwd()
+#knitr::opts_knit$get()
+#devtools::install_github("hputter/mstate")
+
+```
+
+```{r setup, include = FALSE, cache=T}
+#Libraries used in the routine. Dont change the order
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
+  if(class(ungroup(x))[1]=="tbl_df"){
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)    
+        }
+  } else {
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)       
+  }
+ }
+}  
+#packageVersion("codebook")
+#https://github.com/RevolutionAnalytics/checkpoint
+#if(!require(checkpoint)){install.packages("checkpoint")}
+#if(!require(here)){install.packages("here")}
+#checkpoint::checkpoint("2020-02-19",project=here::here(),checkpointLocation=paste0(here::here(),"/dedup"), use.lock=F, use.knitr=T, auto.install.knitr = T,scan.rnw.with.knitr=T, forceInstall=T,scanForPackages = TRUE)
+#checkpointArchives(tempdir(), full.names = TRUE)
+
+#if(!require(tidyr)){install.packages("tidyr")}
+#if(!require(DataExplorer)){install.packages("DataExplorer")}
+#if(!require(stringi)){install.packages("stringi")}
+#if(!require(stringr)){install.packages("stringr")}
+#if(!require(ggplot2)){install.packages("ggplot2")}
+#if(!require(Hmisc)){install.packages("Hmisc")}
+#if(!require(kableExtra)){install.packages("kableExtra")}
+#if(!require(plotly)){install.packages("plotly")}
+#if(!require(rbokeh)){install.packages("rbokeh")}
+#if(!require(altair)){install.packages("altair")}
+#if(!require(zoo)){install.packages("zoo")}
+#if(!require(codebook)){install.packages("codebook")}
+#if(!require(broom)){install.packages("broom")}
+#if(!require(sqldf)){install.packages("sqldf")} 
+#if(!require(devtools)){install.packages("devtools")}
+#if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
+#if(!require(data.table)){install.packages("data.table")}
+#if(!require(dplyr)){install.packages("dplyr")}
+
+#if(!require(boot)){install.packages("boot")}
+#if(!require(plyr)){install.packages("plyr")}
+#if(!require(matrixStats)){install.packages("matrixStats")}
+#if(!require(radiant)){install.packages("radiant", repos = "https://radiant-rstats.github.io/minicran/")}
+
+try(library(boot))
+library(matrixStats)
+library(knitr)
+library(tidyr)
+library(stringi)
+library(stringr)
+library(ggplot2)
+library(Hmisc)
+library(kableExtra)
+library(plotly)
+library(janitor)
+library(rbokeh)
+library(zoo)
+library(broom)
+library(sqldf)
+library(devtools)
+library(codebook)
+library(data.table)
+library(panelr)
+library(RColorBrewer)
+library(lsmeans)
+library(finalfit)
+suppressPackageStartupMessages(library(ggiraph))
+suppressPackageStartupMessages(library(sf))
+library(treemapify)
+library(dplyr)
+library(tidyverse)
+library(epiR)
+library(survminer)
+library(ggfortify)
+library(survMisc)
+
+library(foreign)
+library(Hmisc)
+library(gridExtra)
+library(reshape2)
+library(stargazer)
+library(tableone)
+library(MatchIt)
+library(cobalt)
+library(eha)
+library(igraph)
+library(Amelia)
+library(DiagrammeR) 
+library(mstate)
+library(flexsurv)
+library(muhaz)
+library(Metrics)
+
+library(TraMineR)
+library(RColorBrewer)
+library(TraMineRextras)
+library(WeightedCluster)
+library(cluster)
+library(parcats)
+library(easyalluvial)
+library(timereg)
+
+library(htmltools)
+library(rsvg)
+library(DiagrammeR)
+library(DiagrammeRsvg)
+library(EValue)
+library(coxphw)
+library(data.tree)
+library(ggh4x)
+#library(mstateutils)
+#remotes::install_github("chjackson/flexsurv-dev", upgrade = "never")
+#devtools::install_github("stulacy/multistateutils", build_vignettes=TRUE, upgrade = "never")
+#devtools::install_github("hputter/mstate", upgrade = "never")
+#unlink("C:/Users/CISS Fondecyt/OneDrive/Documentos/R/win-library/4.0/mstate", recursive=T, force=T)
+
+if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
+#install.packages( repos = "https://radiant-rstats.github.io/minicran/")
+#install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")
+
+#tryCatch(source("https://raw.githubusercontent.com/radiant-rstats/minicran/gh-pages/update.R"), error = function(e) print("updated package, radiant"))
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+try_with_time_limit <- function(expr, cpu = Inf, elapsed = Inf)
+{
+  y <- try({setTimeLimit(cpu, elapsed); expr}, silent = TRUE) 
+  if(inherits(y, "try-error")) NULL else y 
+}
+eval_fork <- function(..., timeout=60){
+
+  #this limit must always be higher than the timeout on the fork!
+  setTimeLimit(timeout+5);      
+
+  #dispatch based on method
+  ##NOTE!!!!! Due to a bug in mcparallel, we cannot use silent=TRUE for now.
+  myfork <- parallel::mcparallel({
+    eval(...)
+  }, silent=FALSE);
+
+  #wait max n seconds for a result.
+  myresult <- parallel::mccollect(myfork, wait=FALSE, timeout=timeout);
+
+  #try to avoid bug/race condition where mccollect returns null without waiting full timeout.
+  #see https://github.com/jeroenooms/opencpu/issues/131
+  #waits for max another 2 seconds if proc looks dead 
+  while(is.null(myresult) && totaltime < timeout && totaltime < 2) {
+     Sys.sleep(.1)
+     enddtime <- Sys.time();
+     totaltime <- as.numeric(enddtime - starttime, units="secs")
+     myresult <- parallel::mccollect(myfork, wait = FALSE, timeout = timeout);
+  }
+
+  #kill fork after collect has returned
+  tools::pskill(myfork$pid, tools::SIGKILL);    
+  tools::pskill(-1 * myfork$pid, tools::SIGKILL);  
+
+  #clean up:
+  parallel::mccollect(myfork, wait=FALSE);
+
+  #timeout?
+  if(is.null(myresult)){
+    stop("R call did not return within ", timeout, " seconds. Terminating process.", call.=FALSE);      
+  }
+
+  #move this to distinguish between timeout and NULL returns
+  myresult <- myresult[[1]];
+
+  #reset timer
+  setTimeLimit();     
+
+  #forks don't throw errors themselves
+  if(inherits(myresult,"try-error")){
+    #stop(myresult, call.=FALSE);
+    stop(attr(myresult, "condition"));
+  }
+
+  #send the buffered response
+  return(myresult);  
+}
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#GET LOCAL
+#dir.create(paste0(getwd(),"/renv_local"))
+#Sys.setenv(RENV_PATHS_LOCAL = paste0(getwd(),"/renv_local"))
+#install.packages(paste0(getwd(),"/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+#install.packages(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+library(gurobi)
+#"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)"
+#Sys.getenv("R_LIBS_USER")
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+```
+
+<br>
+
+
+### Extended Cox
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r first_try,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+invisible("Investigating time-varying coefficient with timereg package")
+#https://www.ncbi.nlm.nih.gov/labs/pmc/articles/PMC6015946/
+
+#Zhang, Z., Reinikainen, J., Adeleke, K. A., Pieterse, M. E., & Groothuis-Oudshoorn, C. (2018). Time-varying covariates #and coefficients in Cox regression models. Annals of translational medicine, 6(7), 121. https://doi.org/10.21037/atm.2018.02.12
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#In this case the time-varying effect is tested by resampling method 
+
+# fits Cox models with possibly time-varying effects
+#fits the proportional hazards model, but allows for covariates to be included under the non-proportional hazards assumption as well,
+#using an extension of the traditional Cox model
+
+#recommended for instances where testing the significance of the NPH covariate effects are important, particularly if the estimate of the hazard rate is not imperative. The timereg package is well-designed, user-friendly,
+#and has plenty of associated documentation, and thus it is a very valuable piece of software for implementing
+#a variety of complex survival models. However, for survival modeling when the estimate of the hazard rate is
+#needed, other more reliable functions from other packages are available for including covariates under both the
+#PH and the NPH setting
+
+#here the test processes for each covariate with 1,00 randomly choosen 
+#realizations under the null hypothesis of constant effects
+timecox_pwp<- 
+  timecox(Surv(Tstart,Tstop,status) ~ tipo_de_plan_res_1+  
+            TD_1+ TD_2+ TD_3+ TD_4+ cluster(id) + strata(trans), Nit = 100,
+          data = ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
+```
+
+</div>
+
+```{r first_try_2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+#load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_5_jun.RData")
+coxphw_pwp<-
+  coxphw(Surv(Tstart,Tstop,status) ~ tipo_de_plan_res_1+  
+            TD_1+ TD_2+ TD_3+ TD_4+ cluster(id) + strata(trans), data = ms_d_match_surv,template="AHR",  robust=T)#
+coxphw_pwp2<-
+  coxphw(Surv(Tstart,Tstop,status) ~ tipo_de_plan_res_1*strata(trans)+  
+            TD_1+ TD_2+ TD_3+ TD_4+ cluster(id) + strata(trans), data = ms_d_match_surv,template="AHR",  robust=T)#
+
+res_pwp_w <- cbind.data.frame(Avg_HR=round(exp(coxphw_pwp$coeff),2),
+                             Lo_ci95=round(exp(confint(coxphw_pwp))[,1],2),
+                             Up_ci95=round(exp(confint(coxphw_pwp))[,2],2),
+                             p=round(summary(coxphw_pwp)$prob,4))%>% 
+  data.table::data.table(keep.rownames=T)
+res_pwp_w2 <- cbind.data.frame(Avg_HR=round(exp(coxphw_pwp2$coeff),2),
+                             Lo_ci95=round(exp(confint(coxphw_pwp2))[,1],2),
+                             Up_ci95=round(exp(confint(coxphw_pwp2))[,2],2),
+                             p=round(summary(coxphw_pwp2)$prob,4))%>% 
+  data.table::data.table(keep.rownames=T)
+#The default study period in the timecox() model is the first and last observed (i.e. uncensored) failure, but this can be changed by
+#the user through the “start.time” and “max.time” options.
+```
+
+
+```{r first_try2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+summary_test_t_inv0<-capture.output(summary(timecox_pwp))
+summary_test_t_inv_sel0<-summary_test_t_inv0[which(grepl("Test for time invariant", summary_test_t_inv0)):(which(grepl("Call", summary_test_t_inv0))-3)]
+summary_test_t_inv_sel0_df<-
+data.frame(summary_test_t_inv_sel0) %>% 
+    dplyr::mutate(summary_test_t_inv_sel0=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel0)) %>%  
+    tidyr::separate(summary_test_t_inv_sel0,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
+    dplyr::slice(-1) %>% 
+  #test p-value H_0:constant effect
+    dplyr::mutate(type=dplyr::case_when(grepl("Kolmogorov",Test)~ "Kolmogorov-Smirnov",
+                                        grepl("Cramer",Test)~ "Cramer von Mises",
+                                        T~NA_character_)) %>% 
+    tidyr::fill(type,.direction = "down") %>% 
+  dplyr::select(Variable, type, Test, pvalue) %>% 
+  tidyr::drop_na(pvalue)
+
+summary(timecox_pwp)
+```
+
+<br>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r second_try,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+invisible("no cambiaré el maxtime, pero sí llevaré a constantes algunas variables encontradas arriba")
+timecox_pwp_const1<- 
+  timecox(Surv(Tstart,Tstop,status) ~ tipo_de_plan_res_1+  
+            TD_1+ const(TD_2)+ const(TD_3)+ TD_4+ cluster(id) + strata(trans), Nit = 100,
+          data = ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
+```
+</div>
+
+```{r second_try2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+summary_test_t_inv1<-capture.output(summary(timecox_pwp_const1))
+summary_test_t_inv_sel1<-summary_test_t_inv1[which(grepl("Test for time invariant|Test for non-significant", summary_test_t_inv1)):(which(grepl("Parametric|Call", summary_test_t_inv1))-2)]
+summary_test_t_inv_sel1_df<-
+data.frame(summary_test_t_inv_sel1) %>% 
+    dplyr::mutate(summary_test_t_inv_sel1=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel1)) %>%  
+    tidyr::separate(summary_test_t_inv_sel1,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
+    dplyr::slice(-1) %>% 
+  #test p-value H_0:constant effect
+    dplyr::mutate(type=dplyr::case_when(grepl("Supremum",Test)~"Supremum-test of significance",
+                                        grepl("Kolmogorov",Test)~ "Kolmogorov-Smirnov",
+                                        grepl("Cramer",Test)~ "Cramer von Mises",
+                                        T~NA_character_)) %>% 
+    tidyr::fill(type,.direction = "down") %>% 
+  dplyr::select(Variable, type, Test, pvalue) %>% 
+  tidyr::drop_na(pvalue) %>% 
+  dplyr::mutate(pvalue=dplyr::case_when(pvalue=="0.00000"~"<0.001",
+                                        pvalue=="0.000"~"<0.001",
+                                        pvalue=="0.0000"~"<0.001",
+                                        T~pvalue))
+
+summary(timecox_pwp_const1)
+```
+
+<br>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r third_try,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+timecox_pwp_const2_opc1<- 
+  timecox(Surv(Tstart,Tstop,status) ~ tipo_de_plan_res_1+  
+            TD_1+ const(TD_2)+ const(TD_3)+ const(TD_4)+ cluster(id) + const(strata(trans)),Nit = 100,
+          data = ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
+```
+</div>
+
+```{r third_try2,eval=T, echo=T, paged.print=TRUE, error=T}    
+summary_test_t_inv2_1<-capture.output(summary(timecox_pwp_const2_opc1))
+summary_test_t_inv_sel2_1<-summary_test_t_inv2_1[which(grepl("Test for time invariant|Test for non-significant", summary_test_t_inv2_1)):(which(grepl("Parametric|Call", summary_test_t_inv2_1))-2)]
+summary_test_t_inv_sel2_1_df<-
+data.frame(summary_test_t_inv_sel2_1) %>% 
+    dplyr::mutate(summary_test_t_inv_sel2_1=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel2_1)) %>%  
+    tidyr::separate(summary_test_t_inv_sel2_1,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
+    dplyr::slice(-1) %>% 
+  #test p-value H_0:constant effect
+    dplyr::mutate(type=dplyr::case_when(grepl("Supremum",Test)~"Supremum-test of significance",
+                                        grepl("Kolmogorov",Test)~ "Kolmogorov-Smirnov",
+                                        grepl("Cramer",Test)~ "Cramer von Mises",
+                                        T~NA_character_)) %>% 
+    tidyr::fill(type,.direction = "down") %>% 
+  dplyr::select(Variable, type, Test, pvalue) %>% 
+  tidyr::drop_na(pvalue) %>% 
+  dplyr::mutate(pvalue=dplyr::case_when(pvalue=="0.00000"~"<0.001",
+                                        pvalue=="0.000"~"<0.001",
+                                        T~pvalue))
+
+summary(timecox_pwp_const2_opc1)
+```
+
+<br>
+
+Holding constant other effects, allows us to detect that the treatment setting had time-invariant effects indeed.
+
+<br>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r third_try3,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+timecox_pwp_const2_opc2<- 
+  timecox(Surv(Tstart,Tstop,status) ~ const(tipo_de_plan_res_1)+  
+            TD_1+ const(TD_2)+ const(TD_3)+ const(TD_4)+ cluster(id) + const(strata(trans)), Nit= 100,
+          data= ms_d_match_surv, n.sim= 3000, robust= 1, weighted.test= 1)
+```
+</div>
+
+```{r third_try4,eval=T, echo=T, paged.print=TRUE, error=T}  
+summary_test_t_inv2_2<-capture.output(summary(timecox_pwp_const2_opc2))
+summary_test_t_inv_sel2_2<-summary_test_t_inv2_2[which(grepl("Test for time invariant|Test for non-significant", summary_test_t_inv2_2)):(which(grepl("Parametric|Call", summary_test_t_inv2_2))-2)]
+summary_test_t_inv_sel2_2_df<-
+data.frame(summary_test_t_inv_sel2_2) %>% 
+    dplyr::mutate(summary_test_t_inv_sel2_2=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel2_2)) %>%  
+    tidyr::separate(summary_test_t_inv_sel2_2,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
+    dplyr::slice(-1) %>% 
+  #test p-value H_0:constant effect
+    dplyr::mutate(type=dplyr::case_when(grepl("Supremum",Test)~"Supremum-test of significance",
+                                        grepl("Kolmogorov",Test)~ "Kolmogorov-Smirnov",
+                                        grepl("Cramer",Test)~ "Cramer von Mises",
+                                        T~NA_character_)) %>% 
+    tidyr::fill(type,.direction = "down") %>% 
+  dplyr::select(Variable, type, Test, pvalue) %>% 
+  tidyr::drop_na(pvalue)%>% 
+  dplyr::mutate(pvalue=dplyr::case_when(pvalue=="0.00000"~"<0.001",
+                                        pvalue=="0.000"~"<0.001",
+                                        T~pvalue))
+
+summary(timecox_pwp_const2_opc2)
+```
+
+<br>
+
+Once set as constant those terms that had no time-varying effects, we found that treatment setting at baseline had a hazard ratio of `r paste0(round(exp(0.1410),3),"[",round(exp(0.0522),3),"-", round(exp(0.23000),3),"]")`.
+
+<br>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r plot, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.show='hide'}
+
+
+plot_cums <-  function (x , pointwise.ci=1, hw.ci=0, sim.ci=0, robust.ci=0, col=NULL,
+                        specific.comps=FALSE,level=0.05, start.time = 0, 
+                        stop.time = 0, add.to.plot=FALSE,main=NULL,mains=TRUE, xlab="Time",
+                        ylab ="Cumulative coefficients",ylim=NULL,...) 
+  # pointwise.ci=1 
+  # hw.ci=0
+  # sim.ci=0
+  # robust.ci=0
+  # col=NULL
+  # specific.comps=FALSE
+  # level=0.05
+  # start.time = 0 
+  # stop.time = 0
+  # add.to.plot=FALSE
+  # main=NULL
+# mains=TRUE
+# ylab ="Cumulative coefficients"
+# ylim=NULL
+{ 
+  
+  name_model<-deparse(substitute(x))#deparse(quote(x))
+  object<-x; rm(x); 
+  B<-object$cum; V<-object$var.cum; p<-dim(B)[[2]]; 
+  if (robust.ci>=1) {V<-object$robvar.cum;}
+  ### color for estimate, pointwise, robust-pointwise, sim.ci , hw.ci  
+  cis <- c(1,pointwise.ci>=1,robust.ci>=1,sim.ci>=1,hw.ci>=1)
+  if (is.null(col)) cols<-rep(1,5)  else { 
+    cols <-  rep(1,5)
+    cols[which(cis==TRUE)] <- col
+  }
+  
+  if (sum(specific.comps)==FALSE) comp<-2:p else comp<-specific.comps+1
+  if (stop.time==0) stop.time<-max(B[,1]);
+  
+  med<-B[,1]<=stop.time & B[,1]>=start.time
+  B<-B[med,]; Bs<-B[1,];  B<-t(t(B)-Bs); B[,1]<-B[,1]+Bs[1];
+  V<-V[med,]; Vs<-V[1,]; V<-t( t(V)-Vs); 
+  Vrob<-object$robvar.cum; 
+  Vrob<-Vrob[med,]; Vrobs<-Vrob[1,]; Vrob<-t( t(Vrob)-Vrobs); 
+  
+  c.alpha<- qnorm(1-level/2)
+  i <- 0
+  db<-list()
+  for (v in comp) { 
+    i <- i+1
+    c.alpha<- qnorm(1-level/2)
+    est<-B[,v];ul<-B[,v]+c.alpha*V[,v]^.5;nl<-B[,v]-c.alpha*V[,v]^.5;
+    db[[match(v,comp)]]<-cbind.data.frame(B[,1],est,ul,nl)
+    if (add.to.plot==FALSE) 
+    {
+      if (is.null(ylim))
+        plot(B[,1],est,ylim=1.05*range(ul,nl),type="s",xlab=xlab,ylab=ylab,col=cols[1],...) 
+      else
+        plot(B[,1],est,ylim=ylim,type="s",xlab=xlab,ylab=ylab,col=cols[1],...) 
+      if (!is.null(main)) { if (length(main)==1) main <- rep(main,length(comp)); mains <- FALSE; } 
+      if (!is.null(main)) title(main=main[i]); 
+      if (mains==TRUE) title(main=colnames(B)[v]); 
+    }
+    else lines(B[,1],est,type="s",col=cols[1]); 
+    
+    if (pointwise.ci>=1) {
+      lines(B[,1],ul,lty=pointwise.ci,type="s",col=cols[2]);
+      lines(B[,1],nl,lty=pointwise.ci,type="s",col=cols[2]); }
+    if (robust.ci>=1) {
+      lines(B[,1],ul,lty=robust.ci,type="s",col=cols[3]); 
+      lines(B[,1],nl,lty=robust.ci,type="s",col=cols[3]); }
+    if (hw.ci>=1) {
+      if (level!=0.05) cat("Hall-Wellner bands only 95 % \n");
+      tau<-length(B[,1])
+      nl<-B[,v]-1.27*V[tau,v]^.5*(1+V[,v]/V[tau,v])
+      ul<-B[,v]+1.27*V[tau,v]^.5*(1+V[,v]/V[tau,v])
+      lines(B[,1],ul,lty=hw.ci,type="s",col=cols[5]); 
+      lines(B[,1],nl,lty=hw.ci,type="s",col=cols[5]); 
+      db[[match(v,comp)]][[1]]<-cbind.data.frame(ul,nl)
+    }
+    if (sim.ci>=1) {
+      if (is.null(object$conf.band)==TRUE) 
+        cat("Uniform simulation based bands only computed for n.sim> 0\n")
+      if (level!=0.05) c.alpha<-percen(object$sim.testBeq0[,v-1],1-level)
+      else c.alpha<-object$conf.band[v-1];
+      nl<-B[,v]-c.alpha*Vrob[,v]^.5; ul<-B[,v]+c.alpha*Vrob[,v]^.5;
+      lines(B[,1],ul,lty=sim.ci,type="s",col=cols[4]); 
+      lines(B[,1],nl,lty=sim.ci,type="s",col=cols[4]); 
+      db[[match(v,comp)]][[1]]<-cbind.data.frame(ul,nl)
+    }
+    abline(h=0)
+  }
+  names(db)<-gsub("^",paste0(name_model,"_"),attr(object$cum,"dimnames")[[2]][2:length(attr(object$cum,"dimnames")[[2]])])
+  #names(db)<-attr(object$cum,"dimnames")[[2]][2:length(attr(object$cum,"dimnames")[[2]])]
+  list2env(db, envir = .GlobalEnv)
+  return(db)
+} 
+
+plot_cums(timecox_pwp_const2_opc2)
+```
+</div>
+
+<br>
+
+```{r plot_td, echo=T, error=T, paged.print=TRUE, fig.width=10, fig.height=6, error=T, dpi=500, fig.cap="Figure 1. Observed cumulative coefficients with 95% confidence bands"}
+
+timecox_pwp_const2_opc2_TD_1 %>% 
+	dplyr::mutate(year=`B[, 1]`/365.25,variable="Treatment\nCompletion") %>% 
+	dplyr::filter(year<=5) %>% 
+	dplyr::mutate(variable=factor(variable)) %>% 
+	ggplot()+
+	geom_ribbon(aes(x=year, ymin = nl, ymax = ul, fill =variable), alpha=.5) +# "steelblue"
+	geom_line(aes(x=year, y = est, color=variable))+ #"dodgerblue4"
+	theme_void()+ 
+	geom_hline(yintercept = 0)+
+	scale_color_manual(name="Variable",values=c("dodgerblue4","black"))+
+	scale_fill_manual(name="Variable",values=c("steelblue","grey70"))+
+	labs(y="Cumulative coefficients",x="Years")+
+	scale_y_continuous(breaks = seq(-900,90,by = 90), limits=c(-900,90))+
+	scale_x_continuous(breaks = seq(0,5,by = .5), limits=c(0,5))+
+	theme(axis.title.y = element_text(size = 15, angle=90))+
+	theme(axis.title.x = element_text(size = 15))+
+	theme(axis.text.x = element_text(size = 13))+
+	theme(axis.text.y = element_text(size = 13))+
+	theme(legend.position = "none")
+```
+
+<br>
+
+```{r third_try4_table,eval=T, echo=T, paged.print=TRUE, error=T}
+ options(knitr.kable.NA = '')
+#upper97.5%
+
+coefBase(timecox_pwp_const2_opc2, digits=3) %>% 
+# data.table::data.table(capture.output(summary(timecox_pwp_const2_opc2))[(which(grepl("Parametric ",capture.output(summary(timecox_pwp_const2_opc2))))+1):(which(grepl("Call",capture.output(summary(timecox_pwp_const2_opc2))))-2)], keep.rownames=T) %>% 
+#     slice(-1) %>% 
+#     tidyr::separate(V1,c("Variables","Coef", "SE", "Robust SE", "z", "Sig.", "95%CI_lo", "95%CI_up"), sep="\\s+") %>%
+    # dplyr::mutate(HR= round(exp(as.numeric(Coef)),2), HR_95_CI_lo= round(exp(as.numeric(`95%CI_lo`)),2), HR_95_CI_up= round(exp(as.numeric(`95%CI_up`)),2)) %>% 
+   data.table::data.table(keep.rownames = T) %>% 
+  dplyr::rename("Variables"="rn") %>% 
+    dplyr::mutate(HR= round(exp(`Coef.`),2), HR_95_CI_lo= round(exp(`lower2.5%`),2), HR_95_CI_up= round(exp(`upper97.5%`),2)) %>% 
+  dplyr::mutate(Variables=dplyr::case_when(grepl("tipo_de_plan", Variables)~"Treatment setting at baseline",
+                                           grepl("TD_2", Variables)~"Treatment completion of the 2nd treatment",
+                                           grepl("TD_3", Variables)~"Treatment completion of the 3rd treatment",
+                                           grepl("TD_4", Variables)~"Treatment completion of the 4th treatment",
+                                           grepl("trans=2", Variables)~"Second transition (stratum)",
+                                           grepl("trans=3", Variables)~"Third transition (stratum)",
+                                           grepl("trans=4", Variables)~"Fourth transition (stratum)",
+                                           )) %>% 
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table. Coefficients"),
+       col.names = c("Variables","Coef.", "SE", "Robust SE", "z", "Sig.", "95%CI Lower", "95%CI Upper", "HR", "95%CI Lower", "95%CI Upper"), align =c('l',rep('c', 101)), escape=T) %>%
+  kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+<br>
+
+### Sequential glimpse
+
+```{r alluvial, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.cap="Figure 2. Sankey Plot of Transitions by Treatment Modality"}
+library(easyalluvial)
+library(parcats)
+p_alluvial<-
+  d_match_surv_msprep[,c(1,3:6)] %>% 
+    mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(ifelse(is.na(.),2,.))) %>% 
+    mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(factor(.,labels=c("ambulatory","residential","censored"),levels=c(0,1,2)))) %>% #$fct_rev(
+      alluvial_wide(
+                   id = "id", 
+                  bin=2,
+                   bin_labels = c("ambulatory", "residential"),
+                  order_levels= c("ambulatory", "residential","censored"),
+                   fill_by = 'first_variable',
+                    NA_label = "censored",
+                   col_vector_flow=c("red","grey60"),#"#cF291D",
+                    #palette_qualitative() %>% palette_filter(greys = F), #,#,"#ffe6d5","#bf6f6f","#eec1ad","#d29985","#cF291D","#b50717","#a43232","","gray",
+                  col_vector_value=c("#bf6f6f","#eec1ad","#d29985") ,
+                  auto_rotate_xlabs = T,
+                  stratum_label_size = 3,
+                   colorful_fill_variable_stratum = F)+
+  theme_void()
+
+p_alluvial
+# parcats::parcats(p_alluvial, marginal_histograms = F, data=  d_match_surv_msprep[,c(1,3:6)] %>% 
+#   mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(ifelse(is.na(.),2,.))) %>% 
+#   mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(factor(.,labels=c("ambulatory","residential","censored"),levels=c(0,1,2)))), 
+#                  labelfont = list(size = 12, color = "black"),
+#                width = 840, height = 672)#, height=1600,width=1600) 672  480
+```
+
+
+<br>
+
+```{r long_alluv, echo=T, error=T, paged.print=TRUE, fig.cap="Figure 3. Sankey Plot of Transitions by Treatment Modality", fig.width=12, fig.height=8, eval=T}
+
+alluvial_long(data.frame(ms_d_match_surv %>% dplyr::mutate(tipo_de_plan_res=factor(tipo_de_plan_res, labels=c("ambulatory", "residential")))),key=from,id= id, 
+              value= tipo_de_plan_res, 
+              fill_by="first_variable",
+              NA_label = "censored", 
+              complete=F,
+              bin=2, 
+              stratum_label_size=2,
+              stratum_width=1/4,
+              bin_labels = c("ambulatory", "residential"),
+              col_vector_flow=c("red","yellow"),
+              col_vector_value=c("#bf6f6f","#eec1ad","gray60") )+
+  theme_void()
+```
+
+```{r alluvial3, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.cap="Figure 4. Sankey Plot of Transitions by Treatment Modality", eval=F}
+library(ggrepel)
+library(ggalluvial)
+
+plot_flow_alluvial<-
+ggplot(data.frame(ms_d_match_surv %>% dplyr::mutate(tipo_de_plan_res=factor(tipo_de_plan_res, labels=c("ambulatory", "residential"))) ), #requiere long %>% dplyr::filter(trans==1)
+       aes(x = from, stratum = tipo_de_plan_res, alluvium = id,
+            fill = tipo_de_plan_res)) +
+  ggalluvial::geom_lode() + 
+  geom_flow(curve_type = "cubic") +
+  geom_stratum(alpha = 0) +
+  theme_void()+
+  scale_fill_manual(name="Treatment\nModality", values=c('lightblue','gray70'))
+
+set.seed(42)
+plot_flow_alluvial2<-
+  plot_flow_alluvial+
+  geom_text_repel(stat = "flow",
+            aes(label = scales::percent(after_stat(prop),accuracy = 1)),#hjust = (after_stat(flow) == "to"),
+            size = 3,
+            box.padding = unit(0.75, "lines"),
+            show.legend=F,
+            arrow = arrow(length = unit(0.005, "npc")))
+plot_flow_alluvial2
+
+ggsave(paste0(gsub("SUD_CL/Matching_Process_JUN_21.Rmd","_mult_state_ags/",path),"Fig_plan_alt.jpg"), 
+       plot_flow_alluvial2, width = 9, height = 11, dpi = 600, units= "in")
+
+#C:\Users\CISS Fondecyt\Mi unidad\Alvacast\Matching\graphs
+```
+
+```{r alluvial32, echo=T, error=T, paged.print=TRUE}
+
+tab_1st_tr<-
+ d_match_surv_msprep[,c(1,3:6)] %>% 
+    mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(ifelse(is.na(.),2,.))) %>% 
+    mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(factor(.,labels=c("ambulatory","residential","censored"),levels=c(0,1,2)))) %>% 
+    #dplyr::filter(tipo_de_plan_res_3!="censored") %>% 
+    dplyr::count(tipo_de_plan_res_1,tipo_de_plan_res_2) %>% 
+    dplyr::filter(case_when(.[[1]] =="censored" & .[[2]] =="censored" ~ n< 0, #When y == "", x > 3
+                   T ~ n>0)) %>% 
+    #dplyr::filter(.[1]!="censored" & .[2]!="censored") %>% 
+    dplyr::group_by(.[1]) %>% 
+    dplyr::mutate(prop=scales::percent(n/sum(n), accuracy=1)) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::mutate(show=paste0(format(n, big.mark=","), " (",prop,")"))
+
+tab_2nd_tr<-
+ d_match_surv_msprep[,c(1,3:6)] %>% 
+    mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(ifelse(is.na(.),2,.))) %>% 
+    mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(factor(.,labels=c("ambulatory","residential","censored"),levels=c(0,1,2)))) %>% 
+    #dplyr::filter(tipo_de_plan_res_3!="censored") %>% 
+    dplyr::count(tipo_de_plan_res_2,tipo_de_plan_res_3) %>% 
+    dplyr::filter(case_when(.[[1]] =="censored" & .[[2]] =="censored" ~ n< 0, #When y == "", x > 3
+                   T ~ n>0)) %>% 
+    dplyr::group_by(.[1]) %>% 
+    dplyr::mutate(prop=scales::percent(n/sum(n), accuracy=1)) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::mutate(show=paste0(format(n, big.mark=","), " (",prop,")")) 
+
+tab_3rd_tr<-
+  d_match_surv_msprep[,c(1,3:6)] %>% 
+    mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(ifelse(is.na(.),2,.))) %>% 
+    mutate_at(vars(starts_with("tipo_de_plan_res_")), funs(factor(.,labels=c("ambulatory","residential","censored"),levels=c(0,1,2)))) %>% 
+    dplyr::count(tipo_de_plan_res_3,tipo_de_plan_res_4) %>% 
+    dplyr::filter(case_when(.[[1]] =="censored" & .[[2]] =="censored" ~ n< 0, #When y == "", x > 3
+                   T ~ n>0)) %>% 
+    #dplyr::filter(.[1]!="censored"&.[2]!="censored") %>% 
+    dplyr::group_by(.[1]) %>% 
+    dplyr::mutate(prop=scales::percent(n/sum(n), accuracy=1)) %>% 
+    dplyr::ungroup()  %>% 
+    dplyr::mutate(show=paste0(format(n, big.mark=","), " (",prop,")"))
+
+combinacion_concatenacion_eventos<-
+d_match_surv_msprep[,c(1,3:6)] %>% 
+  tidyr::unite("4_ev", tipo_de_plan_res_1:tipo_de_plan_res_4, remove = FALSE) %>% 
+  dplyr::group_by(`4_ev`) %>% 
+  dplyr::summarise(n=n())
+
+
+cat("Third row of the graphics")
+
+comb_conc_ev2<-
+combinacion_concatenacion_eventos %>% 
+    tidyr::separate(`4_ev`,into=c("first","second","third", "fourth"), sep="_") %>% 
+    tidyr::unite("2_ev", first:second, remove = FALSE) %>% 
+    dplyr::group_by(`2_ev`) %>%
+    dplyr::summarise(n=sum(n)) %>% 
+    tidyr::separate(`2_ev`,into=c("first","second"), sep="_") %>% 
+    dplyr::group_by(`first`) %>% 
+    dplyr::mutate(perc=scales::percent(n/sum(n))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(second!="NA")
+
+cat("Fourth row of the graphics")
+
+comb_conc_ev3<-
+combinacion_concatenacion_eventos %>% 
+    tidyr::separate(`4_ev`,into=c("first","second","third", "fourth"), sep="_") %>% 
+    tidyr::unite("3_ev", first:third, remove = FALSE) %>% 
+    dplyr::group_by(`3_ev`) %>%
+    dplyr::summarise(n=sum(n)) %>% 
+    tidyr::separate(`3_ev`,into=c("first","second","third"), sep="_") %>% 
+    tidyr::unite("2_ev", first:second, remove = FALSE) %>%
+    dplyr::group_by(`2_ev`) %>% 
+    dplyr::mutate(perc=scales::percent(n/sum(n))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(third!="NA")
+
+cat("Last row of the graphics")
+
+comb_conc_ev4<-
+combinacion_concatenacion_eventos %>% 
+    tidyr::separate(`4_ev`,into=c("first","second","third", "fourth"), sep="_") %>% 
+    tidyr::unite("3_ev", first:third, remove = FALSE) %>% 
+    dplyr::group_by(`3_ev`) %>% 
+    dplyr::mutate(perc=scales::percent(n/sum(n))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(fourth!="NA")
+
+
+
+cbind.fill <- function(...) {
+    transpoted <- lapply(list(...),t)
+    transpoted_dataframe <- lapply(transpoted, as.data.table, keep.rownames=T)
+    return (data.frame(t(plyr::rbind.fill(transpoted_dataframe))))                                               
+} 
+
+options(knitr.kable.NA = '')
+cbind.fill(comb_conc_ev2,comb_conc_ev3,comb_conc_ev4) %>% 
+  slice(-1) %>% 
+  #dplyr::select(-1) %>% 
+      knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table. Modality of readmissions and percentages by the previous one"),
+       col.names = c("First\nevent","Second\nevent", "n", "%", "Concatenated\nevents", "First\nevent", "Second\nevent", "Third\nevent", "n", "%", "Concatenated\nevents","First\nevent", "Second\nevent","Third\nevent", "Fourth\nevent","n","%"),
+               align =c('l',rep('c', 101)), escape=T) %>%
+  kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::add_header_above(c("Second"=5, "Third"=6, "Fouth"=7)) %>% 
+  kableExtra::add_footnote("Note. 0/1 denotes Ambulatory and Residential Treatment, respectively; % denotes the percentage of the previous event", notation="none") %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+ 
+```{r alluvial322, echo=T, error=T, paged.print=TRUE}
+combinacion_concatenacion_eventos2<-
+d_match_surv_msprep[,c(1,3,19:21)] %>% 
+  tidyr::unite("4_ev", tipo_de_plan_res_1:TD_3, remove = FALSE) %>% 
+  dplyr::group_by(`4_ev`) %>% 
+  dplyr::summarise(n=n())
+
+cat("Third row of the graphics")
+
+comb2_conc_ev2<-
+combinacion_concatenacion_eventos2 %>% 
+    tidyr::separate(`4_ev`,into=c("first","second","third", "fourth"), sep="_") %>% 
+    tidyr::unite("2_ev", first:second, remove = FALSE) %>% 
+    dplyr::group_by(`2_ev`) %>%
+    dplyr::summarise(n=sum(n)) %>% 
+    tidyr::separate(`2_ev`,into=c("first","second"), sep="_") %>% 
+    dplyr::group_by(`first`) %>% 
+    dplyr::mutate(perc=scales::percent(n/sum(n))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(second!="NA")
+
+cat("Fourth row of the graphics")
+
+comb2_conc_ev3<-
+combinacion_concatenacion_eventos2 %>% 
+    tidyr::separate(`4_ev`,into=c("first","second","third", "fourth"), sep="_") %>% 
+    tidyr::unite("3_ev", first:third, remove = FALSE) %>% 
+    dplyr::group_by(`3_ev`) %>%
+    dplyr::summarise(n=sum(n)) %>% 
+    tidyr::separate(`3_ev`,into=c("first","second","third"), sep="_") %>% 
+    tidyr::unite("2_ev", first:second, remove = FALSE) %>%
+    #dplyr::group_by(`2_ev`) %>% 
+    dplyr::group_by(first) %>% 
+    dplyr::mutate(perc=scales::percent(n/sum(n))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(third!="NA")
+
+cat("Last row of the graphics")
+
+comb2_conc_ev4<-
+combinacion_concatenacion_eventos2 %>% 
+    tidyr::separate(`4_ev`,into=c("first","second","third", "fourth"), sep="_") %>% 
+    tidyr::unite("3_ev", first:third, remove = FALSE) %>% 
+    dplyr::group_by(first) %>% 
+    dplyr::mutate(perc=scales::percent(n/sum(n))) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(fourth!="NA")
+
+
+options(knitr.kable.NA = '')
+cbind.fill(comb2_conc_ev2,comb2_conc_ev3,comb2_conc_ev4) %>% 
+  slice(-1) %>% 
+  #dplyr::select(-1) %>% 
+      knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table. Treatment completion status counts and percentages by the previous one"),
+       col.names = c("Base Tr.\nModality","Second\nevent", "n", "%", "Concatenated\nevents", "Base Tr.\nModality", "Second\nevent", "Third\nevent", "n", "%", "Concatenated\nevents","Base Tr.\nModality", "Second\nevent","Third\nevent", "Fourth\nevent","n","%"),
+               align =c('l',rep('c', 101)), escape=T) %>%
+  kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::add_header_above(c("Second (First tr. completion status)"=5, "Third (2nd tr. completion status)"=6, "Fouth (3rd tr. completion status)"=7)) %>% 
+  kableExtra::add_footnote("Note. 0/1 denotes Not-completion and Treatment Completion, respectively; % denotes the percentage of the total", notation="none") %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px")
+``` 
+ 
+ 
+```{r alluvial4, echo=T, error=T, paged.print=TRUE, error=T, fig.cap="Figure 5. Tree diagram of counts and total proportions of Type of Plan from the first to the fourth treatment"}
+library(data.tree)
+
+#scales::percent(358/2078,accuracy = 1)ä
+ traveller <- Node$new("Admission")
+route1 <- traveller$AddChild("1st  tr., Residential: 11,456 (50%)")
+route10 <-route1$AddChild("2nd  tr., Ambulatory: 2,078 (18%)")
+route100<-route10$AddChild("3rd  tr., Ambulatory: 358 (17%)")
+route100$AddChild("4th  tr., Ambulatory: 73 (20%)")
+route100$AddChild("4th  tr., Residential: 26 (7%)")
+route101<-route10$AddChild("3rd  tr., Residential: 218 (11%)")
+route101$AddChild("4th  tr., Ambulatory: 42 (19%)")
+route101$AddChild("4th  tr., Residential: 37 (17%)")
+route11 <-route1$AddChild("2nd  tr., Residential: 1,717 (15%)")
+route110<-route11$AddChild("3rd  tr., Ambulatory: 312 (18%)")
+route110$AddChild("4th  tr., Ambulatory: 51 (16%)")
+route110$AddChild("4th  tr., Residential: 41 (13%)")
+route111<-route11$AddChild("3rd  tr., Residential: 337 (20%)")
+route111$AddChild("4th  tr., Ambulatory: 51 (15%)")
+route111$AddChild("4th  tr., Residential: 80 (24%)")
+
+route0 <- traveller$AddChild("1st  tr., Ambulatory: 11,456 (50%)")
+route00 <- route0$AddChild("2nd  tr., Ambulatory: 1,858 (16%)")
+route000<-route00$AddChild("3rd  tr., Ambulatory: 381 (21%)")
+route000$AddChild("4th  tr., Ambulatory: 75 (20%)")
+route000$AddChild("4th  tr., Residential: 25 (7%)")
+
+route001<-route00$AddChild("3rd  tr., Residential: 125 (7%)")
+route001$AddChild("4th  tr., Ambulatory: 32 (26%)")
+route001$AddChild("4th  tr., Residential: 14 (11%)")
+
+route01 <- route0$AddChild("2nd  tr., Residential: 745 (7%)")
+route010<-route01$AddChild("3rd  tr., Ambulatory: 158 (21%)")
+route010$AddChild("4th  tr., Ambulatory: 29 (18%)")
+route010$AddChild("4th  tr., Residential: 15 (10%)")
+
+route011<-route01$AddChild("3rd  tr., Residential: 123 (17%)")
+route011$AddChild("4th  tr., Ambulatory: 28 (23%)")
+route011$AddChild("4th  tr., Residential: 27 (22%)")
+
+SetGraphStyle(traveller, rankdir = "LR")
+plot(traveller)
+
+
+library(rsvg)
+library(DiagrammeRsvg)
+plot(traveller) %>%
+    export_svg %>% charToRaw %>% rsvg_pdf(paste0(gsub("SUD_CL/Matching_Process5_JUN_21.Rmd","_mult_state_ags/",rstudioapi::getSourceEditorContext()$path),"_flowchart_transition.pdf"))
+plot(traveller) %>%
+    export_svg %>% charToRaw %>% rsvg_png(paste0(gsub("SUD_CL/Matching_Process5_JUN_21.Rmd","_mult_state_ags/",rstudioapi::getSourceEditorContext()$path),"_flowchart_transition.png"))
+#library(htmltools); html_print(HTML(gr_selected %>% export_svg))
+
+#DiagrammeR::export_graph(gr_selected, height= 10, width=8)
+```
+
+<br>
+
+# Sensitivity
+
+
+```{r evalue, warning=FALSE, message=F, cache=T, paged.print=TRUE, eval=T, error=T}
+evalue_or<-
+    EValue::evalues.RR(dplyr::rename(data.table::data.table(exp(coefBase(timecox_pwp_const2_opc2, digits=8)), keep.rownames = T), "Variables"="rn")[1,2], 
+                   dplyr::rename(data.table::data.table(exp(coefBase(timecox_pwp_const2_opc2, digits=8)), keep.rownames = T), "Variables"="rn")[1,7], 
+                   dplyr::rename(data.table::data.table(exp(coefBase(timecox_pwp_const2_opc2, digits=8)), keep.rownames = T), "Variables"="rn")[1,8], rare=F)
+evalue_or
+
+```
+
+We estimated the sensibility of the associations found assuming different values of the sensitivity parameter ($\Gamma$).  
+
+<br>
+
+```{r  eval2, warning=FALSE, fig.align = "center", message=F, fig.height=7, cache=T, fig.cap="Figure 6. Sensibility Parameters", eval= T, dpi=320}
+
+xmax = 10
+RR = unlist(evalue_or[1,1])
+
+  x = seq( 0, xmax, 0.01 )
+  
+  # MM: reverse RR if it's preventive
+  if ( RR < 1 ) RR = 1/RR
+  
+  plot( x, x, lty = 2, col = "white", type = "l", xaxs = "i", yaxs = "i", xaxt="n", yaxt = "n",
+        xlab = bquote(.("Association of the Exposure and Confounder ") ~  RR[EU]), 
+        ylab = bquote(.("Association of the Confounder and Outcome  ") ~ RR[UD]),
+        xlim = c( 0,xmax ),
+        main = "" )
+  
+  x = seq(RR, xmax, 0.01 )
+  
+  y    = RR*( RR-1 )/( x-RR )+RR
+  
+  lines( x, y, type = "l" )
+  
+  
+  high = RR + sqrt( RR*( RR-1 ) )
+  
+  
+  points( high, high, pch = 19 )
+  
+  label5 = seq( 5, 40, by = 5 )
+  axis( 1, label5, label5, cex.axis = 1 )
+  axis( 2, label5, label5, cex.axis = 1 )
+  
+  g = round( RR + sqrt( RR * ( RR - 1 ) ), 2 )
+  label = paste( "( ", g, ", ", g, " )", sep="" )
+  
+  text( high + 3, high + 1, label )
+  
+  legend( "bottomleft", expression(
+    RR[EU]*RR[UD]/( RR[EU]+RR[UD]-1 )==RR
+  ), 
+  lty = 1:2,
+  bty = "n" )
+
+```
+
+<br>
+
+With an risk ratio of `r as.numeric(round(dplyr::rename(data.table::data.table(exp(coefBase(timecox_pwp_const2_opc2, digits=8)), keep.rownames = T), "Variables"="rn")[1,2],2))`, an unmeasured confounder that was associated with both the outcome and the exposure by a RR of `r round(evalue_or[,2]$"E-values",2)`-fold each, above and beyond the measured confounders, could explain away the estimate, but weaker confounding could not.
+
+<br>
+
+# Session Info
+
+```{r session_info, echo=T, error=T, paged.print=TRUE}
+Sys.getenv("R_LIBS_USER")
+
+if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_5_jun.RData")
+  } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/andre/Desktop/SUD_CL/mult_state_5_jun.RData")
+  } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_5_jun.RData")
+  } else if (grepl("G:",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_5_jun.RData")
+  } else {
+    save.image("~/mult_state_5_jun.RData")
+    path.expand("~/mult_state_5_jun.RData")
+  }
+
+sessionInfo()
+```
