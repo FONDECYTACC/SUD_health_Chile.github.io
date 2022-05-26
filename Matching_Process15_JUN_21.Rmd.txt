@@ -1,0 +1,1517 @@
+---
+title: "Ambulatory or residential? a multi-state analysis of treatments for substance use disorders (Step 1.5)"
+date: "`r withr::with_locale(new = c('LC_TIME' = 'C'), code =format(Sys.time(),'%B %d, %Y'))`"
+output:
+  html_document:
+    code_folding: hide  
+    toc: true # table of content true
+    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_float: true
+---
+
+```{css zoom-lib-src, echo = FALSE}
+script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+```
+
+```{js zoom-jquery, echo = FALSE}
+ $(document).ready(function() {
+    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
+    // onClick function for all plots (img's)
+    $('img:not(.zoomImg)').click(function() {
+      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
+      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
+    });
+    // onClick function for zoomImg
+    $('img.zoomImg').click(function() {
+      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
+    });
+  });
+```
+
+```{=html}
+<style type="text/css">
+.tablelines table, .tablelines td, .tablelines th {
+        border: 1px solid black;
+        }
+.centrado {
+    text-align: center;}
+.table.center {
+    margin-left:auto; 
+    margin-right:auto;
+  }
+.table_wrapper{
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+code.r{
+  font-size: 8px;
+}
+body{ /* Normal  */
+      text-align: justify;
+  }
+.superbigimage{
+    overflow-y:scroll;
+    white-space: nowrap;
+}
+.superbigimage img{
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+</style>
+```
+```{=html}
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
+</style>
+```
+```{r prev_setup, include = FALSE, cache=T}
+#    self_contained: false
+rm(list=ls());gc()
+if(!grepl("4.0.2",R.version.string)){stop("Different version (must be 4.0.2)")}
+path<-rstudioapi::getSourceEditorContext()$path
+#load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+if (grepl("CISS Fondecyt",path)==T){
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_jun.RData")
+  } else if (grepl("andre",path)==T){
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_jun.RData")
+  } else if (grepl("E:",path)==T){
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_jun.RData")
+  } else {
+    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_jun.RData")
+  }
+
+#getwd()
+#knitr::opts_knit$get()
+#devtools::install_github("hputter/mstate")
+
+```
+
+```{r setup, include = FALSE, cache=T}
+#Libraries used in the routine. Dont change the order
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
+  if(class(ungroup(x))[1]=="tbl_df"){
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)    
+        }
+  } else {
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)       
+  }
+ }
+}  
+#packageVersion("codebook")
+#https://github.com/RevolutionAnalytics/checkpoint
+#if(!require(checkpoint)){install.packages("checkpoint")}
+#if(!require(here)){install.packages("here")}
+#checkpoint::checkpoint("2020-02-19",project=here::here(),checkpointLocation=paste0(here::here(),"/dedup"), use.lock=F, use.knitr=T, auto.install.knitr = T,scan.rnw.with.knitr=T, forceInstall=T,scanForPackages = TRUE)
+#checkpointArchives(tempdir(), full.names = TRUE)
+
+#if(!require(tidyr)){install.packages("tidyr")}
+#if(!require(DataExplorer)){install.packages("DataExplorer")}
+#if(!require(stringi)){install.packages("stringi")}
+#if(!require(stringr)){install.packages("stringr")}
+#if(!require(ggplot2)){install.packages("ggplot2")}
+#if(!require(Hmisc)){install.packages("Hmisc")}
+#if(!require(kableExtra)){install.packages("kableExtra")}
+#if(!require(plotly)){install.packages("plotly")}
+#if(!require(rbokeh)){install.packages("rbokeh")}
+#if(!require(altair)){install.packages("altair")}
+#if(!require(zoo)){install.packages("zoo")}
+#if(!require(codebook)){install.packages("codebook")}
+#if(!require(broom)){install.packages("broom")}
+#if(!require(sqldf)){install.packages("sqldf")} 
+#if(!require(devtools)){install.packages("devtools")}
+#if(!require(Statamarkdown)){install_github("hemken/Statamarkdown")}
+#if(!require(data.table)){install.packages("data.table")}
+#if(!require(dplyr)){install.packages("dplyr")}
+
+#if(!require(boot)){install.packages("boot")}
+#if(!require(plyr)){install.packages("plyr")}
+#if(!require(matrixStats)){install.packages("matrixStats")}
+#if(!require(radiant)){install.packages("radiant", repos = "https://radiant-rstats.github.io/minicran/")}
+
+try(library(boot))
+library(matrixStats)
+library(knitr)
+library(tidyr)
+library(stringi)
+library(stringr)
+library(ggplot2)
+library(Hmisc)
+library(kableExtra)
+library(plotly)
+library(janitor)
+library(rbokeh)
+library(zoo)
+library(broom)
+library(sqldf)
+library(devtools)
+library(codebook)
+library(data.table)
+library(panelr)
+library(RColorBrewer)
+library(lsmeans)
+library(finalfit)
+suppressPackageStartupMessages(library(ggiraph))
+suppressPackageStartupMessages(library(sf))
+library(treemapify)
+library(dplyr)
+library(tidyverse)
+library(epiR)
+library(survminer)
+library(ggfortify)
+library(survMisc)
+
+library(foreign)
+library(Hmisc)
+library(gridExtra)
+library(reshape2)
+library(stargazer)
+library(tableone)
+library(MatchIt)
+library(cobalt)
+library(eha)
+library(igraph)
+library(Amelia)
+library(DiagrammeR) 
+library(mstate)
+library(flexsurv)
+library(muhaz)
+library(Metrics)
+library(Rfast)
+#library(mstateutils)
+#remotes::install_github("chjackson/flexsurv-dev", upgrade = "never")
+#devtools::install_github("stulacy/multistateutils", build_vignettes=TRUE, upgrade = "never")
+#devtools::install_github("hputter/mstate", upgrade = "never")
+#unlink("C:/Users/CISS Fondecyt/OneDrive/Documentos/R/win-library/4.0/mstate", recursive=T, force=T)
+
+if(!require(radiant.update)){install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")}
+#install.packages( repos = "https://radiant-rstats.github.io/minicran/")
+#install.packages("radiant.update", repos = "https://radiant-rstats.github.io/minicran/")
+
+#tryCatch(source("https://raw.githubusercontent.com/radiant-rstats/minicran/gh-pages/update.R"), error = function(e) print("updated package, radiant"))
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+try_with_time_limit <- function(expr, cpu = Inf, elapsed = Inf)
+{
+  y <- try({setTimeLimit(cpu, elapsed); expr}, silent = TRUE) 
+  if(inherits(y, "try-error")) NULL else y 
+}
+eval_fork <- function(..., timeout=60){
+
+  #this limit must always be higher than the timeout on the fork!
+  setTimeLimit(timeout+5);      
+
+  #dispatch based on method
+  ##NOTE!!!!! Due to a bug in mcparallel, we cannot use silent=TRUE for now.
+  myfork <- parallel::mcparallel({
+    eval(...)
+  }, silent=FALSE);
+
+  #wait max n seconds for a result.
+  myresult <- parallel::mccollect(myfork, wait=FALSE, timeout=timeout);
+
+  #try to avoid bug/race condition where mccollect returns null without waiting full timeout.
+  #see https://github.com/jeroenooms/opencpu/issues/131
+  #waits for max another 2 seconds if proc looks dead 
+  while(is.null(myresult) && totaltime < timeout && totaltime < 2) {
+     Sys.sleep(.1)
+     enddtime <- Sys.time();
+     totaltime <- as.numeric(enddtime - starttime, units="secs")
+     myresult <- parallel::mccollect(myfork, wait = FALSE, timeout = timeout);
+  }
+
+  #kill fork after collect has returned
+  tools::pskill(myfork$pid, tools::SIGKILL);    
+  tools::pskill(-1 * myfork$pid, tools::SIGKILL);  
+
+  #clean up:
+  parallel::mccollect(myfork, wait=FALSE);
+
+  #timeout?
+  if(is.null(myresult)){
+    stop("R call did not return within ", timeout, " seconds. Terminating process.", call.=FALSE);      
+  }
+
+  #move this to distinguish between timeout and NULL returns
+  myresult <- myresult[[1]];
+
+  #reset timer
+  setTimeLimit();     
+
+  #forks don't throw errors themselves
+  if(inherits(myresult,"try-error")){
+    #stop(myresult, call.=FALSE);
+    stop(attr(myresult, "condition"));
+  }
+
+  #send the buffered response
+  return(myresult);  
+}
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#GET LOCAL
+#dir.create(paste0(getwd(),"/renv_local"))
+#Sys.setenv(RENV_PATHS_LOCAL = paste0(getwd(),"/renv_local"))
+#install.packages(paste0(getwd(),"/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+#install.packages(paste0("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/renv_local/gurobi_9.1-0.zip"), repos = NULL, type="source")
+library(gurobi)
+#"G:/Mi unidad/Alvacast/SISTRAT 2019 (github)"
+#Sys.getenv("R_LIBS_USER")
+
+plotly_mod_dep = function(p){
+  deps <- p$dependencies
+  deps_urls <- purrr::map(
+    deps,
+    ~if(.x$name == "plotly-basic") {
+      .x$src = list(file=getwd())
+      .x$script = "plotly-redirect-cdn-1.39.2.js"
+      .x
+    } else {
+      .x
+    }
+  )
+  p$dependencies <- deps_urls
+  p
+}
+```
+
+<br>
+
+# Parametric
+
+## Assessment of Fit of Transitions
+
+<!--- 
+Base-case parametric functions were selected with consideration of: goodness-of-fit (assessed by MSE y visual assessment) between predicted vs. observed RFS in each treatment arm during the trial period and plausibility of long term extrapolations based on external data and clinical expert opinion. Consistent with recommended practice, the same functional forms were used in both arms.
+ Bensimon, et al., 2019
+--->
+
+We need to derive appropriate functional forms and define respective survival functions. One reason to favor patametric models is that they can be easier to generalize. Several candidate distributions were considered to model transitions, including Weibull (assume a monotonically increasing or decreasing hazard), Log-logistic (non-monotonic hazards), Gompertz (assume a monotonically increasing or decreasing hazard), Log-normal (non-monotonic hazards), Exponential (constant hazard), Gamma, Generalized gamma & Generalized F (more flexible). 
+
+<!---  (non-monotonic hazards) --->
+
+The following plots  fitted survival curves from each model (colored lines), with the Kaplan-Meier estimate, in red, obtained from an example of Jackson available [here](https://cran.r-project.org/web/packages/fic/vignettes/survival.pdf), added to the contributions of Wathers & Cutler available [here](https://digitalcommons.usu.edu/cgi/viewcontent.cgi?article=1936&context=gradreports).
+
+<br>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r fit1_10s_pre, eval=T, echo=T, warning=T, paged.print=T, fig.align="center", dpi=320, warnings=F, error=T}
+#options(warn=-1)
+
+n_iter<-10000
+
+tiempo_antes_fits<-Sys.time()
+
+#Weathers, Brandon and Cutler, Richard Dr., "Comparison of Survival Curves Between Cox Proportional 
+#Hazards, Random Forests, and Conditional Inference Forests in Survival Analysis" (2017). All Graduate 
+#Plan B and other Reports. 927. 
+#https://digitalcommons.usu.edu/gradreports/927 
+
+#<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">            
+#https://devinincerti.com/2019/01/01/sim-mstate.html
+
+n_trans <- max(trans_matrix, na.rm = TRUE)
+fits_wei <- vector(mode = "list", length = n_trans)
+fits_weiph <- vector(mode = "list", length = n_trans)
+fits_llogis <- vector(mode = "list", length = n_trans)
+fits_gomp <- vector(mode = "list", length = n_trans)
+fits_logn <- vector(mode = "list", length = n_trans)
+fits_exp <- vector(mode = "list", length = n_trans)
+fits_gam <- vector(mode = "list", length = n_trans)
+fits_ggam <- vector(mode = "list", length = n_trans)
+fits_genf <- vector(mode = "list", length = n_trans)
+fits_genf_orig <- vector(mode = "list", length = n_trans)
+fits_ggam_orig <- vector(mode = "list", length = n_trans)
+fits_rp02 <- vector(mode = "list", length = n_trans)
+fits_rp03 <- vector(mode = "list", length = n_trans)
+fits_rp04 <- vector(mode = "list", length = n_trans)
+fits_rp05 <- vector(mode = "list", length = n_trans)
+fits_rp06 <- vector(mode = "list", length = n_trans)
+fits_rp07 <- vector(mode = "list", length = n_trans)
+fits_rp08 <- vector(mode = "list", length = n_trans)
+fits_rp09 <- vector(mode = "list", length = n_trans)
+fits_rp10 <- vector(mode = "list", length = n_trans)
+fits_c_wei <- vector(mode = "list", length = n_trans)
+fits_c_weiph <- vector(mode = "list", length = n_trans)
+fits_c_llogis <- vector(mode = "list", length = n_trans)
+fits_c_gomp <- vector(mode = "list", length = n_trans)
+fits_c_logn <- vector(mode = "list", length = n_trans)
+fits_c_exp <- vector(mode = "list", length = n_trans)
+fits_c_gam <- vector(mode = "list", length = n_trans)
+fits_c_ggam <- vector(mode = "list", length = n_trans)
+fits_c_genf <- vector(mode = "list", length = n_trans)
+fits_c_genf_orig <- vector(mode = "list", length = n_trans)
+fits_c_ggam_orig <- vector(mode = "list", length = n_trans)
+fits_c_rp02 <- vector(mode = "list", length = n_trans)
+fits_c_rp03 <- vector(mode = "list", length = n_trans)
+fits_c_rp04 <- vector(mode = "list", length = n_trans)
+fits_c_rp05 <- vector(mode = "list", length = n_trans)
+fits_c_rp06 <- vector(mode = "list", length = n_trans)
+fits_c_rp07 <- vector(mode = "list", length = n_trans)
+fits_c_rp08 <- vector(mode = "list", length = n_trans)
+fits_c_rp09 <- vector(mode = "list", length = n_trans)
+fits_c_rp10 <- vector(mode = "list", length = n_trans)
+km.lc <-vector(mode = "list", length = n_trans)
+
+fits_cox<-list()
+fits_c_cox<-list()
+#"gengamma"	Generalized gamma (stable parameterisation)
+#"gengamma.orig"	Generalized gamma (original parameterisation)
+#"genf"	Generalized F (stable parameterisation)
+#"genf.orig"	Generalized F (original parameterisation)
+#"weibull"	Weibull
+#"gamma"	Gamma
+#"exp"	Exponential
+#"lnorm"	Log-normal
+#"gompertz"	Gompertz
+
+library(flexsurv)
+
+#Specify the formula
+fitform <- Surv(time, status) ~ 1
+
+for (i in 1:n_trans){  
+  fits_wei[[i]] <- flexsurvreg(formula=fitform,
+                               data = subset(ms_d_match_surv, trans == i),
+                               dist = "weibull")
+}
+
+for (i in 1:n_trans){  
+  fits_weiph[[i]] <- flexsurvreg(formula=fitform,
+                               data = subset(ms_d_match_surv, trans == i),
+                               dist = "weibullph")
+}
+
+for (i in 1:n_trans){
+  fits_llogis[[i]] <- flexsurvreg(formula=fitform,
+                               data = subset(ms_d_match_surv, trans == i),
+                               dist = "llogis")
+}
+
+for (i in 1:n_trans){
+  fits_gam[[i]] <- flexsurvreg(formula=fitform,
+                               data = subset(ms_d_match_surv, trans == i),
+                               dist = "gamma")
+}
+#LOS ERRORES OCURREN CUANDO NO HAY COVARIABLES
+#In (function (q, shape, rate = 1, scale = 1/rate, lower.tail = TRUE,  ... :   NaNs produced
+#gamma no funcionó: NaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs producedNaNs produced
+for (i in 1:n_trans){
+  fits_ggam[[i]] <- flexsurvreg(formula=fitform,
+                               data = subset(ms_d_match_surv, trans == i),
+                               dist = "gengamma")
+}
+
+for (i in 1:n_trans){
+  fits_gomp[[i]] <- flexsurvreg(formula=fitform,
+                                data = subset(ms_d_match_surv, trans == i),
+                                dist = "gompertz")
+}
+
+
+for (i in 1:n_trans){
+  fits_logn[[i]] <- flexsurvreg(formula=fitform,
+                                data = subset(ms_d_match_surv, trans == i),
+                                dist = "lnorm")
+}
+
+for (i in 1:n_trans){
+  fits_exp[[i]] <- flexsurvreg(formula=fitform,
+                               data = subset(ms_d_match_surv, trans == i),
+                               dist = "exp")
+}
+
+no_attempts <- 20
+
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+          r <- flexsurvreg(formula=fitform,
+                               data = subset(ms_d_match_surv, trans == i),
+                               dist = "gengamma.orig")
+      )
+    }
+    fits_ggam_orig[[i]] <- r
+}  
+
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+          r <- flexsurvreg(formula=fitform,
+                               data = subset(ms_d_match_surv, trans == i),
+                               dist = "genf.orig")
+      )
+    }
+    fits_genf_orig[[i]] <- r
+}  
+
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <-  flexsurvreg(formula=fitform,
+                               data = subset(ms_d_match_surv, trans == i),
+                               dist = "genf")
+      )
+    }
+    fits_genf[[i]] <- r
+}  
+
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform,k=1,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_rp02[[i]] <- r
+}  
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform,k=2,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_rp03[[i]] <- r
+}
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform,k=3,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_rp04[[i]] <- r
+}
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform,k=4,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_rp05[[i]] <- r
+}
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform,k=5,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_rp06[[i]] <- r
+}
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform,k=6,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_rp07[[i]] <- r
+}
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform,k=7,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_rp08[[i]] <- r
+}
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform,k=8,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_rp09[[i]] <- r
+}
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform,k=9,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_rp10[[i]] <- r
+}
+
+for (i in 1:n_trans){
+km.lc[[i]] <- survfit(formula= fitform, data = subset(ms_d_match_surv, trans == i))
+}
+
+transition_label<- plots$title
+attr(transition_label,"names")<- plots$trans
+
+
+get_distinct_hues <- function(ncolor,s=0.5,v=0.95,seed=2125) {
+  golden_ratio_conjugate <- 0.618033988749895
+  set.seed(seed)
+  h <- runif(1)
+  H <- vector("numeric",ncolor)
+  for(i in seq_len(ncolor)) {
+    h <- (h + golden_ratio_conjugate) %% 1
+    H[i] <- h
+  }
+  hsv(H,s=s,v=v)
+}
+```
+</div>
+
+```{r fit1_10s, eval=T, echo=T, fig.cap="Figure 19. Vissual Assessment of Survival Curves", fig.height=10, fig.width=10, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
+
+distinct_hues<-get_distinct_hues(20)
+
+layout(matrix(1:n_trans, nc = 2, byrow = F))
+for (i in 1:n_trans){
+plot(km.lc[[i]], col="red", conf.int=F);
+  lines(fits_wei[[i]], col=distinct_hues[1], ci=F);
+  lines(fits_weiph[[i]], col=distinct_hues[2], ci=F);
+  lines(fits_gomp[[i]], col=distinct_hues[3], ci=F);
+  lines(fits_llogis[[i]], col=distinct_hues[4], ci=F);#A0A36D
+  lines(fits_gam[[i]], col=distinct_hues[5], ci=F);
+  lines(fits_ggam[[i]], col=distinct_hues[6], ci=F);
+  lines(fits_ggam_orig[[i]], col=distinct_hues[7], ci=F);
+  lines(fits_logn[[i]], col=distinct_hues[8], ci=F);
+  lines(fits_exp[[i]],col=distinct_hues[9], ci=F);
+  lines(fits_genf[[i]],col=distinct_hues[10], ci=F, lty = 2);
+  lines(fits_genf_orig[[i]],col=distinct_hues[11], ci=F, lty = 2);  
+  lines(fits_rp02[[i]],col=distinct_hues[12], ci=F, lty = 2);
+  lines(fits_rp03[[i]],col=distinct_hues[13], ci=F, lty = 2);
+  lines(fits_rp04[[i]],col=distinct_hues[14], ci=F, lty = 2);
+  lines(fits_rp05[[i]],col=distinct_hues[15], ci=F, lty = 2);
+  lines(fits_rp06[[i]],col=distinct_hues[16], ci=F, lty = 2);
+  lines(fits_rp07[[i]],col=distinct_hues[17], ci=F, lty = 3);
+  lines(fits_rp08[[i]],col=distinct_hues[18], ci=F, lty = 3);
+  lines(fits_rp09[[i]],col=distinct_hues[19], ci=F, lty = 3);
+  lines(fits_rp10[[i]],col=distinct_hues[20], ci=F, lty = 3)
+  
+legend("bottomleft", legend = c("Kaplan-Meier","Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
+                "Generalized gamma", "Generalized gamma (orig)", "Lognormal", "Exponential", "Generalized F","Generalized F (orig)","RP2","RP3","RP4","RP5", "RP6","RP7", "RP8", "RP9", "RP10"), col = 
+         c("red",distinct_hues), 
+       title = "Distributions", cex = .95, bty = "n", lty=c(rep(1,10),rep(2,6),rep(3,4)),lwd=3)# lty = 1:2, 
+title(main=transition_label[[i]])
+}
+endTime <- Sys.time()
+
+paste0("Time in process: ");endTime - tiempo_antes_fits
+#23 min aprox.
+
+#For more complicated models, users should specify what covariate values they want summaries for, rather than relying on the default
+#</div>
+options(warn=0)
+
+if(no_mostrar==1){
+jpeg(paste0(dta_path,"_mult_state_ags/exp_surv_int_only.jpg"), height=30, width= 30, res= 600, units = "in")
+layout(matrix(1:n_trans, nc = 2, byrow = F))
+for (i in 1:n_trans){
+plot(km.lc[[i]], col="red", conf.int=F);
+  lines(fits_wei[[i]], col=distinct_hues[1], ci=F);
+  lines(fits_weiph[[i]], col=distinct_hues[2], ci=F);
+  lines(fits_gomp[[i]], col=distinct_hues[3], ci=F);
+  lines(fits_llogis[[i]], col=distinct_hues[4], ci=F);#A0A36D
+  lines(fits_gam[[i]], col=distinct_hues[5], ci=F);
+  lines(fits_ggam[[i]], col=distinct_hues[6], ci=F);
+  lines(fits_ggam_orig[[i]], col=distinct_hues[7], ci=F);
+  lines(fits_logn[[i]], col=distinct_hues[8], ci=F);
+  lines(fits_exp[[i]],col=distinct_hues[9], ci=F);
+  lines(fits_genf[[i]],col=distinct_hues[10], ci=F, lty = 2);
+  lines(fits_genf_orig[[i]],col=distinct_hues[11], ci=F, lty = 2);  
+  lines(fits_rp02[[i]],col=distinct_hues[12], ci=F, lty = 2);
+  lines(fits_rp03[[i]],col=distinct_hues[13], ci=F, lty = 2);
+  lines(fits_rp04[[i]],col=distinct_hues[14], ci=F, lty = 2);
+  lines(fits_rp05[[i]],col=distinct_hues[15], ci=F, lty = 2);
+  lines(fits_rp06[[i]],col=distinct_hues[16], ci=F, lty = 2);
+  lines(fits_rp07[[i]],col=distinct_hues[17], ci=F, lty = 3);
+  lines(fits_rp08[[i]],col=distinct_hues[18], ci=F, lty = 3);
+  lines(fits_rp09[[i]],col=distinct_hues[19], ci=F, lty = 3);
+  lines(fits_rp10[[i]],col=distinct_hues[20], ci=F, lty = 3)
+  
+legend("bottomleft", legend = c("Kaplan-Meier","Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
+                "Generalized gamma", "Generalized gamma (orig)", "Lognormal", "Exponential", "Generalized F","Generalized F (orig)","RP2","RP3","RP4","RP5", "RP6","RP7", "RP8", "RP9", "RP10"), col = 
+         c("red",distinct_hues), 
+       title = "Distributions", cex = .95, bty = "n", lty=c(rep(1,10),rep(2,6),rep(3,4)),lwd=3)# lty = 1:2, 
+title(main=transition_label[[i]])
+}
+  dev.off()
+}
+```
+
+<br>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r fit1_10s_a_pre, eval=T, echo=T, warning=T, paged.print=T, fig.align="center", dpi=320, warnings=F, error=T}
+#
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+fit_flexsurvreg0<-data.frame()
+fitted_flexsurvreg0<-data.frame()
+
+dists_no_covs_10s<-cbind.data.frame(covs=c(rep("fits_",(20)*n_trans)),
+              formal=rep(c("Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
+                "Generalized gamma", "Generalized gamma (original)", "Lognormal", "Exponential", "Generalized F", "Generalized F(original)", paste0("RP0",2:9),"RP10"),1*n_trans),
+              dist=c("weibull", "weibullph", "llogis", "gamma", "gengamma","gengamma.orig", "gompertz", "lnorm", "exp", "genf","genf.orig",rep("no dist",9)),
+              model=rep(c("wei", "weiph", "gomp", "llogis", "gam","ggam", "ggam_orig", "logn", "exp", "genf","genf_orig", paste0("rp0",2:9),"rp10"),1*n_trans),
+              trans=rep(1:n_trans, each=20))
+
+for (i in 1:nrow(dists_no_covs_10s)){  #
+  
+  cat(paste0("#### Flexible Survival Model (w/ covs): ",
+               dists_no_covs_10s[i,"formal"], "; transition: ",dists_no_covs_10s[i,"trans"], "\n \n"))  
+    
+  model<-paste0("fits_",dists_no_covs_10s[i,"model"])
+  
+  if(!is.null(get(model)[[dists_no_covs_10s[i,"trans"]]])){  
+     fitted_flexsurvreg0<- rbind(fitted_flexsurvreg0,cbind.data.frame(dist=rep(dists_no_covs_10s[i,"formal"],), 
+                            trans=rep(dists_no_covs_10s[i,"trans"],),
+                            data.table::data.table(summary(get(model)[[dists_no_covs_10s[i,"trans"]]], 
+                                                           #newdata= newdat2a, 
+                                                           #newtime=unique(fitted_km$time), 
+                                                           type = "survival", 
+                                                           tidy=T)))) 
+    # Generate fit indices
+    fit_flexsurvreg0<-rbind(fit_flexsurvreg0,
+       cbind(dist= dists_no_covs_10s[i,"formal"],
+             transition=dists_no_covs_10s[i,"trans"],
+             fitstats.flexsurvreg(get(model)[[dists_no_covs_10s[i,"trans"]]])))
+    #the BIC may not be appropriate if none of the candidate models are considered to be close to the ‘true’ model.     
+    } else {
+    cat(paste0("The model that assumed a ",dists_no_covs_10s[i,"formal"]," distribution for the transition number ",dists_no_covs_10s[i,"trans"]," did not converge \n\n"))
+    }
+}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+if(no_mostrar==1){
+  fit_flexsurvreg0 %>% 
+    dplyr::group_by(transition) %>% 
+    summarise(mean(ucl,na.rm=T))
+  }
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+km.lc0<-list()
+fitted_km0<-data.frame()
+
+for (i in 1:n_trans){
+  km.lc0[[i]] <- survfit(formula= fitform, data = subset(ms_d_match_surv, trans == i))
+  fitted_km0<-rbind(fitted_km0,cbind.data.frame(trans=i,fortify(km.lc0[[i]])))
+}
+
+#Calculate error
+#c("Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma","Generalized gamma", "Lognormal", "Exponential", "Generalized F")
+
+fitted_flexsurvreg_binned_mix0<-
+data.frame(fitted_flexsurvreg0)[,c("dist","trans","time","est","lcl","ucl")] %>% 
+  dplyr::left_join(fitted_km0, by=c("trans","time")) %>% 
+#there are many observations that was not available due to empirical missing data
+#dplyr::filter(!is.na(surv))
+  dplyr::group_by(dist,trans) %>% 
+  #dplyr::mutate(est= ifelse(is.na(est), mean(est, na.rm=TRUE), est)) %>% 
+  #dplyr::mutate(surv= ifelse(is.na(surv), mean(surv, na.rm=TRUE), surv)) %>% 
+  tidyr::fill(surv,.direction="updown") %>% 
+  tidyr::fill(est,.direction="updown") %>% 
+  ungroup()
+
+db_for_apply_rmse0<-
+  cbind.data.frame(
+      dist=rep(c("Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
+                "Generalized gamma", "Generalized gamma (original)", "Lognormal", "Exponential", "Generalized F", "Generalized F (orignial)", paste0("RP0",2:9),"RP10"),n_trans),
+      trans=rep(c(1:n_trans),each=20*2))
+   
+rmse_comp_fits0<- data.frame()
+for(i in 1:nrow(db_for_apply_rmse0)){
+  rmse<- Metrics::rmse(subset(fitted_flexsurvreg_binned_mix0, dist==db_for_apply_rmse0[i,"dist"] & 
+                       trans==db_for_apply_rmse0[i,"trans"])$est,
+              subset(fitted_flexsurvreg_binned_mix0, dist==db_for_apply_rmse0[i,"dist"] & 
+                       trans==db_for_apply_rmse0[i,"trans"])$surv)
+
+  rmse_comp_fits0<- rbind(rmse_comp_fits0,cbind(dist=db_for_apply_rmse0[i,"dist"],
+                                                  residential=db_for_apply_rmse0[i,"residential"],
+                                                  trans=db_for_apply_rmse0[i,"trans"],
+                                                  rmse=rmse))
+}
+
+rmse_comp_fits0_filter<-
+  rmse_comp_fits0 %>% 
+    dplyr::filter(rmse!="NaN") %>%  
+      dplyr::arrange(trans,dist, rmse)%>%
+      dplyr::mutate(rmse=round(as.numeric(rmse),4))
+
+setting_type_label<- c(`0`="Outpatient",`1`="Residential") 
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+```
+</div>
+
+<br>
+
+We checked the AICs, cumulative relative error (differences between the Kaplan-Meier curve, and the observed behavior of each distribution).
+
+<br>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:800px; overflow-x: scroll; width:100%">
+```{r fit1_10s_a, eval=T, echo=T, fig.cap="Figure 20. Vissual Assessment of Survival Curves (w/o covars)", fig.height=8, fig.width=15, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
+#load("C:/Users/CISS Fondecyt/OneDrive/Escritorio/mult_state_ags.RData")
+
+c26 <- c(
+  "dodgerblue2", # red
+  "green4",
+  "#6A3D9A", # purple
+  "#FF7F00", # orange
+  "gray16", "gold1",
+  "skyblue2", "#FB9A99", # lt pink
+  "palegreen2",
+  "#CAB2D6", # lt purple
+  "#FDBF6F", # lt orange
+  "gray70", "khaki2",
+  "maroon", "orchid1", "deeppink1", "blue1", "steelblue4",
+  "darkturquoise", "green1", "yellow4", "yellow3",
+  "darkorange4", "brown", "gray40")
+
+fitted_flexsurvreg_binned_mix0_plot<-
+fitted_flexsurvreg_binned_mix0 %>% 
+  dplyr::mutate(abs((est-surv)/surv)) %>% group_by(dist,trans) %>% dplyr::mutate(cumsum_error=cumsum(`abs((est - surv)/surv)`)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::mutate(text=paste0("Distribution: ",dist,"<br>survival: ",sprintf("%1.2f",est),"<br>Time (in years): ",round(time/365.25,2), "<br>CIs: ",ifelse(!is.na(lcl),"CIs","no CIs"),"<br>Cumsum(abs((est-surv)/surv))= ",round(cumsum_error,2))) %>% 
+  dplyr::mutate(text2=paste0("Distribution: KM","<br>survival: ",sprintf("%1.2f",surv),"<br>Time (in years): ",round(time/365.25,2))) %>%
+ggplot()+
+    geom_line(aes(time, est, color=dist),size=1)+
+    geom_line(aes(time, surv), color="red",size=1)+
+    scale_color_manual(name="Distributions", values = c26[1:20])+
+                         #c("black",brewer.pal(n = 9, name = 'Paired')))+
+                         #c("#112A60","#085754","#D3A347","#4F3C91","red","#112A60","#085754","#8F630D","#251363")) +
+    facet_wrap(.~trans,labeller = labeller(trans = transition_label), ncol=3, scales = "free_y")+
+    sjPlot::theme_sjplot2()+
+    theme(legend.position="bottom",
+          strip.background = element_rect(fill = "white", colour = "white"))+
+  scale_x_continuous(breaks = seq(0, 365.25*12, 2*365.25), labels=seq(0,12,2))+
+  #ylim(0,1.25)+
+  #theme(axis.text.x = element_blank(), 
+  #      panel.grid.major = element_blank(), 
+  #      panel.grid.minor = element_blank()) +
+  labs(y="",x="")+
+  theme(legend.position='none')
+
+m <- list(
+  l = 80*1.05,
+  r = 80,
+  b = 80,
+  t = 80*1.05,
+  pad = 4
+)
+p1<-
+fitted_flexsurvreg_binned_mix0_plot$data %>% 
+  dplyr::mutate(years=round(time/365.25,0)) %>% 
+  dplyr::mutate(trans2=trans) %>% 
+  dplyr::left_join(cbind.data.frame(transition_label,trans2=1:n_trans), by="trans2") %>% 
+group_by(trans) %>%
+group_map(~ plot_ly(data=., x = ~time, y = ~est, color = ~dist, type = "scatter", mode="lines", text=~text) %>% 
+            add_trace(y = ~surv, type = 'scatter', mode = 'lines', line = list(color = 'red', width = 1), text=~text2)%>% 
+  layout(annotations = list(list(x = 0.5 , y = 1.03, text = ~unique(transition_label), showarrow = F, xref='paper', yref='paper'))) %>% 
+  layout(
+    xaxis = list(
+      ticktext = list(1, 3, 5, 7, 9, 11), 
+      textangle = 0,
+      tickvals = list(365.25*1, 365.25*3, 365.25*5, 365.25*7, 365.25*9, 365.25*11),
+      tickmode = "array"
+  )), keep=TRUE) %>%    
+subplot(nrows = 3, shareX = T, shareY=T, titleX = F, titleY = F, margin = .05)%>% layout(showlegend = F) %>% #, margin = 0.05) %>% 
+  layout(annotations = list(
+                list(x = -0.03, y = 0.5, text = "Survival",
+                     font = list(color = "black",size = 15),
+                     textangle = 270,
+                     showarrow = F, xref='paper', yref='paper', size=48,margin =m)))
+
+p1
+
+  #htmlwidgets::saveWidget(as_widget(partial_bundle(p1, local=T)), "test1.html")
+
+#https://github.com/ropensci/plotly/issues/1586
+
+                 #%>% 
+  #layout(annotations = list(
+  #              list(x = 0.5 , y = -0.03, text = "Survival",
+  #                   font = list(color = "black",size = 15),
+  #                   textangle = 0,
+  #                   showarrow = F, xref='paper', yref='paper', size=48,
+  #                   automargin = T)
+   #             ))
+
+```
+</div>
+
+
+```{r fit_flexsurvreg0_kable,eval=T, echo=T, paged.print=TRUE}                                 
+n_trans2 <- max(trans_matrix, na.rm = T)
+
+fit_flexurvreg0_kable<-
+fit_flexsurvreg0 %>% 
+  dplyr::arrange(transition, AIC) %>% 
+  dplyr::left_join(cbind.data.frame(transition_label,trans_nmb=1:n_trans2),by=c("transition"="trans_nmb")) %>% 
+  dplyr::mutate(trans_w_nmb=paste0(sprintf("%02d",transition),")",transition_label)) %>% 
+  dplyr::select(trans_w_nmb, dist, Df, n2ll, AIC, AICc, BIC) %>%
+  dplyr::mutate_at(vars(n2ll, AIC, AICc, BIC),~ifelse(abs(.)>1e6,NA,format(round(.,2), scientific = FALSE)))
+  
+ 
+fit_flexurvreg0_kable %>%   
+      knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption = paste0("Table 11. Fit indices of the adjusted survival analyses (intercept-only)"),
+               col.names = c("Transition","Distribution", "DF","Negative 2 Log Likelihood","AIC","AICc","BIC"),
+               align =c("l",rep('c', 101))) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  #kableExtra::add_footnote("Note. NA= Null values", notation="none") %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px") 
+```
+
+<br>
+
+```{r fit1_10s_b, eval=T, echo=T, fig.cap="Figure 21. Suvival RMSEs, Ten-states Model (w/o covars)",fig.align="center", error= T, fig.height=15, fig.width=11, dpi=320, paged.print=TRUE, warnings =F}
+rmse_plot0<-
+rmse_comp_fits0_filter %>% 
+  dplyr::mutate(trans=as.numeric(trans)) %>% 
+  dplyr::mutate(trans2=as.numeric(trans)) %>% 
+    dplyr::left_join(cbind.data.frame(transition_label,trans_nmb=1:n_trans2),by=c("trans"="trans_nmb")) %>% 
+  dplyr::mutate(trans_w_nmb=paste0(sprintf("%02d",trans),")",transition_label)) %>% 
+        
+   ggplot()+
+  geom_bar(aes(x=dist, y=rmse), position="dodge", stat="identity", alpha=0.4)+
+  sjPlot::theme_sjplot2()+
+  #geom_errorbar(aes(x=t, ymin=L, ymax=U, color=program), position="dodge", stat="identity", width=0.4,  alpha=0.9, size=1.3)+
+  facet_wrap(.~trans_w_nmb, ncol=3, scales="free_y", dir="h") + 
+  xlab("") + 
+  ylab("")+
+  #ylab("State occupancy probabilities") + 
+  theme_minimal()+
+  theme(legend.position="bottom")+
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        strip.background = element_blank(),
+        panel.border = element_blank(),
+          legend.box.background = element_blank())+
+  theme(axis.text.x = element_text(angle = 90,hjust=0.95,vjust=0.2))#, vjust=0, hjust=0.3
+
+rmse_plot0
+
+```
+
+
+```{r fit2_10s, eval=F, echo=T, fig.cap="Figure 22 Vissual Assessment of Model Fits", fig.height=13, fig.width=10, warning=FALSE, paged.print=TRUE, fig.align="center", dpi=320, warnings=F, error=T}
+#install.packages("survHE")
+library(survHE)
+#First, defines the vector of models to be used
+mods <- c("weibull", "weibullph", "llogis", "gamma", "gengamma", "gompertz", "lnorm" ,"exp")#, "genf")
+
+# And then runs the models using MLE via flexsurv
+#m2 <- fit.models(formula = formula, data = data, distr = c("exp","wei","lno","llo"), method="inla")
+#m3 <- fit.models(formula = formula, data = subset(ms_d_match_surv, trans == 1), distr = mods, method="hmc")
+#Error in model.matrix(formula, data)[(mf %>% filter(event == 1))$ID, ] : 
+#  subíndice fuera de  los límites
+
+list_aics<-list()
+for (i in 1:n_trans){
+  m1 <- fit.models(formula = fitform, data = subset(ms_d_match_surv, trans == i), distr = mods)
+  model.fit.plot(MLE=m1, stacked = T, #HMC=m3, 
+               models = c("Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
+                "Generalized gamma", "Lognormal", "Exponential", "Generalized F"),
+               #lab.profile = c("Outpatient","Residential")
+               name_legend = "Inferential method")+ 
+  ggtitle("Model comparison based on AIC")+
+  labs(subtitle=plots[i,"title"])
+}
+```
+
+<br>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r fit3_wcov_pre, eval=T, echo=T, error= T, paged.print=TRUE, warnings =T}
+tiempo_antes_fits2<-Sys.time()
+
+newtime0 = seq(from=round(min(ms_d_match_surv$time),0), to= round(max(ms_d_match_surv$time),0))
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_
+#covariates
+
+#Specify the formula
+fitform2 <- Surv(time, status) ~  factor(tipo_de_plan_res_1)
+
+
+kernel_haz_est2a<-list()
+kernel_haz_est2b<-list()
+kernel_haz2a<-list()
+kernel_haz2b<-list()
+for (i in 1:n_trans){
+library("muhaz")
+kernel_haz_est2a[[i]] <- muhaz(ms_d_match_surv[which(ms_d_match_surv$trans==i &
+                        ms_d_match_surv$tipo_de_plan_res_1==1),"time"],
+                        ms_d_match_surv[which(ms_d_match_surv$trans==i &
+                        ms_d_match_surv$tipo_de_plan_res_1==1),"status"])
+kernel_haz2a[[i]] <- data.table(time = kernel_haz_est2a[[i]]$est.grid,
+                         est = kernel_haz_est2a[[i]]$haz.est,
+                         dist = "Kernel density")
+kernel_haz_est2b[[i]] <- muhaz(ms_d_match_surv[which(ms_d_match_surv$trans==i &
+                        ms_d_match_surv$tipo_de_plan_res_1==0),"time"],
+                        ms_d_match_surv[which(ms_d_match_surv$trans==i &
+                        ms_d_match_surv$tipo_de_plan_res_1==0),"status"])
+kernel_haz2b[[i]] <- data.table(time = kernel_haz_est2b[[i]]$est.grid,
+                         est = kernel_haz_est2b[[i]]$haz.est,
+                         dist = "Kernel density")
+}
+
+haz_int_only2<-
+  rbind(cbind(trans=rep(1:n_trans,each=nrow(kernel_haz2a[[i]])),
+              tipo_de_plan_res_1=rep(1,nrow(kernel_haz2a[[i]])),
+      rbindlist(kernel_haz2a)),
+      cbind(trans=rep(1:n_trans,each=nrow(kernel_haz2b[[i]])),
+            tipo_de_plan_res_1=rep(0,nrow(kernel_haz2b[[i]])),
+      rbindlist(kernel_haz2b)))
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+n_trans2 <- max(trans_matrix, na.rm = T)
+
+dists_w_covs_10s<-cbind.data.frame(covs=c(rep("fits_c_",(20)*n_trans2)),
+              formal=rep(c("Weibull (AFT)", "Weibull (PH)", "Gompertz", "Log-logistic", "Gamma",
+                "Generalized gamma", "Generalized gamma (original)", "Lognormal", "Exponential", "Generalized F", "Generalized F(original)", paste0("RP0",2:9),"RP10"),1*n_trans2),
+              dist=c("weibull", "weibullph", "llogis", "gamma", "gengamma","gengamma.orig", "gompertz", "lnorm", "exp", "genf","genf.orig",rep("no dist",9)),
+              model=rep(c("wei", "weiph", "gomp", "llogis", "gam","ggam", "ggam_orig", "logn", "exp", "genf","genf_orig", paste0("rp0",2:9),"rp10"),1*n_trans2),
+              trans=rep(1:n_trans2, each=20))
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+no_attempts <- 30
+
+km.lc2a<-list()
+km.lc2b<-list()
+fits_cox2<-list()
+fits_c_cox2<-list()
+
+for (i in 1:n_trans2){
+  r <- NULL
+  attempt <- 0
+  while( is.null(r) && attempt <= no_attempts ) {
+    attempt <- attempt + 1
+    try(
+      r <- flexsurvreg(formula=fitform2,
+                                 data = subset(ms_d_match_surv, trans == i),
+                                 dist = "weibull")
+    )
+  } 
+  fits_c_wei[[i]] <- r
+}
+
+for (i in 1:n_trans2){
+  r <- NULL
+  attempt <- 0
+  while( is.null(r) && attempt <= no_attempts ) {
+    attempt <- attempt + 1
+    try(
+      r <- flexsurvreg(formula=fitform2,
+                                 data = subset(ms_d_match_surv, trans == i),
+                                 dist = "weibullph")
+    )
+  } 
+  fits_c_weiph[[i]] <- r
+}
+
+for (i in 1:n_trans2){
+  r <- NULL
+  attempt <- 0
+  while( is.null(r) && attempt <= no_attempts ) {
+    attempt <- attempt + 1
+    try(
+      r <- flexsurvreg(formula=fitform2,
+                                 data = subset(ms_d_match_surv, trans == i),
+                                 dist = "llogis")
+    )
+  } 
+  fits_c_llogis[[i]] <- r
+}
+
+for (i in 1:n_trans2){
+  r <- NULL
+  attempt <- 0
+  while( is.null(r) && attempt <= no_attempts ) {
+    attempt <- attempt + 1
+    try(
+      r <- flexsurvreg(formula=fitform2,
+                                 data = subset(ms_d_match_surv, trans == i),
+                                 dist = "gamma")
+    )
+  } 
+  fits_c_gam[[i]] <- r
+}
+
+for (i in 1:n_trans2){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvreg(formula=fitform2,
+                                   data = subset(ms_d_match_surv, trans == i),
+                                   dist = "gengamma")
+      )
+    }
+    fits_c_ggam[[i]] <- r
+}
+
+for (i in 1:n_trans2){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvreg(formula=fitform2,
+                                   data = subset(ms_d_match_surv, trans == i), 
+                                   dist = "gompertz")
+      )
+    }
+    fits_c_gomp[[i]] <- r
+}  
+
+for (i in 1:n_trans2){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvreg(formula=fitform2,
+                                   data = subset(ms_d_match_surv, trans == i),
+                                   dist = "lnorm")
+      )
+    }
+    fits_c_logn[[i]] <- r
+}  
+
+for (i in 1:n_trans2){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvreg(formula=fitform2,
+                                   data = subset(ms_d_match_surv, trans == i),
+                                   dist = "exp")
+      )
+    }
+    fits_c_exp[[i]] <- r
+}  
+
+
+for (i in 1:n_trans2){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvreg(formula=fitform2,
+                                   data = subset(ms_d_match_surv, trans == i),
+                                   dist = "genf")
+      )
+    }
+    fits_c_genf[[i]] <- r
+}  
+
+
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+        attempt <- attempt + 1
+        try(
+            r <- flexsurvreg(formula=fitform2,
+                             data = subset(ms_d_match_surv, trans == i),
+                             dist = "gengamma.orig")
+        )
+    }
+    fits_c_ggam_orig[[i]] <- r
+}  
+
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+        attempt <- attempt + 1
+        try(
+            r <- flexsurvreg(formula=fitform2,
+                             data = subset(ms_d_match_surv, trans == i),
+                             dist = "genf.orig")
+        )
+    }
+    fits_c_genf_orig[[i]] <- r
+}
+
+
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform2,k=1,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_c_rp02[[i]] <- r
+}  
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform2,k=2,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_c_rp03[[i]] <- r
+}
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform2,k=3,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_c_rp04[[i]] <- r
+}
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform2,k=4,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_c_rp05[[i]] <- r
+}
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform2,k=5,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_c_rp06[[i]] <- r
+}
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform2,k=6,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_c_rp07[[i]] <- r
+}
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform2,k=7,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_c_rp08[[i]] <- r
+}
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform2,k=8,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_c_rp09[[i]] <- r
+}
+for (i in 1:n_trans){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+      try(
+        r <- flexsurvspline(formula=fitform2,k=9,
+                               data = subset(ms_d_match_surv, trans == i))
+      )
+    }
+    fits_c_rp10[[i]] <- r
+}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+fitted_km<-data.frame()
+for (i in 1:n_trans2){
+km.lc2a[[i]] <- survfit(formula= fitform, data = subset(ms_d_match_surv, trans == i & tipo_de_plan_res_1==1))
+km.lc2b[[i]] <- survfit(formula= fitform, data = subset(ms_d_match_surv, trans == i & tipo_de_plan_res_1==0))
+
+fitted_km<-rbind(fitted_km,cbind.data.frame(trans=i,residential=rep(1,), fortify(km.lc2a[[i]])))
+fitted_km<-rbind(fitted_km,cbind.data.frame(trans=i,residential=rep(0,), fortify(km.lc2b[[i]])))
+}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+newdat2a <- data.table::data.table(tipo_de_plan_res_1= factor(c(rep(1,1))))
+newdat2b <- data.table::data.table(tipo_de_plan_res_1= factor(c(rep(0,1))))
+
+fitted_flexsurvreg<-data.frame()
+fit_flexsurvreg<-data.frame()
+
+for (i in 1:nrow(dists_w_covs_10s)){  #
+  
+cat(paste0("#### Flexible Survival Model (w/ covs): ",
+             dists_w_covs_10s[i,"formal"], "; transition: ",dists_w_covs_10s[i,"trans"], "\n \n"))  
+  
+model<-paste0("fits_c_",dists_w_covs_10s[i,"model"])
+
+if(!is.null(get(model)[[dists_w_covs_10s[i,"trans"]]])){  
+  #Generate databases
+ fitted_flexsurvreg<- rbind(fitted_flexsurvreg,cbind.data.frame(dist=rep(dists_w_covs_10s[i,"formal"],), 
+                            trans=rep(dists_w_covs_10s[i,"trans"],),
+                            residential=rep(1,),
+                            data.table::data.table(summary(get(model)[[dists_w_covs_10s[i,"trans"]]], newdata= newdat2a, newtime=unique(fitted_km$time), type = "survival", tidy=T)))) 
+  fitted_flexsurvreg<- rbind(fitted_flexsurvreg,cbind.data.frame(dist=rep(dists_w_covs_10s[i,"formal"],), 
+                            trans=rep(dists_w_covs_10s[i,"trans"],),
+                            residential=rep(0,),
+                            data.table::data.table(summary(get(model)[[dists_w_covs_10s[i,"trans"]]], newdata= newdat2b,  newtime=unique(fitted_km$time), type = "survival", tidy=T)))) 
+ #t=newtime0, 
+ 
+  # Generate fit indices
+  fit_flexsurvreg<-rbind(fit_flexsurvreg,
+     cbind(dist= dists_w_covs_10s[i,"formal"],
+           transition=dists_w_covs_10s[i,"trans"],
+           fitstats.flexsurvreg(get(model)[[dists_w_covs_10s[i,"trans"]]])))
+  #the BIC may not be appropriate if none of the candidate models are considered to be close to the ‘true’ model.     
+  } else {
+  cat(paste0("The model that assumed a ",dists_w_covs_10s[i,"formal"]," distribution for the transition number ",dists_w_covs_10s[i,"trans"]," did not converge \n\n"))
+  }
+}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+if(no_mostrar==1){
+  fit_flexsurvreg %>% 
+    dplyr::group_by(trans) %>% 
+    summarise(mean(ucl,na.rm=T))
+  }
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+
+```
+</div>
+
+<br>
+
+
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:800px; overflow-x: scroll; width:100%">
+```{r fit3_wcov, eval=T, echo=T, fig.cap="Figure 22. Vissual Assessment of Suvival, Ten-states Model (w/Treatment Modality)",fig.align="center", error= T, fig.height=8, fig.width=15, dpi=320, paged.print=TRUE, warnings =F}
+#load("C:/Users/CISS Fondecyt/OneDrive/Escritorio/mult_state_ags.RData")
+
+c26 <- c(
+  "dodgerblue2", # red
+  "green4",
+  "#6A3D9A", # purple
+  "#FF7F00", # orange
+  "gray16", "gold1",
+  "skyblue2", "#FB9A99", # lt pink
+  "palegreen2",
+  "#CAB2D6", # lt purple
+  "#FDBF6F", # lt orange
+  "gray70", "khaki2",
+  "maroon", "orchid1", "deeppink1", "blue1", "steelblue4",
+  "darkturquoise", "green1", "yellow4", "yellow3",
+  "darkorange4", "brown", "gray40")
+
+fitted_flexsurvreg_plot<-
+fitted_flexsurvreg %>%  
+  dplyr::left_join(fitted_km, by=c("time", "trans", "residential")) %>% 
+  group_by(trans,dist,residential) %>% 
+  tidyr::fill(surv,.direction="down") %>% 
+  ungroup() %>% 
+  dplyr::mutate(abs((est-surv)/surv)) %>% 
+  group_by(trans,dist,residential) %>% 
+  dplyr::mutate(cumsum_error=cumsum(replace_na(`abs((est - surv)/surv)`, 0))) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::mutate(text=paste0("Distribution: ",dist,"<br>survival: ",sprintf("%1.2f",est),"<br>Time (in years): ",round(time/365.25,2), "<br>CIs: ",ifelse(!is.na(lcl),"CIs","no CIs"),"<br>Cumsum(abs((est-surv)/surv))= ",round(cumsum_error,2),"<br>Residential: ",ifelse(residential==1,"Yes","No"))) %>% 
+  dplyr::mutate(text2=paste0("Distribution: KM","<br>survival: ",sprintf("%1.2f",surv),"<br>Time (in years): ",round(time/365.25,2),"<br>Residential: ",ifelse(residential==1,"Yes","No"))) %>%
+ggplot()+
+    geom_line(aes(time, est, color=dist, linetype=factor(residential)),size=1)+
+    geom_line(aes(time, surv, linetype=factor(residential)), color="red",size=1)+
+    scale_color_manual(name="Distributions", values = c26[1:20])+
+    facet_wrap(.~trans,labeller = labeller(trans = transition_label), ncol=3, scales = "free_y")+
+    sjPlot::theme_sjplot2()+
+    theme(legend.position="bottom",
+          strip.background = element_rect(fill = "white", colour = "white"))+
+ # scale_x_continuous(breaks = seq(0, 365.25*12, 2*365.25), labels=seq(0,12,2))+
+  labs(y="",x="")+
+  theme(legend.position='none')
+
+m <- list(
+  l = 80*1.05,
+  r = 80,
+  b = 80,
+  t = 80*1.05,
+  pad = 4
+)
+
+p2<-
+fitted_flexsurvreg_plot$data %>% 
+  dplyr::mutate(years=round(time/365.25,0)) %>% 
+  dplyr::mutate(trans2=trans) %>% 
+  dplyr::left_join(cbind.data.frame(transition_label,trans2=1:n_trans2), by="trans2") %>% 
+group_by(trans) %>%
+group_map(~ plot_ly(data=., x = ~time, y = ~est, color = ~dist, type = "scatter", mode="lines", linetype = ~residential, text=~text) %>% 
+            add_trace(y = ~surv, type = 'scatter', mode = 'lines', line = list(color = 'red', width = 1, linetype = ~residential), text=~text2)%>% 
+  layout(annotations = list(list(x = 0.5 , y = 1.03, text = ~unique(transition_label), showarrow = F, xref='paper', yref='paper'))) %>% 
+  layout(
+    xaxis = list(
+      ticktext = list(1, 3, 5, 7, 9, 11), 
+      textangle = 0,
+      tickvals = list(365.25*1, 365.25*3, 365.25*5, 365.25*7, 365.25*9, 365.25*11),
+      tickmode = "array"
+  )), keep=TRUE) %>%    
+subplot(nrows = 3, shareX = T, shareY=T, titleX = F, titleY = F, margin = .05)%>% layout(showlegend = F) %>% #, margin = 0.05) %>% 
+  layout(annotations = list(
+                list(x = -0.1, y = 0.5, text = "Survival",
+                     font = list(color = "black",size = 15),
+                     textangle = 270,
+                     showarrow = F, xref='paper', yref='paper', size=48,margin =m)))
+
+#p2
+
+  htmlwidgets::saveWidget(as_widget(p2), "test2_jun.html")
+#https://docs.ropensci.org/plotly/reference/partial_bundle.html
+```
+
+File is available in this [link](https://github.com/FONDECYTACC/SUD_health_Chile.github.io/raw/master/test2.html).
+
+</div>
+
+
+```{r fit_flexsurvreg_kable2,eval=T, echo=T, paged.print=TRUE}                             
+fit_flexurvreg_kable<-
+fit_flexsurvreg %>% 
+  dplyr::arrange(transition, AIC) %>% 
+  dplyr::left_join(cbind.data.frame(transition_label,trans_nmb=1:n_trans2),by=c("transition"="trans_nmb")) %>% 
+  dplyr::mutate(trans_w_nmb=paste0(sprintf("%02d",transition),")",transition_label)) %>% 
+  dplyr::select(trans_w_nmb,dist,Df,n2ll,AIC,AICc,BIC)%>%
+  dplyr::mutate_at(vars(n2ll, AIC, AICc, BIC),~ifelse(abs(.)>1e6,NA,format(round(.,2), scientific = FALSE)))  
+  
+fit_flexurvreg_kable %>%   
+      knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption = paste0("Table 12. Fit indices of the adjusted survival analyses"),
+               col.names = c("Transition","Distribution", "DF","Negative 2 Log Likelihood","AIC","AICc","BIC"),
+               align =c("l",rep('c', 101))) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  #kableExtra::add_footnote("Note. NA= Null values", notation="none") %>% 
+  kableExtra::scroll_box(width = "100%", height = "375px") 
+```
+
+<br>
+
+# Session Info
+
+```{r session_info, echo=T, error=T, paged.print=TRUE}
+Sys.getenv("R_LIBS_USER")
+
+rstudioapi::getSourceEditorContext()
+#save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_carla.RData")
+
+if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_15_jun.RData")
+  } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/andre/Desktop/SUD_CL/mult_state_15_jun.RData")
+  } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_15_jun.RData")
+  } else {
+    save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_15_jun.RData")
+  }
+
+sessionInfo()
+```

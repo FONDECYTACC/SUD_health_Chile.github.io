@@ -1,0 +1,214 @@
+---
+title: "Ambulatory or residential? a multi-state analysis of treatments for substance use disorders (Step 1)"
+date: "`r withr::with_locale(new = c('LC_TIME' = 'C'), code =format(Sys.time(),'%B %d, %Y'))`"
+output:
+  html_document:
+    code_folding: hide  
+    toc: true # table of content true
+    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_float: true
+---
+
+
+```{css zoom-lib-src, echo = FALSE}
+script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+```
+
+```{js zoom-jquery, echo = FALSE}
+ $(document).ready(function() {
+    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
+    // onClick function for all plots (img's)
+    $('img:not(.zoomImg)').click(function() {
+      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
+      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
+    });
+    // onClick function for zoomImg
+    $('img.zoomImg').click(function() {
+      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
+    });
+  });
+```
+
+<style type="text/css">
+.tablelines table, .tablelines td, .tablelines th {
+        border: 1px solid black;
+        }
+.centrado {
+    text-align: center;
+}
+.table.center {
+    margin-left:auto; 
+    margin-right:auto;
+  }
+.table_wrapper{
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+code.r{
+  font-size: 8px;
+}
+body{ /* Normal  */
+      text-align: justify;
+  }
+.superbigimage{
+    overflow-y:scroll;
+    white-space: nowrap;
+}
+.superbigimage img{
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+</style>
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
+</style>
+
+```{r prev_setup, include = FALSE, cache=T}
+rm(list=ls());gc()
+
+if(!grepl("4.0.2",R.version.string)){stop("Different version (must be 4.0.2)")}
+path<-rstudioapi::getSourceEditorContext()$path
+
+if (grepl("CISS Fondecyt",path)==T){
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_1_apr22.RData")
+  } else if (grepl("andre",path)==T){
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_1_apr22.RData")
+  } else if (grepl("E:",path)==T){
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_1_apr22.RData")
+  } else if (grepl("G:",path)==T){
+    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_1_apr22.RData")
+  } else {
+    setwd("~/");load("~/mult_state_1_apr22.RData");path.expand("~/mult_state_1_apr22.RData")
+  }
+```
+
+```{r setup, include = FALSE, cache=T}
+#Libraries used in the routine. Dont change the order
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
+  if(class(ungroup(x))[1]=="tbl_df"){
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)    
+        }
+  } else {
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)       
+  }
+ }
+}  
+
+library(mstate)
+library(tidyverse)
+
+if(.Platform$OS.type == "windows") withAutoprint({
+  memory.size()
+  memory.size(TRUE)
+  memory.limit()
+})
+memory.limit(size=56000)
+```
+
+```{r markov_semimarkov21_3_cont, echo=T, paged.print=TRUE, error=T, eval=T}  
+#ms_d_match_surv_res_tm$start<- ms_d_match_surv_res_tm$Tstart
+start_time2 <- Sys.time()
+
+cox_markov_test_prueba12d<-
+  #cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1", tfrom=1 , tto=2, grid=tseq, trans=trans_matrix_etm, B=200)
+mstate::MarkovTest(ms_d_match_surv_res_tm, formula="tipo_de_plan_res_1 + TD_1", transition=1, grid=tseq, B=200)
+
+overall_test(cox_markov_test_prueba12d)
+```
+
+```{r markov_semimarkov21_35_cont, echo=T, paged.print=TRUE, error=T, eval=T}  
+
+cox_markov_test_prueba23d<-
+#  cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1 + TD_2", tfrom=2 , tto=3, grid=tseq, trans=trans_matrix_etm, B=200)
+mstate::MarkovTest(ms_d_match_surv_res_tm, formula="tipo_de_plan_res + TD_1 + TD_2", transition=2, grid=tseq, B=200)
+
+overall_test(cox_markov_test_prueba23d)
+```
+
+```{r markov_semimarkov21_4_cont, echo=T, paged.print=TRUE, error=T, eval=T}  
+
+cox_markov_test_prueba34d<-
+#  cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1+ TD_2+ TD_3", tfrom=3 , tto=4, grid=tseq, trans=trans_matrix_etm, B=200)
+mstate::MarkovTest(ms_d_match_surv_res_tm, formula="tipo_de_plan_res + TD_1 + TD_2+ TD_3", transition=3, grid=tseq, B=200)
+
+overall_test(cox_markov_test_prueba34d)
+```
+
+```{r markov_semimarkov21_45_cont, echo=T, paged.print=TRUE, error=T, eval=T}  
+cox_markov_test_prueba45d<-
+#  cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1+ TD_2+ TD_3+ TD_4", tfrom=4, tto=5, grid=tseq, trans=trans_matrix_etm, B=200)
+mstate::MarkovTest(ms_d_match_surv_res_tm, formula="tipo_de_plan_res + TD_1 + TD_2+ TD_3+ TD_4", transition=4, grid=tseq, B=200)
+
+overall_test(cox_markov_test_prueba45d)
+
+end_time <- Sys.time()
+
+print("Time taken in process")
+end_time - start_time
+
+end_time - start_time2
+
+#The model considered the transition from intermediate states to our absorbing state (being readmitted at the fourth time) is explained by the time spent in the previous health state. This covariate (time in the previous state) was shown to be statistically significant (p<.001); results indicated a longer duration spent in the first treatment is associated with increased risk of readmission. Therefore, a semi-Markov (called a Markov renewal model) or clock reset approach should be undertaken for both models.
+```
+
+<br>
+
+# Session Info
+
+```{r session_info, echo=T, paged.print=TRUE, error=T}
+Sys.getenv("R_LIBS_USER")
+rstudioapi::getSourceEditorContext()
+
+if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_125_apr22.RData")
+  } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/andre/Desktop/SUD_CL/mult_state_125_apr22.RData")
+  } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_125_apr22.RData")
+  } else if (grepl("G:",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_125_apr22.RData")
+  } else {
+    save.image("~/mult_state_125_apr22.RData")
+    path.expand("~/mult_state_125_apr22.RData")
+  }
+
+sessionInfo()
+sesion_info <- devtools::session_info()
+dplyr::select(
+  tibble::as_tibble(sesion_info$packages),
+  c(package, loadedversion, source)
+) %>% 
+  DT::datatable(filter = 'top', colnames = c('Row number' =1,'Variable' = 2, 'Percentage'= 3),
+              caption = htmltools::tags$caption(
+        style = 'caption-side: top; text-align: left;',
+        '', htmltools::em('Packages')),
+      options=list(
+initComplete = htmlwidgets::JS(
+      "function(settings, json) {",
+      "$(this.api().tables().body()).css({'font-size': '80%'});",
+      "}")))
+```

@@ -26,50 +26,58 @@ This page is composed by the following main topics:
 
 3. Associations & Analytic Exercises
 
-    3a.1.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 1)](Matching_Process_APR_22)
-
-    3a.2.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 1.5)](Matching_Process15_APR_22)
+    3a.1. Ambulatory or residential? a multi-state analysis of treatments for substace use disorders- Main analyses
+    
+        3a.1.1.a [Step 1: Imputation, Matching & set the database](Matching_Process1_APR_22)
+        
+        3a.1.1.b [Stata, Step 1: Set the database, AJ estimates, Compute Transition Probabilities](Matching_Process1_stata_APR_22)
+    
+        3a.1.2.b [Stata, Step 2: Compute Transition Probabilities at 3 years](Matching_Process2_stata_APR_22)
+    
+        3a.1.3.b [Stata, Step 3: Plot probabilities and differences](Matching_Process3_stata_APR_22)
+    
+        3a.1.4.b [Stata, Step 4: Compute Transition Probabilities for a patient that completed treatment at 3 years](Matching_Process4_stata_APR_22)
+    
+        3a.1.4.5.b [Stata, Step 4.5: Summarise estimates in tables and export](Matching_Process4_5_stata_APR_22)
+        
+        3a.1.6.a [Step 5: Sensitivity analyses, Sankey, Transition Trees](Matching_Process5_APR_22) 
+    
+    3a.2. Ambulatory or residential? a multi-state analysis of treatments for substace use disorders- Supplemental analyses
+    
+        3a.2.1.a [Step 1.25](Matching_Process1_25_APR_22)
+        
+        3a.2.2.a [Step 1.5](Matching_Process15_APR_22)
  
-    3a.3.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 2)](Matching_Process2_APR_22)
+        3a.2.3.a [Step 2)](Matching_Process2_APR_22)
    
-    3a.4.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 3)](Matching_Process3_APR_22)
+        3a.2.4.a [Step 3)](Matching_Process3_APR_22)
     
-    3a.5.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 4)](Matching_Process4_APR_22)
+        3a.2.5.a [Step 4)](Matching_Process4_APR_22)
     
-    3a.6.a [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Step 5)](Matching_Process5_APR_22) 
-
-    3a.1.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 1)](Matching_Process1_stata_APR_22)
+        3a.2.6.b [Stata, Step 5)](Matching_Process5_stata_APR_22)
     
-    3a.2.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 2)](Matching_Process2_stata_APR_22)
+        3a.2.1.c [Stata, Step 1 w/ only complete cases)](Matching_Process1_stata_APR_22_cc)
     
-    3a.3.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 3)](Matching_Process3_stata_APR_22)
+    3b.1. Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile- Main
     
-    3a.4.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 4)](Matching_Process4_stata_APR_22)
+        3b.1.1.a [Step 1: Descriptive tables, Partitioned Survival analyses, Competing risks, Select Survival Distributions](Proyecto_carla3)
     
-    3a.4.5.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 4.5)](Matching_Process4_5_stata_APR_22)
+        3b.1.2.a [Supplemental: Step 2: Compute Transition Probabilities](Proyecto_carla32)
     
-    3a.5.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 5)](Matching_Process5_stata_APR_22)
+        3b.1.3.a [Supplemental: Step 2: Get Transition Intensities, Compute Transition Probabilities, Comparative Plots, ](Proyecto_carla33)
     
-    3a.6.b [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 6)](Matching_Process6_stata_APR_22)
+        3b.4.a [Step 4: After review, Survival distributions revised, Simulate probabilities to get readmitted](Proyecto_carla34)
     
-    3a.1.c [Supplemental: Ambulatory or residential? a multi-state analysis of treatments for substace use disorders (Stata, Step 1 w/ only complete cases)](Matching_Process1_stata_APR_22_cc)
-    
-    3b.1.a [Supplemental: Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile (Step 1)](Proyecto_carla3)
-    
-    3b.2.a [Supplemental: Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile (Step 2)](Proyecto_carla32)
-    
-    3b.3.a [Supplemental: Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile (Step 3)](Proyecto_carla33)
-    
-    3b.4.a [Supplemental: Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile (Step 4, After review)](Proyecto_carla34)
-    
-    3b.1.b [Supplemental: Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile (Stata, Step 1)](Proyecto_carla1_stata_JUN_21)
-    
-    3b.2.b [Supplemental: Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile (Stata, Step 2)](Proyecto_carla2_stata_JUN_21)
-    
-    3b.3.b [Supplemental: Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile (Stata, Step 3)](Proyecto_carla3_stata_JUN_21)
-    
-    3b.4.b [Supplemental: Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile (Stata, Step 4)](Proyecto_carla4_stata_JUN_21)
-    
+    3b.2. Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile- Supplemental
+  
+        3b.2.1.b [Stata, Step 1](Proyecto_carla1_stata_JUN_21)
+        
+        3b.2.2.b [Stata, Step 2](Proyecto_carla2_stata_JUN_21)
+        
+        3b.2.3.b [Stata, Step 3](Proyecto_carla3_stata_JUN_21)
+        
+        3b.2.4.b [Stata, Step 4](Proyecto_carla4_stata_JUN_21)
+        
     3c.1. Living with [conslidation](analisis_joel2)
     
     3c.2. Living with (Stata) [conslidation](analisis_joel_oct_2021_stata1)
