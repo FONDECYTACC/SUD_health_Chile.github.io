@@ -1,0 +1,1787 @@
+---
+title: "Chilean prosecutor's office Data merge, step 2"
+date: "`r withr::with_locale(new = c('LC_TIME' = 'C'), code =format(Sys.time(),'%B %d, %Y'))`"
+output:
+  html_document:
+    code_folding: hide  
+    toc: true # table of content true
+    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_float: true
+    theme: flatly
+---
+
+```{css zoom-lib-src, echo = FALSE}
+script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+```
+
+```{js zoom-jquery, echo = FALSE}
+ $(document).ready(function() {
+    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
+    // onClick function for all plots (img's)
+    $('img:not(.zoomImg)').click(function() {
+      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
+      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
+    });
+    // onClick function for zoomImg
+    $('img.zoomImg').click(function() {
+      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
+    });
+  });
+  
+```
+
+
+```{css hideOutput-lib-src, echo = FALSE}
+<script src="hideOutput.js"></script> 
+```
+
+```{js hideOutput, echo = FALSE}
+$(document).ready(function() {    
+	$chunks = $('.fold');    
+	$chunks.each(function () {      // add button to source code chunks     
+	if ( $(this).hasClass('s') ) {       
+		$('pre.r', this).prepend("<div class=\"showopt\">Show Source</div><br style=\"line-height:22px;\"/>");
+       		$('pre.r', this).children('code').attr('class', 'folded');     
+       		}      // add button to output chunks     
+		if ( $(this).hasClass('o') ) {       
+			$('pre:not(.r)', this).has('code').prepend("<div class=\"showopt\">Show Output</div><br style=\"line-height:22px;\"/>");       
+			$('pre:not(.r)', this).children('code:not(r)').addClass('folded');        // add button to plots       
+			$(this).find('img').wrap('<pre class=\"plot\"></pre>');       
+			$('pre.plot', this).prepend("<div class=\"showopt\">Show Plot</div><br style=\"line-height:22px;\"/>");       
+			$('pre.plot', this).children('img').addClass('folded');      
+			}   
+});    // hide all chunks when document is loaded   
+	$('.folded').css('display', 'none')    // function to toggle the visibility   
+	$('.showopt').click(function() {     
+			var label = $(this).html();     
+			if (label.indexOf("Show") >= 0) {       
+				$(this).html(label.replace("Show", "Hide"));     
+			} else {
+			  $(this).html(label.replace("Hide", "Show"));     
+			}     
+	$(this).siblings('code, img').slideToggle('fast', 'swing');   
+	}); 
+}); 
+
+```
+
+```{=html}
+<style type="text/css">
+.showopt {   
+  background-color: #004c93;   color: #FFFFFF;    width: 100px;   height: 20px;   text-align: center;   vertical-align: middle !important;   float: right;   font-family: sans-serif;   border-radius: 8px; 
+  }  
+.showopt:hover {     
+        background-color: #dfe4f2;
+        color: #004c93; 
+        }  
+pre.plot {   
+        background-color: white !important; 
+        } 
+.tablelines table, .tablelines td, .tablelines th {
+        border: 1px solid black;
+        }
+.centrado {
+    text-align: center;
+}
+.table.center {
+    margin-left:auto; 
+    margin-right:auto;
+  }
+.table_wrapper{
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+code.r{
+  font-size: 8px;
+}
+body{ /* Normal  */
+      text-align: justify;
+  }
+.superbigimage{
+    overflow-y:scroll;
+    white-space: nowrap;
+}
+.superbigimage img{
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+</style>
+```
+```{=html}
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
+</style>
+```
+```{r prev_setup, include = FALSE, cache=T}
+rm(list=ls());gc()
+if(!grepl("4.1.2",R.version.string)){stop("Different version (must be 4.1.2)")}
+path<-getwd()
+
+if (grepl("CISS Fondecyt",path)==T){
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.Rdata")
+  } else if (grepl("andre",path)==T){
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.Rdata")
+  } else if (grepl("E:",path)==T){
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/10.Rdata")
+  } else {
+    setwd(paste0(path,"/"));load(paste0(gsub("SUD_CL","",gsub("2022","2019",path)),"/10.Rdata"))
+  }
+```
+
+```{r setup, include = FALSE, cache=T, error=T, echo=T}
+#Libraries used in the routine. Dont change the order
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
+  if(class(ungroup(x))[1]=="tbl_df"){
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)    
+        }
+  } else {
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)       
+  }
+ }
+}  
+
+if(!require(pacman)){install.packages("pacman")}
+pacman::p_load(APCtools, withr, boot, matrixStats, knitr, tidyr, stringi,stringr, ggplot2, Hmisc, kableExtra, plotly, janitor, rbokeh, zoo, broom, sqldf, devtools, codebook, data.table, panelr, RColorBrewer, lsmeans, finalfit, ggiraph, sf, treemapify, dplyr, tidyverse, epiR, survminer, ggfortify, survMisc, foreign, reshape2, stargazer, tableone, MarchIt, cobalt, eha, igraph, Amelia, DiagrammeR, mstate, flexsurv, muhaz, Metrics, rpivotTable, caret, polycor, ClusterR, flextable, ggstatsplot, ggside, daff, explore, sjPlot,compareGroups,job, missForest, install=F)
+
+options(scipen=999) #display numbers rather scientific number
+
+#remotes::install_github("chjackson/flexsurv-dev", upgrade = "never")
+#devtools::install_github("stulacy/multistateutils", build_vignettes=TRUE, upgrade = "never")
+#devtools::install_github("hputter/mstate", upgrade = "never")
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+fitstats.flexsurvreg = function(x){
+  ll = x$loglik
+  aic = x$AIC
+  k = length(x$coefficients)
+  n = sum(x$data$m["(weights)"])
+  aicc = aic + ((2 * k) * (k + 1) / (n - k - 1))
+  bic = - 2 * ll + (k * log(n))
+  data.frame(
+   Df = k,
+    "n2ll" = -2 * ll,
+    AIC = aic,
+    AICc = aicc,
+    BIC = bic
+  )
+}
+
+
+if(.Platform$OS.type == "windows") withAutoprint({
+  memory.size()
+  memory.size(TRUE)
+  memory.limit()
+})
+memory.limit(size=56000)
+```
+
+<div class = "blue">
+Several issues were found in the first stage of the exploration of the matches.
+ - Duplicated entries (relationships) 
+ - Cases that are victims and imputed at the same time
+ - Unspecified dates
+ - Originally imputed birth dates that must be corrected according to PO database
+ - Define the a date of censorship
+</div>
+
+
+<br>
+
+```{r prev_define_censorship, echo=T, fig.align='center', message=FALSE, error=T, eval=T}
+`%>%`<- magrittr::`%>%`
+message(paste0("relationships with judicial proceedings ending after November 13, 2019\n n=",
+       format(as.numeric(table(Base_fiscalia_v2$termino_relacion_simple<"2019-11-13"))[1],big.mark=","),"; ",
+       scales::percent(as.numeric(prop.table(table(Base_fiscalia_v2$termino_relacion_simple<"2019-11-13"))), accuracy=0.1)[1]))
+
+cat("Information of P.O. using only relationships that ended before November 13, 2019")
+message(paste0('Original Prosecutors Office\n(n = ',format(nrow(subset(Base_fiscalia_v2, termino_relacion_simple<"2019-11-13")),big.mark=","), 
+        ';\nCauses= ',subset(Base_fiscalia_v2, termino_relacion_simple<"2019-11-13")%>% dplyr::distinct(ruc)%>% nrow() %>% format(big.mark=','),
+        ';\nRel.=',subset(Base_fiscalia_v2, termino_relacion_simple<"2019-11-13")%>%dplyr::distinct(idrelacion)%>%nrow()%>%format(big.mark=','),
+        ';\nRUC_Vic_Imp=',subset(Base_fiscalia_v2, termino_relacion_simple<"2019-11-13")%>%dplyr::mutate(rel=paste0(ruc,"_",idsujeto_victima,"_",idsujeto_imputado,"_","iddelito"))%>%dplyr::distinct(rel)%>%nrow()%>%format(big.mark=','),
+        ';\nusers= ',subset(Base_fiscalia_v2, termino_relacion_simple<"2019-11-13")%>% dplyr::distinct(rut_enc_saf)%>% nrow() %>% format(big.mark=','),')'))
+
+message(paste0("Entries with missing date of comission of crime: ",
+as.numeric(table(is.na(ifelse(Base_fiscalia_v2$fec_comision_simple<="1900-01-01",NA,Base_fiscalia_v2$fec_comision_simple)))[2])))
+
+message(paste0("Entries with missing date of end of judicial proceedings: ",
+as.numeric(table(is.na(ifelse(Base_fiscalia_v2$termino_relacion_simple<="1900-01-01",NA,Base_fiscalia_v2$termino_relacion_simple)))[2])))
+```
+
+
+```{r fig1, image-ref-for-in-text, echo=T, fig.align='center', message=FALSE, fig.caption="Figure 1.Summary of Process of Data Cleaning and Standardization, Imputation & Matching", fig.height=10, error=T, eval=T, dpi=320}
+tab1_lab<- paste0('Original C1 Dataset \n(n = ', formatC(nrow(CONS_C1), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1%>% dplyr::distinct(HASH_KEY)%>% nrow(), format='f', big.mark=',', digits=0),')')
+tab2_lab<- paste0('&#8226;Remove duplicated entries\\\\\\l&#8226;Overlapping treatments of users\\\\\\l&#8226;Intermediate events of treatment (continuous referrals)\\\\\\l')
+tab3_lab<- paste0('      C1 Dataset          \n(n = ', formatC(nrow(CONS_C1_df_dup_SEP_2020), format='f', big.mark=',', digits=0), ';\nusers: ',formatC(CONS_C1_df_dup_SEP_2020%>% dplyr::distinct(hash_key)%>% nrow(), format='f', big.mark=',', digits=0),')')
+tab4_lab<- paste0('Original Prosecutors Office\n(n = ',format(nrow(Base_fiscalia_v2),big.mark=","), 
+        ';\nCauses= ',Base_fiscalia_v2%>% dplyr::distinct(ruc)%>% nrow() %>% format(big.mark=','),
+        ';\nRel.=',Base_fiscalia_v2%>%dplyr::distinct(idrelacion)%>%nrow()%>%format(big.mark=','),
+        ';\nRUC_Vic_Imp=',Base_fiscalia_v2%>%dplyr::mutate(rel=paste0(ruc,"_",idsujeto_victima,"_",idsujeto_imputado,"_","iddelito"))%>%dplyr::distinct(rel)%>%nrow()%>%format(big.mark=','),
+        ';\nusers= ',Base_fiscalia_v2%>% dplyr::distinct(rut_enc_saf)%>% nrow() %>% format(big.mark=','),')')
+tab5_lab<- paste0('&#8226;Filter crimes committed after study follow-up period\\\\\\l&#8226;Remove duplicated entries\\\\\\l&#8226;Long-to-wide relationships/crimes, end of judicial proceedings, penalty\\\\\\l&#8226;Correct dates (birth, comission of crime, end of judicial proceedings)\\\\\\l&#8226;Define cases that acted as victims & imputed in a cause\\\\\\l')
+tab6_lab<- paste0("O.P. Dataset \n(n = ????;\n","","users= ",Base_fiscalia_v2%>% dplyr::distinct(rut_enc_saf)%>% nrow()%>% formatC(big.mark = ","),")")
+
+#https://stackoverflow.com/questions/46750364/diagrammer-and-graphviz
+#https://mikeyharper.uk/flowcharts-in-r-using-diagrammer/
+#http://blog.nguyenvq.com/blog/2012/05/29/better-decision-tree-graphics-for-rpart-via-party-and-partykit/
+#http://blog.nguyenvq.com/blog/2014/01/17/skeleton-to-create-fast-automatic-tree-diagrams-using-r-and-graphviz/
+#https://cran.r-project.org/web/packages/DiagrammeR/vignettes/graphviz-mermaid.html
+#https://stackoverflow.com/questions/39133058/how-to-use-graphviz-graphs-in-diagrammer-for-r
+#https://subscription.packtpub.com/book/big_data_and_business_intelligence/9781789802566/1/ch01lvl1sec21/creating-diagrams-via-the-diagrammer-package
+#https://justlegal.be/2019/05/using-flowcharts-to-display-legal-procedures/
+#      
+
+library(DiagrammeR) #⋉
+grViz("digraph flowchart {
+      # node definitions with substituted label text
+      node [fontname = Times, shape = rectangle,fontsize = 9]        
+      tab1 [label = '@@1']
+      blank [label = '', width = 0.0001, height = 0.0001]
+      tab2 [label = '@@2',fontsize = 7]
+      tab3 [label = '@@3']
+      
+      tab4 [label = '@@4',fontsize = 8]
+      blank2 [label = '', width = 0.0001, height = 0.0001]
+      tab5 [label = '@@5',fontsize = 7]
+      tab6 [label= '@@6']
+      
+      blank3 [label = '', width = 0.0001, height = 0.0001]
+      blank4 [label = '', width = 0.0001, height = 0.0001]      
+      blank5 [label = '', width = 0.0001, height = 0.0001] 
+      
+      blank6 [label = '', width = 0.0001, height = 0.0001]
+      tab7 [label = '@@7',fontsize = 7]
+      tab8 [label= '@@8']
+      
+      # edge definitions with the node IDs
+      rankdir='TB'; rank= same; tab1 -> blank [arrowhead = none,label='  Data wrangling and normalization process',fontsize = 8];
+      rankdir='TB'; rank= same; tab1; tab3;   
+      blank -> tab2;
+                  subgraph {
+              rank = same; tab2; blank;
+                  }
+      rankdir='TB'; rank= same; blank -> tab3;      
+            
+      tab4 -> blank2 [arrowhead = none,label='  Data wrangling and normalization process',fontsize = 8];
+      blank2 -> tab5
+      blank2 -> tab6
+      blank4 -> blank6 [arrowhead= none, label='⋉']
+      blank6 -> tab7
+                  subgraph {
+        rank = same; blank6; tab7;
+                  }
+      blank6 -> tab8
+                  subgraph {
+        rank = same; tab5; blank2;
+                  }
+                  subgraph {
+      rank= same; tab3 -> blank3 -> blank4 -> blank5 -> tab6 [arrowhead= none]
+                  }
+      }
+                  subgraph {
+        rank = same; tab3; tab6;
+                  }
+                  subgraph {
+        rank = same; tab1; tab4;
+                  }         
+                  subgraph {
+        rank = same; tab2; tab5;
+                  } 
+                  subgraph {
+        rank = same; tab1; tab3;
+        rankdir=TB
+        rank=same
+                  }
+                  subgraph {
+        rank = same; tab4; tab6;
+        rankdir=TB
+        rank=same
+                  }                     
+
+      [1]:  tab1_lab
+      [2]:  tab2_lab
+      [3]:  tab3_lab
+      [4]:  tab4_lab
+      [5]:  tab5_lab
+      [6]:  tab6_lab
+      [7]:  ' - asdasd- asdasdad'
+      [8]:  'Merged database'
+      ", width = 800,
+  height = 1200)
+
+#https://stackoverflow.com/questions/1554635/graphviz-how-to-have-a-subgraph-be-left-to-right-when-main-graph-is-top-to-bot
+#https://stackoverflow.com/questions/65509087/diagrammer-flowchart-align-vertical-nodes
+#https://stackoverflow.com/questions/39451158/how-to-specify-vertical-alignment-of-nodes-in-r-package-diagrammer
+#https://stackoverflow.com/questions/64323943/graphviz-and-dot-files-horizontal-and-vertical-node-alignment-intervening-node
+#https://stackoverflow.com/questions/5424555/changing-edge-direction-in-dot
+#https://graphviz.org/docs/attrs/rankdir/
+#
+```
+
+<br>
+
+# Correct dates
+
+
+
+```{r fig1_date_of_birth, fig.align='center', fig.pos='H', fig.caption="Figure 1.Date of birth", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+plot_dob<-
+Base_fiscalia_v2  %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(fec_nacimiento_simple)) %>%
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::summarise(n=n())%>%
+    dplyr::ungroup()%>%
+    dplyr::mutate(label_text=paste0(fec_nacimiento_qrt,"\nn= ",format(n,big.mark=","))) %>% 
+    ggplot2::ggplot(aes(x = fec_nacimiento_qrt, y = n, label= label_text))+
+    geom_line()+
+    sjPlot::theme_sjplot2() +
+    scale_x_yearqtr(format="%YQ%q", n=18,
+                    limits=c(zoo::as.yearqtr("1900-01-01"), 
+                             max=zoo::as.yearqtr("2019-11-13")))+
+    theme(legend.position="bottom")+
+    guides(fill=guide_legend(ncol=3))+
+    theme(legend.text = element_text(size=10))+
+    theme(legend.title = element_blank(),
+          panel.grid.minor = element_blank(), 
+          panel.grid.major = element_blank(), 
+          panel.grid.major.x = element_blank(),
+          panel.background = element_blank(),
+          axis.title.x = element_blank())+
+    theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), plot.caption=element_text(hjust=0)) 
+
+   ggplotly(plot_dob, tooltip = c("label_text"))%>% layout(xaxis= list(showticklabels = T), height = 600, width=800) 
+```
+
+<br>
+
+From the Figure we can see that people in the first quarters of 2022 were much lower than the previous quarters. Also, much more people were born before 1940. Hence, many of the values beyond these dates could be the result of mistyping.
+
+First, we look at the entries in which a crime was committed after the date of retrieval of the first database (November 13th, 2019) (`r paste0("n= ",format(nrow(dplyr::filter(Base_fiscalia_v2,fec_comision_simple>as.Date("2019-11-13"))),big.mark=","),", ",scales::percent(nrow(dplyr::filter(Base_fiscalia_v2,fec_comision_simple>as.Date("2019-11-13")))/nrow(Base_fiscalia_v2),accuracy=0.1))`). Additionally, we look at the cases in which a judiciary process was terminated after the date of retrieval (`r paste0("n= ",format(nrow(dplyr::filter(Base_fiscalia_v2,termino_relacion_simple>as.Date("2019-11-13"))),big.mark=","),", ",scales::percent(nrow(dplyr::filter(Base_fiscalia_v2,termino_relacion_simple>as.Date("2019-11-13")))/nrow(Base_fiscalia_v2),accuracy=0.1))`).
+
+<br>
+
+```{r pas0_erase_cases_after_followup, echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+
+Base_fiscalia_v3 <-
+Base_fiscalia_v2 %>% 
+  dplyr::filter(fec_comision_simple<=as.Date("2019-11-13"))  %>% 
+  #dplyr::mutate(fec_nacimiento_simple= #dplyr::case_when(fec_nacimiento_simple<="1900-01-01"~as.Date(NA),T~fec_nacimiento_simple)) %>% 
+  # dplyr::mutate(fec_nacimiento_simple= dplyr::case_when(rut_enc_saf=="fdc8ab217f201ce53f036d9f67aa4b9f"~"18-04-1969",
+  #                                                       "4d2e1d873e73d75d60b8a2682c5dfc00"
+  #                                                       "bf7539be5a2640954da0eb42ef8d217f"
+  #                                                       "e6526aa99b4c821dbd64987144728793"
+  #                                                       "f589934020facfb599e5958ae046694a"
+  dplyr::mutate(fec_comision_simple= dplyr::case_when(fec_comision_simple<="1900-01-01"~as.Date(NA),T~fec_comision_simple)) %>% 
+    dplyr::mutate(termino_relacion_simple= dplyr::case_when(termino_relacion_simple<="1900-01-01"~as.Date(NA),T~termino_relacion_simple))
+```
+
+Check the consistency of SENDA and POs dates of birth. We arranged the PO database ordered by RUN and date of comission of the crime (from the oldest to the the most recent).
+
+<br>
+
+```{r paso1_dates, fig.align='center', fig.caption="Figure 2. Absolute differences between SENDA and POs date of birth", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+message(paste0("Patients with more than one date of birth in P.O. DB: ",
+Base_fiscalia_v3 %>% 
+  dplyr::group_by(rut_enc_saf) %>% 
+  dplyr::mutate(n_fec=n_distinct(fec_nacimiento_simple)) %>% 
+  dplyr::filter(n_fec>1) %>% nrow()))
+
+fech_nac_fisc_vs_senda<-
+Base_fiscalia_v3 %>% 
+    #arrange the rut from the first date of comission of a crime, but we are not detecting if he/she is the victim or not
+    dplyr::arrange(rut_enc_saf, fec_comision_simple) %>% 
+    dplyr::left_join(subset(CONS_C1_df_dup_SEP_2020, subset= dup==1,select=c("hash_key","fech_nac", "fech_ing", "edad_al_ing", "edad_ini_cons", "obs", "numero_de_hijos_mod", "escolaridad", "embarazo", "cat_ocupacional","estado_conyugal_2")),by=c("rut_enc_saf"="hash_key")) %>%
+    dplyr::mutate(fech_nac=as.Date(fech_nac)) %>% 
+    dplyr::select(rut_enc_saf,encontrado_como_imputado,fec_nacimiento_simple,fec_comision_simple, gls_parentesco, termino_relacion_simple,fech_nac, fech_ing, edad_al_ing, edad_ini_cons,contains("rpa"), obs, numero_de_hijos_mod, escolaridad, embarazo, cat_ocupacional,estado_conyugal_2) %>% 
+    #keep only cases with discrepancies
+    dplyr::filter(dplyr::case_when(fec_nacimiento_simple!=fech_nac~T,T~F)) %>% 
+    dplyr::mutate(obs=dplyr::case_when(rut_enc_saf %in% unlist(C1_fech_nac_nas)~"KNN",
+                                       grepl("1.4.", obs)~"1.4.",grepl("1.5.", obs)~"1.5.",grepl("1.6.XX.", obs)~"1.6.xx",T~""))%>% 
+  dplyr::group_by(rut_enc_saf) %>% 
+  dplyr::mutate(n_dis_rucs=n_distinct(ruc)) %>%
+  dplyr::mutate(n_rows_hash=n(), rank_hash=row_number()) %>% 
+  #count the times a HASH has been processed as an imputed
+  dplyr::mutate(n_imputed=sum(encontrado_como_imputado=="SI")) %>% 
+  #get the second date of the comission of the crime
+  dplyr::mutate(lead_imputed=lead(fec_comision_simple)) %>% 
+  #89,809 rows
+  #2022-03-28, changed with the first time a user was imputed (if she/he had imputations), but
+  # the amount of imputed 
+  #https://stackoverflow.com/questions/63794410/r-slicing-a-grouped-data-frame-conditional-on-a-column
+  dplyr::filter((n_imputed>0 & encontrado_como_imputado=="SI" & rank_hash==  suppressWarnings(min(rank_hash[encontrado_como_imputado=="SI"])))| (n_imputed==0 & rank_hash== 1)) %>% 
+  dplyr::ungroup() %>% 
+  #if its invalid, we assume that SENDA data is right; if not, we analyze the difference
+  dplyr::mutate(diff=ifelse(fec_nacimiento_simple<="1900-01-01",NA,abs(fec_nacimiento_simple-fech_nac))) %>% 
+#89,809 rows, but 11,505 unique RUNs
+  dplyr::select(-rank_hash)
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+message(paste0("Must take note that ",
+CONS_C1_df_dup_SEP_2020 %>% 
+    dplyr::filter(hash_key %in% unlist(C1_fech_nac_nas)) %>% 
+    dplyr::select(hash_key, obs) %>% 
+    dplyr::filter(!grepl("1.6.XX.",obs)) %>% nrow() %>% format(big.mark=","),
+" cases that were selected to KNN imputation had not an observation of 1.6.XX process"))
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+CONS_C1_res_edad<-
+CONS_C1 %>% 
+dplyr::mutate(fech_nac=lubridate::parse_date_time(stringi::stri_sub(`Codigo.Identificación`,-8,-1),"dmY"),
+              fech_nac=as.Date(as.character(fech_nac)),
+              fech_nac_num=unclass(fech_nac))%>% 
+dplyr::group_by(HASH_KEY) %>% 
+dplyr::summarise(median_fech_nac= median(fech_nac_num, na.rm=T),
+                 mean_fech_nac= mean(fech_nac_num, na.rm=T))%>% 
+dplyr::mutate_if(is.numeric,funs(round(.,2)))
+
+TOP_edad<-
+CONS_TOP%>% 
+dplyr::mutate(fech_nac=as.Date(`Fecha.Nacimiento`, format="%d/%m/%Y"),
+              fech_nac=unclass(fech_nac)) %>% 
+dplyr::group_by(HASH_KEY) %>% 
+dplyr::summarise(median_fech_nac_top= median(fech_nac, na.rm=T),
+                 mean_fech_nac_top= mean(fech_nac, na.rm=T))%>% 
+dplyr::mutate_if(is.numeric,funs(round(.,2)))
+
+fech_nac_fisc_vs_senda2<-
+fech_nac_fisc_vs_senda %>% 
+  dplyr::left_join(CONS_C1_res_edad, by=c("rut_enc_saf"="HASH_KEY")) %>% 
+  dplyr::left_join(TOP_edad, by=c("rut_enc_saf"="HASH_KEY")) %>% 
+  dplyr::mutate(fech_nacimiento_num=unclass(fec_nacimiento_simple)) %>% 
+  dplyr::mutate(diff2_mdn=ifelse(fec_nacimiento_simple<="1900-01-01",NA,abs(fech_nacimiento_num-median_fech_nac))) %>% 
+  dplyr::mutate(diff2_m=ifelse(fec_nacimiento_simple<="1900-01-01",NA,abs(fech_nacimiento_num-mean_fech_nac)))%>% 
+  dplyr::mutate(diff3_mdn=ifelse(fec_nacimiento_simple<="1900-01-01",NA,abs(fech_nacimiento_num-median_fech_nac_top))) %>% 
+  dplyr::mutate(diff3_m=ifelse(fec_nacimiento_simple<="1900-01-01",NA,abs(fech_nacimiento_num-mean_fech_nac_top)))
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+fech_nac_fisc_vs_senda2 %>% 
+  ggplot(aes(x=diff))+
+  geom_histogram(aes(x=diff), bins=40)+
+  sjPlot::theme_sjplot()+
+  xlim(0,20000)+
+  ylim(c(0,1600))+
+  scale_x_continuous(breaks=seq(0,30000,by=365*3), labels=seq(0,30000,by=365*3)/365, limits=c(0,20000))+
+  labs(x="Differences in years",caption=paste0("Note. Users with discrepancies are the", scales::percent(nrow(fech_nac_fisc_vs_senda)/length(unique(Base_fiscalia_v3$rut_enc_saf)))," of the sample;\nDifferences due to missing values were not listed (n=",as.numeric(table(is.na(fech_nac_fisc_vs_senda$diff))[2]),");\nMedian= ",median(fech_nac_fisc_vs_senda$diff,na.rm=T)," [",quantile(fech_nac_fisc_vs_senda$diff,.25,na.rm=T),", ",quantile(fech_nac_fisc_vs_senda$diff,.75,na.rm=T),"] days; vertical lines= 1st and 3rd quartiles"), ylab="Count", xlab("Abs. difference between date of birth in PO vs. SENDA"))+
+  stat_summary(aes(y = 1, xintercept = after_stat(x)), fun = quantile, fun.args = list(probs = c(0.25, 0.75)), geom = "vline", orientation = "y")
+```
+
+```{r paso1_dates2, fig.align='center', fig.caption="Figure 3. SENDA patients with differences in the dates of birth of SENDA DB. Number of distinct dates of comission of crimes", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+Base_fiscalia_v3 %>% 
+    dplyr::filter(rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda2)) %>% 
+    dplyr::group_by(rut_enc_saf) %>% 
+    dplyr::mutate(n_dis_fec=n_distinct(fec_comision)) %>% 
+    ggplot(aes(x=n_dis_fec)) + 
+    geom_histogram(aes(x=n_dis_fec))+
+    labs( caption=paste0("Note. ",dplyr::filter(Base_fiscalia_v3,rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda2)) %>% distinct(rut_enc_saf) %>% nrow() %>% format(big.mark=",")," patients, ", dplyr::filter(Base_fiscalia_v3,rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda2)) %>% nrow() %>% format(big.mark=",")," entries; vertical lines= 1st and 3rd quartiles"), x="Number of distinct dates by patient")+
+    stat_summary(aes(y = 1, xintercept = after_stat(x)), fun = quantile, fun.args = list(probs = c(0.25, 0.75)), geom = "vline", orientation = "y") +
+sjPlot::theme_sjplot()
+
+Base_fiscalia_v3 %>% 
+    dplyr::filter(rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda2)) %>% 
+    dplyr::group_by(rut_enc_saf) %>% 
+    dplyr::mutate(n_dis_fec=n_distinct(fec_comision)) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::summarise(n=n(), min=min(n_dis_fec, na.rm=T), p10= quantile(n_dis_fec,.1,na.rm=T),p25=quantile(n_dis_fec,.25,na.rm=T),p50=quantile(n_dis_fec,.5,na.rm=T),p75=quantile(n_dis_fec,.75,na.rm=T),p90=quantile(n_dis_fec,.9,na.rm=T), max=max(n_dis_fec,na.rm=T)) %>%  knitr::kable("markdown")
+#CONS_TOP
+```
+
+
+```{r paso1_dates3, fig.align='center', fig.caption="Figure. SENDA patients with differences in the dates of birth of SENDA DB. Distribution of age at comission of crime", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+Base_fiscalia_v3 %>% 
+    dplyr::filter(rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda2)) %>% 
+    dplyr::mutate(years_crime=dplyr::case_when(grepl("SI",encontrado_como_imputado)~as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25, T~NA_real_)) %>% 
+    dplyr::group_by(rut_enc_saf) %>% 
+    dplyr::slice_min(years_crime) %>% 
+    dplyr::ungroup() %>% 
+    ggplot(aes(x=years_crime)) + 
+    geom_histogram(aes(x=years_crime))+
+    labs(caption="Note. 11,511 patients, 90,037 entries", x="Comission of crime age")+
+    stat_summary(aes(y = 1, xintercept = after_stat(x)), fun = quantile, fun.args = list(probs = c(0.025, 0.975)), geom = "vline", orientation = "y") +
+    sjPlot::theme_sjplot()
+
+rbind(c("Minimum age at crime comission",
+#see the minimum age at crime comission
+Base_fiscalia_v3 %>% 
+    dplyr::filter(rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda2)) %>% 
+    dplyr::mutate(years_crime=dplyr::case_when(grepl("SI",encontrado_como_imputado)~as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25, T~NA_real_)) %>% 
+    dplyr::group_by(rut_enc_saf) %>% 
+    dplyr::slice_min(years_crime) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::summarise(n=n(), min=min(years_crime, na.rm=T), p10= quantile(years_crime,.1,na.rm=T),p25=quantile(years_crime,.25,na.rm=T),p50=quantile(years_crime,.5,na.rm=T),p75=quantile(years_crime,.75,na.rm=T),p90=quantile(years_crime,.9,na.rm=T), max=max(years_crime,na.rm=T))),
+
+#see the second age at crime comission
+c("Second minimum age at crime comission",
+Base_fiscalia_v3 %>% 
+    dplyr::filter(rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda2)) %>% 
+    dplyr::mutate(years_crime=dplyr::case_when(grepl("SI",encontrado_como_imputado)~as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25, T~NA_real_)) %>% 
+    dplyr::group_by(rut_enc_saf) %>% 
+    dplyr::slice_min(years_crime,n=2) %>% 
+    dplyr::slice_max(years_crime,n=1) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::summarise(n=n(), min=min(years_crime, na.rm=T), p10= quantile(years_crime,.1,na.rm=T),p25=quantile(years_crime,.25,na.rm=T),p50=quantile(years_crime,.5,na.rm=T),p75=quantile(years_crime,.75,na.rm=T),p90=quantile(years_crime,.9,na.rm=T), max=max(years_crime,na.rm=T))))
+
+paste0("Patients w/ discrepancies that only have been victims: ",
+Base_fiscalia_v3 %>% 
+    dplyr::filter(rut_enc_saf %in% unlist(fech_nac_fisc_vs_senda2)) %>% 
+    dplyr::mutate(years_crime=dplyr::case_when(grepl("SI",encontrado_como_imputado)~as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25, T~NA_real_)) %>% 
+    dplyr::group_by(rut_enc_saf) %>% 
+    dplyr::summarise(n_na=length(years_crime[is.na(years_crime)]),n_not_na=length(years_crime[!is.na(years_crime)])) %>% 
+    dplyr::filter(n_not_na==0) %>% nrow() %>% format(big.mark=","))
+```
+
+- See whether PO data was a mistype or invalid for other reasons (e.g., invalid age) 
+- Replace with PO in case age was imputed by the research team
+- Define a tolerance value
+
+
+```{r paso2_dates, echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+#C1_fech_nac_nas
+#1.4. 1.5.1.6.xx
+invisible("Ver cómo  impacta a las edades imputadas como el edad de inicio de consumo y esas cosas")
+#1.4. Replaced invalid ages with same users within the dataset
+#1.7.04. Invalid Age Of Onset of Primary Substance, Higher than age
+#1.7.05. Invalid Age Of Onset of Drug Use
+#3.01.0b.HASH w/ more than one distinct Age of Onset of Drug Use.Minor differences within users,replaced with mean
+#3.02.0b.HASH w/ more than one distinct Age of Onset of Drug Use Prim Subs. Minor differences within users,replaced with mea
+#3.02.3.HASH w/ more than one distinct Age of Onset of Drug Use Prim Subs.Other;
+#3.03.3.XX.HASH w/ more than one distinct Age of Onset Drug Use Primary Substance.Neural network imputation of ties
+#1.6.XX.2.Age at admission less 18 years & had another date of birth that could be replaced
+#	;1.5. Replaced invalid ages with TOP information
+#1.6.02.0b;1.7.04. Invalid Age Of Onset of Primary Substance, Higher than age;
+#
+#1.6.03.1a;1.7.03. Invalid Age Of Onset of Drug Use, Higher than age;
+#1.6.03.1a;1.7.04. Invalid Age Of Onset of Primary Substance, Higher than age;2
+#1.6.03.1a;1.7.05. Invalid Age Of Onset of Drug Use, < 5 yrs age;
+#1.6.05.2b1;1.7.06. Invalid Age Of Onset of Primary Substance, < 5 yrs age
+#1.6.XX.2.Age at admission less 18 years & had another date of birth that could be replaced
+#1.7.03. Invalid Age Of Onset of Drug Use, Higher than age
+#1.7.04. Invalid Age Of Onset of Primary Substance, Higher than age
+#1.7.05. Invalid Age Of Onset of Drug Use, < 5 yrs age
+#1.7.06. Invalid Age Of Onset of Primary Substance, < 5 yrs age
+#C1_fech_nac_nas
+```
+
+
+```{r track_discrepancies_age, echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+runs_that_share_birth_date_w_po<-
+Base_fiscalia_v3 %>% 
+    #arrange the rut from the first date of comission of a crime, but we are not detecting if he/she is the victim or not
+    dplyr::arrange(rut_enc_saf, fec_comision_simple) %>% 
+    dplyr::left_join(subset(CONS_C1_df_dup_SEP_2020, subset= dup==1,select=c("hash_key","fech_nac", "fech_ing", "edad_al_ing", "edad_ini_cons", "obs", "numero_de_hijos_mod", "escolaridad", "embarazo", "cat_ocupacional","estado_conyugal_2")),by=c("rut_enc_saf"="hash_key")) %>%
+    dplyr::mutate(fech_nac=as.Date(fech_nac)) %>% 
+    dplyr::select(rut_enc_saf,encontrado_como_imputado,fec_nacimiento_simple,fec_comision_simple, gls_parentesco, termino_relacion_simple,fech_nac, fech_ing, edad_al_ing, edad_ini_cons,contains("rpa"), obs, numero_de_hijos_mod, escolaridad, embarazo, cat_ocupacional,estado_conyugal_2) %>% 
+    #keep only cases with discrepancies
+    dplyr::filter(dplyr::case_when(fec_nacimiento_simple==fech_nac~T,T~F)) %>%
+  dplyr::distinct(rut_enc_saf)
+
+paste0("Admission age in SENDA database, of patients with the same birth date with PO")
+summ_adm_age_perc<-
+CONS_C1_df_dup_SEP_2020 %>% 
+    dplyr::filter(hash_key %in% unlist(runs_that_share_birth_date_w_po)) %>% 
+    dplyr::group_by(hash_key) %>% 
+    dplyr::slice_min(edad_al_ing,n=1) %>% 
+    ungroup() %>% 
+    dplyr::summarise(n=n(), p2.5= quantile(edad_al_ing,.025,na.rm=T),p97.5=quantile(edad_al_ing,.975,na.rm=T))
+summ_adm_age_perc
+# 62752  20.3  58.8
+
+paste0("To get the age of the comission: as.numeric(as.Date('2019-11-13')-as.Date('2005-11-13'))/365.25 = ",as.numeric(as.Date('2019-11-13')-as.Date('2005-11-13'))/365.25," years. ut this date may depend on the date of the comission of the crime")
+
+paste0("Age of crime comission in PO database, of patients with the same birth date of PO")
+summ_years_crime_perc<-
+Base_fiscalia_v3 %>% 
+    dplyr::filter(rut_enc_saf %in% unlist(runs_that_share_birth_date_w_po)) %>% 
+    #filter people that committed a crime (excluiding those that were victims)
+    dplyr::mutate(years_crime=dplyr::case_when(grepl("SI",encontrado_como_imputado)~as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25, T~NA_real_)) %>% 
+    dplyr::group_by(rut_enc_saf) %>% 
+    dplyr::slice_min(years_crime,n=1) %>% 
+dplyr::ungroup() %>% 
+    dplyr::summarise(n=n(), p2.5= quantile(years_crime,.025,na.rm=T),p97.5=quantile(years_crime,.975,na.rm=T)) 
+summ_years_crime_perc
+# 60108  16.1  55.0
+
+
+paste0("Patients with one record with the same date of birth of PO in the original TOP database")
+runs_keepPO_dates_TOP<-
+ fech_nac_fisc_vs_senda2 %>% 
+#the original birth date of SENDA or TOP might match with the PO birth date
+   dplyr::left_join(dplyr::mutate(CONS_TOP[, c("HASH_KEY","Fecha.Nacimiento")], fech_nac2=as.Date(`Fecha.Nacimiento`, format="%d/%m/%Y")), by=c("rut_enc_saf"="HASH_KEY","fec_nacimiento_simple"="fech_nac2")) %>% 
+   dplyr::filter(!is.na(Fecha.Nacimiento)) %>% 
+   dplyr::distinct(rut_enc_saf) %>% unlist() %>% as.character()
+format(length(runs_keepPO_dates_TOP),big.mark=",")
+
+
+paste0("Patients with one record with the same date of birth of PO in the original C1 database")
+runs_keepPO_dates_C1<-
+ fech_nac_fisc_vs_senda2 %>% 
+#the original birth date of SENDA or TOP might match with the PO birth date
+   dplyr::left_join(dplyr::mutate(CONS_C1[,c("HASH_KEY","Codigo.Identificación")],fech_nac2=as.Date(as.character(lubridate::parse_date_time(stringi::stri_sub(`Codigo.Identificación`,-8,-1),"dmY")))), by=c("rut_enc_saf"="HASH_KEY","fec_nacimiento_simple"="fech_nac2")) %>% 
+   dplyr::filter(!is.na(`Codigo.Identificación`)) %>% 
+   dplyr::distinct(rut_enc_saf) %>% unlist() %>% as.character()
+format(length(runs_keepPO_dates_C1),big.mark=",")
+
+message(paste0("Patients with at least one record with the same date birth of PO in the original C1 or TOP database: ",format(length(unique(c(runs_keepPO_dates_TOP, runs_keepPO_dates_C1))),big.mark=",")))
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+flow_fech_nac_fisc_vs_senda <- 
+  fech_nac_fisc_vs_senda2 %>% #fech_nac_fisc_vs_senda
+  #years crime commited with the first and second minimum date of comission of the crime 
+    dplyr::mutate(years_crime_po=as.numeric(fec_comision_simple-fec_nacimiento_simple)/365.25,
+                  years_crime_po2nd=as.numeric(lead_imputed-fec_nacimiento_simple)/365.25,
+                years_crime_senda=as.numeric(fec_comision_simple-fech_nac)/365.25) %>% 
+  #format birth dates of TOP and C1 original diverging dates into a single one
+  dplyr::mutate(across(c("median_fech_nac","mean_fech_nac","median_fech_nac_top","mean_fech_nac_top"),~as.Date.numeric(.,origin="1970-01-01"))) %>% 
+  #admission age according to POs birth date
+  dplyr::mutate(po_edad_al_ing=as.numeric(fech_ing-fec_nacimiento_simple)/365.25) %>% 
+  dplyr::relocate(po_edad_al_ing, .after=edad_al_ing)%>%
+  #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+  #Invalid dates
+  dplyr::mutate(c_22_1_a0ab= dplyr::case_when(is.na(diff)~1,T~0)) %>%
+  #Differences of birth dates below 3 months?
+  dplyr::mutate(c_22_1_a0cd= dplyr::case_when(diff<90~1,T~0)) %>% 
+  #at least one record of the original TOP or C1 database matched w/ birth date of PO?
+  dplyr::mutate(c_22_1_a0ef= dplyr::case_when(rut_enc_saf %in% unique(c(runs_keepPO_dates_TOP, runs_keepPO_dates_C1))~1,T~0)) %>% 
+  #replaced previously in SENDA DB
+  dplyr::mutate(c_22_1_a12= dplyr::case_when(nchar(obs)>1~1,T~0)) %>%  
+  #Committed a crime?
+  dplyr::mutate(c_22_1_a_12_ab= dplyr::case_when(n_imputed>0~1,T~0)) %>% 
+  #Aberrant admission or crime ages (%tiles 2.5 | 97.5)
+  #if age at crime is rare but SENDA is not, keep date of birth of SENDA 
+  dplyr::mutate(c_22_1_a1a_12_a= dplyr::case_when(years_crime_po<round(as.numeric(summ_years_crime_perc[2]),2) & years_crime_senda>=round(as.numeric(summ_years_crime_perc[2]),2)~"keep senda (yrs crime), PO much lower than expected",
+                                                  years_crime_po>round(as.numeric(summ_years_crime_perc[3]),2) & years_crime_senda<=round(as.numeric(summ_years_crime_perc[3]),2)~"keep senda (yrs crime), PO much larger than expected",
+                                                  T~"")) %>% 
+  #if admission age is rare but SENDA is not, keep date of birth of SENDA 
+  dplyr::mutate(c_22_1_a1a_12_b= dplyr::case_when(po_edad_al_ing<round(as.numeric(summ_adm_age_perc[2]),2) & edad_al_ing>=round(as.numeric(summ_adm_age_perc[2]),2)~"keep senda (adm age), PO much lower than expected",
+                                                  years_crime_po>round(as.numeric(summ_adm_age_perc[3]),2) & edad_al_ing<=round(as.numeric(summ_adm_age_perc[3]),2)~"keep senda (adm age), PO much larger than expected",
+                                                  T~"")) %>% 
+    dplyr::mutate(c_22_1_a1a_12_a2= dplyr::case_when(years_crime_senda<round(as.numeric(summ_years_crime_perc[2]),2) & years_crime_po>=round(as.numeric(summ_years_crime_perc[2]),2)~"keep po (yrs crime), SENDA much lower than expected",
+years_crime_senda>round(as.numeric(summ_years_crime_perc[3]),2) & years_crime_po<=round(as.numeric(summ_years_crime_perc[3]),2)~"keep po (yrs crime), SENDA much larger than expected",
+                                                  T~"")) %>% 
+  dplyr::mutate(c_22_1_a1a_12_b2= dplyr::case_when(edad_al_ing<round(as.numeric(summ_adm_age_perc[2]),2) & po_edad_al_ing>=round(as.numeric(summ_adm_age_perc[2]),2)~"keep po (adm age), SENDA much lower than expected",
+                                                  edad_al_ing>round(as.numeric(summ_adm_age_perc[3]),2) & years_crime_po<=round(as.numeric(summ_adm_age_perc[3]),2)~"keep po (adm age), SENDA much larger than expected",
+                                                  T~"")) %>% 
+  dplyr::mutate(c_22_1_a1a_1234= dplyr::case_when(nchar(c_22_1_a1a_12_a)>2 & nchar(c_22_1_a1a_12_b)>2 &  nchar(c_22_1_a1a_12_a2)>2 & nchar(c_22_1_a1a_12_b2)>2~"Keep both", nchar(c_22_1_a1a_12_a)>2 & nchar(c_22_1_a1a_12_b)>2~ "Keep SENDA",nchar(c_22_1_a1a_12_a2)>2 & nchar(c_22_1_a1a_12_b2)>2~ "Keep PO",
+                                                   T~"")) %>% 
+  #age at admission of PO is in conflict with senda age of starting using
+  dplyr::mutate(c_22_1_a1a_1234_ab= dplyr::case_when(po_edad_al_ing<edad_ini_cons~"admitted before started using", T~"")) %>% 
+  dplyr::mutate(c_22_1_a2a_4b_12= dplyr::case_when(!is.na(clasificacion_penarpa_1_49)&years_crime_senda>18~"SENDA age inconsistent w/ Juvenile Criminal Responsibility Law", T~"")) 
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#EXPORT_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+ flow_fech_nac_fisc_vs_senda %>% 
+   #do not include invalid dates, differences of less than 90 days and imputed previously
+   dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a12==0) %>% data.frame() %>%  
+   write.table(file= paste0(path,"/dates_po_senda.txt"), dec=",", row.names=F)
+ 
+ #flow_fech_nac_fisc_vs_senda %>% 
+   #do not include invalid dates, differences of less than 90 days and cases imputed previously
+   #dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a12==0) %>% 
+   #found as an imputed
+   #dplyr::filter(c_22_1_a_12_ab==0) %>% #639, have not been imputed 
+   #dplyr::filter(c_22_1_a_12_ab==1) %>%
+   #dplyr::filter(c_22_1_a1a_12_a!=""|c_22_1_a1a_12_b!="") %>% nrow()#294 have at least one aberrant case in PO
+   #dplyr::filter(c_22_1_a1a_12_a=="",c_22_1_a1a_12_b=="") %>% nrow()#3241 dont have any aberrant cases in PO
+   #dplyr::filter(c_22_1_a1a_12_a2!=""|c_22_1_a1a_12_b2!="") %>% nrow()#392 have at least one aberrant case in SENDA
+   #dplyr::filter(c_22_1_a1a_12_a2=="",c_22_1_a1a_12_b2=="") %>% nrow()#3143 dont have any aberrant cases in SENDA
+   #dplyr::filter(c_22_1_a1a_12_a=="",c_22_1_a1a_12_b=="",
+   #              c_22_1_a1a_12_a2=="",c_22_1_a1a_12_b2=="") %>% nrow()#2866 dont have any aberrant cases in SENDA or PO
+
+
+```
+
+
+```{r bpmn, echo=T, cache= T, paged.print=TRUE, eval=T, error=T, results="hide"}
+paste0("Paired SENDA patients with POs\n(22_1)\n(p= ", format(length(unique(Base_fiscalia_v3$rut_enc_saf)),big.mark=","),";n= ", format(nrow(Base_fiscalia_v3),big.mark=","),"; ",scales::percent(length(unique(Base_fiscalia_v3$rut_enc_saf))/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
+ 
+paste0("Paired w/ discrepancies \n(22_1_a)\n(p= ",format(nrow(fech_nac_fisc_vs_senda2),big.mark=","),";\n",
+       scales::percent(nrow(fech_nac_fisc_vs_senda2)/length(unique(Base_fiscalia_v3$rut_enc_saf))),";\nn=",
+       format(nrow(dplyr::filter(Base_fiscalia_v3, rut_enc_saf %in% fech_nac_fisc_vs_senda2$rut_enc_saf)), big.mark=","),
+       "; ",scales::percent(nrow(fech_nac_fisc_vs_senda2)/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
+
+paste0("Paired w/o discrepancies \n(22_1_b)\n(p= ",format(length(unique(Base_fiscalia_v3$rut_enc_saf)[!unique(Base_fiscalia_v3$rut_enc_saf) %in% fech_nac_fisc_vs_senda2$rut_enc_saf]),big.mark=","),";\nn=",
+       format(nrow(dplyr::filter(Base_fiscalia_v3, !rut_enc_saf %in% fech_nac_fisc_vs_senda2$rut_enc_saf)), big.mark=","),"; ",
+       scales::percent(length(unique(Base_fiscalia_v3$rut_enc_saf)[!unique(Base_fiscalia_v3$rut_enc_saf) %in% fech_nac_fisc_vs_senda2$rut_enc_saf])/length(unique(Base_fiscalia_v3$rut_enc_saf))),";\nn=",
+       scales::percent(length(unique(Base_fiscalia_v3$rut_enc_saf)[!unique(Base_fiscalia_v3$rut_enc_saf) %in% fech_nac_fisc_vs_senda2$rut_enc_saf])/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
+#65042-1774
+
+paste0("Invalid dates\n(22_1_a0a)\n(p= ",format(as.numeric(table(is.na(fech_nac_fisc_vs_senda2$diff))[2]),big.mark=","),";\nn= ", format(nrow(dplyr::filter(Base_fiscalia_v3, rut_enc_saf %in% fech_nac_fisc_vs_senda2$rut_enc_saf[is.na(fech_nac_fisc_vs_senda2$diff)])),big.mark=","),";\n",scales::percent(as.numeric(table(is.na(fech_nac_fisc_vs_senda2$diff))[2])/length(unique(Base_fiscalia_v3$rut_enc_saf))),"; ",scales::percent(as.numeric(table(is.na(fech_nac_fisc_vs_senda2$diff))[2])/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
+
+paste0("<90 days differences\n(22_1_a0c)\n(p= ",format(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==1) %>% nrow(),big.mark=","),";\nn= ",format(nrow(dplyr::filter(Base_fiscalia_v3, rut_enc_saf %in% flow_fech_nac_fisc_vs_senda$rut_enc_saf[flow_fech_nac_fisc_vs_senda$c_22_1_a0cd==1])),big.mark=","),"; ",scales::percent(as.numeric(table(flow_fech_nac_fisc_vs_senda$c_22_1_a0cd)[2])/length(unique(Base_fiscalia_v3$rut_enc_saf))),"; ",scales::percent(as.numeric(table(flow_fech_nac_fisc_vs_senda$c_22_1_a0cd)[2])/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
+
+paste0("Differences >=90d_22_1_a0d\n(n= ",format(flow_fech_nac_fisc_vs_senda%>%dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0)%>%nrow(),big.mark=","),";\n",scales::percent(flow_fech_nac_fisc_vs_senda%>%dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0)%>%nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf))),"; ",scales::percent(flow_fech_nac_fisc_vs_senda%>%dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0)%>%nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key))),")")
+
+paste0("Original C1 or TOP record did not matched age (22_1_a0ef)\n(n= ",format(flow_fech_nac_fisc_vs_senda%>%dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0)%>%nrow(),big.mark=","),";\n",scales::percent(flow_fech_nac_fisc_vs_senda%>%dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0)%>%nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)),accuracy=0.1),"; ",scales::percent(flow_fech_nac_fisc_vs_senda%>%dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0)%>%nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)),accuracy=0.1),")")
+
+paste0("Original C1 or TOP record matched age (22_1_a0ef)\n(n= ",format(flow_fech_nac_fisc_vs_senda%>%dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==1)%>%nrow(),big.mark=","),";\n", format(nrow(dplyr::filter(Base_fiscalia_v3, rut_enc_saf %in% as.character(unlist(flow_fech_nac_fisc_vs_senda%>%dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==1)%>%dplyr::select(rut_enc_saf))))),big.mark=","),";\n",scales::percent(flow_fech_nac_fisc_vs_senda%>%dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==1)%>%nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)),accuracy=0.1),"; ",scales::percent(flow_fech_nac_fisc_vs_senda%>%dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==1)%>%nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)),accuracy=0.1),")")
+
+paste0("(22_1_a1)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a1a)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+#keep senda= c_22_1_a1a_12_a (yrs_crime) c_22_1_a1a_12_b (adm_age) keep po= c_22_1_a1a_12_a2 c_22_1_a1a_12_b2
+paste0("(22_1_a1a_1)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1, grepl("both",c_22_1_a1a_1234)) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1,grepl("both",c_22_1_a1a_1234)) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1,grepl("both",c_22_1_a1a_1234)) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a1a_2)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1, grepl("PO",c_22_1_a1a_1234),nchar(c_22_1_a1a_1234_ab)<2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1,grepl("PO",c_22_1_a1a_1234),nchar(c_22_1_a1a_1234_ab)<2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1,grepl("PO",c_22_1_a1a_1234),nchar(c_22_1_a1a_1234_ab)<2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a1a_3)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1, grepl("SENDA",c_22_1_a1a_1234)) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1,grepl("SENDA",c_22_1_a1a_1234)) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1,grepl("SENDA",c_22_1_a1a_1234)) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a1a_4)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1, nchar(c_22_1_a1a_1234)<2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a1a_4a)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1, nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)>2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)>2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)>2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a1a_4b)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1, nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)<2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)<2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)<2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a1b)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==0) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==0) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==0) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a1b_a)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)>2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)>2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)>2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a1b_b)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)<2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)<2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==1,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)<2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+invisible("mirar caso d36b9cd8f1aa0a07ad209b0006af1465, hace ruido por RPA pero edades muy bajas en edad SENDA")
+
+paste0("(22_1_a2)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a2a)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a2a_1)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("both",c_22_1_a1a_1234)) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("both",c_22_1_a1a_1234)) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("both",c_22_1_a1a_1234)) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a2a_1a)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("both",c_22_1_a1a_1234),nchar(c_22_1_a1a_1234_ab)>2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("both",c_22_1_a1a_1234),nchar(c_22_1_a1a_1234_ab)>2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("both",c_22_1_a1a_1234),nchar(c_22_1_a1a_1234_ab)>2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a2a_1b)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("both",c_22_1_a1a_1234),nchar(c_22_1_a1a_1234_ab)<2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("both",c_22_1_a1a_1234),nchar(c_22_1_a1a_1234_ab)<2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("both",c_22_1_a1a_1234),nchar(c_22_1_a1a_1234_ab)<2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a2a_2)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("PO",c_22_1_a1a_1234)) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("PO",c_22_1_a1a_1234)) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("PO",c_22_1_a1a_1234)) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a2a_2a)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("PO",c_22_1_a1a_1234),nchar(c_22_1_a1a_1234_ab)>2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("PO",c_22_1_a1a_1234),nchar(c_22_1_a1a_1234_ab)>2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("PO",c_22_1_a1a_1234),nchar(c_22_1_a1a_1234_ab)>2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a2a_2b)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("PO",c_22_1_a1a_1234),nchar(c_22_1_a1a_1234_ab)<2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("PO",c_22_1_a1a_1234),nchar(c_22_1_a1a_1234_ab)<2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("PO",c_22_1_a1a_1234),nchar(c_22_1_a1a_1234_ab)<2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a2a_3)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("SENDA",c_22_1_a1a_1234)) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("SENDA",c_22_1_a1a_1234)) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, grepl("SENDA",c_22_1_a1a_1234)) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("RPA cases involved in Rare admission & crime ages: ")
+flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, nchar(c_22_1_a1a_1234)>2) %>%  janitor::tabyl(clasificacion_penarpa_1_49)
+
+paste0("(22_1_a2a_4)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, nchar(c_22_1_a1a_1234)<2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("RPA cases involved in Rare admission & crime ages: ")
+flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, nchar(c_22_1_a1a_1234)<2) %>%  janitor::tabyl(clasificacion_penarpa_1_49)
+
+if(no_mostrar==0){
+flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, nchar(c_22_1_a1a_1234)<2) %>%  dplyr::filter(!is.na(clasificacion_penarpa_1_49)) %>% dplyr::select(rut_enc_saf, fec_nacimiento_simple, fech_nac, fech_ing, edad_al_ing, po_edad_al_ing, years_crime_po, years_crime_senda, contains("c_22_1_")) %>% View()
+}
+
+paste0("(22_1_a2a_4a)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)>2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)>2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)>2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a2a_4b)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)<2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)<2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)<2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a2a_4b_1)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)<2, nchar(c_22_1_a2a_4b_12)<2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)<2,nchar(c_22_1_a2a_4b_12)<2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)<2,nchar(c_22_1_a2a_4b_12)<2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+#2947, antes era 2949, despues de que declaré a los missing se restaron?
+
+paste0("(22_1_a2a_4b_2)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)<2,nchar(c_22_1_a2a_4b_12)>2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)<2,nchar(c_22_1_a2a_4b_12)>2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1,nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)<2,nchar(c_22_1_a2a_4b_12)>2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a2b)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",
+       scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a2b_a)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)>2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)>2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)>2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a2b_b)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)<2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)<2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)<2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a2b_b_1)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)<2, nchar(c_22_1_a2a_4b_12)<2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)<2, nchar(c_22_1_a2a_4b_12)<2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)<2, nchar(c_22_1_a2a_4b_12)<2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+
+paste0("(22_1_a2b_b_2)\n(n= ", flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)<2, nchar(c_22_1_a2a_4b_12)>2) %>% nrow(),";\n", scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)<2, nchar(c_22_1_a2a_4b_12)>2) %>% nrow()/length(unique(Base_fiscalia_v3$rut_enc_saf)), accuracy=0.1),"; ",scales::percent(flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)<2, nchar(c_22_1_a2a_4b_12)>2) %>% nrow()/length(unique(CONS_C1_df_dup_SEP_2020$hash_key)), accuracy=0.1),")")
+```
+
+
+```{r bpmn2, echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+#Ñ#Ñ#Ñ#Ñ#Ñ#Ñ#Ñ#Ñ#Ñ
+#Ñ#Ñ#Ñ#Ñ#Ñ#Ñ#Ñ#Ñ#Ñ++++++
+knitr::include_graphics(paste0(sub("2019 \\(github\\)/SUD_CL","2022 \\(github\\)",path), "/Figures/diagram_age_differences.svg"))
+```
+
+<br>
+
+## Apply rules
+
+
+```{r apply_rules_age2a, echo=T, cache= T, paged.print=TRUE, eval=T, error=T}
+# (22_1_a1a_1)= Keep PO
+# (22_1_a1a_2)= Keep PO
+# (22_1_a1a_3)= Keep SENDA
+# (22_1_a1a_4a)= Keep SENDA
+# (22_1_a1a_4b)= Keep PO
+# (22_1_a1b_a)=Keep SENDA
+# (22_1_a1b_b)= Keep PO
+# (22_1_a2a_1a)=Keep SENDA
+# (22_1_a2a_1b)= Keep PO
+# (22_1_a2a_2a)= Keep SENDA
+# (22_1_a2a_2b)= Keep PO
+# (22_1_a2a_3)= Keep SENDA
+# (22_1_a2a_4a)= Keep SENDA
+# (22_1_a2a_4b_2)= Keep PO
+# (22_1_a2b_a)= Keep SENDA
+# (22_1_a2b_b_2)= Keep PO * was worth of discussing, I avoided
+# 
+# (22_1_a2a_4b_1)= Impute and keep the nearest
+# (22_1_a2b_b_1)= Impute and keep the nearest
+
+wo_imp_flow_fech_nac_fisc_vs_senda<-
+  flow_fech_nac_fisc_vs_senda %>% 
+  dplyr::mutate(flowch_age=dplyr::case_when(is.na(fech_nac_fisc_vs_senda2$diff)~"22_1_a0a_Invalid_age_Kept_SENDA",c_22_1_a0ab==0 &c_22_1_a0cd==1~"22_1_a0c_<90_days_diff_Kept_SENDA",c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==1~"22_1_a0ef_Original_TOP_C1_matched_age_Kept_PO",
+c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==0&c_22_1_a12==1&c_22_1_a_12_ab==1&grepl("both",c_22_1_a1a_1234)~"22_1_a1a_1_Kept_PO",c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==0&c_22_1_a12==1&c_22_1_a_12_ab==1& grepl("PO",c_22_1_a1a_1234)&nchar(c_22_1_a1a_1234_ab)<2~"22_1_a1a_2_Kept_PO",c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==0&c_22_1_a12==1&c_22_1_a_12_ab==1&grepl("SENDA",c_22_1_a1a_1234)~"22_1_a1a_3_Kept_SENDA",c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==0&c_22_1_a12==1&c_22_1_a_12_ab==1& nchar(c_22_1_a1a_1234)<2& nchar(c_22_1_a1a_1234_ab)>2~"22_1_a1a_4a_Kept_SENDA",c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==0&c_22_1_a12==1&c_22_1_a_12_ab==1& nchar(c_22_1_a1a_1234)<2& nchar(c_22_1_a1a_1234_ab)<2~"22_1_a1a_4b_Kept_PO",c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==0&c_22_1_a12==1&c_22_1_a_12_ab==0&nchar(c_22_1_a1a_1234_ab)>2~"22_1_a1b_a_Kept_SENDA",c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==0&c_22_1_a12==1&c_22_1_a_12_ab==0&nchar(c_22_1_a1a_1234_ab)<2~"22_1_a1b_b_Kept_PO",c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==0&c_22_1_a12==0&c_22_1_a_12_ab==1& grepl("both",c_22_1_a1a_1234)&nchar(c_22_1_a1a_1234_ab)>2~"22_1_a2a_1a_Kept_SENDA",c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==0&c_22_1_a12==0&c_22_1_a_12_ab==1& grepl("both",c_22_1_a1a_1234)&nchar(c_22_1_a1a_1234_ab)<2~"22_1_a2a_1b_Kept_PO",c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==0&c_22_1_a12==0&c_22_1_a_12_ab==1& grepl("PO",c_22_1_a1a_1234)&nchar(c_22_1_a1a_1234_ab)>2~"22_1_a2a_2a_Kept_SENDA",c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==0&c_22_1_a12==0&c_22_1_a_12_ab==1& grepl("PO",c_22_1_a1a_1234)&nchar(c_22_1_a1a_1234_ab)<2~"22_1_a2a_2b_Kept_PO",c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==0&c_22_1_a12==0&c_22_1_a_12_ab==1& grepl("SENDA",c_22_1_a1a_1234)~"22_1_a2a_3_Kept_SENDA",c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==0&c_22_1_a12==0&c_22_1_a_12_ab==1& nchar(c_22_1_a1a_1234)<2& nchar(c_22_1_a1a_1234_ab)>2~"22_1_a2a_4a_Kept_SENDA",
+c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==0&c_22_1_a12==0&c_22_1_a_12_ab==1& nchar(c_22_1_a1a_1234)<2& nchar(c_22_1_a1a_1234_ab)<2&nchar(c_22_1_a2a_4b_12)>2~"22_1_a2a_4b_2_Kept_PO",
+c_22_1_a0ab==0&c_22_1_a0cd==0&c_22_1_a0ef==0&c_22_1_a12==0&c_22_1_a_12_ab==0&nchar(c_22_1_a1a_1234_ab)>2~"22_1_a2b_a_Kept_SENDA",T~"Impute"
+)) %>%
+  #saca
+  dplyr::filter(dplyr::case_when(flowch_age=="Impute"~F,T~T)) %>% 
+  dplyr::mutate(imp_birth_date=dplyr::case_when(grepl("PO",flowch_age)~fec_nacimiento_simple,grepl("SENDA",flowch_age)~fech_nac)) %>% 
+  dplyr::select(rut_enc_saf,imp_birth_date,fec_comision_simple,fech_ing,flowch_age,edad_al_ing,po_edad_al_ing,years_crime_po,years_crime_senda,edad_ini_cons)
+
+```
+
+For those `r (flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)<2) %>% dplyr::select(rut_enc_saf) %>%nrow()+ flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)<2, nchar(c_22_1_a2a_4b_12)<2) %>% dplyr::select(rut_enc_saf) %>% nrow()) %>% format(big.mark=",")` patients without sufficient information on the primacy of one birth date over another, we decided to impute these values based on a random forests model, with an out-of-bag score for model validation (ensuring that we get the better model with lower variance as well, thus, avoiding for overfitting). We chose the default amount of 100 trees for each forest and the default number maximum iterations of 10.
+
+The database used for the imputation subset cases with the same birth dates and patients that needed an imputed age, but erasing the original and problematic birth date.
+
+<br>
+
+```{r apply_rules_age2b, echo=T, cache= T, paged.print=TRUE, eval=T, error=T}
+impute_age_po_senda_22_1_a2b_b<-
+flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==0,nchar(c_22_1_a1a_1234_ab)<2) %>% dplyr::select(rut_enc_saf) %>% unlist() %>% as.character()
+
+impute_age_po_senda_22_1_a2a_4b_1<-
+flow_fech_nac_fisc_vs_senda %>% dplyr::filter(c_22_1_a0ab==0,c_22_1_a0cd==0,c_22_1_a0ef==0,c_22_1_a12==0,c_22_1_a_12_ab==1, nchar(c_22_1_a1a_1234)<2, nchar(c_22_1_a1a_1234_ab)<2, nchar(c_22_1_a2a_4b_12)<2) %>% dplyr::select(rut_enc_saf) %>% unlist() %>% as.character()  
+
+Base_fiscalia_v3_imp<-  
+Base_fiscalia_v3 %>% 
+    dplyr::arrange(rut_enc_saf, fec_comision_simple) %>% 
+  dplyr::group_by(rut_enc_saf) %>% 
+    dplyr::mutate(n_dis_rucs=n_distinct(ruc)) %>%
+    dplyr::mutate(n_rows_hash=n(), rank_hash=row_number()) %>% 
+    #count the times a HASH has been processed as an imputed
+    dplyr::mutate(n_imputed=sum(encontrado_como_imputado=="SI")) %>% 
+    #get the second date of the comission of the crime
+    dplyr::mutate(lead_imputed=lead(fec_comision_simple)) %>% 
+    dplyr::filter((n_imputed>0 & encontrado_como_imputado=="SI" & rank_hash== suppressWarnings( min(rank_hash[encontrado_como_imputado=="SI"])))| (n_imputed==0 & rank_hash== 1)) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::left_join(subset(CONS_C1_df_dup_SEP_2020, subset= dup==1,select=c("hash_key", "fech_nac", "edad_ini_cons", "numero_de_hijos_mod", "escolaridad", "embarazo", "cat_ocupacional","estado_conyugal_2")),by=c("rut_enc_saf"="hash_key")) %>%
+  dplyr::mutate(fech_nac=as.Date(fech_nac)) %>% 
+  #we kept the cases that had the same values and candidates for imputation
+  dplyr::filter(dplyr::case_when(fec_nacimiento_simple==fech_nac~T,rut_enc_saf %in% c(impute_age_po_senda_22_1_a2b_b,impute_age_po_senda_22_1_a2a_4b_1)~T, T~F)) %>% 
+  dplyr::select(rut_enc_saf,edad_comision,cat_ocupacional,numero_de_hijos_mod, escolaridad, estado_conyugal_2, edad_ini_cons, clasificacion_penarpa_1_49) %>% 
+  dplyr::mutate(edad_comision_imp= dplyr::case_when(rut_enc_saf %in% c(impute_age_po_senda_22_1_a2b_b,impute_age_po_senda_22_1_a2a_4b_1)~ NA_real_,T~edad_comision))
+
+Base_fiscalia_v3_imp2<-  Base_fiscalia_v3_imp %>% data.matrix()
+
+paste0("The database with the HASHs that matched w/ C1 in the date of birth with data for imputation had ",format(nrow(Base_fiscalia_v3_imp),big.mark=","), " rows. This database only have cases the first case as imputed of cases, if they had any (if not, it will appear the first case as victim). Additionally, is matched with the first entry in the C1 dataset (the first).")
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#IMPUTE#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+if(isTRUE(getOption('knitr.in.progress'))==F){
+
+  job::job({
+    library(doParallel)
+    registerDoParallel(cores=7)
+    set.seed(2222)
+    system.time({ 
+    after_imp_Base_fiscalia_v3_imp <- missForest::missForest(Base_fiscalia_v3_imp2, #debe ser data matrix
+                        maxiter= 10,#iteraciones máximas a hacer, por defecto es 10
+                         ntree= 100,#número de árboles para cada bosque. Default 100
+                         #xtrue= T,#opcional, un sirve para probar el desempeño, mostrará el error de imputación de cada iteración y el output contendrá el error de imputación.
+                        parallelize="forest", # si se paraleliza de acuerdo a los cores
+                        verbose=T
+                        )
+    
+    })
+  })      
+} else {
+  library(doParallel)
+  registerDoParallel(cores=4)
+  set.seed(2222)
+  system.time({ 
+  after_imp_Base_fiscalia_v3_imp <- missForest::missForest(Base_fiscalia_v3_imp2, #debe ser data matrix
+                          maxiter= 10,#iteraciones máximas a hacer, por defecto es 10
+                           ntree= 100,#número de árboles para cada bosque. Default 100
+                           #xtrue= T,#opcional, un sirve para probar el desempeño, mostrará el error de imputación de cada iteración y el output contendrá el error de imputación.
+                          parallelize="forest", # si se paraleliza de acuerdo a los cores
+                          verbose=T
+                          )
+   
+    })
+}
+
+message(paste0("(NRMSE= ",round(as.numeric(after_imp_Base_fiscalia_v3_imp$OOBerror),5),")"))
+
+#https://www.rdocumentation.org/packages/missForest/versions/1.4/topics/missForest
+#https://arxiv.org/ftp/arxiv/papers/1809/1809.03006.pdf
+#https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0201904
+#https://medium.datadriveninvestor.com/missforest-one-of-the-best-imputational-methods-4a01170899c8
+#https://academic.oup.com/bioinformatics/article/28/1/112/219101?login=true
+```                        
+
+AS a measure of the imputation error, we got the NRMSE, or the root mean squared difference between the new imputed ages and the previous ones divided by the variance of the true values. Then, we compared the absolute difference between the imputed age and the age a crime was committed (or was a victim of one) calculated from the birth date of PO or SENDA data, and chose the birth date with the closest value to the imputed, and calculated the birth date.
+
+<br>
+
+```{r apply_rules_age3, echo=T, cache= T, paged.print=TRUE, eval=T, error=T}
+after_imp_Base_fiscalia_v3_db<-
+cbind.data.frame(rut_enc_saf=Base_fiscalia_v3_imp$rut_enc_saf,as.data.frame(after_imp_Base_fiscalia_v3_imp$ximp)[,-1]) %>% 
+  dplyr::filter(dplyr::case_when(rut_enc_saf %in% c(impute_age_po_senda_22_1_a2b_b,impute_age_po_senda_22_1_a2a_4b_1)~T,T~F)) %>% 
+  #edad_comision_imp: imputed age of comission of the crime
+  dplyr::select(rut_enc_saf,edad_comision_imp) %>% 
+  #dplyr::rename("edad_comision_imp"="edad_comision") %>% 
+  dplyr::left_join(flow_fech_nac_fisc_vs_senda, by="rut_enc_saf") %>% 
+  #If the absolute difference between the imputed age and the age a crime was committed (or was a victim of one) from the birth date of PO data is less than the absolute difference between the imputed age and the age a crime was committed (or was a victim of one) from the birth date of SENDA data
+  dplyr::mutate(closest_to_imp_bdate=dplyr::case_when(abs(edad_comision_imp-years_crime_po)<abs(edad_comision_imp-years_crime_senda)~fec_nacimiento_simple,T~fech_nac)) %>% 
+  dplyr::mutate(flowch_age= "22_1_Impute_birth_date_forest") %>% 
+  dplyr::mutate(fech_nac_imp= fec_comision_simple- (edad_comision_imp*365.25)) %>% 
+  dplyr::select(rut_enc_saf,fech_nac_imp,closest_to_imp_bdate,fec_nacimiento_simple,fech_nac, fec_comision_simple,fech_ing,flowch_age,edad_al_ing,po_edad_al_ing,years_crime_po,years_crime_senda,edad_ini_cons,edad_comision_imp,c_22_1_a1a_1234_ab) %>% 
+  dplyr::mutate(imp_po_edad_al_ing=as.numeric(fech_ing-fech_nac_imp)/365.25) %>%
+  dplyr::mutate(c_22_1_a1a_1234_ab2=dplyr::case_when(imp_po_edad_al_ing<edad_ini_cons~"admitted before started using", T~"")) %>% 
+  purrr::when(dplyr::filter(.,nchar(c_22_1_a1a_1234_ab2)>2) %>% nrow()>0 ~ stop("imputed age at admission lower than the age of onset of drug use in imputed"), ~.) %>% 
+  dplyr::select(rut_enc_saf, flowch_age,fech_nac_imp,fech_ing,edad_ini_cons) %>% #7,972 wo_imp
+  dplyr::rename("imp_birth_date"="fech_nac_imp") %>% 
+  dplyr::bind_rows(wo_imp_flow_fech_nac_fisc_vs_senda[,c("rut_enc_saf","flowch_age","imp_birth_date","fech_ing","edad_ini_cons")]) %>% 
+  dplyr::mutate(imp_edad_al_ing=as.numeric(fech_ing-imp_birth_date)/365.25) %>%
+  dplyr::mutate(c_22_1_a1a_1234_ab3=dplyr::case_when(imp_edad_al_ing<edad_ini_cons~"admitted before started using", T~"")) %>% 
+  purrr::when(dplyr::filter(.,nchar(c_22_1_a1a_1234_ab3)>2) %>% nrow()>0 ~ stop("imputed age at admission lower than the age of onset of drug use after imputation"), ~.)
+```
+
+<br>
+
+## Modify the database according to the imputation
+
+<div class="fold o"> 
+```{r apply_rules_age4_0, echo=T, cache= T, paged.print=TRUE, eval=T, error=T}
+#https://exchangetuts.com/how-to-add-code-folding-to-output-chunks-in-rmarkdown-html-documents-1639691105162168
+tab_agr_ter<-
+Base_fiscalia_v3 %>% 
+    dplyr::left_join(after_imp_Base_fiscalia_v3_db[,c("rut_enc_saf","imp_birth_date","flowch_age")], by="rut_enc_saf") %>% 
+    dplyr::rename("obs"="flowch_age") %>% 
+    dplyr::mutate(imp_birth_date=dplyr::case_when(!is.na(imp_birth_date)~imp_birth_date,T~fec_nacimiento_simple))%>% dplyr::mutate(edad_comision_imp=as.numeric(fec_comision_simple-imp_birth_date)/365.25) %>% dplyr::mutate(edad_ter_rel_imp=as.numeric(termino_relacion_simple-imp_birth_date)/365.25) %>%
+    #arrange the rut from the first date of comission of a crime, but we are not detecting if he/she is the victim or not
+    dplyr::arrange(rut_enc_saf, edad_comision_imp) %>% #566884
+    dplyr::filter(dplyr::case_when(is.na(edad_comision_imp)~T,T~F)) %>% janitor::tabyl(agrupa_terminos) %>% 
+  dplyr::left_join(Base_fiscalia_v3 %>% janitor::tabyl(agrupa_terminos), by="agrupa_terminos") %>% 
+  dplyr::rename("Partial Perc"="percent.x","Total Perc"="percent.y") %>% 
+  dplyr::select(agrupa_terminos, `Partial Perc`, `Total Perc`) %>% 
+  dplyr::mutate(across(where(is.numeric),scales::percent,0.1)) 
+
+tab_agr_ter %>%  knitr::kable("html") %>% kableExtra::kable_classic()
+```
+</div>
+
+We decided to eliminate those cases with missing birth dates that matched with the original C1 and TOP databases only (`r Base_fiscalia_v3 %>% dplyr::filter(fec_nacimiento_simple=="1900-01-01") %>% dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("hash_key","fech_nac")], by=c("rut_enc_saf"="hash_key")) %>% dplyr::filter(is.na(fech_nac)) %>%  dplyr::distinct(rut_enc_saf) %>% nrow` patients). Additionally, we eliminated those cases with no date of comission of the crime (`r Base_fiscalia_v3 %>%   dplyr::left_join(after_imp_Base_fiscalia_v3_db[,c("rut_enc_saf","imp_birth_date","flowch_age")],by="rut_enc_saf") %>%   dplyr::rename("obs"="flowch_age") %>%   dplyr::mutate(imp_birth_date=dplyr::case_when(!is.na(imp_birth_date)~imp_birth_date,T~fec_nacimiento_simple))%>% dplyr::mutate(edad_comision_imp=as.numeric(fec_comision_simple-imp_birth_date)/365.25) %>% dplyr::mutate(edad_ter_rel_imp=as.numeric(termino_relacion_simple-imp_birth_date)/365.25) %>% dplyr::arrange(rut_enc_saf, edad_comision_imp) %>% dplyr::filter(dplyr::case_when(is.na(edad_comision_imp)~T,T~F)) %>% nrow() ` entries). Must consider that much more had annulment of the administrative procedures (42.5% vs. 0.3%) or dismissal of proceedings art.[240](http://iura.cl/cpp/240.html) (15.8% vs. 7.9%).
+
+<br>
+
+```{r apply_rules_age4, echo=T, cache= T, paged.print=TRUE, eval=T, error=T}
+
+invisible("erase entries with missing values in fec_comision_simple y termino_relacion_simple")
+
+Base_fiscalia_v3 %>% 
+  dplyr::left_join(after_imp_Base_fiscalia_v3_db[,c("rut_enc_saf","imp_birth_date","flowch_age")], by="rut_enc_saf") %>% 
+  dplyr::rename("obs"="flowch_age") %>% 
+  dplyr::mutate(imp_birth_date=dplyr::case_when(!is.na(imp_birth_date)~imp_birth_date,T~fec_nacimiento_simple))%>% dplyr::mutate(edad_comision_imp=as.numeric(fec_comision_simple-imp_birth_date)/365.25) %>% dplyr::mutate(edad_ter_rel_imp=as.numeric(termino_relacion_simple-imp_birth_date)/365.25) %>%
+     #arrange the rut from the first date of comission of a crime, but we are not detecting if he/she is the victim or not
+    dplyr::arrange(rut_enc_saf, edad_comision_imp) %>% #566884
+    dplyr::filter(dplyr::case_when(!is.na(edad_comision_imp)~T,T~F)) %>% #566644
+    dplyr::filter(imp_birth_date!="1900-01-01") %>% 
+    assign("Base_fiscalia_v4",.,envir = .GlobalEnv) 
+
+if(
+Base_fiscalia_v4 %>% 
+    dplyr::filter(imp_birth_date=="1900-01-01") %>% 
+    dplyr::left_join(CONS_C1_df_dup_SEP_2020[,c("hash_key","fech_nac")], by=c("rut_enc_saf"="hash_key")) %>% dplyr::distinct(rut_enc_saf) %>% nrow()>0){stop("Error: cases with missing values")}
+```
+
+
+```{r apply_rules_age5, message=F, error=T,eval=T, warnings=F, echo=T}
+rbind(
+cbind(cat="Date of comission of the crime",
+Base_fiscalia_v4 %>% 
+  dplyr::summarise(min = min(fec_comision_simple, na.rm=T),
+                   p025=as.Date(quantile(unclass(fec_comision_simple), .025, na.rm=T), origin = "1970-01-01"),
+                   p25=as.Date(quantile(unclass(fec_comision_simple), .25, na.rm=T), origin = "1970-01-01"),
+                   p50=as.Date(quantile(unclass(fec_comision_simple), .5, na.rm=T), origin = "1970-01-01"),
+                   p75=as.Date(quantile(unclass(fec_comision_simple), .75, na.rm=T), origin = "1970-01-01"),
+                   p975=as.Date(quantile(unclass(fec_comision_simple), .975, na.rm=T), origin = "1970-01-01"),
+            max = max(fec_comision_simple, na.rm=T))),
+cbind(cat="Date of termination of the relationship",
+Base_fiscalia_v4 %>% 
+  dplyr::summarise(min = min(termino_relacion_simple, na.rm=T),
+                   p025=as.Date(quantile(unclass(termino_relacion_simple), .025, na.rm=T), origin = "1970-01-01"),
+                   p25=as.Date(quantile(unclass(termino_relacion_simple), .25, na.rm=T), origin = "1970-01-01"),
+                   p50=as.Date(quantile(unclass(termino_relacion_simple), .5, na.rm=T), origin = "1970-01-01"),
+                   p75=as.Date(quantile(unclass(termino_relacion_simple), .75, na.rm=T), origin = "1970-01-01"),
+                   p975=as.Date(quantile(unclass(termino_relacion_simple), .975, na.rm=T), origin = "1970-01-01"),
+            max = max(termino_relacion_simple, na.rm=T))),
+cbind(cat="Date of cbiorelacion",
+Base_fiscalia_v4 %>% 
+  dplyr::summarise(min = min(fec_cbiorelacion_simple, na.rm=T),
+         p025=as.Date(quantile(unclass(fec_cbiorelacion_simple), .025, na.rm=T), origin = "1970-01-01"),
+         p25=as.Date(quantile(unclass(fec_cbiorelacion_simple), .25, na.rm=T), origin = "1970-01-01"),
+         p50=as.Date(quantile(unclass(fec_cbiorelacion_simple), .5, na.rm=T), origin = "1970-01-01"),
+         p75=as.Date(quantile(unclass(fec_cbiorelacion_simple), .75, na.rm=T), origin = "1970-01-01"),
+         p975=as.Date(quantile(unclass(fec_cbiorelacion_simple), .975, na.rm=T), origin = "1970-01-01"),
+         max = max(fec_cbiorelacion_simple, na.rm=T))),
+cbind(cat="Date of birth",
+Base_fiscalia_v4 %>% 
+  dplyr::summarise(min = min(imp_birth_date, na.rm=T),
+         p025=as.Date(quantile(unclass(imp_birth_date), .025, na.rm=T), origin = "1970-01-01"),
+         p25=as.Date(quantile(unclass(imp_birth_date), .25, na.rm=T), origin = "1970-01-01"),
+         p50=as.Date(quantile(unclass(imp_birth_date), .5, na.rm=T), origin = "1970-01-01"),
+         p75=as.Date(quantile(unclass(imp_birth_date), .75, na.rm=T), origin = "1970-01-01"),
+         p975=as.Date(quantile(unclass(imp_birth_date), .975, na.rm=T), origin = "1970-01-01"),
+         max = max(imp_birth_date, na.rm=T)))) %>% 
+knitr::kable(format="html",caption= "Table. Summary of Dates") %>% #,col.names=c("Variables","Residential", "Ambulatory", "p-value")) %>% 
+    kableExtra::kable_classic(bootstrap_options = c("striped", "hover","condensed"),font_size= 10) %>% 
+  kableExtra::group_rows("After imputation database",1,3) %>% 
+  kableExtra::footnote(general = paste0("Total entries: ",format(nrow(Base_fiscalia_v4), big.mark=","),"; Total patients: ",format(length(unique(Base_fiscalia_v4$rut_enc_saf)), big.mark=",")))
+```
+
+<br>
+
+
+- Entries that committed a crime at less than 14 years old `r table(Base_fiscalia_v4$edad_comision_imp<14)[[2]]`.
+- Entries that committed a crime at less than 14 years old (of cases w/ 2 different birth dates) `r Base_fiscalia_v4%>%  dplyr::filter(rut_enc_saf %in% fech_nac_fisc_vs_senda$rut_enc_saf)%>% dplyr::filter(edad_comision_imp<14) %>% nrow()`.
+
+<div class="fold o">
+
+```{r explore inconsistencies, message=F, error=T,eval=T, warnings=F, echo=T}
+# To fold source code, add this before:
+# <div class="fold s">
+# 
+# To fold output, add this before:
+# <div class="fold o">
+errores_edad<-
+Base_fiscalia_v4 %>% dplyr::filter(edad_comision_imp<14) %>% distinct(rut_enc_saf)
+
+# wo_imp_flow_fech_nac_fisc_vs_senda %>% 
+#     dplyr::filter(rut_enc_saf %in% as.character(unlist(errores_edad))) %>% View()
+cbind(n=c("Birth date","Age of commission of crime","Admission date"),
+rbind(
+wo_imp_flow_fech_nac_fisc_vs_senda %>% 
+    dplyr::filter(rut_enc_saf %in% as.character(unlist(errores_edad))) %>% 
+  dplyr::summarise(min = min(imp_birth_date, na.rm=T),
+         p025=as.Date(quantile(unclass(imp_birth_date), .025, na.rm=T), origin = "1970-01-01"),
+         p25=as.Date(quantile(unclass(imp_birth_date), .25, na.rm=T), origin = "1970-01-01"),
+         p50=as.Date(quantile(unclass(imp_birth_date), .5, na.rm=T), origin = "1970-01-01"),
+         p75=as.Date(quantile(unclass(imp_birth_date), .75, na.rm=T), origin = "1970-01-01"),
+         p975=as.Date(quantile(unclass(imp_birth_date), .975, na.rm=T), origin = "1970-01-01"),
+         max = max(imp_birth_date, na.rm=T)),
+wo_imp_flow_fech_nac_fisc_vs_senda %>%
+    dplyr::filter(rut_enc_saf %in% as.character(unlist(errores_edad))) %>% 
+        dplyr::summarise(min = min(fec_comision_simple, na.rm=T),
+         p025=as.Date(quantile(unclass(fec_comision_simple),.025, na.rm=T), origin = "1970-01-01"),
+         p25=as.Date(quantile(unclass(fec_comision_simple), .25, na.rm=T), origin = "1970-01-01"),
+         p50=as.Date(quantile(unclass(fec_comision_simple), .5, na.rm=T), origin = "1970-01-01"),
+         p75=as.Date(quantile(unclass(fec_comision_simple), .75, na.rm=T), origin = "1970-01-01"),
+         p975=as.Date(quantile(unclass(fec_comision_simple),.975, na.rm=T), origin = "1970-01-01"),
+         max = max(fec_comision_simple, na.rm=T)),
+wo_imp_flow_fech_nac_fisc_vs_senda %>% 
+    dplyr::filter(rut_enc_saf %in% as.character(unlist(errores_edad))) %>% 
+        dplyr::summarise(min = min(fech_ing, na.rm=T),
+         p025=as.Date(quantile(unclass(fech_ing),.025, na.rm=T), origin = "1970-01-01"),
+         p25=as.Date(quantile(unclass(fech_ing), .25, na.rm=T), origin = "1970-01-01"),
+         p50=as.Date(quantile(unclass(fech_ing), .5, na.rm=T), origin = "1970-01-01"),
+         p75=as.Date(quantile(unclass(fech_ing), .75, na.rm=T), origin = "1970-01-01"),
+         p975=as.Date(quantile(unclass(fech_ing),.975, na.rm=T), origin = "1970-01-01"),
+         max = max(fech_ing, na.rm=T))
+  ))%>% 
+knitr::kable(format="html",caption= "Table. Summary of Dates") %>% 
+    kableExtra::kable_classic(bootstrap_options = c("striped", "hover","condensed"),font_size= 10)
+```
+
+</div>
+
+<br>
+
+# Explore relationships
+
+<br>
+
+## Explore Results of the Matching{.tabset .tabset-fade}
+
+
+<br>
+
+### Date of birth, found as an imputed/victim
+
+<br>
+
+```{r fig1_agrupa_terminos_fech_nac, fig.align='center', fig.pos='H', fig.caption="Figure. Date of birth and suspicious of commiting a crime", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+#https://coolors.co/0a1128-001f54-034078-1282a2-c1dbe3
+
+#c("pais", "encontrado_como_victima", "gls_tipo_sujeto_vic", "gls_tipo_imputado", "gls_region", "familia_delito", "agrupa_terminos", "sexo", "edad_comision", "region_delito")
+i<- "encontrado_como_imputado"
+min_plot<-1940
+max_plot<-2002
+  casos_no_cubiertos<-
+    Base_fiscalia_v4 %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(imp_birth_date)) %>%
+    dplyr::mutate(grupo_var=get(i))%>%
+    dplyr::group_by(fec_nacimiento_qrt, grupo_var)%>%
+    dplyr::summarise(n_2_grupos=n())%>%
+    dplyr::ungroup()%>%
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::mutate(freq = (n_2_grupos / sum(n_2_grupos)))%>%
+    dplyr::filter(fec_nacimiento_qrt<min_plot|fec_nacimiento_qrt>=max_plot) %>%
+    dplyr::ungroup()%>%
+    dplyr::summarise(sum_total=sum(n_2_grupos))%>%
+    unlist()
+  #colorspace::diverge_hcl(length(table(Base_fiscalia_v4[[i]])),h=c(0,-100),l=c(75,30),c=c(40,80),power=1)
+Base_fiscalia_v4 %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(imp_birth_date)) %>%
+    dplyr::mutate(grupo_var=get(i))%>%
+    dplyr::group_by(fec_nacimiento_qrt, grupo_var)%>%
+    dplyr::summarise(n_2_grupos=n())%>%
+    dplyr::ungroup()%>%
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::mutate(freq = (n_2_grupos / sum(n_2_grupos)))%>%
+    dplyr::filter(fec_nacimiento_qrt>=min_plot) %>%
+    ggplot2::ggplot(aes(x = fec_nacimiento_qrt, y = freq,fill=grupo_var))+
+    geom_area(alpha=0.6 , size=.5, colour="white") +
+    scale_fill_manual(values= colorspace::rainbow_hcl(length(table(Base_fiscalia_v4[[i]])))) +
+    sjPlot::theme_sjplot2() +
+    scale_x_yearqtr(format="%YQ%q", n=18,
+                    limits=c(zoo::as.yearqtr(paste0(min_plot,"-01-01")), 
+                             max=zoo::as.yearqtr(paste0(max_plot,"-01-01"))))+
+    scale_y_continuous(limits=c(0,1),labels = scales::percent)+
+    labs(x="",y="Percentages",
+         caption= paste0("Note. Cases born between ",min_plot," to ",max_plot,", but ignoring the rest: ", casos_no_cubiertos,
+                         ";\n", 
+                         "Percentages by year and quarter"))+
+    #ylim(0,101)+
+    # scale_y_continuous(limits=c(0,1),labels = scales::percent) +
+    theme(legend.position="bottom")+
+    guides(fill=guide_legend(ncol=3))+
+    theme(legend.text = element_text(size=10))+
+    theme(legend.title = element_blank(),
+          panel.grid.minor = element_blank(), 
+          panel.grid.major = element_blank(), 
+          panel.grid.major.x = element_blank(),
+          panel.background = element_blank(),
+          axis.title.x = element_blank())+
+    theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), plot.caption=element_text(hjust=0)) 
+
+if(isTRUE(getOption('knitr.in.progress'))==T){
+    
+} else {ggsave(paste0(i,".png"),dpi=320)}
+
+```
+
+<br>
+
+### Date of birth, Aggregated judgment at the end of judicial proceedings
+
+```{r fig2_agrupa_terminos_fech_nac, fig.align='center', fig.pos='H', fig.caption="Figure.Date of birth and end of judicial proceedings", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+#https://coolors.co/0a1128-001f54-034078-1282a2-c1dbe3
+
+#c("pais", "encontrado_como_victima", "gls_tipo_sujeto_vic", "gls_tipo_imputado", "gls_region", "familia_delito", "agrupa_terminos", "sexo", "edad_comision", "region_delito")
+i<- "agrupa_terminos"
+min_plot<-1950
+max_plot<-2002
+  casos_no_cubiertos<-
+    Base_fiscalia_v4 %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(imp_birth_date)) %>%
+    dplyr::mutate(grupo_var=get(i))%>%
+    dplyr::group_by(fec_nacimiento_qrt, grupo_var)%>%
+    dplyr::summarise(n_2_grupos=n())%>%
+    dplyr::ungroup()%>%
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::mutate(freq = (n_2_grupos / sum(n_2_grupos)))%>%
+    dplyr::filter(fec_nacimiento_qrt<min_plot|fec_nacimiento_qrt>=max_plot) %>%
+    dplyr::ungroup()%>%
+    dplyr::summarise(sum_total=sum(n_2_grupos))%>%
+    unlist()
+  #colorspace::diverge_hcl(length(table(Base_fiscalia_v4[[i]])),h=c(0,-100),l=c(75,30),c=c(40,80),power=1)
+Base_fiscalia_v4 %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(imp_birth_date)) %>%
+    dplyr::mutate(grupo_var=get(i))%>%
+    dplyr::group_by(fec_nacimiento_qrt, grupo_var)%>%
+    dplyr::summarise(n_2_grupos=n())%>%
+    dplyr::ungroup()%>%
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::mutate(freq = (n_2_grupos / sum(n_2_grupos)))%>%
+    dplyr::filter(fec_nacimiento_qrt>=min_plot) %>%
+    ggplot2::ggplot(aes(x = fec_nacimiento_qrt, y = freq,fill=grupo_var))+
+    geom_area(alpha=0.6 , size=.5, colour="white") +
+    scale_fill_manual(values= colorspace::rainbow_hcl(length(table(Base_fiscalia_v4[[i]])))) +
+    sjPlot::theme_sjplot2() +
+    scale_x_yearqtr(format="%YQ%q", n=18,
+                    limits=c(zoo::as.yearqtr(paste0(min_plot,"-01-01")), 
+                             max=zoo::as.yearqtr(paste0(max_plot,"-01-01"))))+
+    scale_y_continuous(limits=c(0,1),labels = scales::percent)+
+    labs(x="",y="Percentages",
+         caption= paste0("Note. Cases born between ",min_plot," to ",max_plot,", but ignoring the rest: ", casos_no_cubiertos,
+                         ";\n", 
+                         "Percentages by year and quarter"))+
+    #ylim(0,101)+
+    # scale_y_continuous(limits=c(0,1),labels = scales::percent) +
+    theme(legend.position="bottom")+
+    guides(fill=guide_legend(ncol=3))+
+    theme(legend.text = element_text(size=8))+
+    theme(legend.title = element_blank(),
+          panel.grid.minor = element_blank(), 
+          panel.grid.major = element_blank(), 
+          panel.grid.major.x = element_blank(),
+          panel.background = element_blank(),
+          axis.title.x = element_blank())+
+    theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), plot.caption=element_text(hjust=0)) 
+
+if(isTRUE(getOption('knitr.in.progress'))==T){
+    
+} else {ggsave(paste0(i,".png"),dpi=320)}
+
+```
+
+### Date of birth, Sex and found as an imputed
+
+
+```{r fig3a_sex_acc_fech_nac, fig.align='center', fig.pos='H', fig.caption="Figure. Sex, date of birth in suspicious of commiting a crime", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+#https://coolors.co/0a1128-001f54-034078-1282a2-c1dbe3
+
+#c("pais", "encontrado_como_victima", "gls_tipo_sujeto_vic", "gls_tipo_imputado", "gls_region", "familia_delito", "agrupa_terminos", "sexo", "edad_comision", "region_delito")
+i<- "sexo"
+min_plot<-1945
+max_plot<-2002
+  casos_no_cubiertos<-
+    Base_fiscalia_v4 %>% 
+    dplyr::filter(encontrado_como_imputado=="SI") %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(imp_birth_date)) %>%
+    dplyr::mutate(grupo_var=get(i))%>%
+    dplyr::group_by(fec_nacimiento_qrt, grupo_var)%>%
+    dplyr::summarise(n_2_grupos=n())%>%
+    dplyr::ungroup()%>%
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::mutate(freq = (n_2_grupos / sum(n_2_grupos)))%>%
+    dplyr::filter(fec_nacimiento_qrt<min_plot|fec_nacimiento_qrt>=max_plot) %>%
+    dplyr::ungroup()%>%
+    dplyr::summarise(sum_total=sum(n_2_grupos))%>%
+    unlist()
+  #colorspace::diverge_hcl(length(table(Base_fiscalia_v4[[i]])),h=c(0,-100),l=c(75,30),c=c(40,80),power=1)
+Base_fiscalia_v4 %>% 
+  dplyr::filter(encontrado_como_imputado=="SI") %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(imp_birth_date)) %>%
+    dplyr::mutate(grupo_var=get(i))%>%
+    dplyr::group_by(fec_nacimiento_qrt, grupo_var)%>%
+    dplyr::summarise(n_2_grupos=n())%>%
+    dplyr::ungroup()%>%
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::mutate(freq = (n_2_grupos / sum(n_2_grupos)))%>%
+    dplyr::filter(fec_nacimiento_qrt>=min_plot) %>%
+    ggplot2::ggplot(aes(x = fec_nacimiento_qrt, y = freq,fill=grupo_var))+
+    geom_area(alpha=0.6 , size=.5, colour="white") +
+    scale_fill_manual(values= colorspace::rainbow_hcl(length(table(Base_fiscalia_v4[[i]])))) +
+    sjPlot::theme_sjplot2() +
+    scale_x_yearqtr(format="%YQ%q", n=18,
+                    limits=c(zoo::as.yearqtr(paste0(min_plot,"-01-01")), 
+                             max=zoo::as.yearqtr(paste0(max_plot,"-01-01"))))+
+    scale_y_continuous(limits=c(0,1),labels = scales::percent)+
+    labs(x="",y="Percentages",
+         caption= paste0("Note. Cases born between ",min_plot," to ",max_plot,", but ignoring the rest: ", casos_no_cubiertos, " entries",
+                         ";\n", 
+                         "Percentages by year and quarter"))+
+    #ylim(0,101)+
+    # scale_y_continuous(limits=c(0,1),labels = scales::percent) +
+    theme(legend.position="bottom")+
+    guides(fill=guide_legend(ncol=3))+
+    theme(legend.text = element_text(size=10))+
+    theme(legend.title = element_blank(),
+          panel.grid.minor = element_blank(), 
+          panel.grid.major = element_blank(), 
+          panel.grid.major.x = element_blank(),
+          panel.background = element_blank(),
+          axis.title.x = element_blank())+
+    theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), plot.caption=element_text(hjust=0)) 
+
+if(isTRUE(getOption('knitr.in.progress'))==T){
+    
+} else {ggsave(paste0(i,".png"),dpi=320)}
+
+```
+
+### Date of birth, Sex and found as a victim
+
+
+```{r fig3b_sex_vic_fech_nac, fig.align='center', fig.pos='H', fig.caption="Figure. Sex, date of birth in involved as a victim", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+#https://coolors.co/0a1128-001f54-034078-1282a2-c1dbe3
+
+#c("pais", "encontrado_como_victima", "gls_tipo_sujeto_vic", "gls_tipo_imputado", "gls_region", "familia_delito", "agrupa_terminos", "sexo", "edad_comision", "region_delito")
+i<- "sexo"
+min_plot<-1945
+max_plot<-2002
+  casos_no_cubiertos<-
+    Base_fiscalia_v4 %>% 
+    dplyr::filter(encontrado_como_imputado=="NO") %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(imp_birth_date)) %>%
+    dplyr::mutate(grupo_var=get(i))%>%
+    dplyr::group_by(fec_nacimiento_qrt, grupo_var)%>%
+    dplyr::summarise(n_2_grupos=n())%>%
+    dplyr::ungroup()%>%
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::mutate(freq = (n_2_grupos / sum(n_2_grupos)))%>%
+    dplyr::filter(fec_nacimiento_qrt<min_plot|fec_nacimiento_qrt>=max_plot) %>%
+    dplyr::ungroup()%>%
+    dplyr::summarise(sum_total=sum(n_2_grupos))%>%
+    unlist()
+  #colorspace::diverge_hcl(length(table(Base_fiscalia_v4[[i]])),h=c(0,-100),l=c(75,30),c=c(40,80),power=1)
+Base_fiscalia_v4 %>% 
+  dplyr::filter(encontrado_como_imputado=="NO") %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(imp_birth_date)) %>%
+    dplyr::mutate(grupo_var=get(i))%>%
+    dplyr::group_by(fec_nacimiento_qrt, grupo_var)%>%
+    dplyr::summarise(n_2_grupos=n())%>%
+    dplyr::ungroup()%>%
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::mutate(freq = (n_2_grupos / sum(n_2_grupos)))%>%
+    dplyr::filter(fec_nacimiento_qrt>=min_plot) %>%
+    ggplot2::ggplot(aes(x = fec_nacimiento_qrt, y = freq,fill=grupo_var))+
+    geom_area(alpha=0.6 , size=.5, colour="white") +
+    scale_fill_manual(values= colorspace::rainbow_hcl(length(table(Base_fiscalia_v4[[i]])))) +
+    sjPlot::theme_sjplot2() +
+    scale_x_yearqtr(format="%YQ%q", n=18,
+                    limits=c(zoo::as.yearqtr(paste0(min_plot,"-01-01")), 
+                             max=zoo::as.yearqtr(paste0(max_plot,"-01-01"))))+
+    scale_y_continuous(limits=c(0,1),labels = scales::percent)+
+    labs(x="",y="Percentages",
+         caption= paste0("Note. Cases born between ",min_plot," to ",max_plot,", but ignoring the rest: ", casos_no_cubiertos, " entries",
+                         ";\n", 
+                         "Percentages by year and quarter"))+
+    #ylim(0,101)+
+    # scale_y_continuous(limits=c(0,1),labels = scales::percent) +
+    theme(legend.position="bottom")+
+    guides(fill=guide_legend(ncol=3))+
+    theme(legend.text = element_text(size=10))+
+    theme(legend.title = element_blank(),
+          panel.grid.minor = element_blank(), 
+          panel.grid.major = element_blank(), 
+          panel.grid.major.x = element_blank(),
+          panel.background = element_blank(),
+          axis.title.x = element_blank())+
+    theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), plot.caption=element_text(hjust=0)) 
+
+if(isTRUE(getOption('knitr.in.progress'))==T){
+    
+} else {ggsave(paste0(i,".png"),dpi=320)}
+
+```
+
+### Date of birth, Sex and found as an imputed
+
+```{r fig4_fam_delito_fech_nac, fig.align='center', fig.pos='H', fig.caption="Figure.Date of birth and suspicious of commiting a crime", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+#https://coolors.co/0a1128-001f54-034078-1282a2-c1dbe3
+
+#c("pais", "encontrado_como_victima", "gls_tipo_sujeto_vic", "gls_tipo_imputado", "gls_region", "familia_delito", "agrupa_terminos", "sexo", "edad_comision", "region_delito")
+i<- "familia_delito"
+min_plot<-1957
+max_plot<-2002
+  casos_no_cubiertos<-
+    Base_fiscalia_v4 %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(imp_birth_date)) %>%
+    dplyr::mutate(grupo_var=get(i))%>%
+    dplyr::group_by(fec_nacimiento_qrt, grupo_var)%>%
+    dplyr::summarise(n_2_grupos=n())%>%
+    dplyr::ungroup()%>%
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::mutate(freq = (n_2_grupos / sum(n_2_grupos)))%>%
+    dplyr::filter(fec_nacimiento_qrt<min_plot|fec_nacimiento_qrt>=max_plot) %>%
+    dplyr::ungroup()%>%
+    dplyr::summarise(sum_total=sum(n_2_grupos))%>%
+    unlist()
+  #colorspace::diverge_hcl(length(table(Base_fiscalia_v4[[i]])),h=c(0,-100),l=c(75,30),c=c(40,80),power=1)
+Base_fiscalia_v4 %>% 
+    dplyr::mutate(fec_nacimiento_qrt=zoo::as.yearqtr(imp_birth_date)) %>%
+    dplyr::mutate(grupo_var=get(i))%>%
+    dplyr::group_by(fec_nacimiento_qrt, grupo_var)%>%
+    dplyr::summarise(n_2_grupos=n())%>%
+    dplyr::ungroup()%>% 
+    dplyr::group_by(fec_nacimiento_qrt)%>%
+    dplyr::mutate(freq = (n_2_grupos / sum(n_2_grupos)))%>%
+    dplyr::filter(fec_nacimiento_qrt>=min_plot) %>%
+    ggplot2::ggplot(aes(x = fec_nacimiento_qrt, y = freq,fill=grupo_var))+
+    geom_area(alpha=0.6 , size=.5, colour="white") +
+    scale_fill_manual(values= colorspace::rainbow_hcl(length(table(Base_fiscalia_v4[[i]])))) +
+    sjPlot::theme_sjplot2() +
+    scale_x_yearqtr(format="%YQ%q", n=18,
+                    limits=c(zoo::as.yearqtr(paste0(min_plot,"-01-01")), 
+                             max=zoo::as.yearqtr(paste0(max_plot,"-01-01"))))+
+    scale_y_continuous(limits=c(0,1),labels = scales::percent)+
+    labs(x="",y="Percentages",
+         caption= paste0("Note. Cases born between ",min_plot," to ",max_plot,", but ignoring the rest: ", casos_no_cubiertos,
+                         ";\n", 
+                         "Percentages by year and quarter"))+
+    #ylim(0,101)+
+    # scale_y_continuous(limits=c(0,1),labels = scales::percent) +
+    theme(legend.position="bottom")+
+    guides(fill=guide_legend(ncol=3))+
+    theme(legend.text = element_text(size=6))+
+    theme(legend.title = element_blank(),
+          panel.grid.minor = element_blank(), 
+          panel.grid.major = element_blank(), 
+          panel.grid.major.x = element_blank(),
+          panel.background = element_blank(),
+          axis.title.x = element_blank())+
+    theme(axis.text.x = element_text(vjust = 0.5,hjust = 0.5,angle = 60), plot.caption=element_text(hjust=0)) 
+
+if(isTRUE(getOption('knitr.in.progress'))==T){
+    
+} else {ggsave(paste0(i,".png"),dpi=320)}
+
+```
+
+
+```{r fig5_fam_delito_fech_nac, fig.align='center', fig.pos='H', fig.caption="Figure.Date of birth and suspicious of commiting a crime", echo=T, cache= T, paged.print=TRUE, eval=T, error=T, dpi=320, fig.align="center"}
+plot_variable(dat = Base_fiscalia_v4 %>% dplyr::ungroup() %>%  dplyr::rename("age"="edad_comision_imp", "period"="fec_comision_simple","cohort"="imp_birth_date"), y_var = "encontrado_como_imputado",apc_dimension = "cohort", plot_type = "line")
+
+#plot_variable(dat = travel, y_var = "household_size", apc_dimension = "period")
+
+plot_variable(dat = Base_fiscalia_v4%>% dplyr::ungroup() %>%  dplyr::rename("age"="edad_comision_imp", "period"="fec_comision_simple","cohort"="imp_birth_date"), 
+              y_var = "encontrado_como_imputado", 
+              apc_dimension = "cohort",
+              plot_type="line")
+
+age_groups    <- list(c(80,89),c(70,79),c(60,69),c(50,59),
+                      c(40,49),c(30,39),c(20,29))
+period_groups <- list(c(1970,1979),c(1980,1989),c(1990,1999),
+                      c(2000,2009),c(2010,2019))
+
+plot_densityMatrix(dat                 = Base_fiscalia_v4%>% dplyr::ungroup()%>% dplyr::mutate(ano_nac_simple=as.numeric(stringr::str_extract(as.character(fec_nacimiento_simple),".{4}")))%>%  dplyr::rename("age"="edad_comision_imp", "period"="ano_nac_simple","cohort"="imp_birth_date") , 
+                   y_var               = "encontrado_como_imputado",
+                   age_groups          = age_groups,
+                   period_groups       = period_groups,
+                   highlight_diagonals = list("born 1950 - 1959" = 8,
+                                              "born 1970 - 1979" = 10))
+#cut(Base_fiscalia_v4$edad_comision_imp,6)
+#(-80.7,-52.5] (-52.5,-24.4] (-24.4,3.65] (3.65,31.7] (31.7,59.8] (59.8,88]
+#cut(Base_fiscalia_v4$imp_birth_date,8)
+#1973-01-20 1990-12-04 1965-05-12 1982-08-10 1998-08-04 1957-09-25 1945-07-27 1937-05-02
+```
+
+<br>
+
+# Label
+
+```{r change labels,echo=T, paged.print=TRUE, eval=F}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+Base_fiscalia_v4%>%
+dplyr::mutate_at(c('dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_cie_10_or','x3_dg_trs_psiq_cie_10_or','x2_dg_trs_psiq_sub_cie_10_or','x3_dg_trs_psiq_sub_cie_10_or','compromiso_biopsicosocial','pais_nacimiento','nacionalidad','dg_trs_psiq_sub_dsm_iv_or','x2_dg_trs_psiq_sub_dsm_iv_or','x3_dg_trs_psiq_sub_dsm_iv_or','dg_trs_psiq_sub_cie_10_or','etnia_cor_2','motivodeegreso_mod_imp','fecha_ultimo_tratamiento','fecha_ultimo_tratamiento','tiene_menores_de_edad_a_cargo'),~as.factor(.)) %>%
+  dplyr::group_by(hash_key)%>%
+  dplyr::mutate(at_least_one_cont_entry=sum(!is.na(diff_bet_treat)))%>%
+  ungroup()%>%
+  dplyr::mutate(at_least_one_cont_entry= ifelse(at_least_one_cont_entry>0,1,0))%>%
+  dplyr::mutate(menor_45_dias_diff= ifelse(diff_bet_treat<45,1,0))%>%
+  dplyr::mutate(at_least_one_cont_entry= recode(as.character(at_least_one_cont_entry),"0"="User with no cont. entry","1"="User with cont. entry"))%>%
+  dplyr::mutate(menor_45_dias_diff= recode(as.character(menor_45_dias_diff),"0"=">= 45 Days of Difference Between Entries","1"="<45 Days of Difference Between Entries"))%>%
+  dplyr::mutate(menor_60_dias_diff= recode(as.character(menor_60_dias_diff),"0"=">= 60 Days of Difference Between Entries","1"="<60 Days of Difference Between Entries"))%>%
+  dplyr::mutate(obs_cambios_ninguno= recode(as.character(obs_cambios_ninguno),"0"="At least 1 Change w/ the Next Entry","1"="No Changes w/ the Next Entry"))%>%
+  dplyr::mutate(motivoegreso_derivacion= recode(as.character(motivoegreso_derivacion),"0"="Other causes of discharge","1"="Referral"))%>%
+  dplyr::mutate_at(vars(at_least_one_cont_entry,menor_45_dias_diff,menor_60_dias_diff,obs_cambios_ninguno,motivoegreso_derivacion,obs_cambios),~as.factor(.))%>%
+  assign("Base_fiscalia_v2",., envir = .GlobalEnv)
+  
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_  
+  
+codebook::var_label(Base_fiscalia_v2) <- list(
+row= 'Numerador de los eventos presentes en la Base de Datos/Events in the Dataset',
+table= 'Origen de los Datos (de los archivos por año)/Source of Data (of files per year)',
+hash_key= 'Codificación del RUN/Masked Identifier (RUN)',
+ano_bd= 'Año de la Base de Datos/Year of the Dataset (Source)',
+id= 'Codigo Identificación de SENDA/SENDA ID',
+nombre_centro= 'Nombre del Centro de Tratamiento/Treatment Center',
+tipo_centro= 'Tipo de Centro/Type of Center',
+region_del_centro= '(original, Recodificado en nombre_region)/',
+servicio_de_salud= 'Servicio de Salud/Health Service',
+tipo_de_programa= '(original, Recodificado en tipo_de_programa_2)/',
+tipo_de_plan= '(original, Recodificado en tipo_de_plan_2)/',
+senda= 'SENDA/SENDA',
+dias_trat= 'Días de Tratamiento/Days of Treatment',
+nmesesentratamiento= 'Número de Meses en Tratamiento/Number of Months in Treatment',
+dias_en_senda= 'Días en SENDA/Days in SENDA',
+n_meses_en_senda= 'Número de Meses en SENDA/Number of Months in SENDA',
+sexo= '(original, Recodificado en sexo_2)/',
+edad= 'Edad (número entero)/Age (In years, Discrete Number)',
+nombre_usuario= 'Nombre del Usuario (OCULTO y no accesible)/Name of the User (Not Accessible)',
+comuna_residencia= '(original, Recodificado en comuna_residencia_cod)/',
+origen_de_ingreso= '(original, Recodificado en origen_ingreso)/',
+pais_nacimiento= 'País de Nacimiento/Country of Birth',
+nacionalidad= 'Nacionalidad/Nationality',
+etnia= '(original, recodificado en etnia_cor)/',
+estado_conyugal= '(original, Recodificado en estado_conyugal_2)/',
+numero_de_hijos= 'Número de Hijos/Number of Children',
+num_hijos_ing_trat_res= 'Número de Hijos para Ingreso a Tratamiento Residencial/Number of Children to Residential Treatment',
+parentesco_con_el_jefe_de_hogar= '(Sólo presenta valores perdidos)/',
+num_trat_ant= 'Número de Tratamientos Anteriores/Number of Previous Treatments',
+fecha_ultimo_tratamiento= 'Fecha del Último Tratamiento/Date of the Last Treatment',
+sustancia_de_inicio= '(original, Recodificado en sus_ini)/',
+edad_inicio_consumo= '(original, Recodificado en edad_ini_cons)/', 
+x_se_trata_mujer_emb= 'Mujer Embarazada al Ingreso/Pregnant at Admission',
+escolaridad_ultimo_ano_cursado= '(original, Recodificado en escolaridad)/', 
+condicion_ocupacional= '(original, Recodificado en estatus_ocupacional)/', 
+categoria_ocupacional= '(original, Recodificado en cat_ocupacional)/',
+rubro_trabaja= '(original, Recodificado en rubro_trabaja_mod)/',
+con_quien_vive= 'Persona con la que vive el Usuario/People that Share Household with the User',
+tipo_de_vivienda= '(original, Recodificado en tipo_de_vivienda_mod)/',
+tenencia_de_la_vivienda= '(original, Recodificado en tenencia_de_la_vivienda_mod)/',
+sustancia_principal= '(original, Recodificado en sus_principal)/',
+`otras_sustancias_nº1`= '(original, Recodificado en otras_sus1)/',
+`otras_sustancias_nº2`= '(original, Recodificado en otras_sus2)/',
+`otras_sustancias_nº3`= '(original, Recodificado en otras_sus3)/',
+freq_cons_sus_prin_original= '(original, Recodificado en freq_cons_sus_prin)/',
+edad_inicio_sustancia_principal= '(original, Recodificado en edad_ini_sus_prin)/',
+via_adm_sus_prin_original= '(original, Recodificado en via_adm_sus_prin)/',
+dg_trs_cons_sus_or= 'Diagnósico de Trastorno por Consumo de Sustancias/Diagnosed of Substance Use Disorder',
+dg_trs_psiq_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV/Diagnosis of Psychiatric Disorders, DSM-IV criteria',
+dg_trs_psiq_sub_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification)',
+x2_dg_trs_psiq_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (2)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (2)',
+x2_dg_trs_psiq_sub_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion) (2)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification) (2)',
+x3_dg_trs_psiq_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (3)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (3)',
+x3_dg_trs_psiq_sub_dsm_iv_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios DSM IV (Subclasificacion) (3)/Diagnosis of Psychiatric Disorders, DSM-IV criteria (sub-classification) (3)',
+dg_trs_psiq_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10/Diagnosis of Psychiatric Disorders, CIE-10 criteria',
+dg_trs_psiq_sub_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification)',
+x2_dg_trs_psiq_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (2)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (2)',
+x2_dg_trs_psiq_sub_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion) (2)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification) (2)',
+x3_dg_trs_psiq_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (3)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (3)',
+x3_dg_trs_psiq_sub_cie_10_or= 'Diagnóstico de Trastorno Psiquiátrico, Criterios CIE-10 (Subclasificacion) (3)/Diagnosis of Psychiatric Disorders, CIE-10 criteria (subclassification) (3)',
+diagnostico_trs_fisico= 'Diagnóstico de Trastorno Físico/Diagnosis of Physical Disorder',
+otros_probl_at_sm_or= 'Otros Problemas de Atención Vinculados a Salud Mental/Other problems linked to Mental Health',
+compromiso_biopsicosocial= 'Compromiso Biopsicosocial/Biopsychosocial Involvement',
+dg_global_nec_int_soc_or= 'Diagnóstico Global de Necesidades de Integración Social (Al Ingreso)/Global Diagnosis of Social Integration (At Admission)',
+dg_nec_int_soc_cap_hum_or= 'Diagnóstico de Necesidades de Integración Social en Capital Humano (Al Ingreso)/Global Diagnosis of Social Integration in Human Capital (At Admission)',
+dg_nec_int_soc_cap_fis_or= 'Diagnóstico de Necesidades de Integración Social en Capital Físico (Al Ingreso)/Global Diagnosis of Social Integration in Physical Capital (At Admission)',
+dg_nec_int_soc_cap_soc_or= 'Diagnóstico de Necesidades de Integración Social en Capital Social (Al Ingreso)/Global Diagnosis of Social Integration in Social Capital (At Admission)',
+fech_ing= 'Fecha de Ingreso a Tratamiento/Date of Admission to Treatment',
+fecha_ingreso_a_convenio_senda= 'Fecha de Ingreso a Convenio SENDA (aún no formateada como fecha)/Date of Admission to SENDA Agreement',
+usuario_tribunal_trat_droga= 'Usuario de modalidad Tribunales de Tratamiento de Drogas/User of Drug Treatment Courts Modality',
+consentimiento_informado= 'Consentimiento Informado/Informed Consent',
+fech_egres= 'Fecha de Egreso de Tratamiento/Date of Discharge from Treatment',
+motivodeegreso= 'Motivo de Egreso/Cause of Discharge',
+tipo_centro_derivacion= 'Tipo de Centro al que el Usuario es Derivado/Type of Center of Derivation',
+evaluacindelprocesoteraputico= 'Evaluación del Proceso Terapéutico/Evaluation of the Therapeutic Process',
+eva_consumo= 'Evaluación al Egreso Respecto al Patrón de consumo/Evaluation at Discharge regarding to Consumption Pattern',
+eva_fam= 'Evaluación al Egreso Respecto a Situación Familiar/Evaluation at Discharge regarding to Family Situation',
+eva_relinterp= 'Evaluación al Egreso Respecto a Relaciones Interpersonales/Evaluation at Discharge regarding to Interpersonal Relations',
+eva_ocupacion= 'Evaluación al Egreso Respecto a Situación Ocupacional/Evaluation at Discharge regarding to Occupational Status',
+eva_sm= 'Evaluación al Egreso Respecto a Salud Mental/Evaluation at Discharge regarding to Mental Health',
+eva_fisica= 'Evaluación al Egreso Respecto a Salud Física/Evaluation at Discharge regarding to Physical Health',
+eva_transgnorma= 'Evaluación al Egreso Respecto a Trasgresión a la Norma Social/Evaluation at Discharge regarding to Transgression to the Norm',
+dg_trs_psiq_cie_10_egres_or= '(Sólo presenta valores perdidos)/',
+dg_global_nec_int_soc_or_1= 'Diagnóstico Global de Necesidades de Integración Social (Al Egreso)/Global Diagnosis of Social Integration (At Discharge)',
+dg_nec_int_soc_cap_hum_or_1= 'Diagnóstico de Necesidades de Integración Social en Capital Humano (Al Egreso)/Global Diagnosis of Social Integration in Human Capital (At Discharge)',
+dg_nec_int_soc_cap_fis_or_1= 'Diagnóstico de Necesidades de Integración Social en Capital Físico (Al Egreso)/Global Diagnosis of Social Integration in Physical Capital (At Discharge)',
+dg_nec_int_soc_cap_soc_or_1= 'Diagnóstico de Necesidades de Integración Social en Capital Social (Al Egreso)/Global Diagnosis of Social Integration in Social Capital (At Discharge)',
+tiene_menores_de_edad_a_cargo= 'Menores de Edad A Cargo/Minor Dependants',
+mot_egres_alt_adm_or= 'Motivo de Egreso Alta Administrativa/Cause of Administrative Discharge',
+consorcio=  'Sociedades de Tratamiento Servicios de Salud- Fundaciones- entre otras entidades encargadas de los centros/Consortium',
+id_centro= 'ID de Centro/Treatment center ID',
+ha_estado_embarazada_egreso= '¿Ha estado embarazada? (al Egreso)/Have you been Pregnant (at Discharge)',
+identidad_de_genero= 'Identidad de Género/Gender Identity',
+discapacidad= 'Presenta Discapacidad/Disability',
+hash_rut_completo= 'HASH alternativo, en el escenario en que se asuma que el individuo al que se le codificó el RUN presente mayor edad/Alternative HASH-Key',
+opcion_discapacidad= 'Origen de Discapacidad/Cause of Disability',
+sexo_2= 'Sexo Usuario/Sex of User',
+embarazo= 'Embarazo al Ingreso /Pregnant at Admission',
+tipo_de_plan_2= 'Tipo de Plan/Type of Plan',
+tipo_de_programa_2= 'Tipo de Programa de Tratamiento/Type of Program',
+fech_egres_sin_fmt= 'Fecha de Egreso de Tratamiento (Sin Formato de Fecha)/Date of Discharge',
+id_mod= 'ID de SENDA para Presentación en Página Web (enmascara caracteres 5 y 6)/SENDA ID (mask characters 5 & 6)',
+ano_nac= 'Año de Nacimiento (numérico)/Year of Birth (numeric)',
+fech_ing_ano= 'Año de Ingreso (numérico)/Year of Admission (numeric)',
+fech_ing_mes= 'Mes de Ingreso (numérico)/Month of Admission (numeric)',
+fech_ing_dia= 'Día de Ingreso (numérico)/Day of Admission (numeric)',
+concat= 'ID de SENDA y HASH Concatenado (permite discriminar más de un HASH en un mismo ID)/Combination of SENDA ID & HASH',
+obs= 'Observaciones al Proceso de Limpieza y Estandarización de Casos/Observations to the Process of Data Tidying & Standardization',
+dias_trat_inv= 'Días de Tratamiento Invertidos (fecha más reciente, menor valor numérico)/Treatment Days (Reversed)',
+fech_nac= 'Fecha de Nacimiento/Date of Birth',
+edad_al_ing= 'Edad a la Fecha de Ingreso a Tratamiento (numérico continuo)/Age at Admission to Treatment',
+edad_ini_cons= 'Edad de Inicio de Consumo/Age of the Onset of Drug Use',
+edad_ini_sus_prin=  'Edad de Inicio de Consumo Sustancia Principal/Age of the Onset of Drug Use of Primary Substance',
+dias_trat_alta_temprana= 'Días de tratamiento (<90)/Less than 90 days in treatment',
+motivodeegreso_mod= 'Motivo de Egreso (con abandono temprano y tardío)/Cause of Discharge (with late and early withdrawal)',
+sus_principal= 'Sustancia Principal de Consumo/Primary or Main Substance of Consumption at Admission',
+otras_sus1= 'Otras Sustancias (1)/Other Substances (1)',
+otras_sus2= 'Otras Sustancias (2)/Other Substances (2)',
+otras_sus3= 'Otras Sustancias (3)/Other Substances (3)',
+sus_ini= 'Sustancia de Inicio/Starting Substance',
+estado_conyugal_2= 'Estado Conyugal/Marital Status',
+estatus_ocupacional= 'Condición Ocupacional/Occupational Status',
+cat_ocupacional= 'Categoría Ocupacional/Occupational Category',
+edad_grupos= 'Edad agrupada/Age in groups',
+origen_ingreso= "(modificado en origen_ingreso_mod)/",
+escolaridad= 'Escolaridad: Nivel Eduacional/Educational Attainment',
+via_adm_sus_prin= 'Vía de Administración de la Sustancia Principal/Route of Administration of the Primary or Main Substance',
+freq_cons_sus_prin= 'Frecuencia de Consumo de la Sustancia Principal (30 días previos a la admisión)/Frequency of Consumption of the Primary or Main Substance (30 days previous to admission)',
+dias_trat_knn_imp= 'Días de Tratamiento (Imputados KNN)/Days of Treatment (Imputed KNN)',
+fech_egres_knn_imp= 'Fecha de Egreso (Imputados KNN)/Date of Discharge (Imputed KNN)',
+dias_trat_alta_temprana_knn_imp= 'Días de Tratamiento con Alta Temprana (<90) (Imputados KNN)/Days of Treatment w Early Withdrawal (Imputed KNN)',
+fech_egres_imp= 'Fecha de Egreso (Imputados KNN & Lógico)/Date of Discharge (Imputed KNN & Logic)',
+motivodeegreso_imp= 'Motivo de Egreso(Imputados KNN & Lógico)/Cause of Discharge (Imputed KNN & Logic)',
+motivodeegreso_mod_imp= 'Motivo de Egreso (con abandono temprano y tardío)(Imputados KNN & Lógico)/Cause of Discharge (with late and early withdrawal)(Imputed KNN & Logic)',
+dias_trat_imp= 'Días de Tratamiento (Imputados KNN & Lógico)/Days of Treatment (Imputed KNN & Logic)', 
+dias_trat_alta_temprana_imp= 'Días de Tratamiento con Alta Temprana (<90) (Imputados KNN & Lógico)/Days of Treatment w Early Withdrawal (Imputed KNN & Logic)',
+via_adm_sus_prin_act= 'Vía de Administración de la Sustancia Principal (Se aplicaron criterios de limpieza)/Route of Administration of the Primary or Main Substance (Tidy)',
+etnia_cor= 'Etnia/Ethnic Group',
+nacionalidad_2= 'Segunda Nacionalidad/Second Nationality',
+etnia_cor_2= 'Etnia (2)/Second Ethnic Group',
+sus_ini_2= 'Segunda Sustancia de Inicio/Second Starting Substance',
+sus_ini_3= 'Tercera Sustancia de Inicio/Third Starting Substance',
+concat_hash_sus_prin= 'Combination of User & Primary Substance',
+macrozona= "Macrozona/Macrozones",
+nombre_region= " Región del Centro/Chilean Region of the Center",
+comuna_residencia_cod= "Comuna de Residencia/Municipality or District of Residence",
+sus_ini_mod= "Sustancia de Inicio (Sólo más frecuentes)/Starting Substance (Only more frequent)",
+sus_principal_mod= 'Sustancia Principal de Consumo (Sólo más frecuentes)/Primary or Main Substance of Consumption at Admission (Only more frequent)',
+origen_ingreso_mod= 'Origen de Ingreso/Motive of Admission to Treatment',
+tipo_de_vivienda_mod= 'Tipo de Vivienda/Type of Housing', 
+tenencia_de_la_vivienda_mod= 'Tenencia de la Vivienda/Tenure status of Households',
+rubro_trabaja_mod= 'Rubro de Trabajo/Area of Work',
+edad_al_ing_grupos= 'Edad a la Fecha de Ingreso a Tratamiento en Grupos/Age at Admission to Treatment In Groups',
+menor_60_dias_diff= 'Menor a 60 días de diferencia con el registro posterior/Menor a 60 days of difference between the next entry',
+menor_45_dias_diff= 'Menor a 45 días de diferencia con el registro posterior/Less than 45 days of difference between the next entry',
+diff_bet_treat= 'Días de diferencia con el registro posterior/Days of difference between the next entry',
+id_centro_sig_trat= "ID del Centro del registro posterior/Center ID of the Next Treatment",
+tipo_plan_sig_trat= "Tipo de Plan del registro posterior/Type of Plan of the Next Entry",
+tipo_programa_sig_trat= "Tipo de Programa del registro posterior/Type of Program of the Next Entry", 
+senda_sig_trat= "SENDA del registro posterior/SENDA of the Next Entry",
+motivoegreso_derivacion= "Motivo de Egreso= Derivación/Cause of Discharge= Derivación",
+obs_cambios= "Cambios del tratamiento en comparación al registro posterior/Changes in treatment compared to the Next Entry",
+obs_cambios_ninguno= "Sin cambios del tratamiento en comparación al registro posterior/No changes in treatment compared to the Next Entry",
+obs_cambios_num= "Recuento de cambios del tratamiento en comparación al registro posterior/Count of changes in treatment compared to the Next Entry",
+obs_cambios_fac= "Recuento de cambios del tratamiento en comparación al registro posterior(factor)/Count of changes in treatment compared to the Next Entry(factor)",
+at_least_one_cont_entry= "Casos de Usuarios con más de una entrada después de otra/Cases of users with more than one entry after another one"
+)
+```
+
+# Session Info
+
+```{r session_info, echo=T, error=T, paged.print=TRUE}
+Sys.getenv("R_LIBS_USER")
+
+paste0("Editor context: ", path)
+
+if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2022 (github)/11.RData")
+  } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/andre/Desktop/SUD_CL/11.RData")
+  } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("E:/Mi unidad/Alvacast/SISTRAT 2022 (github)/11.RData")
+  } else {
+    save.image(paste0(sub("SUD_CL","",path),"11.RData"))
+  }
+
+sessionInfo()
+sesion_info <- devtools::session_info()
+dplyr::select(
+  tibble::as_tibble(sesion_info$packages),
+  c(package, loadedversion, source)
+) %>% 
+  DT::datatable(filter = 'top', colnames = c('Row number' =1,'Variable' = 2, 'Percentage'= 3),
+              caption = htmltools::tags$caption(
+        style = 'caption-side: top; text-align: left;',
+        '', htmltools::em('Packages')),
+      options=list(
+initComplete = htmlwidgets::JS(
+      "function(settings, json) {",
+      "$(this.api().tables().body()).css({'font-size': '80%'});",
+      "}")))
+```
+
+# Exportar
+
+```{r export, warning=FALSE, echo=T}
+  Base_fiscalia_v4 %>% 
+  dplyr::mutate(accused=dplyr::case_when(encontrado_como_victima=="SI" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 encontrado_como_victima=="NO" & encontrado_como_imputado=="SI"~"IMPUTADO",
+                                 T~"VICTIMA")) %>% 
+  dplyr::filter(accused=="VICTIMA") %>% 
+    rio::export(file = paste0(gsub("SUD_CL","",path),"fiscalia_mariel_mar_2022.dta"))
+
+# ```{r label_to_stata, echo=T, paged.print=TRUE}
+# 
+# export_lab_stata_merge<-
+#   tibble::rownames_to_column(data.frame(Hmisc::label(Base_fiscalia_v2)))%>% data.frame() %>%
+#   dplyr::rename("code" = !!names(.[1]), "label" = !!names(.[2]))%>% data.frame()%>%
+#   dplyr::mutate(first= "cap noi label variable")%>%
+#   dplyr::mutate(final= paste0(first, " ",code,' "',label,'"'))%>%
+#   dplyr::select(-code,-label,-first)%>%
+#   dplyr::rename("*clear all"="final") %>% 
+#   rbind(paste0('cap noi save "', gsub('/', '\\', path, fixed=T),'\\fiscalia_mariel_ago_2022.dta", replace'))%>%
+#   rbind('cap noi drop id id_mod nombre_centro consentimiento_informado')%>%
+#   rbind('cap noi drop id id_mod nombre_centro')%>%
+#   rbind(paste0('cap noi save "', gsub('/', '\\', path, fixed=T),'\\fiscalia_mariel_ago_2022.dta", replace'))
+# 
+# rbind(paste0('cap noi use "', gsub('/', '\\', path, fixed=T),'\\fiscalia_mariel_ago_2022.dta", clear'),export_lab_stata_merge) %>% knitr::kable("html") %>% 
+#     kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size =10) %>% 
+#   kableExtra::scroll_box(width = "100%", height = "375px")
+# 
+# write.table(rbind(paste0('cap noi use "', gsub('/', '\\', path, fixed=T),'\\fiscalia_mariel_ago_2022.dta", clear'),export_lab_stata_merge), file = paste0(path,"/SUD_CL/_label_var_to_stata.do"), sep = "",row.names = FALSE, quote = FALSE, fileEncoding="UTF-8")
+# ```
+# 
+# <br>
+# 
+# <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+# 
+# ```{stata 2, collectcode=F, include=T, error=T, cleanlog=F}
+# *should be in the same folder of the .Rmd to work
+# cap noi do _label_var_to_stata.do
+# ```
+# 
+# </div>
+```
