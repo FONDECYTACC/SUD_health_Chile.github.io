@@ -54,15 +54,15 @@ This page is composed by the following main topics:
       
   * 3a.2.2.a [Step 1.5](Matching_Process15_APR_22)
 
-  * 3a.2.3.a [Step 2)](Matching_Process2_APR_22)
+  * 3a.2.3.a [Step 2](Matching_Process2_APR_22)
 
-  * 3a.2.4.a [Step 3)](Matching_Process3_APR_22)
+  * 3a.2.4.a [Step 3](Matching_Process3_APR_22)
 
-  * 3a.2.5.a [Step 4)](Matching_Process4_APR_22)
+  * 3a.2.5.a [Step 4](Matching_Process4_APR_22)
 
-  * 3a.2.6.b [Stata, Step 5)](Matching_Process5_stata_APR_22)
+  * 3a.2.6.b [Stata, Step 5](Matching_Process5_stata_APR_22)
 
-  * 3a.2.1.c [Stata, Step 1 w/ only complete cases)](Matching_Process1_stata_APR_22_cc)
+  * 3a.2.1.c [Stata, Step 1 w/ only complete cases](Matching_Process1_stata_APR_22_cc)
 
   3b.1. Treatment outcome and readmission risk among women in women-only versus mixed-gender drug treatment programs in Chile- Main
 
@@ -91,6 +91,7 @@ This page is composed by the following main topics:
   3c.3. Living with (Stata)- [Latent Class Analysis](analisis_joel_oct_2021_stata2)
   
   3c.4. Living with (Stata)- [Survival Regression](analisis_joel_oct_2021_stata3)
+
   
 4. [Data Preparation and Standardization of TOP or Profile of Treatment Results](Data_prep_TOP)
 
