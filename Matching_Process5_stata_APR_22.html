@@ -2591,89 +2591,101 @@ file diff_los_comb_sept_3y_rp_22.gph saved
 <p>=============================================================================</p>
 <h3><a href="#three-years" id="three-years">Three years</a></h3>
 <h4><a href="#difference-probabilities-first-transition-3y" id="difference-probabilities-first-transition-3y">Difference_Probabilities_First_transition_3y</a></h4>
-<pre><code>. *fdiffab-&gt; ambulatory
+<p>Must consider that these differences are only to confirm or discard observations. We do not want to mislead the comparisons. Stata does not fave a way to store output lists in locals. The values may be ordered by value.</p>
+<pre><code>. *fdiff2a-&gt; ambulatory
 . *fdiff2b-&gt; residential
 . *fdiff2b_prob_from4_5_3y fdiff2b_prob_from4_5_lci_3y fdiff2b_prob_from4_5_uci_3y
 . foreach var of varlist fdiff2a_prob_from1_2_3y fdiff2a_prob_from1_2_lci_3y fdiff2a_prob_from1_2_uci_3y fdiff2b_prob_from1_2_3y  fdiff2b_prob_from1_2_lci_3y fdiff2b_prob_from
 &gt; 1_2_uci_3y  {
   2.         scalar variable = &quot;`var'&quot;
-  3.         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.999, 5.02), local(mylevs) sep(,)
-  4. 
-.                                         tokenize &quot;`mylevs'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
-  5.                                         local done = 0
-  6.                                         local i = 0
-  7.                                         local count = 0
-  8.                                         while !`done' {  
-  9.                                            local ++i
- 10.                                                 local next = &quot;``i''&quot;
- 11.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
- 12.                                            // Include elements that are not the parsing character itself.
+  3.         // I had to reverse the order because there were negative numbers- 2022-07-01
+.                                         local mylevs_rev &quot;&quot;
+  4.                                         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.
+&gt; 999, 5.02), local(mylevs) sep(&quot; &quot;)
+  5.                                         local k : word count `mylevs'
+  6.                                         forvalues i = `k'(-1)1 {
+  7.                                                 // di `i'
+.                                         local variable: word `i' of `mylevs'
+  8.                                         local mylevs_rev &quot;`mylevs_rev', `variable'&quot;
+  9.                                         }
+ 10.                                         // di&quot;`mylevs_rev'&quot;
+.                                         local mylevs_rev : subinstr local mylevs_rev &quot;, &quot; &quot;&quot;
+ 11.                                         // di&quot;`mylevs_rev'&quot;
+.                                         tokenize &quot;`mylevs_rev'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
+ 12.                                         local done = 0
+ 13.                                         local i = 0
+ 14.                                         local count = 0
+ 15.                                         while !`done' {  
+ 16.                                            local ++i
+ 17.                                                 local next = &quot;``i''&quot;
+ 18.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
+ 19.                                            // Include elements that are not the parsing character itself.
 .                                                  if (&quot;`next'&quot; != &quot;,&quot;) &amp; (!`done') {
- 13.                                                    local ++count
- 14.                                                    scalar est_n`count' = &quot;`next'&quot;
- 15.                                                 }  
- 16.                                         }
- 17.                                         //
+ 20.                                                    local ++count
+ 21.                                                    scalar est_n`count' = &quot;`next'&quot;
+ 22.                                                 }  
+ 23.                                         }
+ 24.                                         //
 .                                         di &quot;`count' est&quot;
- 18.                                         forval i = 1/`count' {
- 19.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
- 20.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
+ 25.                                         forval i = 1/`count' {
+ 26.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
+ 27.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
 .                                           di &quot;`=scalar(est_n`i')'&quot;
- 21.                                         }       
- 22.  di &quot;`=scalar(variable)'&quot;
- 23.  di &quot;`=scalar(est_n1)'&quot;
- 24.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
- 25.  matrix colnames ests_`var' = `var'
- 26.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
- 27.  }
--.06396,-.06187,-.04243,-.01304
+ 28.                                         }       
+ 29.  di &quot;`=scalar(variable)'&quot;
+ 30.  di &quot;`=scalar(est_n1)'&quot;
+ 31.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
+ 32.  matrix colnames ests_`var' = `var'
+ 33.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
+ 34.  }
+-.06396 -.06187 -.04243 -.01304
 4 est
--6.4
--6.2
--4.2
 -1.3
-fdiff2a_prob_from1_2_3y
+-4.2
+-6.2
 -6.4
--.0725356277495973,-.0713212976595622,-.0479295160252624,-.014792424040917
+fdiff2a_prob_from1_2_3y
+-1.3
+-.0725356277495973 -.0713212976595622 -.0479295160252624 -.014792424040917
 4 est
--7.300000000000001
--7.100000000000001
--4.800000000000001
 -1.5
-fdiff2a_prob_from1_2_lci_3y
+-4.800000000000001
+-7.100000000000001
 -7.300000000000001
--.0553749157766151,-.0524075934987304,-.0369279115798855,-.0112874958503802
+fdiff2a_prob_from1_2_lci_3y
+-1.5
+-.0553749157766151 -.0524075934987304 -.0369279115798855 -.0112874958503802
 4 est
--5.5
--5.2
--3.7
 -1.1
-fdiff2a_prob_from1_2_uci_3y
--5.5
--.07035,-.06348,-.06141,-.02848
-4 est
--7
--6.300000000000001
--6.100000000000001
--2.8
-fdiff2b_prob_from1_2_3y
--7
--.0806939686891727,-.0747166570954809,-.0695635295739368,-.0325017348406868
-4 est
--8.1
--7.5
--7
--3.3
-fdiff2b_prob_from1_2_lci_3y
--8.1
--.0599908796972963,-.0532482661914282,-.0522272246761033,-.024457342908959
-4 est
--6
--5.300000000000001
+-3.7
 -5.2
+-5.5
+fdiff2a_prob_from1_2_uci_3y
+-1.1
+-.07035 -.06348 -.06141 -.02848
+4 est
+-2.8
+-6.100000000000001
+-6.300000000000001
+-7
+fdiff2b_prob_from1_2_3y
+-2.8
+-.0806939686891727 -.0747166570954809 -.0695635295739368 -.0325017348406868
+4 est
+-3.3
+-7
+-7.5
+-8.1
+fdiff2b_prob_from1_2_lci_3y
+-3.3
+-.0599908796972963 -.0532482661914282 -.0522272246761033 -.024457342908959
+4 est
 -2.4
-fdiff2b_prob_from1_2_uci_3y
+-5.2
+-5.300000000000001
 -6
+fdiff2b_prob_from1_2_uci_3y
+-2.4
 
 . 
 . matrix est_ds12 = (ests_fdiff2a_prob_from1_2_3y, ests_fdiff2a_prob_from1_2_lci_3y, ests_fdiff2a_prob_from1_2_uci_3y, ests_fdiff2b_prob_from1_2_3y,  ests_fdiff2b_prob_from1_2
@@ -2692,93 +2704,104 @@ fdiff2b_prob_from1_2_uci_3y
 <tr><td>            </td><td>    est_ds12</td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td></tr>
 <tr><td>            </td><td>         Out</td><td>     Out_lci</td><td>     Out_uci</td><td>         Res</td><td>     Res_lci</td><td>     Res_uci</td></tr>
 <tr><td colspan=7><hr></td></tr>
-<tr><td>3_mths      </td><td>        -6.4</td><td>        -7.3</td><td>        -5.5</td><td>          -7</td><td>        -8.1</td><td>          -6</td></tr>
-<tr><td>1_yr        </td><td>        -6.2</td><td>        -7.1</td><td>        -5.2</td><td>        -6.3</td><td>        -7.5</td><td>        -5.3</td></tr>
-<tr><td>3_yrs       </td><td>        -4.2</td><td>        -4.8</td><td>        -3.7</td><td>        -6.1</td><td>          -7</td><td>        -5.2</td></tr>
-<tr><td>5_yrs       </td><td>        -1.3</td><td>        -1.5</td><td>        -1.1</td><td>        -2.8</td><td>        -3.3</td><td>        -2.4</td></tr>
+<tr><td>3_mths      </td><td>        -1.3</td><td>        -1.5</td><td>        -1.1</td><td>        -2.8</td><td>        -3.3</td><td>        -2.4</td></tr>
+<tr><td>1_yr        </td><td>        -4.2</td><td>        -4.8</td><td>        -3.7</td><td>        -6.1</td><td>          -7</td><td>        -5.2</td></tr>
+<tr><td>3_yrs       </td><td>        -6.2</td><td>        -7.1</td><td>        -5.2</td><td>        -6.3</td><td>        -7.5</td><td>        -5.3</td></tr>
+<tr><td>5_yrs       </td><td>        -6.4</td><td>        -7.3</td><td>        -5.5</td><td>          -7</td><td>        -8.1</td><td>          -6</td></tr>
 <tr><td colspan=7><hr></td></tr>
 </table>
 <h4><a href="#difference-probabilities-second-transition-3y" id="difference-probabilities-second-transition-3y">Difference_Probabilities_Second_transition_3y</a></h4>
 <pre><code>. foreach var of varlist fdiff2a_prob_from2_3_3y fdiff2a_prob_from2_3_lci_3y fdiff2a_prob_from2_3_uci_3y fdiff2b_prob_from2_3_3y  fdiff2b_prob_from2_3_lci_3y fdiff2b_prob_from
 &gt; 2_3_uci_3y  {
   2.         scalar variable = &quot;`var'&quot;
-  3.         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.999, 5.02), local(mylevs) sep(,)
-  4. 
-.                                         tokenize &quot;`mylevs'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
-  5.                                         local done = 0
-  6.                                         local i = 0
-  7.                                         local count = 0
-  8.                                         while !`done' {  
-  9.                                            local ++i
- 10.                                                 local next = &quot;``i''&quot;
- 11.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
- 12.                                            // Include elements that are not the parsing character itself.
+  3.         // I had to reverse the order because there were negative numbers- 2022-07-01
+.                                         local mylevs_rev &quot;&quot;
+  4.                                         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.
+&gt; 999, 5.02), local(mylevs) sep(&quot; &quot;)
+  5.                                         local k : word count `mylevs'
+  6.                                         forvalues i = `k'(-1)1 {
+  7.                                                 // di `i'
+.                                         local variable: word `i' of `mylevs'
+  8.                                         local mylevs_rev &quot;`mylevs_rev', `variable'&quot;
+  9.                                         }
+ 10.                                         // di&quot;`mylevs_rev'&quot;
+.                                         local mylevs_rev : subinstr local mylevs_rev &quot;, &quot; &quot;&quot;
+ 11.                                         // di&quot;`mylevs_rev'&quot;
+.                                         tokenize &quot;`mylevs_rev'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
+ 12.                                         local done = 0
+ 13.                                         local i = 0
+ 14.                                         local count = 0
+ 15.                                         while !`done' {  
+ 16.                                            local ++i
+ 17.                                                 local next = &quot;``i''&quot;
+ 18.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
+ 19.                                            // Include elements that are not the parsing character itself.
 .                                                  if (&quot;`next'&quot; != &quot;,&quot;) &amp; (!`done') {
- 13.                                                    local ++count
- 14.                                                    scalar est_n`count' = &quot;`next'&quot;
- 15.                                                 }  
- 16.                                         }
- 17.                                         //
+ 20.                                                    local ++count
+ 21.                                                    scalar est_n`count' = &quot;`next'&quot;
+ 22.                                                 }  
+ 23.                                         }
+ 24.                                         //
 .                                         di &quot;`count' est&quot;
- 18.                                         forval i = 1/`count' {
- 19.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
- 20.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
+ 25.                                         forval i = 1/`count' {
+ 26.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
+ 27.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
 .                                           di &quot;`=scalar(est_n`i')'&quot;
- 21.                                         }       
- 22.  di &quot;`=scalar(variable)'&quot;
- 23.  di &quot;`=scalar(est_n1)'&quot;
- 24.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
- 25.  matrix colnames ests_`var' = `var'
- 26.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
- 27.  }
-.00114,.00438,.00546,.00732
+ 28.                                         }       
+ 29.  di &quot;`=scalar(variable)'&quot;
+ 30.  di &quot;`=scalar(est_n1)'&quot;
+ 31.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
+ 32.  matrix colnames ests_`var' = `var'
+ 33.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
+ 34.  }
+.00114 .00438 .00546 .00732
 4 est
-.1
-.4
-.5
 .7000000000000001
-fdiff2a_prob_from2_3_3y
-.1
--.0173896928517158,-.0160647306408296,-.0105078584785624,-.0058901519344253
-4 est
--1.7
--1.6
--1.1
--.6000000000000001
-fdiff2a_prob_from2_3_lci_3y
--1.7
-.0081700392515624,.0214250745812476,.0261455420286019,.0306967271320218
-4 est
-.8
-2.1
-2.6
-3.1
-fdiff2a_prob_from2_3_uci_3y
-.8
-.00116,.00381,.00506,.00584
-4 est
-.1
-.4
 .5
-.6000000000000001
-fdiff2b_prob_from2_3_3y
+.4
 .1
--.0177364097753206,-.0172233328208017,-.0100251009458073,-.0060465851339964
+fdiff2a_prob_from2_3_3y
+.7000000000000001
+-.0173896928517158 -.0160647306408296 -.0105078584785624 -.0058901519344253
 4 est
--1.8
--1.7
--1
 -.6000000000000001
-fdiff2b_prob_from2_3_lci_3y
--1.8
-.0083664646469521,.0217021615175662,.0248399622157917,.0278511517295829
+-1.1
+-1.6
+-1.7
+fdiff2a_prob_from2_3_lci_3y
+-.6000000000000001
+.0081700392515624 .0214250745812476 .0261455420286019 .0306967271320218
 4 est
+3.1
+2.6
+2.1
 .8
-2.2
-2.5
+fdiff2a_prob_from2_3_uci_3y
+3.1
+.00116 .00381 .00506 .00584
+4 est
+.6000000000000001
+.5
+.4
+.1
+fdiff2b_prob_from2_3_3y
+.6000000000000001
+-.0177364097753206 -.0172233328208017 -.0100251009458073 -.0060465851339964
+4 est
+-.6000000000000001
+-1
+-1.7
+-1.8
+fdiff2b_prob_from2_3_lci_3y
+-.6000000000000001
+.0083664646469521 .0217021615175662 .0248399622157917 .0278511517295829
+4 est
 2.8
-fdiff2b_prob_from2_3_uci_3y
+2.5
+2.2
 .8
+fdiff2b_prob_from2_3_uci_3y
+2.8
 
 . 
 . matrix est_ds22 = (ests_fdiff2a_prob_from2_3_3y, ests_fdiff2a_prob_from2_3_lci_3y, ests_fdiff2a_prob_from2_3_uci_3y, ests_fdiff2b_prob_from2_3_3y,  ests_fdiff2b_prob_from2_3
@@ -2797,93 +2820,104 @@ fdiff2b_prob_from2_3_uci_3y
 <tr><td>            </td><td>    est_ds22</td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td></tr>
 <tr><td>            </td><td>         Out</td><td>     Out_lci</td><td>     Out_uci</td><td>         Res</td><td>     Res_lci</td><td>     Res_uci</td></tr>
 <tr><td colspan=7><hr></td></tr>
-<tr><td>3_mths      </td><td>          .1</td><td>        -1.7</td><td>          .8</td><td>          .1</td><td>        -1.8</td><td>          .8</td></tr>
-<tr><td>1_yr        </td><td>          .4</td><td>        -1.6</td><td>         2.1</td><td>          .4</td><td>        -1.7</td><td>         2.2</td></tr>
-<tr><td>3_yrs       </td><td>          .5</td><td>        -1.1</td><td>         2.6</td><td>          .5</td><td>          -1</td><td>         2.5</td></tr>
-<tr><td>5_yrs       </td><td>          .7</td><td>         -.6</td><td>         3.1</td><td>          .6</td><td>         -.6</td><td>         2.8</td></tr>
+<tr><td>3_mths      </td><td>          .7</td><td>         -.6</td><td>         3.1</td><td>          .6</td><td>         -.6</td><td>         2.8</td></tr>
+<tr><td>1_yr        </td><td>          .5</td><td>        -1.1</td><td>         2.6</td><td>          .5</td><td>          -1</td><td>         2.5</td></tr>
+<tr><td>3_yrs       </td><td>          .4</td><td>        -1.6</td><td>         2.1</td><td>          .4</td><td>        -1.7</td><td>         2.2</td></tr>
+<tr><td>5_yrs       </td><td>          .1</td><td>        -1.7</td><td>          .8</td><td>          .1</td><td>        -1.8</td><td>          .8</td></tr>
 <tr><td colspan=7><hr></td></tr>
 </table>
 <h4><a href="#difference-probabilities-third-transition-3y" id="difference-probabilities-third-transition-3y">Difference_Probabilities_Third_transition_3y</a></h4>
 <pre><code>. foreach var of varlist fdiff2a_prob_from3_4_3y fdiff2a_prob_from3_4_lci_3y fdiff2a_prob_from3_4_uci_3y fdiff2b_prob_from3_4_3y  fdiff2b_prob_from3_4_lci_3y fdiff2b_prob_from
 &gt; 3_4_uci_3y  {
   2.         scalar variable = &quot;`var'&quot;
-  3.         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.999, 5.02), local(mylevs) sep(,)
-  4. 
-.                                         tokenize &quot;`mylevs'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
-  5.                                         local done = 0
-  6.                                         local i = 0
-  7.                                         local count = 0
-  8.                                         while !`done' {  
-  9.                                            local ++i
- 10.                                                 local next = &quot;``i''&quot;
- 11.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
- 12.                                            // Include elements that are not the parsing character itself.
+  3.         // I had to reverse the order because there were negative numbers- 2022-07-01
+.                                         local mylevs_rev &quot;&quot;
+  4.                                         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.
+&gt; 999, 5.02), local(mylevs) sep(&quot; &quot;)
+  5.                                         local k : word count `mylevs'
+  6.                                         forvalues i = `k'(-1)1 {
+  7.                                                 // di `i'
+.                                         local variable: word `i' of `mylevs'
+  8.                                         local mylevs_rev &quot;`mylevs_rev', `variable'&quot;
+  9.                                         }
+ 10.                                         // di&quot;`mylevs_rev'&quot;
+.                                         local mylevs_rev : subinstr local mylevs_rev &quot;, &quot; &quot;&quot;
+ 11.                                         // di&quot;`mylevs_rev'&quot;
+.                                         tokenize &quot;`mylevs_rev'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
+ 12.                                         local done = 0
+ 13.                                         local i = 0
+ 14.                                         local count = 0
+ 15.                                         while !`done' {  
+ 16.                                            local ++i
+ 17.                                                 local next = &quot;``i''&quot;
+ 18.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
+ 19.                                            // Include elements that are not the parsing character itself.
 .                                                  if (&quot;`next'&quot; != &quot;,&quot;) &amp; (!`done') {
- 13.                                                    local ++count
- 14.                                                    scalar est_n`count' = &quot;`next'&quot;
- 15.                                                 }  
- 16.                                         }
- 17.                                         //
+ 20.                                                    local ++count
+ 21.                                                    scalar est_n`count' = &quot;`next'&quot;
+ 22.                                                 }  
+ 23.                                         }
+ 24.                                         //
 .                                         di &quot;`count' est&quot;
- 18.                                         forval i = 1/`count' {
- 19.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
- 20.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
+ 25.                                         forval i = 1/`count' {
+ 26.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
+ 27.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
 .                                           di &quot;`=scalar(est_n`i')'&quot;
- 21.                                         }       
- 22.  di &quot;`=scalar(variable)'&quot;
- 23.  di &quot;`=scalar(est_n1)'&quot;
- 24.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
- 25.  matrix colnames ests_`var' = `var'
- 26.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
- 27.  }
--.00585,-.00301,-.00049,.00509
+ 28.                                         }       
+ 29.  di &quot;`=scalar(variable)'&quot;
+ 30.  di &quot;`=scalar(est_n1)'&quot;
+ 31.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
+ 32.  matrix colnames ests_`var' = `var'
+ 33.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
+ 34.  }
+-.00585 -.00301 -.00049 .00509
 4 est
--.6000000000000001
--.3
-0
 .5
-fdiff2a_prob_from3_4_3y
--.6000000000000001
--.0400987509033275,-.0399482609402519,-.0350280931279663,-.0150603631869712
-4 est
--4
--4
--3.5
--1.5
-fdiff2a_prob_from3_4_lci_3y
--4
-.0090412374300551,.0233380577958447,.0389697868148916,.0502579721274129
-4 est
-.9
-2.3
-3.9
-5
-fdiff2a_prob_from3_4_uci_3y
-.9
--.00486,-.00341,.00138,.00891
-4 est
--.5
+0
 -.3
-.1
+-.6000000000000001
+fdiff2a_prob_from3_4_3y
+.5
+-.0400987509033275 -.0399482609402519 -.0350280931279663 -.0150603631869712
+4 est
+-1.5
+-3.5
+-4
+-4
+fdiff2a_prob_from3_4_lci_3y
+-1.5
+.0090412374300551 .0233380577958447 .0389697868148916 .0502579721274129
+4 est
+5
+3.9
+2.3
 .9
-fdiff2b_prob_from3_4_3y
+fdiff2a_prob_from3_4_uci_3y
+5
+-.00486 -.00341 .00138 .00891
+4 est
+.9
+.1
+-.3
 -.5
--.040097104825206,-.0392217768550738,-.0370277531308228,-.0184477056359632
+fdiff2b_prob_from3_4_3y
+.9
+-.040097104825206 -.0392217768550738 -.0370277531308228 -.0184477056359632
 4 est
--4
--3.9
--3.7
 -1.8
-fdiff2b_prob_from3_4_lci_3y
+-3.7
+-3.9
 -4
-.0116292480363519,.0273178144237359,.0428523571930384,.0570005259387454
+fdiff2b_prob_from3_4_lci_3y
+-1.8
+.0116292480363519 .0273178144237359 .0428523571930384 .0570005259387454
 4 est
-1.2
-2.7
-4.3
 5.7
-fdiff2b_prob_from3_4_uci_3y
+4.3
+2.7
 1.2
+fdiff2b_prob_from3_4_uci_3y
+5.7
 
 . 
 . matrix est_ds32 = (ests_fdiff2a_prob_from3_4_3y, ests_fdiff2a_prob_from3_4_lci_3y, ests_fdiff2a_prob_from3_4_uci_3y, ests_fdiff2b_prob_from3_4_3y,  ests_fdiff2b_prob_from3_4
@@ -2902,93 +2936,104 @@ fdiff2b_prob_from3_4_uci_3y
 <tr><td>            </td><td>    est_ds32</td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td></tr>
 <tr><td>            </td><td>         Out</td><td>     Out_lci</td><td>     Out_uci</td><td>         Res</td><td>     Res_lci</td><td>     Res_uci</td></tr>
 <tr><td colspan=7><hr></td></tr>
-<tr><td>3_mths      </td><td>         -.6</td><td>          -4</td><td>          .9</td><td>         -.5</td><td>          -4</td><td>         1.2</td></tr>
-<tr><td>1_yr        </td><td>         -.3</td><td>          -4</td><td>         2.3</td><td>         -.3</td><td>        -3.9</td><td>         2.7</td></tr>
-<tr><td>3_yrs       </td><td>           0</td><td>        -3.5</td><td>         3.9</td><td>          .1</td><td>        -3.7</td><td>         4.3</td></tr>
-<tr><td>5_yrs       </td><td>          .5</td><td>        -1.5</td><td>           5</td><td>          .9</td><td>        -1.8</td><td>         5.7</td></tr>
+<tr><td>3_mths      </td><td>          .5</td><td>        -1.5</td><td>           5</td><td>          .9</td><td>        -1.8</td><td>         5.7</td></tr>
+<tr><td>1_yr        </td><td>           0</td><td>        -3.5</td><td>         3.9</td><td>          .1</td><td>        -3.7</td><td>         4.3</td></tr>
+<tr><td>3_yrs       </td><td>         -.3</td><td>          -4</td><td>         2.3</td><td>         -.3</td><td>        -3.9</td><td>         2.7</td></tr>
+<tr><td>5_yrs       </td><td>         -.6</td><td>          -4</td><td>          .9</td><td>         -.5</td><td>          -4</td><td>         1.2</td></tr>
 <tr><td colspan=7><hr></td></tr>
 </table>
 <h4><a href="#difference-probabilities-fourth-transition-3y" id="difference-probabilities-fourth-transition-3y">Difference_Probabilities_Fourth_transition_3y</a></h4>
 <pre><code>. foreach var of varlist fdiff2a_prob_from4_5_3y fdiff2a_prob_from4_5_lci_3y fdiff2a_prob_from4_5_uci_3y fdiff2b_prob_from4_5_3y  fdiff2b_prob_from4_5_lci_3y fdiff2b_prob_from
 &gt; 4_5_uci_3y  {
   2.         scalar variable = &quot;`var'&quot;
-  3.         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.999, 5.02), local(mylevs) sep(,)
-  4. 
-.                                         tokenize &quot;`mylevs'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
-  5.                                         local done = 0
-  6.                                         local i = 0
-  7.                                         local count = 0
-  8.                                         while !`done' {  
-  9.                                            local ++i
- 10.                                                 local next = &quot;``i''&quot;
- 11.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
- 12.                                            // Include elements that are not the parsing character itself.
+  3.         // I had to reverse the order because there were negative numbers- 2022-07-01
+.                                         local mylevs_rev &quot;&quot;
+  4.                                         levelsof `var' if inrange(timevar01, .32, .34)|inrange(timevar01, .999, 1.02)|inrange(timevar01, 2.99, 3.02)|inrange(timevar01, 4.
+&gt; 999, 5.02), local(mylevs) sep(&quot; &quot;)
+  5.                                         local k : word count `mylevs'
+  6.                                         forvalues i = `k'(-1)1 {
+  7.                                                 // di `i'
+.                                         local variable: word `i' of `mylevs'
+  8.                                         local mylevs_rev &quot;`mylevs_rev', `variable'&quot;
+  9.                                         }
+ 10.                                         // di&quot;`mylevs_rev'&quot;
+.                                         local mylevs_rev : subinstr local mylevs_rev &quot;, &quot; &quot;&quot;
+ 11.                                         // di&quot;`mylevs_rev'&quot;
+.                                         tokenize &quot;`mylevs_rev'&quot;, parse(&quot; ,&quot;) // `1', `2', ... will hold the elements of the big macro  &quot;`local(mylevs)'&quot;
+ 12.                                         local done = 0
+ 13.                                         local i = 0
+ 14.                                         local count = 0
+ 15.                                         while !`done' {  
+ 16.                                            local ++i
+ 17.                                                 local next = &quot;``i''&quot;
+ 18.                                                 local done = (&quot;`next'&quot; == &quot;&quot;)
+ 19.                                            // Include elements that are not the parsing character itself.
 .                                                  if (&quot;`next'&quot; != &quot;,&quot;) &amp; (!`done') {
- 13.                                                    local ++count
- 14.                                                    scalar est_n`count' = &quot;`next'&quot;
- 15.                                                 }  
- 16.                                         }
- 17.                                         //
+ 20.                                                    local ++count
+ 21.                                                    scalar est_n`count' = &quot;`next'&quot;
+ 22.                                                 }  
+ 23.                                         }
+ 24.                                         //
 .                                         di &quot;`count' est&quot;
- 18.                                         forval i = 1/`count' {
- 19.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
- 20.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
+ 25.                                         forval i = 1/`count' {
+ 26.                                           scalar est_n`i' = round(round(`=scalar(est_n`i')',.001)*100,.1)       
+ 27.                                           *scalar est_n`i' = &quot;`=scalar(est_n`i')'&quot;
 .                                           di &quot;`=scalar(est_n`i')'&quot;
- 21.                                         }       
- 22.  di &quot;`=scalar(variable)'&quot;
- 23.  di &quot;`=scalar(est_n1)'&quot;
- 24.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
- 25.  matrix colnames ests_`var' = `var'
- 26.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
- 27.  }
--.03418,-.0331399999999999,-.02408,-.00996
+ 28.                                         }       
+ 29.  di &quot;`=scalar(variable)'&quot;
+ 30.  di &quot;`=scalar(est_n1)'&quot;
+ 31.  cap noi matrix ests_`var' = (`=scalar(est_n1)'\  `=scalar(est_n2)'\ `=scalar(est_n3)'\ `=scalar(est_n4)')
+ 32.  matrix colnames ests_`var' = `var'
+ 33.  matrix rownames ests_`var' = 3_mths 1_yr 3_yrs 5_yrs
+ 34.  }
+-.03418 -.0331399999999999 -.02408 -.00996
 4 est
--3.4
--3.3
+-1
 -2.4
--1
+-3.3
+-3.4
 fdiff2a_prob_from4_5_3y
--3.4
--.1319827544660884,-.1281790384262156,-.0861816910168697,-.0355330382545499
-4 est
--13.2
--12.8
--8.6
--3.6
-fdiff2a_prob_from4_5_lci_3y
--13.2
-.0156260734752892,.0382080914105226,.0604276770586179,.0663552944244539
-4 est
-1.6
-3.8
-6
-6.600000000000001
-fdiff2a_prob_from4_5_uci_3y
-1.6
--.03429,-.0324,-.02471,-.01041
-4 est
--3.4
--3.2
--2.5
 -1
-fdiff2b_prob_from4_5_3y
+-.1319827544660884 -.1281790384262156 -.0861816910168697 -.0355330382545499
+4 est
+-3.6
+-8.6
+-12.8
+-13.2
+fdiff2a_prob_from4_5_lci_3y
+-3.6
+.0156260734752892 .0382080914105226 .0604276770586179 .0663552944244539
+4 est
+6.600000000000001
+6
+3.8
+1.6
+fdiff2a_prob_from4_5_uci_3y
+6.600000000000001
+-.03429 -.0324 -.02471 -.01041
+4 est
+-1
+-2.5
+-3.2
 -3.4
--.1313347534529513,-.1294580033983222,-.0890782848922146,-.0375278121639397
+fdiff2b_prob_from4_5_3y
+-1
+-.1313347534529513 -.1294580033983222 -.0890782848922146 -.0375278121639397
 4 est
--13.1
--12.9
--8.9
 -3.8
-fdiff2b_prob_from4_5_lci_3y
+-8.9
+-12.9
 -13.1
-.0167231329970973,.0398638249360114,.061503950261132,.0671737890629547
+fdiff2b_prob_from4_5_lci_3y
+-3.8
+.0167231329970973 .0398638249360114 .061503950261132 .0671737890629547
 4 est
-1.7
-4
-6.2
 6.7
-fdiff2b_prob_from4_5_uci_3y
+6.2
+4
 1.7
+fdiff2b_prob_from4_5_uci_3y
+6.7
 
 . 
 . matrix est_ds42 = (ests_fdiff2a_prob_from4_5_3y, ests_fdiff2a_prob_from4_5_lci_3y, ests_fdiff2a_prob_from4_5_uci_3y, ests_fdiff2b_prob_from4_5_3y,  ests_fdiff2b_prob_from4_5
@@ -3007,10 +3052,10 @@ fdiff2b_prob_from4_5_uci_3y
 <tr><td>            </td><td>    est_ds42</td><td>            </td><td>            </td><td>            </td><td>            </td><td>            </td></tr>
 <tr><td>            </td><td>         Out</td><td>     Out_lci</td><td>     Out_uci</td><td>         Res</td><td>     Res_lci</td><td>     Res_uci</td></tr>
 <tr><td colspan=7><hr></td></tr>
-<tr><td>3_mths      </td><td>        -3.4</td><td>       -13.2</td><td>         1.6</td><td>        -3.4</td><td>       -13.1</td><td>         1.7</td></tr>
-<tr><td>1_yr        </td><td>        -3.3</td><td>       -12.8</td><td>         3.8</td><td>        -3.2</td><td>       -12.9</td><td>           4</td></tr>
-<tr><td>3_yrs       </td><td>        -2.4</td><td>        -8.6</td><td>           6</td><td>        -2.5</td><td>        -8.9</td><td>         6.2</td></tr>
-<tr><td>5_yrs       </td><td>          -1</td><td>        -3.6</td><td>         6.6</td><td>          -1</td><td>        -3.8</td><td>         6.7</td></tr>
+<tr><td>3_mths      </td><td>          -1</td><td>        -3.6</td><td>         6.6</td><td>          -1</td><td>        -3.8</td><td>         6.7</td></tr>
+<tr><td>1_yr        </td><td>        -2.4</td><td>        -8.6</td><td>           6</td><td>        -2.5</td><td>        -8.9</td><td>         6.2</td></tr>
+<tr><td>3_yrs       </td><td>        -3.3</td><td>       -12.8</td><td>         3.8</td><td>        -3.2</td><td>       -12.9</td><td>           4</td></tr>
+<tr><td>5_yrs       </td><td>        -3.4</td><td>       -13.2</td><td>         1.6</td><td>        -3.4</td><td>       -13.1</td><td>         1.7</td></tr>
 <tr><td colspan=7><hr></td></tr>
 </table>
 <h2><a href="#">=============================================================================</a></h2>
@@ -3092,4 +3137,4 @@ file trans_prob_los_22_apr.xlsx saved
 . 
 . 
 </code></pre>
-<p>Saved at= 16:00:13  1 Jul 2022</p>
+<p>Saved at= 19:16:03  1 Jul 2022</p>
