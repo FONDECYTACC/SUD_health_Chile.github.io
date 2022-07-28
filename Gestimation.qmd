@@ -585,23 +585,17 @@ b_iter=5e0 #primero lo hacemos simple para ver cu√°nto da. Luego corremos el que
 subs_gee=1:5e5
 
 #https://www.sychiou.com/aftgee/articles/aftgee.html
-system.time(fit1 <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1 + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "ar1", B =b_iter))
-system.time(fit2 <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1 + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "ar2", B =b_iter))
+# system.time(fit1 <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1 + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "ar1", B =b_iter))
+# system.time(fit2 <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1 + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "ar2", B =b_iter)) #no converge
 system.time(fit3 <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1 + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "ind", B =b_iter))
-system.time(fit4 <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1 + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "unstructured", B =b_iter))
+# system.time(fit4 <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1 + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "unstructured", B =b_iter))
 system.time(fit5 <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1 + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "ex", B =b_iter))
 
-system.time(fit1b <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1*factor(strata) + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "ar1", B =b_iter))
-system.time(fit2b <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1*factor(strata) + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "ar2", B =b_iter))
-system.time(fit3b <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1*factor(strata) + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "ind", B =b_iter))
-system.time(fit4b <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1*factor(strata) + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "unstructured", B =b_iter))
-system.time(fit5b <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1*factor(strata) + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "ex", B =b_iter))
+invisible("mejor no probar esta opci√≥n porque al final estoy dando cuenta de la estructura de correlaci√≥n")
 
 #     user   system  elapsed 
 # 38684.36    34.92 38715.95 
 # 38715.95 /(60*60) = 10 hrs por cada uno, con 100 B. Debiese ser 5x= 2 d√≠as por cada uno
-#en mi computador toma 14027.92 (4 hrs),  pero en este,  33504.06 
-# 4hrs. por 5 veces el B anterior= 20. 200 hrs.= 8 d√≠as toma hacerlo
 
 #"independence", "exchangeable", "ar", "unstructured", "fixed".
 #weights: an optional vector of observation weights.This is still under development
@@ -630,26 +624,72 @@ system.time(fit5b <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1*factor(strat
 #The GEE approach does give you coefficients with a marginal / population-averaged interpretation
 #GEE that give you valid results under the less realistic missing completely at random assumption
 
-#GEE method is based on the quasilikelihood theory and no assumption is made about the distribution of response observationss. Therefore, Akaike‚Äôs information criterion, a widely used method for model selection in GLM, is not applicable to GEE directly. However, Pan (Biometrics 2001; 57:120-125) proposed a model-selection method for GEE and termed it quasilikelihood under the independence model criterion. This criterion can also be used to select the best-working correlation structure. 
+#GEE method is based on the quasilikelihood theory and no assumption is made about the distribution of response observationss. Therefore, Akaike‚Äôs information criterion, a widely used method for model selection in GLM, is not applicable to GEE directly. However, Pan (Biometrics 2001; 57:120-125) proposed a model-selection method for GEE and termed it quasilikelihood under the independence model criterion. This criterion can also be used to select the best-working correlation structure.
+```
+
+No es posible y no tiene sentido incorporar la interacciÛn por transiciÛn.
+
+```{r}
+cis <- function(object, parm, level = 0.95, ...) {
+    cc <- coef(summary(object))
+    mult <- qnorm((1+level)/2)
+    citab <- with(as.data.frame(cc),
+                  cbind(lwr=Estimate-mult*StdErr,
+                        upr=Estimate+mult*StdErr))
+    rownames(citab) <- rownames(cc)
+    citab[parm,]
+}
+#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2806889/
+rbind(
+    cbind(mod="ar1_1",OR=round(1/exp(fit1$coefficients[2,2]),2), 
+          lwr=round(1/exp(cis(fit1))[2,2],2), upr=round(1/exp(cis(fit1))[2,1],2)),
+    cbind(mod="ind_3",OR=round(1/exp(fit3$coefficients[2,2]),2), 
+          lwr=round(1/exp(cis(fit3))[2,2],2), upr=round(1/exp(cis(fit3))[2,1],2)),
+    cbind(mod="uns_4",OR=round(1/exp(fit4$coefficients[2,2]),2), 
+          lwr=round(1/exp(cis(fit4))[2,2],2), upr=round(1/exp(cis(fit4))[2,1],2)),
+    cbind(mod="ex_5",OR=round(1/exp(fit5$coefficients[2,2]),2), 
+          lwr=round(1/exp(cis(fit5))[2,2],2), upr=round(1/exp(cis(fit5))[2,1],2))) %>% 
+    data.frame() %>% 
+  dplyr::mutate_if(is.numeric, funs(round(.,2))) %>% 
+  knitr::kable("markdown", caption="Efecto del tratamiento residencial a la base") 
+
+rbind(
+    cbind(mod="ar1_1",OR=round(1/exp(fit1$coefficients[3,2]),2), 
+          lwr=round(1/exp(cis(fit1))[3,2],2), upr=round(1/exp(cis(fit1))[3,1],2)),
+    cbind(mod="ind_3",OR=round(1/exp(fit3$coefficients[3,2]),2), 
+          lwr=round(1/exp(cis(fit3))[3,2],2), upr=round(1/exp(cis(fit3))[3,1],2)),
+    cbind(mod="uns_4",OR=round(1/exp(fit4$coefficients[3,2]),2), 
+          lwr=round(1/exp(cis(fit4))[3,2],2), upr=round(1/exp(cis(fit4))[3,1],2)),
+    cbind(mod="ex_5",OR=round(1/exp(fit5$coefficients[3,2]),2), 
+          lwr=round(1/exp(cis(fit5))[3,2],2), upr=round(1/exp(cis(fit5))[3,1],2))) %>% 
+    data.frame() %>% 
+  dplyr::mutate_if(is.numeric, funs(round(.,2))) %>% 
+  knitr::kable("markdown", caption="Efecto de completar el tratamiento (din·mico)") 
 
 ```
 
-En el ejemplo, se ve que son readmitidos mayor `r 1/exp(-1.128)`
-
-exp(-0.4708723) efecto tratamiento
-
-exp(0.4032758) efecto treatment discharge
-
-DEBIESE COMPARAR AR1 AR2 Y AR3 PARA VER CUAL TIENE MEJOQ QIC
-
-DE AHI, HACER UN MODELO CON LA INTERACCI√ìN ENTRE RESIDENTIAL Y CADA UNO A LA BASE
-
-Para comparar los modelos
-
 ```{r}
-QIC(fit3)
-QIC(fit2)
-QIC(fit1)
+#QIC is used to select a correlation structure. The QICu is used to compare models that have the same working correlation matrix and the same quasi-likelihood form but different mean specifications. CIC has been suggested as a more robust alternative to QIC when the model for the mean may not fit the data very well and when models with different correlation structures are compared.
+
+# Row	       QIC	  QICu	   Quasi.Lik	CIC	  params	QICC
+# ind_3	64063.84	64063.13	-32028.56	3.355183	3	64063.84
+# uns_4	74651.03	74651.13	-37322.56	2.950621	3	74651.03
+# ex_5	76923.08	76923.72	-38458.86	2.681463	3	76923.09
+# ar1_1	79490.29	79489.56	-39741.78	3.367671	3	79490.29
+
+#https://stats.stackexchange.com/questions/83577/gee-choosing-proper-working-correlation-structure
+# ve la estructura de correlaciÛn de los errores, por tanto no afecta la estimaciÛn si no los errores
+#el criterio debiese ser basado en cÛmo uno cree que se generan los datos, m·s que cÛmo se ven
+# en ese sentido, debiese elegir AR porque esperamos que las medidas m·s lejanas sean menos correlacionadas que las m·s recientes. 
+
+rbind(ex_5=QIC(fit5),
+      uns_4=QIC(fit4),
+      ind_3=QIC(fit3),
+      ar1_1=QIC(fit1)) %>% 
+    data.frame() %>% 
+  tibble::rownames_to_column(var = "Row") %>% 
+  dplyr::arrange(QIC)%>%
+  knitr::kable("html") 
 ```
 
 ## Ejemplo con geecure

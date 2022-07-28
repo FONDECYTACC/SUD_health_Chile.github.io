@@ -157,6 +157,9 @@ library(DiagrammeRsvg)#- necesito y no lo tiene
 library(EValue)#- necesito y no lo tiene
 library(coxphw)#- necesito y no lo tiene
 library(data.tree)
+
+library(ipw)
+library(aftgee)
 #pacman::p_load(parcats, timereg, rsvg, DiagrammeRsvg, EValue, coxphw, install=T)
 #install.packages("EValue", dependencies=F) - I ended install it w/o dependencies
 
@@ -603,6 +606,147 @@ coef_timecox_definitive %>%
        col.names = c("Variables","Coef.", "SE", "Robust SE", "z", "Sig.", "95%CI Lower", "95%CI Upper", "HR", "95%CI Lower", "95%CI Upper"), align =c('l',rep('c', 101)), escape=T) %>%
   kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
   kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+<br>
+
+### AFTGEE
+
+
+```{r aftgee1,eval=T, echo=T, paged.print=TRUE, error=T}
+wcomp <- ipwtm(
+  exposure = tipo_de_plan_res_1,
+  family = "binomial",
+  link = "logit",
+  # Invariantes en el tiempo
+  numerator = ~ 1,
+  # Todos los confusores
+  denominator = ~ factor(TD),
+  id = id,
+  timevar=trans,
+  type="first",
+  data = subset(ms_d_match_surv_res_tm,id %in% 1:5e5))
+wincomp <- ipwtm(
+  exposure = tipo_de_plan_res_1,
+  family = "binomial",
+  link = "logit",
+  # Invariantes en el tiempo
+  numerator = ~ 1,
+  # Todos los confusores
+  denominator = ~ factor(TD),
+  id = id,
+  timevar=trans,
+  type="first",
+  data = subset(ms_d_match_surv_res_tm,id %in% 1:5e2))
+```
+
+```{r aftgee2,eval=T, echo=T, paged.print=TRUE, error=T}
+b_iter=5e0 #primero lo hacemos simple para ver cuÃ¡nto da. Luego corremos el que tenga menor QIC
+subs_gee=1:5e5
+
+#https://www.sychiou.com/aftgee/articles/aftgee.html
+ system.time(fit1 <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1 + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "ar1", B =b_iter))
+# system.time(fit2 <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1 + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "ar2", B =b_iter)) #no converge
+system.time(fit3 <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1 + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "ind", B =b_iter))
+# system.time(fit4 <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1 + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "unstructured", B =b_iter))
+system.time(fit5 <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1 + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "ex", B =b_iter))
+
+invisible("mejor no probar esta opciÃ³n porque al final estoy dando cuenta de la estructura de correlaciÃ³n")
+
+#     user   system  elapsed 
+# 38684.36    34.92 38715.95 
+# 38715.95 /(60*60) = 10 hrs por cada uno, con 100 B. Debiese ser 5x= 2 dÃ­as por cada uno
+
+#"independence", "exchangeable", "ar", "unstructured", "fixed".
+#weights: an optional vector of observation weights.This is still under development
+
+#si hay que personalizar algo como las iteraciones: https://www.sychiou.com/aftgee/reference/aftgee.control.html
+#within cluster dependency is accounted for with working covariance structures
+#Chiou, S. H., Kang, S., & Yan, J. (2014). Fitting Accelerated Failure Time Models in Routine Survival Analysis with R Package aftgee. Journal of Statistical Software, 61(11), 1â23. https://doi.org/10.18637/jss.v061.i11
+# sounds good for parameter estimation, maybe not for estimating cumulative incidence
+#https://discourse.datamethods.org/t/competing-risk-for-aft-models-in-r/2697
+#AFT model may provide a better fit when proportional hazard assumption does not hold
+
+#https://cdn1.sph.harvard.edu/wp-content/uploads/sites/565/2021/05/BST223_2021_Chapter-5.pdf
+#semi -parametric AFT models
+#https://cdn1.sph.harvard.edu/wp-content/uploads/sites/565/2021/05/BST223_2021_Chapter-5.pdf
+#logT= alfa^tX+e
+#mÃ¡s robusto a la omisiÃ³n de covariables
+#ejemplo bueno para obtener grÃ¡ficos y cosas a partir de aftgee:
+#https://www.slideshare.net/IvnRodrguez20/rodriguezullmayerrojorusisunrreutechnicalreport
+
+
+#Liya, F., Yang, Z., Zhang, J., Long, A., & Zhou, Y. (2019). Generalized estimating equations for analyzing multivariate survival data. Communications in Statistics - Simulation and Computation, 1â9. doi:10.1080/03610918.2019.1619763 
+#- corre el riesgo de que se pierda eficiencia en la estimaciÃ³n del parÃ¡metro si la estructura de correlaciones estÃ¡ mal especificada. Por eso ellos prpoponen una estructura de correlaciÃ³n general que no necesita asumir una estructura de correlaciÃ³n.
+#with 500 bootstrap size
+
+# GEE gives us population-average effects 
+#The GEE approach does give you coefficients with a marginal / population-averaged interpretation
+#GEE that give you valid results under the less realistic missing completely at random assumption
+
+#GEE method is based on the quasilikelihood theory and no assumption is made about the distribution of response observationss. Therefore, Akaikeâs information criterion, a widely used method for model selection in GLM, is not applicable to GEE directly. However, Pan (Biometrics 2001; 57:120-125) proposed a model-selection method for GEE and termed it quasilikelihood under the independence model criterion. This criterion can also be used to select the best-working correlation structure.
+```
+
+```{r aftgee3,eval=T, echo=T, paged.print=TRUE, error=T}
+cis <- function(object, parm, level = 0.95, ...) {
+    cc <- coef(summary(object))
+    mult <- qnorm((1+level)/2)
+    citab <- with(as.data.frame(cc),
+                  cbind(lwr=Estimate-mult*StdErr,
+                        upr=Estimate+mult*StdErr))
+    rownames(citab) <- rownames(cc)
+    citab[parm,]
+}
+#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2806889/
+rbind(
+    cbind(mod="ar1_1",OR=round(1/exp(fit1$coefficients[2,2]),2), 
+          lwr=round(1/exp(cis(fit1))[2,2],2), upr=round(1/exp(cis(fit1))[2,1],2)),
+    cbind(mod="ind_3",OR=round(1/exp(fit3$coefficients[2,2]),2), 
+          lwr=round(1/exp(cis(fit3))[2,2],2), upr=round(1/exp(cis(fit3))[2,1],2)),
+    #cbind(mod="uns_4",OR=round(1/exp(fit4$coefficients[2,2]),2), 
+    #      lwr=round(1/exp(cis(fit4))[2,2],2), upr=round(1/exp(cis(fit4))[2,1],2)),
+    cbind(mod="ex_5",OR=round(1/exp(fit5$coefficients[2,2]),2), 
+          lwr=round(1/exp(cis(fit5))[2,2],2), upr=round(1/exp(cis(fit5))[2,1],2))) %>% 
+    data.frame() %>% 
+  dplyr::mutate_if(is.numeric, funs(round(.,2))) %>% 
+  knitr::kable("markdown", caption="Effect of baseline residential treatment") 
+
+rbind(
+    cbind(mod="ar1_1",OR=round(1/exp(fit1$coefficients[3,2]),2), 
+          lwr=round(1/exp(cis(fit1))[3,2],2), upr=round(1/exp(cis(fit1))[3,1],2)),
+    cbind(mod="ind_3",OR=round(1/exp(fit3$coefficients[3,2]),2), 
+          lwr=round(1/exp(cis(fit3))[3,2],2), upr=round(1/exp(cis(fit3))[3,1],2)),
+    #cbind(mod="uns_4",OR=round(1/exp(fit4$coefficients[3,2]),2), 
+    #      lwr=round(1/exp(cis(fit4))[3,2],2), upr=round(1/exp(cis(fit4))[3,1],2)),
+    cbind(mod="ex_5",OR=round(1/exp(fit5$coefficients[3,2]),2), 
+          lwr=round(1/exp(cis(fit5))[3,2],2), upr=round(1/exp(cis(fit5))[3,1],2))) %>% 
+    data.frame() %>% 
+  dplyr::mutate_if(is.numeric, funs(round(.,2))) %>% 
+  knitr::kable("markdown", caption="Effect of completing treatment (dynamic)") 
+```
+
+```{r aftgee3,eval=T, echo=T, paged.print=TRUE, error=T}
+#QIC is used to select a correlation structure. The QICu is used to compare models that have the same working correlation matrix and the same quasi-likelihood form but different mean specifications. CIC has been suggested as a more robust alternative to QIC when the model for the mean may not fit the data very well and when models with different correlation structures are compared.
+
+# Row	       QIC	  QICu	   Quasi.Lik	CIC	  params	QICC
+# ind_3	64063.84	64063.13	-32028.56	3.355183	3	64063.84
+# uns_4	74651.03	74651.13	-37322.56	2.950621	3	74651.03
+# ex_5	76923.08	76923.72	-38458.86	2.681463	3	76923.09
+# ar1_1	79490.29	79489.56	-39741.78	3.367671	3	79490.29
+
+#https://stats.stackexchange.com/questions/83577/gee-choosing-proper-working-correlation-structure
+# ve la estructura de correlación de los errores, por tanto no afecta la estimación si no los errores
+#el criterio debiese ser basado en cómo uno cree que se generan los datos, más que cómo se ven
+# en ese sentido, debiese elegir AR porque esperamos que las medidas más lejanas sean menos correlacionadas que las más recientes. 
+
+rbind(ex_5=QIC(fit5),
+      #uns_4=QIC(fit4),
+      ind_3=QIC(fit3),
+      ar1_1=QIC(fit1)) %>% 
+    data.frame() %>% 
+  tibble::rownames_to_column(var = "Row") %>% 
+  dplyr::arrange(QIC)%>%
+  knitr::kable("markdown", caption= "QICs of selected models") 
 ```
 
 <br>
