@@ -614,6 +614,7 @@ coef_timecox_definitive %>%
 
 
 ```{r aftgee1,eval=T, echo=T, paged.print=TRUE, error=T}
+subs_gee=1:5e5
 wcomp <- ipwtm(
   exposure = tipo_de_plan_res_1,
   family = "binomial",
@@ -625,24 +626,11 @@ wcomp <- ipwtm(
   id = id,
   timevar=trans,
   type="first",
-  data = subset(ms_d_match_surv_res_tm,id %in% 1:5e5))
-wincomp <- ipwtm(
-  exposure = tipo_de_plan_res_1,
-  family = "binomial",
-  link = "logit",
-  # Invariantes en el tiempo
-  numerator = ~ 1,
-  # Todos los confusores
-  denominator = ~ factor(TD),
-  id = id,
-  timevar=trans,
-  type="first",
-  data = subset(ms_d_match_surv_res_tm,id %in% 1:5e2))
+  data = subset(ms_d_match_surv_res_tm,id %in% subs_gee))
 ```
 
 ```{r aftgee2,eval=T, echo=T, paged.print=TRUE, error=T}
-b_iter=5e0 #primero lo hacemos simple para ver cuÃ¡nto da. Luego corremos el que tenga menor QIC
-subs_gee=1:5e5
+b_iter=5e2 #primero lo hacemos simple para ver cuÃ¡nto da. Luego corremos el que tenga menor QIC
 
 #https://www.sychiou.com/aftgee/articles/aftgee.html
  system.time(fit1 <- aftgee(Surv(time, status) ~ tipo_de_plan_res_1 + TD, data = subset(ms_d_match_surv_res_tm,id %in% subs_gee), id = id, weights=wcomp$ipw.weights, corstr = "ar1", B =b_iter))
@@ -725,7 +713,7 @@ rbind(
   knitr::kable("markdown", caption="Effect of completing treatment (dynamic)") 
 ```
 
-```{r aftgee3,eval=T, echo=T, paged.print=TRUE, error=T}
+```{r aftgee4,eval=T, echo=T, paged.print=TRUE, error=T}
 #QIC is used to select a correlation structure. The QICu is used to compare models that have the same working correlation matrix and the same quasi-likelihood form but different mean specifications. CIC has been suggested as a more robust alternative to QIC when the model for the mean may not fit the data very well and when models with different correlation structures are compared.
 
 # Row	       QIC	  QICu	   Quasi.Lik	CIC	  params	QICC
