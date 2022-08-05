@@ -266,67 +266,67 @@ eval_fork <- function(..., timeout=60){
 
 ### Extended Cox
 
-#### Weighted
+#### Weighted (GT)
 
-```{r 0, include=T,warning=F, message=F, results="hide"}
-coxphw_pwp_int<-
+```{r 0_gt, include=T,warning=F, message=F, results="hide"}
+coxphw_pwp_int_gt<-
   coxphw(Surv(time,status) ~ tipo_de_plan_res_1*strata(trans)+  
            TD_1+ TD_2+ TD_3+ TD_4+ cluster(id) + strata(trans), data = ms_d_match_surv,template="AHR",  robust=T)
-coxphw_pwp_int2<-
+coxphw_pwp_int2_gt<-
   coxphw(Surv(time,status) ~ tipo_de_plan_res_1+ tipo_de_plan_res_1:strata(trans)+  
            TD_1+ TD_2+ TD_3+ TD_4+ cluster(id), data = ms_d_match_surv,template="AHR",  robust=T)
 
-coxph_pwp_int<-
+coxph_pwp_int_gt<-
   coxph(Surv(time,status) ~ tipo_de_plan_res_1*strata(trans)+  
            TD_1+ TD_2+ TD_3+ TD_4+ cluster(id) + strata(trans), data = ms_d_match_surv)
-coxph_pwp_int2<-
+coxph_pwp_int2_gt<-
   coxph(Surv(time,status) ~ tipo_de_plan_res_1+ tipo_de_plan_res_1:strata(trans)+  
            TD_1+ TD_2+ TD_3+ TD_4+ cluster(id) + strata(trans), data = ms_d_match_surv)
 
-A01<-rbind("M - L" = c(-1, 1, 0),
+A01_gt<-rbind("M - L" = c(-1, 1, 0),
                  "H - L" = c(-1, 0, 1))
-A01 = matrix(c(1,1,1,0,0,1), ncol=3)
-b01 <- matrix(coxphw_pwp_int2$coeff[c(1,7:8)], ncol=1)
-V01 <- vcov(coxphw_pwp_int2)[c(1,7:8),c(1,7:8)]
+A01_gt = matrix(c(1,1,1,0,0,1), ncol=3)
+b01_gt <- matrix(coxphw_pwp_int2_gt$coeff[c(1,7:8)], ncol=1)
+V01_gt <- vcov(coxphw_pwp_int2_gt)[c(1,7:8),c(1,7:8)]
 
-B01 <- MASS::mvrnorm(250000, mu=b01, Sigma=V01)
-nlcom01 <- exp(A01 %*% b01)
-nlsim01 <- exp(A01 %*% t(B01))
-nlcis01 <- apply(nlsim01, 1, quantile, c(.025,.975))
+B01 <- MASS::mvrnorm(250000, mu=b01_gt, Sigma=V01_gt)
+nlcom01_gt <- exp(A01 %*% b01)
+nlsim01_gt <- exp(A01 %*% t(B01))
+nlcis01_gt <- apply(nlsim01_gt, 1, quantile, c(.025,.975))
 ```
 
-```{r 1, include=T,warning=F, message=F}
-A02<-matrix(c(1,1,1,1,0,0,0,1,0,0,0,1), nrow=3, ncol=4)
+```{r 1_gt, include=T,warning=F, message=F}
+A02_gt<-matrix(c(1,1,1,1,0,0,0,1,0,0,0,1), nrow=3, ncol=4)
 #A02<-matrix(c(-1,1,-1,1,0,0,0,-1,0,0,0,1), nrow=3, ncol=4)
-b02<-matrix(coxphw_pwp_int2$coeff[c(1,7:9)], ncol=1)
-V02 <- vcov(coxphw_pwp_int2)[c(1,7:9),c(1,7:9)]
+b02_gt<-matrix(coxphw_pwp_int2_gt$coeff[c(1,7:9)], ncol=1)
+V02_gt <- vcov(coxphw_pwp_int2_gt)[c(1,7:9),c(1,7:9)]
 
-B02 <- MASS::mvrnorm(250000, mu=b02, Sigma=V02)
-nlcom02 <- exp(A02 %*% b02)
-nlsim02 <- exp(A02 %*% t(B02))
-nlcis02 <- apply(nlsim02, 1, quantile, c(.025,.975))
-nlcis02
+B02_gt <- MASS::mvrnorm(250000, mu=b02_gt, Sigma=V02_gt)
+nlcom02_gt <- exp(A02 %*% b02)
+nlsim02_gt <- exp(A02 %*% t(B02))
+nlcis02_gt <- apply(nlsim02_gt, 1, quantile, c(.025,.975))
+nlcis02_gt
 ```
 
-```{r 2, include=T,warning=F, message=F, results="hide"}
-res_pwp_w <- cbind.data.frame(Avg_HR=round(exp(coxphw_pwp_int$coeff),2),
-                               Lo_ci95=round(exp(confint(coxphw_pwp_int))[,1],2),
-                               Up_ci95=round(exp(confint(coxphw_pwp_int))[,2],2),
-                               p=round(summary(coxphw_pwp_int)$prob,4))%>% 
+```{r 2_gt, include=T,warning=F, message=F, results="hide"}
+res_pwp_w_gt <- cbind.data.frame(Avg_HR=round(exp(coxphw_pwp_int_gt$coeff),2),
+                               Lo_ci95=round(exp(confint(coxphw_pwp_int_gt))[,1],2),
+                               Up_ci95=round(exp(confint(coxphw_pwp_int_gt))[,2],2),
+                               p=round(summary(coxphw_pwp_int_gt)$prob,4))%>% 
   data.table::data.table(keep.rownames=T)
 
-res_pwp_w2 <- cbind.data.frame(Avg_HR=round(exp(coxphw_pwp_int2$coeff),2),
-                               Lo_ci95=round(exp(confint(coxphw_pwp_int2))[,1],2),
-                               Up_ci95=round(exp(confint(coxphw_pwp_int2))[,2],2),
-                               p=round(summary(coxphw_pwp_int2)$prob,4))%>% 
+res_pwp_w2_gt <- cbind.data.frame(Avg_HR=round(exp(coxphw_pwp_int2_gt$coeff),2),
+                               Lo_ci95=round(exp(confint(coxphw_pwp_int2_gt))[,1],2),
+                               Up_ci95=round(exp(confint(coxphw_pwp_int2_gt))[,2],2),
+                               p=round(summary(coxphw_pwp_int2_gt)$prob,4))%>% 
   data.table::data.table(keep.rownames=T)
 ```
 
-```{r 2.5, include=T,warning=F, message=F}
+```{r 2.5_gt, include=T,warning=F, message=F}
 options(knitr.kable.NA = '')
-res_pwp_w2 %>% 
-dplyr::left_join(cbind.data.frame(names=attr(coxphw_pwp_int2$coeff[c(7:9)],"names"),lo_ci_2=round(nlcis02[1,],2),up_ci_2=round(nlcis02[2,],2)), by=c("rn"="names"))%>% 
-  dplyr::full_join(res_pwp_w,by="rn", suffix = c("_coef1", "_coef2")) %>% 
+res_pwp_w2_gt %>% 
+dplyr::left_join(cbind.data.frame(names=attr(coxphw_pwp_int2_gt$coeff[c(7:9)],"names"),lo_ci_2=round(nlcis02_gt[1,],2),up_ci_2=round(nlcis02_gt[2,],2)), by=c("rn"="names"))%>% 
+  dplyr::full_join(res_pwp_w_gt,by="rn", suffix = c("_coef1", "_coef2")) %>% 
   knitr::kable(size=8,"html") %>% 
 kableExtra::kable_classic() %>% 
   kableExtra::add_header_above(c("", "Does not include transitions"=4, "Three (bootstrap)"=2,"Includes transition as an additive term"=4))
@@ -334,10 +334,10 @@ kableExtra::kable_classic() %>%
 
 <br>
 
-#### Timecox
+#### Timecox (GT)
 
 <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
-```{r first_try,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+```{r first_try_gt,eval=T, echo=T, paged.print=TRUE, error=T}                                 
 invisible("Investigating time-varying coefficient with timereg package")
 #https://www.ncbi.nlm.nih.gov/labs/pmc/articles/PMC6015946/
 
@@ -354,7 +354,7 @@ invisible("Investigating time-varying coefficient with timereg package")
 
 #here the test processes for each covariate with 1,00 randomly choosen 
 #realizations under the null hypothesis of constant effects
-timecox_pwp<- 
+timecox_pwp_gt<- 
   timecox(Surv(time,status) ~ tipo_de_plan_res_1*strata(trans)+  
             TD_1+ TD_2+ TD_3+ TD_4+ cluster(id) + strata(trans), Nit = 100,
           data = ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
@@ -362,13 +362,13 @@ timecox_pwp<-
 
 </div>
 
-```{r first_try2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
-summary_test_t_inv0<-capture.output(summary(timecox_pwp))
-summary_test_t_inv_sel0<-summary_test_t_inv0[which(grepl("Test for time invariant", summary_test_t_inv0)):(which(grepl("Call", summary_test_t_inv0))-3)]
-summary_test_t_inv_sel0_df<-
-data.frame(summary_test_t_inv_sel0) %>% 
-    dplyr::mutate(summary_test_t_inv_sel0=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel0)) %>%  
-    tidyr::separate(summary_test_t_inv_sel0,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
+```{r first_try2_gt,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+summary_test_t_inv0_gt<-capture.output(summary(timecox_pwp_gt_gt))
+summary_test_t_inv_sel0_gt<-summary_test_t_inv0_gt[which(grepl("Test for time invariant", summary_test_t_inv0_gt)):(which(grepl("Call", summary_test_t_inv0_gt))-3)]
+summary_test_t_inv_sel0_df_gt<-
+data.frame(summary_test_t_inv_sel0_gt) %>% 
+    dplyr::mutate(summary_test_t_inv_sel0_gt=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel0)) %>%  
+    tidyr::separate(summary_test_t_inv_sel0_gt,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
     dplyr::slice(-1) %>% 
   #test p-value H_0:constant effect
     dplyr::mutate(type=dplyr::case_when(grepl("Kolmogorov",Test)~ "Kolmogorov-Smirnov",
@@ -378,28 +378,27 @@ data.frame(summary_test_t_inv_sel0) %>%
   dplyr::select(Variable, type, Test, pvalue) %>% 
   tidyr::drop_na(pvalue)
 
-summary(timecox_pwp)
+summary(timecox_pwp_gt)
 ```
 
 <br>
 
 <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
-```{r second_try,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+```{r second_try_gt,eval=T, echo=T, paged.print=TRUE, error=T}                                 
 invisible("no cambiaré el maxtime, pero sí llevaré a constantes algunas variables encontradas arriba: TD2 y TD4")
-timecox_pwp_const1<- 
+timecox_pwp_const1_gt<- 
   timecox(Surv(time,status) ~ tipo_de_plan_res_1*strata(trans)+ 
-            TD_1+ const(TD_2)+ TD_3+ const(TD_4)+ cluster(id) + strata(trans), Nit = 100,
-          data = ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
+            TD_1+ const(TD_2)+ TD_3+ const(TD_4)+ cluster(id) + strata(trans), Nit = 100, data = ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
 ```
 </div>
 
-```{r second_try2,eval=T, echo=T, paged.print=TRUE, error=T}                                 
-summary_test_t_inv1<-capture.output(summary(timecox_pwp_const1))
-summary_test_t_inv_sel1<-summary_test_t_inv1[which(grepl("Test for time invariant|Test for non-significant", summary_test_t_inv1)):(which(grepl("Parametric|Call", summary_test_t_inv1))-2)]
-summary_test_t_inv_sel1_df<-
-data.frame(summary_test_t_inv_sel1) %>% 
-    dplyr::mutate(summary_test_t_inv_sel1=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel1)) %>%  
-    tidyr::separate(summary_test_t_inv_sel1,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
+```{r second_try2_gt,eval=T, echo=T, paged.print=TRUE, error=T}                                 
+summary_test_t_inv1_gt<-capture.output(summary(timecox_pwp_const1_gt))
+summary_test_t_inv_sel1_gt<-summary_test_t_inv1_gt[which(grepl("Test for time invariant|Test for non-significant", summary_test_t_inv1_gt)):(which(grepl("Parametric|Call", summary_test_t_inv1_gt))-2)]
+summary_test_t_inv_sel1_df_gt<-
+data.frame(summary_test_t_inv_sel1_gt) %>% 
+    dplyr::mutate(summary_test_t_inv_sel1_gt=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel1)) %>%  
+    tidyr::separate(summary_test_t_inv_sel1_gt,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
     dplyr::slice(-1) %>% 
   #test p-value H_0:constant effect
     dplyr::mutate(type=dplyr::case_when(grepl("Supremum",Test)~"Supremum-test of significance",
@@ -414,31 +413,28 @@ data.frame(summary_test_t_inv_sel1) %>%
                                         pvalue=="0.0000"~"<0.001",
                                         T~pvalue))
 
-summary(timecox_pwp_const1)
+summary(timecox_pwp_const1_gt)
 ```
 
 <br>
 
 <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
-```{r third_try,eval=T, echo=T, paged.print=TRUE, error=T}      
+```{r third_try_gt,eval=T, echo=T, paged.print=TRUE, error=T}      
 invisible("TD3 puede sacarse")
-timecox_pwp_const2_opc1<- 
-  # timecox(Surv(Tstart,Tstop,status) ~ tipo_de_plan_res_1+  
-  #           TD_1+ const(TD_2)+ const(TD_3)+ const(TD_4)+ cluster(id) + const(strata(trans)),Nit = 100,
-  #         data = ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
+timecox_pwp_const2_opc1_gt<- 
   timecox(Surv(time,status) ~ const(tipo_de_plan_res_1)*strata(trans)+ 
             TD_1+ const(TD_2)+ const(TD_3)+ const(TD_4)+ cluster(id), Nit = 100,
           data = ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
 ```
 </div>
 
-```{r third_try2,eval=T, echo=T, paged.print=TRUE, error=T}    
-summary_test_t_inv2_1<-capture.output(summary(timecox_pwp_const2_opc1))
-summary_test_t_inv_sel2_1<-summary_test_t_inv2_1[which(grepl("Test for time invariant|Test for non-significant", summary_test_t_inv2_1)):(which(grepl("Parametric|Call", summary_test_t_inv2_1))-2)]
-summary_test_t_inv_sel2_1_df<-
-data.frame(summary_test_t_inv_sel2_1) %>% 
-    dplyr::mutate(summary_test_t_inv_sel2_1=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel2_1)) %>%  
-    tidyr::separate(summary_test_t_inv_sel2_1,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
+```{r third_try2_gt,eval=T, echo=T, paged.print=TRUE, error=T}    
+summary_test_t_inv2_1_gt<-capture.output(summary(timecox_pwp_const2_opc1_gt))
+summary_test_t_inv_sel2_1_gt<-summary_test_t_inv2_1_gt[which(grepl("Test for time invariant|Test for non-significant", summary_test_t_inv2_1_gt)):(which(grepl("Parametric|Call", summary_test_t_inv2_1_gt))-2)]
+summary_test_t_inv_sel2_1_df_gt<-
+data.frame(summary_test_t_inv_sel2_1_gt) %>% 
+    dplyr::mutate(summary_test_t_inv_sel2_1_gt=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel2_1_gt)) %>%  
+    tidyr::separate(summary_test_t_inv_sel2_1_gt,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
     dplyr::slice(-1) %>% 
   #test p-value H_0:constant effect
     dplyr::mutate(type=dplyr::case_when(grepl("Supremum",Test)~"Supremum-test of significance",
@@ -452,32 +448,28 @@ data.frame(summary_test_t_inv_sel2_1) %>%
                                         pvalue=="0.000"~"<0.001",
                                         T~pvalue))
 
-summary(timecox_pwp_const2_opc1)
+summary(timecox_pwp_const2_opc1_gt)
 ```
 
 <br>
 
 <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
-```{r fourth_try,eval=T, echo=T, paged.print=TRUE, error=T}      
+```{r fourth_try_gt,eval=T, echo=T, paged.print=TRUE, error=T}      
 invisible("TD1 puede sacarse")
-timecox_pwp_const2_opc2<- 
-  # timecox(Surv(Tstart,Tstop,status) ~ tipo_de_plan_res_1+  
-  #           TD_1+ const(TD_2)+ const(TD_3)+ const(TD_4)+ cluster(id) + const(strata(trans)),Nit = 100,
-  #         data = ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
+timecox_pwp_const2_opc2_gt<- 
   timecox(Surv(time,status) ~ const(tipo_de_plan_res_1)*strata(trans)+ 
-            const(TD_1)+ const(TD_2)+ const(TD_3)+ const(TD_4)+ cluster(id), Nit = 100,
-          data = ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
+            const(TD_1)+ const(TD_2)+ const(TD_3)+ const(TD_4)+ cluster(id), Nit = 100, data = ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
 ```
 </div>
 
 
-```{r fourth_try2,eval=T, echo=T, paged.print=TRUE, error=T}    
-summary_test_t_inv2_2<-capture.output(summary(timecox_pwp_const2_opc2))
-summary_test_t_inv_sel2_2<-summary_test_t_inv2_2[which(grepl("Test for time invariant|Test for non-significant", summary_test_t_inv2_2)):(which(grepl("Parametric|Call", summary_test_t_inv2_2))-2)]
-summary_test_t_inv_sel2_2_df<-
-data.frame(summary_test_t_inv_sel2_2) %>% 
-    dplyr::mutate(summary_test_t_inv_sel2_2=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel2_2)) %>%  
-    tidyr::separate(summary_test_t_inv_sel2_2,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
+```{r fourth_try2_gt,eval=T, echo=T, paged.print=TRUE, error=T}    
+summary_test_t_inv2_2_gt<-capture.output(summary(timecox_pwp_const2_opc2_gt))
+summary_test_t_inv_sel2_2_gt<-summary_test_t_inv2_2_gt[which(grepl("Test for time invariant|Test for non-significant", summary_test_t_inv2_2_gt)):(which(grepl("Parametric|Call", summary_test_t_inv2_2_gt))-2)]
+summary_test_t_inv_sel2_2_df_gt<-
+data.frame(summary_test_t_inv_sel2_2_gt) %>% 
+    dplyr::mutate(summary_test_t_inv_sel2_2_gt=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel2_2_gt)) %>%  
+    tidyr::separate(summary_test_t_inv_sel2_2_gt,c("Variable","Test","pvalue"),sep="\\[\\[") %>% 
     dplyr::slice(-1) %>% 
   #test p-value H_0:constant effect
     dplyr::mutate(type=dplyr::case_when(grepl("Supremum",Test)~"Supremum-test of significance",
@@ -491,7 +483,7 @@ data.frame(summary_test_t_inv_sel2_2) %>%
                                         pvalue=="0.000"~"<0.001",
                                         T~pvalue))
 
-summary(timecox_pwp_const2_opc2)
+summary(timecox_pwp_const2_opc2_gt)
 ```
 
 <br>
@@ -501,111 +493,17 @@ Holding constant other effects, allows us to detect that the treatment setting h
 <br>
 
 <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
-```{r plot, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.show='hide'}
+```{r plot_gt, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.show='hide'}
 
-
-plot_cums <-  function (x , pointwise.ci=1, hw.ci=0, sim.ci=0, robust.ci=0, col=NULL,
-                        specific.comps=FALSE,level=0.05, start.time = 0, 
-                        stop.time = 0, add.to.plot=FALSE,main=NULL,mains=TRUE, xlab="Time",
-                        ylab ="Cumulative coefficients",ylim=NULL,...) 
-  # pointwise.ci=1 
-  # hw.ci=0
-  # sim.ci=0
-  # robust.ci=0
-  # col=NULL
-  # specific.comps=FALSE
-  # level=0.05
-  # start.time = 0 
-  # stop.time = 0
-  # add.to.plot=FALSE
-  # main=NULL
-# mains=TRUE
-# ylab ="Cumulative coefficients"
-# ylim=NULL
-{ 
-  
-  name_model<-deparse(substitute(x))#deparse(quote(x))
-  object<-x; rm(x); 
-  B<-object$cum; V<-object$var.cum; p<-dim(B)[[2]]; 
-  if (robust.ci>=1) {V<-object$robvar.cum;}
-  ### color for estimate, pointwise, robust-pointwise, sim.ci , hw.ci  
-  cis <- c(1,pointwise.ci>=1,robust.ci>=1,sim.ci>=1,hw.ci>=1)
-  if (is.null(col)) cols<-rep(1,5)  else { 
-    cols <-  rep(1,5)
-    cols[which(cis==TRUE)] <- col
-  }
-  
-  if (sum(specific.comps)==FALSE) comp<-2:p else comp<-specific.comps+1
-  if (stop.time==0) stop.time<-max(B[,1]);
-  
-  med<-B[,1]<=stop.time & B[,1]>=start.time
-  B<-B[med,]; Bs<-B[1,];  B<-t(t(B)-Bs); B[,1]<-B[,1]+Bs[1];
-  V<-V[med,]; Vs<-V[1,]; V<-t( t(V)-Vs); 
-  Vrob<-object$robvar.cum; 
-  Vrob<-Vrob[med,]; Vrobs<-Vrob[1,]; Vrob<-t( t(Vrob)-Vrobs); 
-  
-  c.alpha<- qnorm(1-level/2)
-  i <- 0
-  db<-list()
-  for (v in comp) { 
-    i <- i+1
-    c.alpha<- qnorm(1-level/2)
-    est<-B[,v];ul<-B[,v]+c.alpha*V[,v]^.5;nl<-B[,v]-c.alpha*V[,v]^.5;
-    db[[match(v,comp)]]<-cbind.data.frame(B[,1],est,ul,nl)
-    if (add.to.plot==FALSE) 
-    {
-      if (is.null(ylim))
-        plot(B[,1],est,ylim=1.05*range(ul,nl),type="s",xlab=xlab,ylab=ylab,col=cols[1],...) 
-      else
-        plot(B[,1],est,ylim=ylim,type="s",xlab=xlab,ylab=ylab,col=cols[1],...) 
-      if (!is.null(main)) { if (length(main)==1) main <- rep(main,length(comp)); mains <- FALSE; } 
-      if (!is.null(main)) title(main=main[i]); 
-      if (mains==TRUE) title(main=colnames(B)[v]); 
-    }
-    else lines(B[,1],est,type="s",col=cols[1]); 
-    
-    if (pointwise.ci>=1) {
-      lines(B[,1],ul,lty=pointwise.ci,type="s",col=cols[2]);
-      lines(B[,1],nl,lty=pointwise.ci,type="s",col=cols[2]); }
-    if (robust.ci>=1) {
-      lines(B[,1],ul,lty=robust.ci,type="s",col=cols[3]); 
-      lines(B[,1],nl,lty=robust.ci,type="s",col=cols[3]); }
-    if (hw.ci>=1) {
-      if (level!=0.05) cat("Hall-Wellner bands only 95 % \n");
-      tau<-length(B[,1])
-      nl<-B[,v]-1.27*V[tau,v]^.5*(1+V[,v]/V[tau,v])
-      ul<-B[,v]+1.27*V[tau,v]^.5*(1+V[,v]/V[tau,v])
-      lines(B[,1],ul,lty=hw.ci,type="s",col=cols[5]); 
-      lines(B[,1],nl,lty=hw.ci,type="s",col=cols[5]); 
-      db[[match(v,comp)]][[1]]<-cbind.data.frame(ul,nl)
-    }
-    if (sim.ci>=1) {
-      if (is.null(object$conf.band)==TRUE) 
-        cat("Uniform simulation based bands only computed for n.sim> 0\n")
-      if (level!=0.05) c.alpha<-percen(object$sim.testBeq0[,v-1],1-level)
-      else c.alpha<-object$conf.band[v-1];
-      nl<-B[,v]-c.alpha*Vrob[,v]^.5; ul<-B[,v]+c.alpha*Vrob[,v]^.5;
-      lines(B[,1],ul,lty=sim.ci,type="s",col=cols[4]); 
-      lines(B[,1],nl,lty=sim.ci,type="s",col=cols[4]); 
-      db[[match(v,comp)]][[1]]<-cbind.data.frame(ul,nl)
-    }
-    abline(h=0)
-  }
-  names(db)<-gsub("^",paste0(name_model,"_"),attr(object$cum,"dimnames")[[2]][2:length(attr(object$cum,"dimnames")[[2]])])
-  #names(db)<-attr(object$cum,"dimnames")[[2]][2:length(attr(object$cum,"dimnames")[[2]])]
-  list2env(db, envir = .GlobalEnv)
-  return(db)
-} 
-
-plot_cums(timecox_pwp_const2_opc1)
+plot_cums(timecox_pwp_const2_opc1_gt)
 ```
 </div>
 
 <br>
 
-```{r plot_td, echo=T, error=T, paged.print=TRUE, fig.width=10, fig.height=6, error=T, dpi=500, fig.cap="Figure 1. Observed cumulative coefficients with 95% confidence bands"}
+```{r plot_td_gt, echo=T, error=T, paged.print=TRUE, fig.width=10, fig.height=6, error=T, dpi=500, fig.cap="Figure 1. Observed cumulative coefficients with 95% confidence bands"}
 
-timecox_pwp_const2_opc1_TD_1 %>% 
+timecox_pwp_const2_opc1_TD_1_gt %>% 
 	dplyr::mutate(year=`B[, 1]`/365.25,variable="Treatment\nCompletion") %>% 
 	dplyr::filter(year<=5) %>% 
 	dplyr::mutate(variable=factor(variable)) %>% 
@@ -628,15 +526,11 @@ timecox_pwp_const2_opc1_TD_1 %>%
 
 <br>
 
-```{r third_try4_table,eval=T, echo=T, paged.print=TRUE, error=T}
+```{r third_try4_table_gt,eval=T, echo=T, paged.print=TRUE, error=T}
  options(knitr.kable.NA = '')
 #upper97.5%
 
-coefBase(timecox_pwp_const2_opc2, digits=3) %>% 
-# data.table::data.table(capture.output(summary(timecox_pwp_const2_opc2))[(which(grepl("Parametric ",capture.output(summary(timecox_pwp_const2_opc2))))+1):(which(grepl("Call",capture.output(summary(timecox_pwp_const2_opc2))))-2)], keep.rownames=T) %>% 
-#     slice(-1) %>% 
-#     tidyr::separate(V1,c("Variables","Coef", "SE", "Robust SE", "z", "Sig.", "95%CI_lo", "95%CI_up"), sep="\\s+") %>%
-    # dplyr::mutate(HR= round(exp(as.numeric(Coef)),2), HR_95_CI_lo= round(exp(as.numeric(`95%CI_lo`)),2), HR_95_CI_up= round(exp(as.numeric(`95%CI_up`)),2)) %>% 
+coefBase(timecox_pwp_const2_opc2_gt, digits=3) %>% 
    data.table::data.table(keep.rownames = T) %>% 
   dplyr::rename("Variables"="rn") %>% 
     dplyr::mutate(HR= round(exp(`Coef.`),2), HR_95_CI_lo= round(exp(`lower2.5%`),2), HR_95_CI_up= round(exp(`upper97.5%`),2)) %>% 
