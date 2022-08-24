@@ -697,7 +697,60 @@ rbind(ex_5=QIC(fit5),
 ```{r}
 #https://cran.r-project.org/web/packages/geecure/geecure.pdf
 #https://link.springer.com/chapter/10.1007/978-1-4757-3447-8_5
+library(geecure)
 
+data(bmt)
+
+geebmtind <- geecure(Surv(T2, d3) ~ factor(g) + Z8, cureform = ~ factor(g) + Z8,
+data = bmt, model = "semi", id = bmt$Z9, corstr= "independence")
+
+geesmokingind <- geecure(Surv(Time, Relapse) ~ SexF + Duration + SI.UC + F10Cigs +
+SexF * SI.UC, cureform = ~ SexF + Duration + SI.UC + F10Cigs + SexF * SI.UC,
+data = smoking, model = "para", id = smoking$Zip, corstr = "independence")
+
+#Estima una probabilidad para la probabilidad de ser curado
+# Para el no-curado, el tiempo de falla es modelado por un modelo de riesgos proporcionales . Las covariables pueden ustilizarse en la formula, en la formula de cura o en ambas. 
+
+geecure(Surv(time, status) ~ tipo_de_plan_res_1 + TD, cureform = ~ tipo_de_plan_res_1 + TD,
+data = subset(ms_d_match_surv_res_tm,id %in% 1:1e5), model = "para",#specifies your model, it can be para which represents the parametric PHMC model with two-parameter Weibull baseline survival function, or semi which represents the semiparametric PHMC model
+id = subset(ms_d_match_surv_res_tm,id %in% 1:1e5)[["id"]],
+Var=T, # para estimación por sandwitch
+stdz=T, # si se pone verdadero, todas las covariables en la fórmulas (ambas) son estandarizados. Por defecto es falso
+boots=T,#para estimar los errores por bootstrap, por defecto, F
+nboot=100, #estimar los errores.
+corstr = "independence")#a character string specifying the correlation structure. The following are permitted: independence and exchangeable
+
+Call:
+geecure(formula = Surv(time, status) ~ tipo_de_plan_res_1 + TD, 
+    cureform = ~tipo_de_plan_res_1 + TD, data = subset(ms_d_match_surv_res_tm, 
+        id %in% 1:100), id = subset(ms_d_match_surv_res_tm, id %in% 
+        1:100)[["id"]], model = "para", corstr = "independence")
+
+Cure Probability Model:
+                     Estimate Std.Error     Z value  Pr(>|Z|)
+(Intercept)        -0.1258950 0.3077504 -0.40908167 0.6824797
+tipo_de_plan_res_1  2.0065768 2.7708540  0.72417267 0.4689597
+TD                  0.1591612 1.9849359  0.08018456 0.9360905
+
+
+Failure Time Distribution Model:
+                    Estimate Std.Error    Z value  Pr(>|Z|)
+tipo_de_plan_res_1 -0.407817  0.817944 -0.4985879 0.6180697
+TD                 -1.128499  1.065916 -1.0587129 0.2897306
+
+
+Estimated Parameters in Weibull Distribution:
+            Estimate    Std.Error  Z value  Pr(>|Z|)
+alpha_1 1.2141208149 0.1456858571 8.333828 0.0000000
+alpha_2 0.0002731763 0.0002625644 1.040416 0.2981465
+
+
+Estimated Correlation Parameters:
+      Estimate
+rho_1        0
+rho_2        0
+
+Number of clusters: 100       Maximum cluster size: 4
 
 ```
 

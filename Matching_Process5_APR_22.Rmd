@@ -476,7 +476,7 @@ timecox_pwp_const2_opc1<-
   #           TD_1+ const(TD_2)+ const(TD_3)+ const(TD_4)+ cluster(id) + const(strata(trans)),Nit = 100,
   #         data = dt_ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
   timecox(Surv(Tstart,Tstop,status) ~ const(tipo_de_plan_res_1)*const(strata(trans))+ 
-            TD_1+ const(TD_2)+ const(TD_3)+ const(TD_4)+ cluster(id), Nit = 100,
+            TD_1+ const(TD_2)+ const(TD_3)+ const(TD_4)+ cluster(id), Nit = 1000,
           data = dt_ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
 ```
 </div>
@@ -613,7 +613,7 @@ plot_cums(timecox_pwp_const2_opc1)
 
 <br>
 
-```{r plot_td, echo=T, error=T, paged.print=TRUE, fig.width=10, fig.height=6, error=T, dpi=500, fig.cap="Figure 1. Observed cumulative coefficients with 95% confidence bands"}
+```{r plot_td, echo=T, error=T, paged.print=TRUE, fig.width=10, fig.height=6, error=T, dpi=500, fig.align = "center", fig.cap="Figure 1. Observed cumulative coefficients with 95% confidence bands"}
 
 timecox_pwp_const2_opc1_TD_1 %>% 
 	dplyr::mutate(year=`B[, 1]`/365.25,variable="Treatment\nCompletion") %>% 
@@ -626,7 +626,7 @@ timecox_pwp_const2_opc1_TD_1 %>%
 	geom_hline(yintercept = 0)+
 	scale_color_manual(name="Variable",values=c("dodgerblue4","black"))+
 	scale_fill_manual(name="Variable",values=c("steelblue","grey70"))+
-	labs(y="Cumulative coefficients",x="Years")+
+	labs(y="Cumulative coefficients (Tr. Completion- Model 1)",x="Years")+
 	scale_y_continuous(breaks = seq(-900,90,by = 90), limits=c(-900,90))+
 	scale_x_continuous(breaks = seq(0,5,by = .5), limits=c(0,5))+
 	theme(axis.title.y = element_text(size = 15, angle=90))+
@@ -634,6 +634,16 @@ timecox_pwp_const2_opc1_TD_1 %>%
 	theme(axis.text.x = element_text(size = 13))+
 	theme(axis.text.y = element_text(size = 13))+
 	theme(legend.position = "none")
+```
+
+<br>
+
+```{r plot_tot, echo=T, error=T, paged.print=TRUE, fig.width=10, fig.height=6, error=T, dpi=500, fig.align = "center", fig.cap="Figure 2b. Observed cumulative coefficients with 95% confidence bands (1,000 realizations)"}
+# here the test processes for each non-constant covariate with 100 randomly choosen 
+#realizations under the null hypothesis of constant effects 
+
+par(mfrow=c(1,2)) 
+plot(timecox_pwp_const2_opc1,score=1) 
 ```
 
 <br>
@@ -670,7 +680,6 @@ coef_timecox_definitive %>%
 
 <br>
 
-
 #### Timecox (GT)
 
 <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
@@ -700,8 +709,9 @@ timecox_pwp_gt<-
 </div>
 
 ```{r first_try2_gt,eval=T, echo=T, paged.print=TRUE, error=T}                                 
-summary_test_t_inv0_gt<-capture.output(summary(timecox_pwp_gt_gt))
+summary_test_t_inv0_gt<-capture.output(summary(timecox_pwp_gt))
 summary_test_t_inv_sel0_gt<-summary_test_t_inv0_gt[which(grepl("Test for time invariant", summary_test_t_inv0_gt)):(which(grepl("Call", summary_test_t_inv0_gt))-3)]
+
 summary_test_t_inv_sel0_df_gt<-
 data.frame(summary_test_t_inv_sel0_gt) %>% 
     dplyr::mutate(summary_test_t_inv_sel0_gt=gsub("\\s+\\s+\\s+\\s+\\s+", "\\[\\[", summary_test_t_inv_sel0)) %>%  
@@ -790,15 +800,75 @@ summary(timecox_pwp_const2_opc1_gt)
 
 <br>
 
+```{r third_try3_table_gt,eval=T, echo=T, paged.print=TRUE, error=T}
+ options(knitr.kable.NA = '')
+#upper97.5%
+
+coefBase(timecox_pwp_const2_opc1_gt, digits=3) %>% 
+   data.table::data.table(keep.rownames = T) %>% 
+  dplyr::rename("Variables"="rn") %>% 
+    dplyr::mutate(HR= round(exp(`Coef.`),2), HR_95_CI_lo= round(exp(`lower2.5%`),2), HR_95_CI_up= round(exp(`upper97.5%`),2)) %>% 
+  dplyr::mutate(Variables=dplyr::case_when(grepl("tipo_de_plan.*trans.*2", Variables)~"Setting at baseline x completion of 2nd treatment",
+                                           grepl("tipo_de_plan.*trans.*3", Variables)~"Setting at baseline x completion of 3rd treatment",
+                                           grepl("tipo_de_plan.*trans.*4", Variables)~"Setting at baseline x completion of 4th treatment",
+    grepl("tipo_de_plan", Variables)~"Setting at baseline",
+                                           grepl("TD_1", Variables)~"Completion at baseline",
+                                           grepl("TD_2", Variables)~"Completion of the 2nd treatment",
+                                           grepl("TD_3", Variables)~"Completion of the 3rd treatment",
+                                           grepl("TD_4", Variables)~"Completion of the 4th treatment",
+                                           grepl("trans=2", Variables)~"Second transition (stratum)",
+                                           grepl("trans=3", Variables)~"Third transition (stratum)",
+                                           grepl("trans=4", Variables)~"Fourth transition (stratum)",
+                                           )) %>% 
+    knitr::kable(.,format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+       caption = paste0("Table. Coefficients (Baseline treatment completion set as non-constant)"),
+       col.names = c("Variables","Coef.", "SE", "Robust SE", "z", "Sig.", "95%CI Lower", "95%CI Upper", "HR", "95%CI Lower", "95%CI Upper"), align =c('l',rep('c', 101)), escape=T) %>%
+  kableExtra::kable_classic(bootstrap_options = c("striped", "hover"),font_size = 12) %>%
+  kableExtra::scroll_box(width = "100%", height = "375px")
+```
+
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r plot_gt, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.show='hide'}
+plot_cums(timecox_pwp_const2_opc1_gt)
+```
+</div>
+
+<br>
+
+```{r plot_td_gt, echo=T, error=T, paged.print=TRUE, fig.width=10, fig.height=6, error=T, dpi=500, fig.align = "center", fig.cap="Figure 2a. Observed cumulative coefficients with 95% confidence bands (First model)"}
+
+timecox_pwp_const2_opc1_gt_TD_1 %>% 
+	dplyr::mutate(year=`B[, 1]`/365.25,variable="Treatment\nCompletion") %>% 
+	dplyr::filter(year<=5) %>% 
+	dplyr::mutate(variable=factor(variable)) %>% 
+	ggplot()+
+	geom_ribbon(aes(x=year, ymin = nl, ymax = ul, fill =variable), alpha=.5) +# "steelblue"
+	geom_line(aes(x=year, y = est, color=variable))+ #"dodgerblue4"
+	theme_void()+ 
+	geom_hline(yintercept = 0)+
+	scale_color_manual(name="Variable",values=c("dodgerblue4","black"))+
+	scale_fill_manual(name="Variable",values=c("steelblue","grey70"))+
+	labs(y="Cumulative coefficients",x="Years")+
+	scale_y_continuous(breaks = seq(-450,450,by = 90), limits=c(-450,450))+
+	scale_x_continuous(breaks = seq(0,5,by = .5), limits=c(0,5))+
+	theme(axis.title.y = element_text(size = 15, angle=90))+
+	theme(axis.title.x = element_text(size = 15))+
+	theme(axis.text.x = element_text(size = 13))+
+	theme(axis.text.y = element_text(size = 13))+
+	theme(legend.position = "none")
+```
+
+We set as constant the baseline treatment completion.
+
 <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
 ```{r fourth_try_gt,eval=T, echo=T, paged.print=TRUE, error=T}      
 invisible("TD1 puede sacarse")
 timecox_pwp_const2_opc2_gt<- 
   timecox(Surv(time,status) ~ const(tipo_de_plan_res_1)*strata(trans)+ 
-            const(TD_1)+ const(TD_2)+ const(TD_3)+ const(TD_4)+ cluster(id), Nit = 100, data = dt_ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
+            const(TD_1)+ const(TD_2)+ const(TD_3)+ const(TD_4)+ cluster(id), Nit = 1000, data = dt_ms_d_match_surv, n.sim=3000, robust = 1, weighted.test = 1)
 ```
 </div>
-
 
 ```{r fourth_try2_gt,eval=T, echo=T, paged.print=TRUE, error=T}    
 summary_test_t_inv2_2_gt<-capture.output(summary(timecox_pwp_const2_opc2_gt))
@@ -829,42 +899,26 @@ Holding constant other effects, allows us to detect that the treatment setting h
 
 <br>
 
-<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
-```{r plot_gt, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.show='hide'}
-
-plot_cums(timecox_pwp_const2_opc1_gt)
-```
-</div>
-
-<br>
-
-```{r plot_td_gt, echo=T, error=T, paged.print=TRUE, fig.width=10, fig.height=6, error=T, dpi=500, fig.cap="Figure 1. Observed cumulative coefficients with 95% confidence bands"}
-
-timecox_pwp_const2_opc1_gt_TD_1 %>% 
-	dplyr::mutate(year=`B[, 1]`/365.25,variable="Treatment\nCompletion") %>% 
-	dplyr::filter(year<=5) %>% 
-	dplyr::mutate(variable=factor(variable)) %>% 
-	ggplot()+
-	geom_ribbon(aes(x=year, ymin = nl, ymax = ul, fill =variable), alpha=.5) +# "steelblue"
-	geom_line(aes(x=year, y = est, color=variable))+ #"dodgerblue4"
-	theme_void()+ 
-	geom_hline(yintercept = 0)+
-	scale_color_manual(name="Variable",values=c("dodgerblue4","black"))+
-	scale_fill_manual(name="Variable",values=c("steelblue","grey70"))+
-	labs(y="Cumulative coefficients",x="Years")+
-	scale_y_continuous(breaks = seq(-450,450,by = 90), limits=c(-450,450))+
-	scale_x_continuous(breaks = seq(0,5,by = .5), limits=c(0,5))+
-	theme(axis.title.y = element_text(size = 15, angle=90))+
-	theme(axis.title.x = element_text(size = 15))+
-	theme(axis.text.x = element_text(size = 13))+
-	theme(axis.text.y = element_text(size = 13))+
-	theme(legend.position = "none")
+```{r plot_tot2, echo=T, error=T, paged.print=TRUE, fig.width=10, fig.height=6, error=T, dpi=500, fig.align = "center", fig.cap="Figure 2b. Observed cumulative coefficients with 95% confidence bands (1,000 realizations)"}
+# here the test processes for each non-constant covariate with 100 randomly choosen 
+#realizations under the null hypothesis of constant effects 
+par(mfrow=c(2,2)) 
+plot(timecox_pwp_const2_opc2_gt,score=1) 
 ```
 
 <br>
 
 ```{r third_try4_table_gt,eval=T, echo=T, paged.print=TRUE, error=T}
- options(knitr.kable.NA = '')
+#https://stats.stackexchange.com/questions/559284/robust-standard-errors-similar-to-normal-standard-errors
+#Cuando la varianza del error es menor en variables incluidas están lejos de las 
+#medias, los errores estándar serán muy largos, y los errores estándar robustos
+#serán más pequeños que los errores estándar OLS - Dimitri Masterov
+#When the variance of the error terms is lower when included covariates are far from their means, OLS standard errors will tend to be too large, and robust standard errors will tend to be smaller than OLS standard errors. 
+#dimitriy (https://stats.stackexchange.com/users/7071/dimitriy), Robust Standard Errors Similar to Normal Standard Errors, URL (version: 2022-02-01): https://stats.stackexchange.com/q/559492
+
+#https://search.r-project.org/CRAN/refmans/timereg/html/timecox.html
+
+options(knitr.kable.NA = '')
 #upper97.5%
 
 coefBase(timecox_pwp_const2_opc2_gt, digits=3) %>% 
@@ -1023,7 +1077,7 @@ rbind(ex_5=QIC(fit5),
 
 ### Sequential glimpse
 
-```{r alluvial, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.cap="Figure 2. Sankey Plot of Transitions by Treatment Setting"}
+```{r alluvial, echo=T, error=T, fig.align = "center", paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.cap="Figure 3. Sankey Plot of Transitions by Treatment Setting"}
 library(easyalluvial)
 library(parcats)
 p_alluvial<-
@@ -1056,7 +1110,7 @@ p_alluvial
 
 <br>
 
-```{r long_alluv, echo=T, error=T, paged.print=TRUE, fig.cap="Figure 3. Sankey Plot of Transitions by Treatment Setting", fig.width=12, fig.height=8, eval=T}
+```{r long_alluv, echo=T, error=T, paged.print=TRUE, fig.align = "center", fig.cap="Figure 4. Sankey Plot of Transitions by Treatment Setting", fig.width=12, fig.height=8, eval=T}
 
 alluvial_long(data.frame(dt_ms_d_match_surv %>% dplyr::mutate(tipo_de_plan_res=factor(tipo_de_plan_res, labels=c("ambulatory", "residential")))),key=from,id= id, 
               value= tipo_de_plan_res, 
@@ -1072,7 +1126,7 @@ alluvial_long(data.frame(dt_ms_d_match_surv %>% dplyr::mutate(tipo_de_plan_res=f
   theme_void()
 ```
 
-```{r alluvial3, echo=T, error=T, paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.cap="Figure 4. Sankey Plot of Transitions by Treatment Setting", eval=F}
+```{r alluvial3, echo=T, error=T, fig.align = "center", paged.print=TRUE, fig.height=9, error=T, dpi=500, fig.cap="Figure 5. Sankey Plot of Transitions by Treatment Setting", eval=F}
 library(ggrepel)
 library(ggalluvial)
 
@@ -1278,7 +1332,7 @@ cbind.fill(comb2_conc_ev2,comb2_conc_ev3,comb2_conc_ev4) %>%
 ``` 
  
  
-```{r alluvial4, echo=T, error=T, paged.print=TRUE, error=T, fig.cap="Figure 5. Tree diagram of counts and total proportions of Type of Plan from the first to the fourth treatment"}
+```{r alluvial4, echo=T, error=T, paged.print=TRUE, error=T, fig.align = "center", fig.cap="Figure 6. Tree diagram of counts and total proportions of Type of Plan from the first to the fourth treatment"}
 library(data.tree)
 
 tree_str<-
@@ -1335,8 +1389,6 @@ plot(traveller) %>%
     export_svg %>% charToRaw %>% rsvg_pdf(paste0(path,"/_mult_state_ags/_flowchart_transition_22.pdf"))
 plot(traveller) %>%
     export_svg %>% charToRaw %>% rsvg_png(paste0(path,"/_mult_state_ags/_flowchart_transition_22.png"))
-
-plot_merge_flowchart %>% export_svg()%>%charToRaw %>% rsvg(width = WidthCM *(DPI/2.54), height = HeightCM *(DPI/2.54)) %>% png::writePNG(paste0(sub("2019","2022",sub("SUD_CL","",path)),"_flowchart_merge_222.png"))
 ```
 
 <br>
@@ -1376,7 +1428,7 @@ We estimated the sensibility of the associations found assuming different values
 
 <br>
 
-```{r  eval2, warning=FALSE, fig.align = "center", message=F, fig.height=7, cache=T, fig.cap="Figure 6. Sensibility Parameters", eval= T, dpi=320}
+```{r  eval2, warning=FALSE, fig.align = "center", message=F, fig.height=7, cache=T, fig.cap="Figure 7. Sensibility Parameters", eval= T, dpi=320}
 
 xmax = 10
 RR = unlist(evalue_rr[1,1])
