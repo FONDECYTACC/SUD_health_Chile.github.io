@@ -845,6 +845,135 @@ cat("The average HR (residential:outpatient) for patients with a follow-up perio
 ```
 
 
+```{r aft_to_avg_hr_1_2, eval=T, echo=T, paged.print=TRUE, error=T}
+#https://stats.stackexchange.com/questions/533495/can-one-compare-hazard-ratio-and-average-hazard-ratio?noredirect=1&lq=1
+
+# Probability Density Functions
+f0_tr3 <- function(x,
+               mu = coef(fits_c_ggam2[[3]])["mu"],
+               sigma =exp(coef(fits_c_ggam2[[3]])["sigma"]),
+               Q = coef(fits_c_ggam2[[3]])["Q"]){
+  dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+}
+f1_tr3 <- function(x,
+               mu = coef(fits_c_ggam2[[3]])["mu"]+coef(fits_c_ggam2[[3]])["factor(tipo_de_plan_res_1)1"],
+               sigma =exp(coef(fits_c_ggam2[[3]])["sigma"]),
+               Q = coef(fits_c_ggam2[[3]])["Q"]){
+  dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+}
+ft_tr3 <- function(x){ (f0(x) + f1(x))}
+# Cumulative Density Functions
+S0_tr3 <- function(x,
+               mu = coef(fits_c_ggam2[[3]])["mu"],
+               sigma =exp(coef(fits_c_ggam2[[3]])["sigma"]),
+               Q = coef(fits_c_ggam2[[3]])["Q"]){
+  pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+}
+S1_tr3 <- function(x,
+               mu = coef(fits_c_ggam2[[3]])["mu"]+coef(fits_c_ggam2[[3]])["factor(tipo_de_plan_res_1)1"],
+               sigma =exp(coef(fits_c_ggam2[[3]])["sigma"]),
+               Q = coef(fits_c_ggam2[[3]])["Q"]){
+  pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+}
+St_tr3 <- function(x){ ( S0(x) * f0(x) + S1(x) * f1(x) ) / ( f0(x) + f1(x) ) }
+## St <- function(x){ (S0(x) + S1(x))/2} ## assuming same number of events
+## Hazard functions
+h0_tr3 <- function(x,
+               mu = coef(fits_c_ggam2[[3]])["mu"],
+               sigma =exp(coef(fits_c_ggam2[[3]])["sigma"]),
+               Q = coef(fits_c_ggam2[[3]])["Q"]){
+  hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+}
+h1_tr3 <- function(x,
+               mu = coef(fits_c_ggam2[[3]])["mu"]+coef(fits_c_ggam2[[3]])["factor(tipo_de_plan_res_1)1"],
+               sigma =exp(coef(fits_c_ggam2[[3]])["sigma"]),
+               Q = coef(fits_c_ggam2[[3]])["Q"]){
+  hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+}
+
+sahr.maxt25p_trans3 <- calcAHRsmp(x=max(subset(ms_d_match_surv_exp, trans==3)$time)/4, h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)
+print(sahr.maxt25p)
+## sAHR for max/2 FU period (50%)
+sahr.maxt50p_trans3 <- calcAHRsmp(x=max(subset(ms_d_match_surv_exp, trans==3)$time)/2, h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)
+print(sahr.maxt50p)
+## [1] 0.1131397
+## gAHR for max FU period (100%)
+sahr.maxt100p_trans3 <- calcAHRsmp(x=max(subset(ms_d_match_surv_exp, trans==3)$time), h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)
+print(sahr.maxt100p)
+## [1] 0.2209214
+
+ff2 <- function(x){calcAHRgeo(x=x, h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)}
+tt <- seq(0.2*365.25,10*365.25,0.1*365.25)
+yy2 <- sapply(tt, FUN=ff2)
+plot(tt, yy2, ylim=c(0,2), xlab="TIME", ylab="P(Survival)")
+
+
+ocahr.maxt3m_trans3 <- calcAHRoc(x=90, f0=f0_tr3, f1=f1_tr3, S0=S0_tr3, S1=S1_tr3)
+
+ocahr.maxt1yr_trans3 <- calcAHRoc(x=365.25, f0=f0_tr3, f1=f1_tr3, S0=S0_tr3, S1=S1_tr3)
+
+ocahr.maxt3yr_trans3 <- calcAHRoc(x=365.25*3, f0=f0_tr3, f1=f1_tr3, S0=S0_tr3, S1=S1_tr3)
+
+ocahr.maxt5yr_trans3 <- calcAHRoc(x=365.25*5, f0=f0_tr3, f1=f1_tr3, S0=S0_tr3, S1=S1_tr3)
+
+ahr.maxt3m_trans3 <- calcAHRgeo(x=90, h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)
+
+ahr.maxt1yr_trans3 <- calcAHRgeo(x=365.25, h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)
+
+ahr.maxt3yr_trans3 <- calcAHRgeo(x=365.25*3, h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)
+
+ahr.maxt5yr_trans3 <- calcAHRgeo(x=365.25*5, h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)
+
+#aHR
+print("Average hazard ratio")
+
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "3 months",
+    "\nthe average hazard ratio is ",
+    round(ahr.maxt3m_trans3, 2), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+     "one year",
+    "\nthe average hazard ratio is ",
+    round(ahr.maxt1yr_trans3, 2), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "three years",
+    "\nthe average hazard ratio is ",
+    round(ahr.maxt3yr_trans3, 2), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "five years",
+    "\nthe average hazard ratio is ",
+    round(ahr.maxt5yr_trans3, 2), ".")
+
+#The OC is the probability P(T1 < T0) that a randomly chosen survival time T1 from group G1 is smaller than a randomly
+#chosen survival time T0 from group G0. 
+
+# The concordance probability represents the pairwise probability of lower patient risk given longer survival time. The c-index and the concordance probability estimate have been used to estimate the concordance probability when patient-specific risk scores are continuous. 
+# average HRs which them selves approximate the odds of concordance, defined for two treatment groups A and B as OC = P(TA < TB)/P(TB < TA), where TA and TB denote survival times from two subjects randomly selected from these groups. Odds of concordance can be conveniently transformed into concordance probabilities c = P(TA < TB) = OC/(OC + 1), which are intuitive effect size measures
+# probabilidad de que grupo B[ambulatorio] tenga >T que A[residencial]
+# /probabilidad de que grupo A[residencial] tenga >T que B[ambulatorio]
+# AHR (average hazard ratio) setting, the weight for all cases at risk at an event time t is set to the product of the estimated survival probability and the inverse of the estimated probability of censoring at that time.
+# AHR: La ponderación por cada tiempo evento t es= p(supervivencia)* 1/p(censura|t)
+print("Odds of concordance")
+
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "3 months",
+    "\nthe average hazard ratio (odds of concordance) is ",
+    round(ocahr.maxt3m_trans3, 4), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+     "one year",
+    "\nthe average hazard ratio (odds of concordance) is ",
+    round(ocahr.maxt1yr_trans3, 4), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "three years",
+    "\nthe average hazard ratio (odds of concordance) is ",
+    round(ocahr.maxt3yr_trans3, 4), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "five years",
+    "\nthe average hazard ratio (odds of concordance) is ",
+    round(ocahr.maxt5yr_trans3, 4), ".")
+```
+
+
 ```{r msfit2.2, eval=T, echo=T, paged.print=TRUE, error=T}
 #Example by https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5868723/
 #library(mstate)
