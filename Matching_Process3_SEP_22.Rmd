@@ -1,0 +1,1506 @@
+---
+title: "Ambulatory or residential? a multi-state analysis of treatments for substance use disorders (Step 3)"
+date: "`r withr::with_locale(new = c('LC_TIME' = 'C'), code =format(Sys.time(),'%B %d, %Y'))`"
+output:
+  html_document:
+    code_folding: hide  
+    toc: true # table of content true
+    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_float: true
+---
+
+```{css zoom-lib-src, echo = FALSE}
+script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+```
+
+```{js zoom-jquery, echo = FALSE}
+ $(document).ready(function() {
+    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
+    // onClick function for all plots (img's)
+    $('img:not(.zoomImg)').click(function() {
+      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
+      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
+    });
+    // onClick function for zoomImg
+    $('img.zoomImg').click(function() {
+      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
+    });
+  });
+```
+
+```{=html}
+<style type="text/css">
+.tablelines table, .tablelines td, .tablelines th {
+        border: 1px solid black;
+        }
+.centrado {
+    text-align: center;
+}
+.table.center {
+    margin-left:auto; 
+    margin-right:auto;
+  }
+.table_wrapper{
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+code.r{
+  font-size: 8px;
+}
+body{ /* Normal  */
+      text-align: justify;
+  }
+.superbigimage{
+    overflow-y:scroll;
+    white-space: nowrap;
+}
+.superbigimage img{
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+</style>
+```
+```{=html}
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
+</style>
+```
+```{r prev_setup, include = FALSE, cache=T}
+rm(list=ls());gc()
+if(!grepl("4.0.2",R.version.string)){stop("Different version (must be 4.0.2)")}
+path<-dirname(rstudioapi::getSourceEditorContext()$path)
+
+if (grepl("CISS Fondecyt",path)==T){
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_2_apr22.RData")
+  } else if (grepl("andre",path)==T){
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_2_apr22.RData")
+  } else if (grepl("E:",path)==T){
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_2_apr22.RData")
+  } else if (grepl("G:",path)==T){
+    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_2_apr22.RData")
+  } else {
+    setwd("~/");load("~/mult_state_2_apr22.RData");path.expand("~/mult_state_2_apr22.RData")
+  }
+
+```
+
+```{r setup, include = FALSE, cache=T}
+#Libraries used in the routine. Dont change the order
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
+  if(class(ungroup(x))[1]=="tbl_df"){
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)    
+        }
+  } else {
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)       
+  }
+ }
+}  
+
+try(library(boot))
+library(matrixStats)
+library(knitr)
+library(tidyr)
+library(stringi)
+library(stringr)
+library(ggplot2)
+library(Hmisc)
+library(kableExtra)
+library(plotly)
+library(janitor)
+library(rbokeh)
+library(zoo)
+library(broom)
+library(sqldf)
+library(devtools)
+library(codebook)
+library(data.table)
+library(panelr)
+library(RColorBrewer)
+library(lsmeans)
+library(finalfit)
+suppressPackageStartupMessages(library(ggiraph))
+suppressPackageStartupMessages(library(sf))
+library(treemapify)
+library(dplyr)
+library(tidyverse)
+library(epiR)
+library(survminer)
+library(ggfortify)
+library(survMisc)
+
+library(foreign)
+library(Hmisc)
+library(gridExtra)
+library(reshape2)
+library(stargazer)
+library(tableone)
+library(MatchIt)
+library(cobalt)
+library(eha)
+library(igraph)
+library(Amelia)
+library(DiagrammeR) 
+library(mstate)
+library(flexsurv)
+library(muhaz)
+library(Metrics)
+#library(hesim)
+
+if(packageVersion('flexsurv')<2.1){stop("flesurv must have resolved error of centering continuous predictors")}
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+try_with_time_limit <- function(expr, cpu = Inf, elapsed = Inf)
+{
+  y <- try({setTimeLimit(cpu, elapsed); expr}, silent = TRUE) 
+  if(inherits(y, "try-error")) NULL else y 
+}
+eval_fork <- function(..., timeout=60){
+
+  #this limit must always be higher than the timeout on the fork!
+  setTimeLimit(timeout+5);      
+
+  #dispatch based on method
+  ##NOTE!!!!! Due to a bug in mcparallel, we cannot use silent=TRUE for now.
+  myfork <- parallel::mcparallel({
+    eval(...)
+  }, silent=FALSE);
+
+  #wait max n seconds for a result.
+  myresult <- parallel::mccollect(myfork, wait=FALSE, timeout=timeout);
+
+  #try to avoid bug/race condition where mccollect returns null without waiting full timeout.
+  #see https://github.com/jeroenooms/opencpu/issues/131
+  #waits for max another 2 seconds if proc looks dead 
+  while(is.null(myresult) && totaltime < timeout && totaltime < 2) {
+     Sys.sleep(.1)
+     enddtime <- Sys.time();
+     totaltime <- as.numeric(enddtime - starttime, units="secs")
+     myresult <- parallel::mccollect(myfork, wait = FALSE, timeout = timeout);
+  }
+
+  #kill fork after collect has returned
+  tools::pskill(myfork$pid, tools::SIGKILL);    
+  tools::pskill(-1 * myfork$pid, tools::SIGKILL);  
+
+  #clean up:
+  parallel::mccollect(myfork, wait=FALSE);
+
+  #timeout?
+  if(is.null(myresult)){
+    stop("R call did not return within ", timeout, " seconds. Terminating process.", call.=FALSE);      
+  }
+
+  #move this to distinguish between timeout and NULL returns
+  myresult <- myresult[[1]];
+
+  #reset timer
+  setTimeLimit();     
+
+  #forks don't throw errors themselves
+  if(inherits(myresult,"try-error")){
+    #stop(myresult, call.=FALSE);
+    stop(attr(myresult, "condition"));
+  }
+
+  #send the buffered response
+  return(myresult);  
+}
+```
+
+<br>
+
+# Cumulative Transition Hazards of Joint Models
+
+## Parametric
+
+Cumulative baseline hazard can be estimated non-parametrically through a Breslow estimator. Must take note that we are assuming a semi-markov process in these transitions. The cumulative hazards obtained through the times specified by `r length(seq(90, 1827, length.out= 183))` points. We added the setting at baseline as the first covariate, with the outcome of each treatment as (treatment completion, in 0/1 format) users pass through each transition. Equally, we included the time of arrival as a covariate to each transition (excluding the admission states, because there is no time of arrival).
+
+<br>
+
+```{r msfit2.0, eval=T, echo=T, paged.print=T, error=T}
+# Semi-parametric models
+#Since there are tied event times, we need to specify ties="breslow" in order to obtain the Aalen-Johansen estimator of
+#the transition probability
+
+formula3<-
+as.formula(paste0("Surv(time, status) ~", paste0(fitform2," + arrival + strata(trans)")[[3]]))
+
+
+#_time tipo_de_plan_res_1 TD_1 TD_2 TD_3 _start#
+
+formula3_mstate<-
+as.formula(paste0("Surv(time, status) ~", paste0(fitform2," + factor(TD_1)+ factor(TD_2)+ factor(TD_3)+ arrival + strata(trans)")[[3]]))
+
+
+formula3_mstate_stratified<-
+as.formula(paste0("Surv(time, status) ~", paste0(fitform2," + factor(TD_1)+ factor(TD_2)+ factor(TD_3)+ arrival")[[3]]))
+
+formula3_mstate_stratified_arr<-
+as.formula(paste0("Surv(time, status) ~", paste0(fitform2," + factor(TD_1)+ factor(TD_2)+ factor(TD_3)+ arrival")[[3]]))
+
+
+#2021-06-03, I changed the regression to Surv(Tstart, Tstop, status) format, but with arrival time.
+
+paste0("For the first transition, we introduced the following Formula: ")
+formula3_mstate_stratified
+
+paste0("For the second and further transition, we introduced the following Formula: ")
+formula3_mstate_stratified_arr
+```
+
+<br>
+
+As seen in the formula above, we included the transition-specific covariables regarding the time that arrived to the state into the models.
+
+<br>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:650px; overflow-x: scroll; width:100%">
+```{r fit3_wcov_pre, eval=T, echo=T, error= T, paged.print=TRUE, warnings =T}
+fits_c_logn2 <- vector(mode = "list", length = n_trans2)
+fits_c_ggam2 <- vector(mode = "list", length = n_trans2)
+fits_c_ggam_orig2 <- vector(mode = "list", length = n_trans2)
+fits_c_rp022 <- vector(mode = "list", length = n_trans2)
+fits_c_rp032 <- vector(mode = "list", length = n_trans2)
+fits_c_rp042 <- vector(mode = "list", length = n_trans2)
+fits_c_rp052 <- vector(mode = "list", length = n_trans2)
+
+dists_w_covs_5s_w_arrival<-cbind.data.frame(covs=rep("fits_c_",(7*n_trans)),
+              formal=rep(c("Generalized gamma", "Generalized gamma (original)", "Lognormal", paste0("RP0",2:5)),1*n_trans2),
+              dist=rep(c("gengamma","gengamma.orig", "lnorm", rep("no dist",4)),n_trans2),
+              model=rep(c("ggam2", "ggam_orig2", "logn2", paste0("rp0",2:5,2)),1*n_trans2),
+              trans=rep(1:n_trans2, each=7))
+
+ms_d_match_surv$arrival<-ms_d_match_surv$Tstart
+#APR 2022, had to center the variable to avoid convergence issues
+ms_d_match_surv$arrival_cen<-as.numeric(scale(ms_d_match_surv$Tstart, scale = F))
+ms_d_match_surv_exp<-mstate::expand.covs(ms_d_match_surv, "TD", append = TRUE, longnames =F)
+#ms_d_match_surv_exp$TD<-ms_d_match_surv_res$TD
+
+ms_d_match_surv_res2<-
+  #El arrival y el número al lado del arrival repreenta el número de la transición
+  mstate::expand.covs(ms_d_match_surv, "TD", append = TRUE, longnames =F)
+
+if(no_mostrar==1){
+  ms_d_match_surv %>% 
+  data.frame() %>%
+  dplyr::mutate(tipo_de_plan_res=dplyr::case_when(tipo_de_plan_res_1==1 & trans==1~1,
+                                                  tipo_de_plan_res_2==1 & trans==2~1,
+                                                  tipo_de_plan_res_3==1 & trans==3~1,
+                                                  tipo_de_plan_res_4==1 & trans==4~1,
+                                                  T~0)) %>% 
+    dplyr::mutate(TD=dplyr::case_when(TD_1==1 & trans==1~1,
+                                      TD_2==1 & trans==2~1,
+                                      TD_3==1 & trans==3~1,
+                                      TD_4==1 & trans==4~1,
+                                      T~0))
+}
+
+#ms_d_match_surv_exp <- expand.covs(ms_d_match_surv_exp, "TD", append = TRUE, longnames =F)
+
+#ms_d_match_surv_exp[is.na(ms_d_match_surv_exp$TD_2),"TD_2"]<-0  
+#ms_d_match_surv_exp[is.na(ms_d_match_surv_exp$TD_3),"TD_3"]<-0
+#ms_d_match_surv_exp[is.na(ms_d_match_surv_exp$TD_4),"TD_4"]<-0
+
+  #mstate::expand.covs(ms_d_match_surv, "arrival", append = TRUE, longnames = FALSE)
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+no_attempts <- 30
+
+fits_cox2<-list()
+fits_c_cox2<-list()
+
+form<-
+  function(i=1){
+  f<-dplyr::case_when(i==4~paste0("Surv(time, status) ~ ",fitform2," + factor(TD_1)+ factor(TD_2)+ factor(TD_3)+ arrival")[[3]],i==3~paste0("Surv(time, status) ~ ",fitform2," + factor(TD_1)+ factor(TD_2)+ arrival")[[3]],i==2~paste0("Surv(time, status) ~ ",fitform2," + factor(TD_1)+ arrival")[[3]],T~paste0("Surv(time, status) ~ ",fitform2,"")[[3]])
+  return(f)
+}
+
+for (i in 1:3){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+        attempt <- attempt + 1
+    try(
+      r <- flexsurvreg(formula=as.formula(form(i)),
+                             data = subset(dplyr::mutate(ms_d_match_surv_exp,arrival=scale(arrival, scale=F)), trans == i),
+                             dist = "gengamma.orig")
+        )
+    }
+    fits_c_ggam_orig2[[i]] <- r
+}  
+
+for (i in 1:3){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+    try(
+      r <- flexsurvreg(formula=as.formula(form(i)),
+                                   data = subset(dplyr::mutate(ms_d_match_surv_exp,arrival=scale(arrival, scale=F)), trans == i),
+                                   dist = "gengamma")
+      )
+    }
+    fits_c_ggam2[[i]] <- r
+}
+
+for (i in 4){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+    try(
+      r <- flexsurvreg(formula=as.formula(form(i)),
+                                   data = subset(dplyr::mutate(ms_d_match_surv_exp,arrival=scale(arrival, scale=F)), trans == i),
+                                   dist = "lnorm")
+      )
+    }
+    fits_c_logn2[[i]] <- r
+}  
+
+
+for (i in 3){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+    try(
+      r <- flexsurvspline(formula=as.formula(form(i)),
+                            k=1,
+                               data = subset(ms_d_match_surv_exp, trans == i))
+      )
+    }
+    fits_c_rp022[[i]] <- r
+}
+
+for (i in 4){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+    try(
+      r <- flexsurvspline(formula=as.formula(form(i)),
+                            k=2,
+                               data = subset(ms_d_match_surv_exp, trans == i))
+      )
+    }
+    fits_c_rp032[[i]] <- r
+}
+
+for (i in 2){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+    try(
+      r <- flexsurvspline(formula=as.formula(form(i)),
+                            k=3,
+                               data = subset(ms_d_match_surv_exp, trans == i))
+      )
+    }
+    fits_c_rp042[[i]] <- r
+}
+
+for (i in 1){
+    r <- NULL
+    attempt <- 0
+    while( is.null(r) && attempt <= no_attempts ) {
+      attempt <- attempt + 1
+    try(
+      r <- flexsurvspline(formula=as.formula(form(i)),
+                            k=4,
+                               data = subset(ms_d_match_surv_exp, trans == i))
+      )
+    }
+    fits_c_rp052[[i]] <- r
+}
+
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+```
+</div>
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:650px; overflow-x: scroll; width:100%">
+```{r msfit2.0.5, eval=T, echo=T, paged.print=T, error=T}
+  #formula3_mstate_stratified
+  #ms_d_match_surv_exp2
+
+#> ### First fix a patient with reference values for the covariates
+#> ### and 0 for all the time-dependent covariates; this will give the
+#> ### baseline hazards
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_    
+# Database to contrast adjustments
+newdat_a <- data.table::data.table(tipo_de_plan_res_1= factor(c(rep(1,1*n_trans2))),
+  #comp_status= factor(rep(c("Therapeutic discharge","Discharge without clinical advice"),2)),
+  TD_1=rep(0,), 
+  TD_2=rep(0,), 
+  TD_3=rep(0,),
+  TD_4=rep(0,),
+  arrival=rep(0,),
+  strata= rep(1:n_trans2,1)
+                       )
+newdat_b <- data.table::data.table(tipo_de_plan_res_1= factor(c(rep(0,1*n_trans2))),
+  #comp_status= factor(rep(c("Therapeutic discharge","Discharge without clinical advice"),2)),
+  TD_1=rep(0,), 
+  TD_2=rep(0,), 
+  TD_3=rep(0,),
+  TD_4=rep(0,),
+  arrival=rep(0,),
+  strata= rep(1:n_trans2,1)
+                       )
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#APR 2022- SCALING
+newdat_a_sc<-mutate(newdat_a,arrival=scale(1096-attr(scale(ms_d_match_surv_exp$arrival,scale=F),"scaled:center"),scale=F))
+newdat_b_sc<-mutate(newdat_b,arrival=scale(1096-attr(scale(ms_d_match_surv_exp$arrival,scale=F),"scaled:center"),scale=F))
+newdat_a$arrival<-ifelse(newdat_a$arrival==0,1096,newdat_a$arrival)
+newdat_b$arrival<-ifelse(newdat_b$arrival==0,1096,newdat_b$arrival)
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+fitted_flexsurvreg2<-data.frame()
+fit_flexsurvreg2<-data.frame()
+
+dists_w_covs_5s_w_arrival<-dists_w_covs_5s_w_arrival %>% 
+  dplyr::filter(model %in% c(paste0("rp0",2:5,"2"),"ggam2","logn2")) %>% 
+  dplyr::filter(dplyr::case_when(model=="logn2" & trans==4~T,
+                                 model=="ggam2" & trans %in% 1:3~T,
+                                 model=="rp032" & trans==4~T,
+                                 model=="rp052" & trans==1~T,
+                                 model=="rp042" & trans==2~T,
+                                 model=="rp022" & trans==3~T,
+                                 T~F)) %>% 
+  dplyr::mutate(get_nd_a=dplyr::case_when(grepl("rp",model)~"newdat_a",T~"newdat_a_sc")) %>% 
+  dplyr::mutate(get_nd_b=dplyr::case_when(grepl("rp",model)~"newdat_b",T~"newdat_b_sc"))
+#
+for (i in nrow(dists_w_covs_5s_w_arrival)){  #
+    
+  cat(paste0("#### Flexible Survival Model (w/ covs): ",
+               dists_w_covs_5s_w_arrival[i,"formal"], "; transition: ",dists_w_covs_5s_w_arrival[i,"trans"], "\n \n"))  
+    
+  model<-paste0("fits_c_",dists_w_covs_5s_w_arrival[i,"model"])
+  nd_a<-get(dists_w_covs_5s_w_arrival[i,"get_nd_a"])
+  nd_b<-get(dists_w_covs_5s_w_arrival[i,"get_nd_b"])
+  
+  invisible(c("Real"))
+  tryCatch(
+    if(!is.null(get(model)[[dists_w_covs_5s_w_arrival[i,"trans"]]])){  
+    #Generate databases
+     fitted_flexsurvreg2<- dplyr::bind_rows(fitted_flexsurvreg2,cbind.data.frame(dist=rep(dists_w_covs_5s_w_arrival[i,"formal"],), 
+                                trans=rep(dists_w_covs_5s_w_arrival[i,"trans"],),
+                                residential=rep(1,),
+                                data.table::data.table(summary(get(model)[[dists_w_covs_5s_w_arrival[i,"trans"]]], newdata= nd_a, newtime=unique(fitted_km$time), type = "survival", tidy=T)))) 
+      fitted_flexsurvreg2<- dplyr::bind_rows(fitted_flexsurvreg2,cbind.data.frame(dist=rep(dists_w_covs_5s_w_arrival[i,"formal"],), 
+                                trans=rep(dists_w_covs_5s_w_arrival[i,"trans"],),
+                                residential=rep(0,),
+                                data.table::data.table(summary(get(model)[[dists_w_covs_5s_w_arrival[i,"trans"]]], newdata= nd_b,  newtime=unique(fitted_km$time), type = "survival", tidy=T)))) 
+     #t=newtime0, 
+      # Generate fit indices
+      fit_flexsurvreg2<-rbind(fit_flexsurvreg2,
+         cbind(dist= dists_w_covs_5s_w_arrival[i,"formal"],
+               transition=dists_w_covs_5s_w_arrival[i,"trans"],
+               fitstats.flexsurvreg(get(model)[[dists_w_covs_5s_w_arrival[i,"trans"]]])))
+      #the BIC may not be appropriate if none of the candidate models are considered to be close to the ‘true’ model.     
+      } else {
+      cat(paste0("The model that assumed a ",dists_w_covs_5s_w_arrival[i,"formal"]," distribution for the transition number ",dists_w_covs_5s_w_arrival[i,"trans"]," did not converge \n\n"))
+      }, error=function(e) {
+        cat(paste0("The model that assumed a ",dists_w_covs_5s_w_arrival[i,"formal"]," distribution for the transition number ",dists_w_covs_5s_w_arrival[i,"trans"]," did not converge (empty) \n\n"))    
+    })
+}  
+
+fit_flexsurvreg22<-
+  fit_flexsurvreg2 %>% 
+  data.frame() %>% 
+  dplyr::mutate(across(c("n2ll", "AIC", "AICc", "BIC"),~as.numeric(ifelse(abs(.)>1e7,NA,format(round(.,2), scientific = FALSE))))) %>% 
+  data.frame()
+#Generalized gamma  RP03/Lognormal RP02/Lognormal  Generalized F/RP02 
+# fits_c_ggam2 fits_c_rp032/fits_c_logn2 fits_c_rp022/fits_c_logn2 fits_c_genf2/fits_c_rp022
+
+distribution_by_trans_valid_cis<-
+fitted_flexsurvreg2 %>% 
+    dplyr::filter(!is.na(lcl)) %>% 
+    group_by(trans) %>% distinct(dist)
+invisible(c("No hay intervalos de confianza en TDs "))
+```
+</div>
+
+```{r sel_model, eval=F, echo=T, paged.print=T, error=T}
+invisible(c("Intercept-only"))
+fitted_flexsurvreg_binned_mix0 %>% 
+    dplyr::mutate(abs((est-surv)/surv)) %>% group_by(dist,trans) %>% dplyr::mutate(cumsum_error=cumsum(`abs((est - surv)/surv)`)) %>% 
+    group_by(trans) %>% 
+    dplyr::slice_max(time) %>% 
+    mutate(rank = dense_rank(cumsum_error)) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::arrange(trans,rank) %>%
+    dplyr::select(dist, trans, time, lcl, cumsum_error,rank) %>% 
+    copiar_nombres()
+
+fitted_flexsurvreg_binned_mix0 %>% 
+    dplyr::mutate(abs((est-surv)/surv)) %>% group_by(dist,trans) %>% dplyr::mutate(cumsum_error=cumsum(`abs((est - surv)/surv)`)) %>% 
+    dplyr::filter(time>=365.25*3) %>% 
+    group_by(trans) %>% 
+    dplyr::slice_min(time) %>% 
+    mutate(rank = dense_rank(cumsum_error)) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::arrange(trans,rank) %>%
+    dplyr::select(dist, trans, time, lcl, cumsum_error,rank) %>% 
+    copiar_nombres()
+#_#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:#_#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:
+#_#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:#_#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:#_:
+
+fitted_flexsurvreg %>% 
+    dplyr::left_join(fitted_km, by=c("time", "trans", "residential")) %>% 
+    group_by(trans,dist,residential) %>% 
+    tidyr::fill(surv,.direction="down") %>% 
+    ungroup() %>% 
+    dplyr::mutate(abs((est-surv)/surv)) %>% 
+    group_by(trans,dist,residential) %>% 
+    dplyr::mutate(cumsum_error=cumsum(replace_na(`abs((est - surv)/surv)`, 0))) %>% 
+    dplyr::ungroup() %>%  
+    group_by(trans, residential) %>% 
+    dplyr::slice_max(time) %>% 
+    mutate(rank = dense_rank(cumsum_error)) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::arrange(trans,rank) %>%
+    dplyr::select(dist, trans, residential,time, lcl, cumsum_error,rank) %>% 
+    dplyr::filter(residential==1) %>% 
+    copiar_nombres()
+
+fitted_flexsurvreg %>% 
+    dplyr::left_join(fitted_km, by=c("time", "trans", "residential")) %>% 
+    group_by(trans,dist,residential) %>% 
+    tidyr::fill(surv,.direction="down") %>% 
+    ungroup() %>% 
+    dplyr::mutate(abs((est-surv)/surv)) %>% 
+    group_by(trans,dist,residential) %>% 
+    dplyr::mutate(cumsum_error=cumsum(replace_na(`abs((est - surv)/surv)`, 0))) %>% 
+    dplyr::ungroup() %>%  
+    group_by(trans, residential) %>% 
+    dplyr::slice_max(time) %>% 
+    mutate(rank = dense_rank(cumsum_error)) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::arrange(trans,rank) %>%
+    dplyr::select(dist, trans, residential,time, lcl, cumsum_error,rank) %>% 
+    dplyr::filter(residential==0) %>% 
+    copiar_nombres()
+
+
+fitted_flexsurvreg %>% 
+    dplyr::left_join(fitted_km, by=c("time", "trans", "residential")) %>% 
+    group_by(trans,dist,residential) %>% 
+    tidyr::fill(surv,.direction="down") %>% 
+    ungroup() %>% 
+    dplyr::mutate(abs((est-surv)/surv)) %>% 
+    group_by(trans,dist,residential) %>% 
+    dplyr::mutate(cumsum_error=cumsum(replace_na(`abs((est - surv)/surv)`, 0))) %>% 
+    dplyr::ungroup() %>%  
+    dplyr::filter(time>=365.25*3) %>% 
+    group_by(trans, residential) %>% 
+    dplyr::slice_min(time) %>% 
+    mutate(rank = dense_rank(cumsum_error)) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::arrange(trans,rank) %>%
+    dplyr::select(dist, trans, residential,time, lcl, cumsum_error,rank) %>% 
+    dplyr::filter(residential==1) %>% 
+    copiar_nombres()
+
+fitted_flexsurvreg %>% 
+    dplyr::left_join(fitted_km, by=c("time", "trans", "residential")) %>% 
+    group_by(trans,dist,residential) %>% 
+    tidyr::fill(surv,.direction="down") %>% 
+    ungroup() %>% 
+    dplyr::mutate(abs((est-surv)/surv)) %>% 
+    group_by(trans,dist,residential) %>% 
+    dplyr::mutate(cumsum_error=cumsum(replace_na(`abs((est - surv)/surv)`, 0))) %>% 
+    dplyr::ungroup() %>%  
+    dplyr::filter(time>=365.25*3) %>% 
+    group_by(trans, residential) %>% 
+    dplyr::slice_min(time) %>% 
+    mutate(rank = dense_rank(cumsum_error)) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::arrange(trans,rank) %>%
+    dplyr::select(dist, trans, residential,time, lcl, cumsum_error,rank) %>% 
+    dplyr::filter(residential==0) %>% 
+    copiar_nombres()
+```
+
+## Cox
+
+```{r msfit2.1, eval=T, echo=T, paged.print=T, error=T}
+# Semi-parametric models
+#Since there are tied event times, we need to specify ties="breslow" in order to obtain the Aalen-Johansen estimator of
+#the transition probability
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+cox_fits <- survival::coxph(formula3_mstate, 
+                            data = ms_d_match_surv_exp, method = "breslow") 
+
+paste0("Test the Proportional Hazards Assumption of a Cox Regression:")
+cox.zph(cox_fits)
+paste0(c("Not-proportional hazards"))
+
+# fits_c_ggam2 fits_c_rp032/fits_c_logn2 fits_c_rp022/fits_c_logn2 fits_c_genf2/fits_c_rp022
+#dists_w_covs_5s_w_arrival
+
+invisible(c("dists_w_covs_5s_w_arrival ver para ver la distribución"))
+#1° TRANS, un modelo con splines cúblicos restringidos a 4 nudos (RP05) y la distribución F generalizado (después G-gamma en STATA) obtuvieron un mejor ajuste. En R, el único que Gen-F es peor que RP
+#2° TRANS, un modelo con splines cúblicos restringidos a 3 nudos (RP04) y la distribución F generalizado (después G-gamma en STATA) obtuvieron un mejor ajuste.
+#3° TRANS, un modelo con splines cúblicos restringidos a 2 nudos (RP03) y la distribución F generalizado (Lognormal en STATA) obtuvieron un mejor ajuste.
+#4° TRANS, un modelo con splines cúblicos restringidos a 2 nudos (RP03) y la distribución F generalizado (Lognormal en STATA) obtuvieron un mejor ajuste.
+#EN STATA, todos los RPs son mejores que los paramétricos. En R, sólo la transición 3 y 4 tienen menor error en  Gen-F en el max time
+sel_param_fits_a <- vector(length = n_trans, mode = "list") 
+    sel_param_fits_a[[1]]<- fits_c_ggam2[[1]] #fits_c_genf2[[1]] 
+    sel_param_fits_a[[2]]<- fits_c_ggam2[[2]]
+    sel_param_fits_a[[3]]<- fits_c_ggam2[[3]] #Porque gen gamma y gen gamma original no convergen
+    sel_param_fits_a[[4]]<- fits_c_logn2[[4]] #Porque gen gamma y gen f no convergen
+
+sel_param_fits_b <- vector(length = n_trans, mode = "list") 
+    sel_param_fits_b[[1]]<- fits_c_rp052[[1]] 
+    sel_param_fits_b[[2]]<- fits_c_rp042[[2]]
+    sel_param_fits_b[[3]]<- fits_c_rp022[[3]]
+    sel_param_fits_b[[4]]<- fits_c_rp032[[4]]
+```
+
+
+
+```{r aft_to_avg_hr_1, eval=T, echo=T, paged.print=TRUE, error=T}
+#https://stats.stackexchange.com/questions/533495/can-one-compare-hazard-ratio-and-average-hazard-ratio?noredirect=1&lq=1
+
+# Probability Density Functions
+f0 <- function(x,
+               mu = coef(fits_c_ggam2[[1]])["mu"],
+               sigma =exp(coef(fits_c_ggam2[[1]])["sigma"]),
+               Q = coef(fits_c_ggam2[[1]])["Q"]){
+  dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+}
+f1 <- function(x,
+               mu = coef(fits_c_ggam2[[1]])["mu"]+coef(fits_c_ggam2[[1]])["factor(tipo_de_plan_res_1)1"],
+               sigma =exp(coef(fits_c_ggam2[[1]])["sigma"]),
+               Q = coef(fits_c_ggam2[[1]])["Q"]){
+  dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+}
+ft <- function(x){ (f0(x) + f1(x))}
+# Cumulative Density Functions
+S0 <- function(x,
+               mu = coef(fits_c_ggam2[[1]])["mu"],
+               sigma =exp(coef(fits_c_ggam2[[1]])["sigma"]),
+               Q = coef(fits_c_ggam2[[1]])["Q"]){
+  pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+}
+S1 <- function(x,
+               mu = coef(fits_c_ggam2[[1]])["mu"]+coef(fits_c_ggam2[[1]])["factor(tipo_de_plan_res_1)1"],
+               sigma =exp(coef(fits_c_ggam2[[1]])["sigma"]),
+               Q = coef(fits_c_ggam2[[1]])["Q"]){
+  pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+}
+St <- function(x){ ( S0(x) * f0(x) + S1(x) * f1(x) ) / ( f0(x) + f1(x) ) }
+## St <- function(x){ (S0(x) + S1(x))/2} ## assuming same number of events
+## Hazard functions
+h0 <- function(x,
+               mu = coef(fits_c_ggam2[[1]])["mu"],
+               sigma =exp(coef(fits_c_ggam2[[1]])["sigma"]),
+               Q = coef(fits_c_ggam2[[1]])["Q"]){
+  hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+}
+h1 <- function(x,
+               mu = coef(fits_c_ggam2[[1]])["mu"]+coef(fits_c_ggam2[[1]])["factor(tipo_de_plan_res_1)1"],
+               sigma =exp(coef(fits_c_ggam2[[1]])["sigma"]),
+               Q = coef(fits_c_ggam2[[1]])["Q"]){
+  hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+}
+#The sAHR [Schemper et al., 2009] is intuitive, but not symmetric in h0(t) and h1(t) and therefore not recommended
+calcAHRsmp <- function(x, h0, h1, ft, wt){
+  integrand <- function(x){h1(x)/h0(x) * wt(x) * ft(x) }
+  ahr <- integrate(integrand, lower=0, upper=x)$value
+  return(ahr)
+}
+#The gAHR [Schemper et al., 2009] does not suffer from the disadvantages of the sAHR, but represents a geometric average hazard ratio.
+calcAHRgeo <- function(x, h0, h1, ft, wt){
+  integrand <- function(x){ log(h1(x)/h0(x)) * wt(x) * ft(x) }
+  logahr <- integrate(integrand, lower=0, upper=x)$value
+  ahr <- exp(logahr)
+  return(ahr)
+}
+calcAHRoc <- function(x, f0, f1, S0, S1){
+  integrand1 <- function(x){S0(x) * f1(x)}
+  term1 <- integrate(integrand1, lower=0, upper=x)$value
+  integrand2 <- function(x){S1(x) * f0(x)}
+  term2 <- integrate(integrand2, lower=0, upper=x)$value
+  ahr <- term1 / term2
+  return(ahr)
+}
+sahr.maxt25p <- calcAHRsmp(x=max(subset(ms_d_match_surv_exp, trans==1)$time)/4, h0=h0, h1=h1, ft=ft, wt=St)
+print(sahr.maxt25p)
+## sAHR for max/2 FU period (50%)
+sahr.maxt50p <- calcAHRsmp(x=max(subset(ms_d_match_surv_exp, trans==1)$time)/2, h0=h0, h1=h1, ft=ft, wt=St)
+print(sahr.maxt50p)
+## [1] 0.1131397
+## gAHR for max FU period (100%)
+sahr.maxt100p <- calcAHRsmp(x=max(subset(ms_d_match_surv_exp, trans==1)$time), h0=h0, h1=h1, ft=ft, wt=St)
+print(sahr.maxt100p)
+## [1] 0.2209214
+
+ff <- function(x){calcAHRgeo(x=x, h0=h0, h1=h1, ft=ft, wt=St)}
+tt <- seq(0.2*365.25,10*365.25,0.1*365.25)
+yy <- sapply(tt, FUN=ff)
+plot(tt, yy, ylim=c(0,2), xlab="TIME", ylab="P(Survival)")
+
+
+ocahr.maxt3m <- calcAHRoc(x=90, f0=f0, f1=f1, S0=S0, S1=S1)
+
+ocahr.maxt1yr <- calcAHRoc(x=365.25, f0=f0, f1=f1, S0=S0, S1=S1)
+
+ocahr.maxt3yr <- calcAHRoc(x=365.25*3, f0=f0, f1=f1, S0=S0, S1=S1)
+
+ocahr.maxt5yr <- calcAHRoc(x=365.25*5, f0=f0, f1=f1, S0=S0, S1=S1)
+
+ahr.maxt3m <- calcAHRgeo(x=90, h0=h0, h1=h1, ft=ft, wt=St)
+
+ahr.maxt1yr <- calcAHRgeo(x=365.25, h0=h0, h1=h1, ft=ft, wt=St)
+
+ahr.maxt3yr <- calcAHRgeo(x=365.25*3, h0=h0, h1=h1, ft=ft, wt=St)
+
+ahr.maxt5yr <- calcAHRgeo(x=365.25*5, h0=h0, h1=h1, ft=ft, wt=St)
+
+#aHR
+print("Average hazard ratio")
+
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "3 months",
+    "\nthe average hazard ratio is ",
+    round(ahr.maxt3m, 2), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+     "one year",
+    "\nthe average hazard ratio is ",
+    round(ahr.maxt1yr, 2), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "three years",
+    "\nthe average hazard ratio is ",
+    round(ahr.maxt3yr, 2), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "five years",
+    "\nthe average hazard ratio is ",
+    round(ahr.maxt5yr, 2), ".")
+
+#The OC is the probability P(T1 < T0) that a randomly chosen survival time T1 from group G1 is smaller than a randomly
+#chosen survival time T0 from group G0. 
+
+# The concordance probability represents the pairwise probability of lower patient risk given longer survival time. The c-index and the concordance probability estimate have been used to estimate the concordance probability when patient-specific risk scores are continuous. 
+# average HRs which them selves approximate the odds of concordance, defined for two treatment groups A and B as OC = P(TA < TB)/P(TB < TA), where TA and TB denote survival times from two subjects randomly selected from these groups. Odds of concordance can be conveniently transformed into concordance probabilities c = P(TA < TB) = OC/(OC + 1), which are intuitive effect size measures
+# probabilidad de que grupo B[ambulatorio] tenga >T que A[residencial]
+# /probabilidad de que grupo A[residencial] tenga >T que B[ambulatorio]
+# AHR (average hazard ratio) setting, the weight for all cases at risk at an event time t is set to the product of the estimated survival probability and the inverse of the estimated probability of censoring at that time.
+# AHR: La ponderación por cada tiempo evento t es= p(supervivencia)* 1/p(censura|t)
+print("Odds of concordance")
+
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "3 months",
+    "\nthe average hazard ratio (odds of concordance) is ",
+    round(ocahr.maxt3m, 4), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+     "one year",
+    "\nthe average hazard ratio (odds of concordance) is ",
+    round(ocahr.maxt1yr, 4), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "three years",
+    "\nthe average hazard ratio (odds of concordance) is ",
+    round(ocahr.maxt3yr, 4), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "five years",
+    "\nthe average hazard ratio (odds of concordance) is ",
+    round(ocahr.maxt5yr, 4), ".")
+```
+
+
+```{r aft_to_avg_hr_1_2, eval=T, echo=T, paged.print=TRUE, error=T}
+#https://stats.stackexchange.com/questions/533495/can-one-compare-hazard-ratio-and-average-hazard-ratio?noredirect=1&lq=1
+
+# Probability Density Functions
+f0_tr3 <- function(x,
+               mu = coef(fits_c_ggam2[[3]])["mu"],
+               sigma =exp(coef(fits_c_ggam2[[3]])["sigma"]),
+               Q = coef(fits_c_ggam2[[3]])["Q"]){
+  dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+}
+f1_tr3 <- function(x,
+               mu = coef(fits_c_ggam2[[3]])["mu"]+coef(fits_c_ggam2[[3]])["factor(tipo_de_plan_res_1)1"],
+               sigma =exp(coef(fits_c_ggam2[[3]])["sigma"]),
+               Q = coef(fits_c_ggam2[[3]])["Q"]){
+  dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+}
+ft_tr3 <- function(x){ (f0(x) + f1(x))}
+# Cumulative Density Functions
+S0_tr3 <- function(x,
+               mu = coef(fits_c_ggam2[[3]])["mu"],
+               sigma =exp(coef(fits_c_ggam2[[3]])["sigma"]),
+               Q = coef(fits_c_ggam2[[3]])["Q"]){
+  pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+}
+S1_tr3 <- function(x,
+               mu = coef(fits_c_ggam2[[3]])["mu"]+coef(fits_c_ggam2[[3]])["factor(tipo_de_plan_res_1)1"],
+               sigma =exp(coef(fits_c_ggam2[[3]])["sigma"]),
+               Q = coef(fits_c_ggam2[[3]])["Q"]){
+  pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+}
+St_tr3 <- function(x){ ( S0(x) * f0(x) + S1(x) * f1(x) ) / ( f0(x) + f1(x) ) }
+## St <- function(x){ (S0(x) + S1(x))/2} ## assuming same number of events
+## Hazard functions
+h0_tr3 <- function(x,
+               mu = coef(fits_c_ggam2[[3]])["mu"],
+               sigma =exp(coef(fits_c_ggam2[[3]])["sigma"]),
+               Q = coef(fits_c_ggam2[[3]])["Q"]){
+  hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+}
+h1_tr3 <- function(x,
+               mu = coef(fits_c_ggam2[[3]])["mu"]+coef(fits_c_ggam2[[3]])["factor(tipo_de_plan_res_1)1"],
+               sigma =exp(coef(fits_c_ggam2[[3]])["sigma"]),
+               Q = coef(fits_c_ggam2[[3]])["Q"]){
+  hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+}
+
+sahr.maxt25p_trans3 <- calcAHRsmp(x=max(subset(ms_d_match_surv_exp, trans==3)$time)/4, h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)
+print(sahr.maxt25p)
+## sAHR for max/2 FU period (50%)
+sahr.maxt50p_trans3 <- calcAHRsmp(x=max(subset(ms_d_match_surv_exp, trans==3)$time)/2, h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)
+print(sahr.maxt50p)
+## [1] 0.1131397
+## gAHR for max FU period (100%)
+sahr.maxt100p_trans3 <- calcAHRsmp(x=max(subset(ms_d_match_surv_exp, trans==3)$time), h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)
+print(sahr.maxt100p)
+## [1] 0.2209214
+
+ff2 <- function(x){calcAHRgeo(x=x, h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)}
+tt <- seq(0.2*365.25,10*365.25,0.1*365.25)
+yy2 <- sapply(tt, FUN=ff2)
+plot(tt, yy2, ylim=c(0,2), xlab="TIME", ylab="P(Survival)")
+
+
+ocahr.maxt3m_trans3 <- calcAHRoc(x=90, f0=f0_tr3, f1=f1_tr3, S0=S0_tr3, S1=S1_tr3)
+
+ocahr.maxt1yr_trans3 <- calcAHRoc(x=365.25, f0=f0_tr3, f1=f1_tr3, S0=S0_tr3, S1=S1_tr3)
+
+ocahr.maxt3yr_trans3 <- calcAHRoc(x=365.25*3, f0=f0_tr3, f1=f1_tr3, S0=S0_tr3, S1=S1_tr3)
+
+ocahr.maxt5yr_trans3 <- calcAHRoc(x=365.25*5, f0=f0_tr3, f1=f1_tr3, S0=S0_tr3, S1=S1_tr3)
+
+ahr.maxt3m_trans3 <- calcAHRgeo(x=90, h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)
+
+ahr.maxt1yr_trans3 <- calcAHRgeo(x=365.25, h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)
+
+ahr.maxt3yr_trans3 <- calcAHRgeo(x=365.25*3, h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)
+
+ahr.maxt5yr_trans3 <- calcAHRgeo(x=365.25*5, h0=h0_tr3, h1=h1_tr3, ft=ft_tr3, wt=St_tr3)
+
+#aHR
+print("Average hazard ratio")
+
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "3 months",
+    "\nthe average hazard ratio is ",
+    round(ahr.maxt3m_trans3, 2), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+     "one year",
+    "\nthe average hazard ratio is ",
+    round(ahr.maxt1yr_trans3, 2), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "three years",
+    "\nthe average hazard ratio is ",
+    round(ahr.maxt3yr_trans3, 2), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "five years",
+    "\nthe average hazard ratio is ",
+    round(ahr.maxt5yr_trans3, 2), ".")
+
+#The OC is the probability P(T1 < T0) that a randomly chosen survival time T1 from group G1 is smaller than a randomly
+#chosen survival time T0 from group G0. 
+
+# The concordance probability represents the pairwise probability of lower patient risk given longer survival time. The c-index and the concordance probability estimate have been used to estimate the concordance probability when patient-specific risk scores are continuous. 
+# average HRs which them selves approximate the odds of concordance, defined for two treatment groups A and B as OC = P(TA < TB)/P(TB < TA), where TA and TB denote survival times from two subjects randomly selected from these groups. Odds of concordance can be conveniently transformed into concordance probabilities c = P(TA < TB) = OC/(OC + 1), which are intuitive effect size measures
+# probabilidad de que grupo B[ambulatorio] tenga >T que A[residencial]
+# /probabilidad de que grupo A[residencial] tenga >T que B[ambulatorio]
+# AHR (average hazard ratio) setting, the weight for all cases at risk at an event time t is set to the product of the estimated survival probability and the inverse of the estimated probability of censoring at that time.
+# AHR: La ponderación por cada tiempo evento t es= p(supervivencia)* 1/p(censura|t)
+print("Odds of concordance")
+
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "3 months",
+    "\nthe average hazard ratio (odds of concordance) is ",
+    round(ocahr.maxt3m_trans3, 4), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+     "one year",
+    "\nthe average hazard ratio (odds of concordance) is ",
+    round(ocahr.maxt1yr_trans3, 4), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "three years",
+    "\nthe average hazard ratio (odds of concordance) is ",
+    round(ocahr.maxt3yr_trans3, 4), ".")
+cat("The average HR (residential:outpatient) for patients with a follow-up period of",
+    "five years",
+    "\nthe average hazard ratio (odds of concordance) is ",
+    round(ocahr.maxt5yr_trans3, 4), ".")
+```
+
+
+```{r msfit2.2, eval=T, echo=T, paged.print=TRUE, error=T}
+#Example by https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5868723/
+#library(mstate)
+# Semi-parametric 
+cox_cumhaz_a <- mstate::msfit(cox_fits, 
+                            newdata = newdat_a,
+                            trans = trans_matrix, variance = T)
+cox_cumhaz_b <- mstate::msfit(cox_fits, 
+                            newdata = newdat_b,
+                            trans = trans_matrix, variance = T)
+```
+
+
+```{r msfit2.3.1, eval=T, echo=T, paged.print=TRUE, error=T}
+#
+#https://rdrr.io/cran/flexsurv/man/msfit.flexsurvreg.html
+# Parametric
+#scale(ms_d_match_surv_exp$arrival,scale=F)
+flexsurv_cumhaz_a <- flexsurv::msfit.flexsurvreg(sel_param_fits_a,#sel_param_fits, 
+                                             newdata = newdat_a_sc,
+                                             t = seq(90, 1827, length.out= 183),
+                                             #B = n_iter/50,
+                                             trans = trans_matrix, variance = F)
+
+invisible(c("Not allowed to include variance =T : Error in boot[, , i] <- if (is.flexsurvlist(object)) normbootfn.flexsurvreg(object[[i]],  : 
+  number of items to replace is not a multiple of replacement length"))
+
+flexsurv_cumhaz_b <- flexsurv::msfit.flexsurvreg(sel_param_fits_a,#sel_param_fits_4s_b,#sel_param_fits_4s, #Alternatively, if the parameters (including covariate effects) are assumed to be different between different transitions, then a list of transition-specific models can be formed. This list has one component for each permitted transition in the multi-state model. This is more computationally efficient, particularly for larger models and datasets. See the example below, and the vignette.
+                                             newdata = newdat_b_sc, #A data frame specifying the values of covariates in the fitted model, other than the transition number. This must be specified if there are other covariates. The variable names should be the same as those in the fitted model formula. There must be either one value per covariate (the typical situation) or n values per covariate, a different one for each of the n allowed transitions.
+                                             t = seq(90, 1827, length.out= 183), #Vector of times. These do not need to be the same as the observed event times, and since the model is parametric, they can be outside the range of the data. A grid of more frequent times will provide a better approximation to the cumulative hazard trajectory for prediction with probtrans or mssample, at the cost of greater computational expense.
+                                             #B = n_iter/20,#Number of simulations from the normal asymptotic distribution used to calculate variances. Decrease for greater speed at the expense of accuracy.
+                                             trans = trans_matrix, 
+                                             variance = F)#Calculate the variances and covariances of the transition cumulative hazards (TRUE or FALSE). This is based on simulation from the normal asymptotic distribution of the estimates, which is computationally-expensive.
+
+
+flexsurv_cumhaz_rp_a <- flexsurv::msfit.flexsurvreg(sel_param_fits_b,#sel_param_fits, 
+                                             newdata = newdat_a,
+                                             t = seq(90, 1827, length.out= 183),
+                                             B = n_iter/20,
+                                             trans = trans_matrix, variance = F)
+
+
+flexsurv_cumhaz_rp_b <- flexsurv::msfit.flexsurvreg(sel_param_fits_b,#sel_param_fits, 
+                                             newdata = newdat_b,
+                                             t = seq(90, 1827, length.out= 183),
+                                             #B = n_iter/20,
+                                             trans = trans_matrix, variance = F)
+```
+
+```{r msfit2.4, eval=T, echo=T, paged.print=TRUE, error=T}
+trans_lab_four_st<-
+cbind.data.frame(transition_label,trans_nmb=sprintf("%02d",1:n_trans2)) %>% 
+    dplyr::mutate(paste=paste0(trans_nmb,") ",transition_label))
+trans_lab_four_st_vec<-trans_lab_four_st$paste
+attr(trans_lab_four_st_vec, "names")<-1:max(trans_matrix,na.rm=t)
+#seq(90, 1827, length.out= 183)
+
+#msf1 tipo de plan 1 ==1 
+#msf0 tipo de plan 1 ==0
+cumhaz_data_a <- rbind(data.frame(msf1$Haz[msf1$Haz$time<=1827,],
+                                model = "NP Cox"),
+                      data.frame(cox_cumhaz_a$Haz,
+                                model = "Cox"),
+                      data.frame(flexsurv_cumhaz_a$Haz,
+                                model = "Parametric"),
+                      data.frame(flexsurv_cumhaz_rp_a$Haz,
+                                model = "Parametric (RP)"))
+cumhaz_data_a$trans <- factor(cumhaz_data_a$trans,
+                            levels = seq(1, 4),
+                            labels = trans_lab_four_st$paste)
+cumhaz_data_b <- rbind(data.frame(msf0$Haz[msf0$Haz$time<=1827,],
+                                model = "NP Cox"),
+                      data.frame(cox_cumhaz_b$Haz,
+                                model = "Cox"),
+                      data.frame(flexsurv_cumhaz_b$Haz,
+                                model = "Parametric"),
+                      data.frame(flexsurv_cumhaz_rp_b$Haz,
+                                model = "Parametric (RP)"))
+cumhaz_data_b$trans <- factor(cumhaz_data_b$trans,
+                            levels = seq(1, 4),
+                            labels = trans_lab_four_st$paste)
+
+```
+
+## Plots
+
+```{r haz_df, eval=T, echo=T, paged.print=TRUE, error=T}
+
+#states_trans_lab
+fig_diff_mod_ab<-
+ggplot()+
+  geom_step(data=reshape2::melt(cumhaz_data_a,id.vars=c("time","trans","model"))%>% dplyr::filter(model!="Cox"), aes(time, value, color= model,linetype="dashed"),size=1, alpha=.65) + 
+  geom_step(data=reshape2::melt(cumhaz_data_b,id.vars=c("time","trans","model"))%>% dplyr::filter(model!="Cox"), aes(time, value, color= model,linetype="solid"),size=1, alpha=.65) + 
+  facet_wrap(trans~., ncol=1, scales="free_y") + 
+  scale_color_manual(name ="Model",values=c("#e66101","#fdb863","#b2abd2", "#5e3c99"),labels= c("NP Cox","Par","Par(RP)"))+
+  #"Cox",
+  scale_linetype_manual(name= "Setting",values=c("dashed","solid"), labels=c("Residential","Ambulatory"))+ #dashed, a; solid, b
+  scale_x_continuous(breaks=seq(0, 365.25*5, by = 365.25), labels=seq(0, 5, by = 1), minor_breaks = seq(0, 365.25*5, by = 365.25*.5))+
+  xlab("Years") + 
+  ylab("Cumulative hazards") + 
+  theme_minimal()+
+  theme(legend.position=c(.9,.59),
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))
+
+if(no_mostrar==1){
+jpeg(paste0(gsub("SUD_CL","_mult_state_ags/",path),"cum_haz_pat1_apr22.jpg"), height=30, width= 10, res= 600, units = "in")
+fig_diff_mod_ab
+  dev.off()
+}
+```
+
+```{r cum_haz21, eval=T, echo=T, paged.print=TRUE, fig.height=30, fig.width=10, fig.cap="Figure 1b. Estimate of Cumulative Hazards, Five States Model, 1st Patient", fig.align="center", error=T}
+fig_diff_mod_ab+ theme(legend.position=c(.9,.585))
+```
+
+<br>
+
+# Transition Probabilites of the Multistate Model
+
+We also want to know the probability to be in each of the three states over time, not only the instantaneous transition rate reflected by the cumulative hazard. We need to create a data frame that represents an individual with Low risk score for reference. We need to compute the probability of readmission after being admitted to a treatment, with or without a therapeutic discharge, for the different periods.
+
+For mstate package, it is possible to use simulation to calculate transition probabilities through `mssample`.
+
+In semi-Markov models, solving the Kolmogorov forward equation numerically is not feasible because the transition is no longer a deterministic function of t, depending on the transition history to estimate differences. Considering the abovementioned, we calculated the transition probabilities not through a deterministic approach, but following a probabilistic one through resamples.
+
+The cumulative hazards obtained are used to simulate the times at which patients transition between health states, that is, state occupancy probabilities with a “clock-reset” model.
+
+We used a number of `r format(n_iter/10, big.mark=",")` resamples of trajectories.
+
+<br>
+
+```{r pat1_pmatrix,eval=T, echo=T, paged.print=TRUE, error=T}
+n_iter<-n_iter/10#es 10,000 pero podría bajarlo a /200 como prueba
+n_M = 1e5 #format(1e5, scientific=F)
+
+time_before_transprob<-Sys.time()
+
+for(i in c(90,365,1096,1827)){
+  set.seed(1234)
+  flexsurv::pmatrix.simfs(x = sel_param_fits_a,
+                        t = i, #Must be a single number unlike pmatrix.fs
+                        ci = T,
+                        B= n_iter/10, #Increasing B is usually more expensive than increasing M. NUmber of simulations from the normal asymptotic distribution. MOre, more accuracy
+                        newdat= newdat_a_sc,
+                        tvar="trans",
+                        #tcovs= "arrival",# Predicatable time-dependent covariates such as age
+                        cores= 6,
+                        M =n_M,#Number of individual trajectories to simulate.
+                        trans = trans_matrix) %>% 
+  assign(paste0("pmatrix1_t_a_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::pmatrix.simfs(x = sel_param_fits_a,
+                        t = i, #Must be a single number unlike pmatrix.fs
+                        ci = T,
+                        B= n_iter/10, 
+                        newdat= newdat_b_sc,
+                        tvar="trans",
+                        #tcovs= "arrival",# Predicatable time-dependent covariates such as age
+                        cores= 6,
+                        M =  n_M,#Number of individual trajectories to simulate.
+                        trans = trans_matrix) %>% 
+  assign(paste0("pmatrix1_t_b_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::pmatrix.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        B= n_iter/10,
+                        newdat= newdat_a,
+                        tvar="trans",
+                        #tcovs= "arrival", 
+                        M =  n_M,#Number of individual trajectories to simulate.
+                        cores= 6,#N of processor cores
+                        trans = trans_matrix) %>% 
+  assign(paste0("pmatrix1_t_rp_a_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(1234)
+  flexsurv::pmatrix.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        B= n_iter/10,
+                        newdat= newdat_b,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6,#N of processor cores
+                        trans = trans_matrix) %>% 
+  assign(paste0("pmatrix1_t_rp_b_",i),.,envir=.GlobalEnv)
+}
+
+time_after_transprob<-Sys.time()
+
+paste0("Time in process: ");time_after_transprob-time_before_transprob
+```
+
+<br>
+
+# Length of Stay
+
+```{r los,eval=T, echo=T, paged.print=TRUE, error=T}
+time_before_los<-Sys.time()
+
+for(i in c(90,365,1096,1827)){
+set.seed(2125)
+flexsurv::totlos.simfs(sel_param_fits_a, 
+             t = i, #Maximum time to predict to.
+            # start = 1, #Starting state.
+             newdata = newdat_a_sc, 
+             trans= trans_matrix, 
+             ci = T, #Return a confidence interval calculated by simulating from the asymptotic normal distribution of the maximum likelihood estimates. This is turned off by default, since two levels of simulation are required. If turned on, users should adjust B and/or M until the results reach the desired precision. The simulation over M is generally vectorised, therefore increasing B is usually more expensive than increasing M.
+             tvar = "trans", #Variable in the data representing the transition type. Not required if x is a list of models.
+             #tcovs = "arrival", #Predictable time-dependent covariates such as age, see sim.fmsm.
+             group = NULL, #Optional grouping for the states. For example, if there are four states, and group=c(1,1,2,2), then totlos.simfs returns the expected total time in states 1 and 2 combined, and states 3 and 4 combined
+             M =n_M,  #Number of individuals to simulate in order to approximate the transition probabilities. Users should adjust this to obtain the required precision.
+              B= n_iter/10, #Number of simulations from the normal asymptotic distribution used to calculate variances. Decrease for greater speed at the expense of accuracy.
+  cl = 0.95)%>% 
+  assign(paste0("tolos_t_a_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        B= n_iter/10,
+                        newdat= newdat_b_sc,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        B= n_iter/10,
+                        newdat= newdat_a,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_rp_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        B= n_iter/10,
+                        newdat= newdat_b,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_rp_",i),.,envir=.GlobalEnv)
+}
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+invisible(c(
+"## For intermediate states"
+))
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#start= 2,  tolos2_4s_t_a_str2_
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 2,
+                        B= n_iter/10,
+                        newdat= newdat_a_sc,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_str2_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 2,
+                        B= n_iter/10,
+                        newdat= newdat_b_sc,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_str2_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 2,
+                        B= n_iter/10,
+                        newdat= newdat_a,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_rp_str2_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 2,
+                        B= n_iter/10,
+                        newdat= newdat_b,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_rp_str2_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 3,
+                        B= n_iter/10,
+                        newdat= newdat_a_sc,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_str3_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 3,
+                        B= n_iter/10,
+                        newdat= newdat_b_sc,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_str3_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 3,
+                        B= n_iter/10,
+                        newdat= newdat_a,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_rp_str3_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 3,
+                        B= n_iter/10,
+                        newdat= newdat_b,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_rp_str3_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 4,
+                        B= n_iter/10,
+                        newdat= newdat_a_sc,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_str4_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_a,
+                        t = i,
+                        ci = T,
+                        start= 4,
+                        B= n_iter/10,
+                        newdat= newdat_b_sc,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_str4_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 4,
+                        B= n_iter/10,
+                        newdat= newdat_a,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_a_rp_str4_",i),.,envir=.GlobalEnv)
+}
+
+for(i in c(90,365,1096,1827)){
+  set.seed(2125)
+  flexsurv::totlos.simfs(x = sel_param_fits_b,
+                        t = i,
+                        ci = T,
+                        start= 4,
+                        B= n_iter/10,
+                        newdat= newdat_b,
+                        trans = trans_matrix,
+                        tvar="trans",
+                        #tcovs= "arrival",
+                        M = n_M,#Number of individual trajectories to simulate.
+                        cores= 6#N of processor cores
+                  ) %>% 
+  assign(paste0("tolos_t_b_rp_str4_",i),.,envir=.GlobalEnv)
+}
+
+time_after_los<-Sys.time()
+
+paste0("Time in process: ");time_after_los-time_before_los
+```
+
+
+# Session Info
+
+```{r session_info, echo=T, error=T, paged.print=TRUE}
+Sys.getenv("R_LIBS_USER")
+
+rstudioapi::getSourceEditorContext()
+
+if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_3_apr22.RData")
+  } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/andre/Desktop/SUD_CL/mult_state_3_apr22.RData")
+  } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_3_apr22.RData")
+  } else if (grepl("G:",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_3_apr22.RData")
+  } else {
+    save.image("~/mult_state_3_apr22.RData")
+    path.expand("~/mult_state_3_apr22.RData")
+  }
+
+sessionInfo()
+sesion_info <- devtools::session_info()
+dplyr::select(
+  tibble::as_tibble(sesion_info$packages),
+  c(package, loadedversion, source)
+) %>% 
+  DT::datatable(filter = 'top', colnames = c('Row number' =1,'Variable' = 2, 'Percentage'= 3),
+              caption = htmltools::tags$caption(
+        style = 'caption-side: top; text-align: left;',
+        '', htmltools::em('Packages')),
+      options=list(
+initComplete = htmlwidgets::JS(
+      "function(settings, json) {",
+      "$(this.api().tables().body()).css({'font-size': '80%'});",
+      "}")))
+```

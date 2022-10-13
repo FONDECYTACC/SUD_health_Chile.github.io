@@ -4072,6 +4072,7 @@ NA,NA,NA,NA,4,
 NA,NA,NA,NA,NA
 ), nrow=5, ncol=5,byrow=TRUE,dimnames=list(from=states_trans,to=states_trans))
 
+
 Tot_reg<-
 d_match_surv %>% 
     dplyr::select(id, duplicates_filtered, fech_ing_num,fech_egres_num,dias_treat_imp_sin_na,fech_ing_next_treat,tipo_de_plan_res,motivodeegreso_mod_imp,min_achievement,group_match,dup) %>%
@@ -4176,7 +4177,7 @@ d_match_surv_msprep<-
      Readmission_time, Readmission_status, Readmission2_time, Readmission2_status, 
      Readmission3_time, Readmission3_status, Readmission4_time, Readmission4_status, 
      dias_treat_imp_sin_na_1, dias_treat_imp_sin_na_2, dias_treat_imp_sin_na_3, dias_treat_imp_sin_na_4,
-     TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4, duplicates_filtered) %>%  
+     TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4, duplicates_filtered, fech_ing_num_1) %>%  
   as.data.frame() 
 
 #:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:
@@ -4266,7 +4267,7 @@ d_match_surv_msprep_cc<-
      Readmission_time, Readmission_status, Readmission2_time, Readmission2_status, 
      Readmission3_time, Readmission3_status, Readmission4_time, Readmission4_status, 
      dias_treat_imp_sin_na_1, dias_treat_imp_sin_na_2, dias_treat_imp_sin_na_3, dias_treat_imp_sin_na_4,
-     TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4, duplicates_filtered) %>%  
+     TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4, duplicates_filtered,fech_ing_num_1) %>%  
   as.data.frame() 
 
 
@@ -4285,16 +4286,223 @@ invisible("No se si debiera transformarlo a años. Tal vez a meses. Si lo transf
 
 ```
 
+
+```{r msprep_1_oct_2022, eval=T, echo=T, paged.print=TRUE}                                 
+### diff_bet_treat is the variable that includes time-to-readmission
+### AGS: Starts in 0, excepting left truncated cases
+### variables should start with time_ & status_
+### Transform to years once generated
+### Looks that they all share the same objective time
+### AGS: If there is a continous state, interval censoring is not necessary 
+### 0's are censored status
+
+library(mstate)
+
+d_match_surv_msprep_oct_2022<-
+  d_match_surv %>% 
+  dplyr::select(id, duplicates_filtered, fech_ing_num,fech_egres_num,dias_treat_imp_sin_na,fech_ing_next_treat,tipo_de_plan_res,motivodeegreso_mod_imp,min_achievement,group_match,dup, dias_treat_imp_sin_na) %>% 
+  ## Filter the fifth readmission of registries
+  dplyr::filter(dup<=4) %>% 
+  dplyr::mutate(tipo_de_plan_res=if_else(tipo_de_plan_res=="1",1,0,0)) %>% 
+  dplyr::mutate(TD=if_else(motivodeegreso_mod_imp=="Therapeutic discharge",1,0,0)) %>% 
+  dplyr::mutate(DWCA=if_else(motivodeegreso_mod_imp %in% c("Early Drop-out","Late Drop-out","Administrative discharge"),1,0,0)) %>% 
+  #dplyr::mutate(tipo_de_plan_res_baseline=tipo_de_plan_res) %>% 
+  tidyr::pivot_wider(id_cols=c("id","group_match","duplicates_filtered"), names_from=dup, names_sep="_", values_from=c("fech_ing_num","tipo_de_plan_res","TD","DWCA", "dias_treat_imp_sin_na")) %>% #"","motivodeegreso_mod_imp","min_achievement"
+  #,"tipo_de_plan_res_baseline"
+  dplyr::arrange(id) %>%
+  dplyr::select(id, group_match,everything()) %>% 
+  #display error if there are more than row per user
+  purrr::when(dplyr::group_by(.,id) %>% dplyr::count() %>% filter(n>1) %>% nrow()>0 ~ stop("more than one case by row"), 
+              ~.) %>% 
+  #22,916 x 20 # 2022-oct= 22,452
+  #OCT_2022 discount a day for treatments to avoid overlapping
+  dplyr::mutate(dias_treat_imp_sin_na_1= dplyr::case_when(dias_treat_imp_sin_na_1>=2~ dias_treat_imp_sin_na_1-1,T~dias_treat_imp_sin_na_1)) %>% 
+  dplyr::mutate(fech_ing_num_2= dplyr::case_when(dias_treat_imp_sin_na_1==1~ fech_ing_num_2+1,T~fech_ing_num_2)) %>% 
+  #Check overlapped dates
+    purrr::when(dplyr::mutate(.,diff_bet_treat0= fech_ing_num_2-(dias_treat_imp_sin_na_1 +fech_ing_num_1))%>% dplyr::filter(diff_bet_treat0<=0)%>% nrow()>0 ~ stop("There are cases with differences different than 0 to 2 days to a variable that should be the same"), 
+              ~.) %>%
+  purrr::when(dplyr::mutate(.,diff_bet_treat1= fech_ing_num_2-fech_ing_num_1)%>% dplyr::filter(diff_bet_treat1<=0)%>% nrow()>0 ~ stop("There are cases with differences different than 0 to 2 days to a variable that should be the same"), 
+              ~.) %>%
+  purrr::when(dplyr::mutate(.,diff_bet_treat2= fech_ing_num_3-fech_ing_num_2)%>% dplyr::filter(diff_bet_treat2<=0)%>% nrow()>0 ~ stop("There are cases with differences different than 0 to 2 days to a variable that should be the same"), 
+              ~.) %>%
+  purrr::when(dplyr::mutate(.,diff_bet_treat3= fech_ing_num_4-fech_ing_num_3)%>% dplyr::filter(diff_bet_treat3<=0)%>% nrow()>0 ~ stop("There are cases with differences different than 0 to 2 days to a variable that should be the same"), 
+              ~.) %>%
+    dplyr::mutate(Readmission_status=if_else(!is.na(fech_ing_num_2),1,0,0),
+                  Readmission2_status=if_else(!is.na(fech_ing_num_3),1,0,0),
+                  Readmission3_status=if_else(!is.na(fech_ing_num_4),1,0,0)) %>% 
+  
+#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:
+## 2021-03-24, I had to reespecify times to objective times, in order to avoid further problems
+## 2021-05-06, CENSORED TIME IS NOT THE DIFFERENCE BETWEEN THE TIME OF CENSORSIP AND THE TIME OF THE LAST EVENT, IS THE TOTAL DIFFERENCE. THE SUM OF DAYS UNTIL THE FOLLOWUP TIME
+  #OCT -2022, added a variable.
+  dplyr::mutate( 
+  TD_time= dplyr::case_when(
+        TD_1==1~as.numeric(dias_treat_imp_sin_na_1),
+        TD_1==0~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1)) %>% 
+  dplyr::mutate( 
+  DWCA_time= dplyr::case_when(
+        DWCA_1==1~as.numeric(dias_treat_imp_sin_na_1),
+        DWCA_1==0~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1)) %>% 
+  #OCT -2022, modified readmission time
+  dplyr::mutate( 
+  Readmission_time= dplyr::case_when(
+        Readmission_status==1 & TD_1==1~ as.numeric(fech_ing_num_2-(TD_time+fech_ing_num_1)),
+        Readmission_status==1 & DWCA_1==1~ as.numeric(fech_ing_num_2-(DWCA_time+fech_ing_num_1)),
+        Readmission_status==0~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1)) %>% 
+  dplyr::mutate( 
+  Readmission2_time= dplyr::case_when(
+        Readmission2_status==1~as.numeric(fech_ing_num_3-fech_ing_num_1),
+        Readmission2_status==0~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1)) %>% 
+  dplyr::mutate( 
+  Readmission3_time= dplyr::case_when(
+        Readmission3_status==1~as.numeric(fech_ing_num_4-fech_ing_num_1),
+        Readmission3_status==0~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1)) %>% 
+
+  #OCT 2022    
+  dplyr::mutate(Readmissionb_time= dplyr::case_when(DWCA_1==1~Readmission_time,T~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1), Readmission2b_time= dplyr::case_when(DWCA_1==1~Readmission2_time,T~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1),Readmission3b_time= dplyr::case_when(DWCA_1==1~Readmission3_time,T~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1)) %>% dplyr::mutate(Readmission_time= dplyr::case_when(TD_1==1~Readmission_time,T~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1), Readmission2_time= dplyr::case_when(TD_1==1~Readmission2_time,T~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1),Readmission3_time= dplyr::case_when(TD_1==1~Readmission3_time,T~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1)) %>% 
+  dplyr::mutate(Readmissionb_status= dplyr::case_when(DWCA_1==1~Readmission_status,T~0), Readmission2b_status= dplyr::case_when(DWCA_1==1~Readmission2_status,T~0), Readmission3b_status= dplyr::case_when(DWCA_1==1~Readmission3_status,T~0)) %>% dplyr::mutate(Readmission_status=  dplyr::case_when(TD_1==1~ Readmission_status,T~0), Readmission2_status= dplyr::case_when(TD_1==1~ Readmission2_status,T~0), Readmission3_status= dplyr::case_when(TD_1==1~ Readmission3_status,T~0)) %>% 
+    dplyr::rename("TD_status"="TD_1","DWCA_status"="DWCA_1") %>% 
+    ## THE USERS THAT  DID NOT REGISTERED AN EVENT WILL COME UP TO THE FINAL TIME OF THE FOLLOW UP
+ dplyr::mutate(TD_time= dplyr::case_when(TD_time==0 &TD_status==1~1,T~TD_time)) %>% 
+  dplyr::mutate(DWCA_time= dplyr::case_when(DWCA_time==0 &DWCA_status==1~1,T~DWCA_time)) %>% 
+  
+#OCT 2022- format into cumulative time
+dplyr::mutate( Readmission3b_time=dplyr::case_when(Readmission3b_status==1~ Readmission3b_time+Readmission2b_time+ Readmissionb_time+ DWCA_time, T~Readmission3b_time),
+               Readmission2b_time=dplyr::case_when(Readmission2b_status==1~ Readmission2b_time+ Readmissionb_time+ DWCA_time, T~Readmission2b_time),
+               Readmissionb_time=dplyr::case_when(Readmissionb_status==1~ Readmissionb_time+ DWCA_time, T~Readmissionb_time)) %>% 
+  
+  dplyr::mutate( Readmission3_time=dplyr::case_when(Readmission3_status==1~ Readmission3_time+Readmission2_time+ Readmission_time+ TD_time, T~Readmission3_time),
+               Readmission2_time=dplyr::case_when(Readmission2_status==1~ Readmission2_time+ Readmission_time+ TD_time, T~Readmission2_time),
+               Readmission_time=dplyr::case_when(Readmission_status==1~ Readmission_time+ TD_time, T~Readmission_time)) %>% 
+  
+ dplyr::select(
+     id, group_match, 
+     tipo_de_plan_res_1, TD_time, TD_status, DWCA_time, DWCA_status,
+     Readmission_time, Readmission_status, Readmissionb_time, Readmissionb_status, Readmission2_time, Readmission2_status, Readmission2b_time, Readmission2b_status, 
+     Readmission3_time, Readmission3_status, Readmission3b_time, Readmission3b_status,
+     dias_treat_imp_sin_na_1, duplicates_filtered, fech_ing_num_1) %>%  
+  dplyr::mutate(cens_time=as.numeric(as.Date("2019-11-13"))-fech_ing_num_1) %>% 
+  as.data.frame() 
+
+#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:
+### ANALYSES W COMPLETE DATA
+d_match_surv_msprep_cc_oct_2022<-
+  d_match_surv %>% 
+  dplyr::filter(hash_key %in% unlist(hashs_w_complete_data)) %>% 
+  dplyr::group_by(group_match) %>% 
+  dplyr::mutate(pairs=n_distinct(hash_key)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::filter(pairs==2) %>% #janitor::tabyl(pairs)
+  dplyr::select(id, duplicates_filtered, fech_ing_num,fech_egres_num,dias_treat_imp_sin_na,fech_ing_next_treat,tipo_de_plan_res,motivodeegreso_mod_imp,min_achievement,group_match,dup, dias_treat_imp_sin_na) %>% 
+  ## Filter the fifth readmission of registries
+  dplyr::filter(dup<=4) %>% 
+  dplyr::mutate(tipo_de_plan_res=if_else(tipo_de_plan_res=="1",1,0,0)) %>% 
+  dplyr::mutate(TD=if_else(motivodeegreso_mod_imp=="Therapeutic discharge",1,0,0)) %>% 
+  dplyr::mutate(DWCA=if_else(motivodeegreso_mod_imp %in% c("Early Drop-out","Late Drop-out","Administrative discharge"),1,0,0)) %>% 
+  #dplyr::mutate(tipo_de_plan_res_baseline=tipo_de_plan_res) %>% 
+  tidyr::pivot_wider(id_cols=c("id","group_match","duplicates_filtered"), names_from=dup, names_sep="_", values_from=c("fech_ing_num","tipo_de_plan_res","TD","DWCA", "dias_treat_imp_sin_na")) %>% #"","motivodeegreso_mod_imp","min_achievement"
+  #,"tipo_de_plan_res_baseline"
+  dplyr::arrange(id) %>%
+  dplyr::select(id, group_match,everything()) %>% 
+  #display error if there are more than row per user
+  purrr::when(dplyr::group_by(.,id) %>% dplyr::count() %>% filter(n>1) %>% nrow()>0 ~ stop("more than one case by row"), 
+              ~.) %>% 
+  #22,916 x 20 # 2022-oct= 22,452
+  #OCT_2022 discount a day for treatments to avoid overlapping
+  dplyr::mutate(dias_treat_imp_sin_na_1= dplyr::case_when(dias_treat_imp_sin_na_1>=2~ dias_treat_imp_sin_na_1-1,T~dias_treat_imp_sin_na_1)) %>% 
+  dplyr::mutate(fech_ing_num_2= dplyr::case_when(dias_treat_imp_sin_na_1==1~ fech_ing_num_2+1,T~fech_ing_num_2)) %>% 
+  #Check overlapped dates
+    purrr::when(dplyr::mutate(.,diff_bet_treat0= fech_ing_num_2-(dias_treat_imp_sin_na_1 +fech_ing_num_1))%>% dplyr::filter(diff_bet_treat0<=0)%>% nrow()>0 ~ stop("There are cases with differences different than 0 to 2 days to a variable that should be the same"), 
+              ~.) %>%
+  purrr::when(dplyr::mutate(.,diff_bet_treat1= fech_ing_num_2-fech_ing_num_1)%>% dplyr::filter(diff_bet_treat1<=0)%>% nrow()>0 ~ stop("There are cases with differences different than 0 to 2 days to a variable that should be the same"), 
+              ~.) %>%
+  purrr::when(dplyr::mutate(.,diff_bet_treat2= fech_ing_num_3-fech_ing_num_2)%>% dplyr::filter(diff_bet_treat2<=0)%>% nrow()>0 ~ stop("There are cases with differences different than 0 to 2 days to a variable that should be the same"), 
+              ~.) %>%
+  purrr::when(dplyr::mutate(.,diff_bet_treat3= fech_ing_num_4-fech_ing_num_3)%>% dplyr::filter(diff_bet_treat3<=0)%>% nrow()>0 ~ stop("There are cases with differences different than 0 to 2 days to a variable that should be the same"), 
+              ~.) %>%
+    dplyr::mutate(Readmission_status=if_else(!is.na(fech_ing_num_2),1,0,0),
+                  Readmission2_status=if_else(!is.na(fech_ing_num_3),1,0,0),
+                  Readmission3_status=if_else(!is.na(fech_ing_num_4),1,0,0)) %>% 
+  
+#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:
+## 2021-03-24, I had to reespecify times to objective times, in order to avoid further problems
+## 2021-05-06, CENSORED TIME IS NOT THE DIFFERENCE BETWEEN THE TIME OF CENSORSIP AND THE TIME OF THE LAST EVENT, IS THE TOTAL DIFFERENCE. THE SUM OF DAYS UNTIL THE FOLLOWUP TIME
+  #OCT -2022, added a variable.
+  dplyr::mutate( 
+  TD_time= dplyr::case_when(
+        TD_1==1~as.numeric(dias_treat_imp_sin_na_1),
+        TD_1==0~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1)) %>% 
+  dplyr::mutate( 
+  DWCA_time= dplyr::case_when(
+        DWCA_1==1~as.numeric(dias_treat_imp_sin_na_1),
+        DWCA_1==0~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1)) %>% 
+  #OCT -2022, modified readmission time
+  dplyr::mutate( 
+  Readmission_time= dplyr::case_when(
+        Readmission_status==1 & TD_1==1~ as.numeric(fech_ing_num_2-(TD_time+fech_ing_num_1)),
+        Readmission_status==1 & DWCA_1==1~ as.numeric(fech_ing_num_2-(DWCA_time+fech_ing_num_1)),
+        Readmission_status==0~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1)) %>% 
+  dplyr::mutate( 
+  Readmission2_time= dplyr::case_when(
+        Readmission2_status==1~as.numeric(fech_ing_num_3-fech_ing_num_1),
+        Readmission2_status==0~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1)) %>% 
+  dplyr::mutate( 
+  Readmission3_time= dplyr::case_when(
+        Readmission3_status==1~as.numeric(fech_ing_num_4-fech_ing_num_1),
+        Readmission3_status==0~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1)) %>% 
+
+  #OCT 2022    
+  dplyr::mutate(Readmissionb_time= dplyr::case_when(DWCA_1==1~Readmission_time,T~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1), Readmission2b_time= dplyr::case_when(DWCA_1==1~Readmission2_time,T~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1),Readmission3b_time= dplyr::case_when(DWCA_1==1~Readmission3_time,T~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1)) %>% dplyr::mutate(Readmission_time= dplyr::case_when(TD_1==1~Readmission_time,T~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1), Readmission2_time= dplyr::case_when(TD_1==1~Readmission2_time,T~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1),Readmission3_time= dplyr::case_when(TD_1==1~Readmission3_time,T~as.numeric(as.Date("2019-11-13"))-fech_ing_num_1)) %>% 
+  dplyr::mutate(Readmissionb_status= dplyr::case_when(DWCA_1==1~Readmission_status,T~0), Readmission2b_status= dplyr::case_when(DWCA_1==1~Readmission2_status,T~0), Readmission3b_status= dplyr::case_when(DWCA_1==1~Readmission3_status,T~0)) %>% dplyr::mutate(Readmission_status=  dplyr::case_when(TD_1==1~ Readmission_status,T~0), Readmission2_status= dplyr::case_when(TD_1==1~ Readmission2_status,T~0), Readmission3_status= dplyr::case_when(TD_1==1~ Readmission3_status,T~0)) %>% 
+    dplyr::rename("TD_status"="TD_1","DWCA_status"="DWCA_1") %>% 
+    ## THE USERS THAT  DID NOT REGISTERED AN EVENT WILL COME UP TO THE FINAL TIME OF THE FOLLOW UP
+ dplyr::mutate(TD_time= dplyr::case_when(TD_time==0 &TD_status==1~1,T~TD_time)) %>% 
+  dplyr::mutate(DWCA_time= dplyr::case_when(DWCA_time==0 &DWCA_status==1~1,T~DWCA_time)) %>% 
+  
+#OCT 2022- format into cumulative time
+dplyr::mutate( Readmission3b_time=dplyr::case_when(Readmission3b_status==1~ Readmission3b_time+Readmission2b_time+ Readmissionb_time+ DWCA_time, T~Readmission3b_time),
+               Readmission2b_time=dplyr::case_when(Readmission2b_status==1~ Readmission2b_time+ Readmissionb_time+ DWCA_time, T~Readmission2b_time),
+               Readmissionb_time=dplyr::case_when(Readmissionb_status==1~ Readmissionb_time+ DWCA_time, T~Readmissionb_time)) %>% 
+  
+  dplyr::mutate( Readmission3_time=dplyr::case_when(Readmission3_status==1~ Readmission3_time+Readmission2_time+ Readmission_time+ TD_time, T~Readmission3_time),
+               Readmission2_time=dplyr::case_when(Readmission2_status==1~ Readmission2_time+ Readmission_time+ TD_time, T~Readmission2_time),
+               Readmission_time=dplyr::case_when(Readmission_status==1~ Readmission_time+ TD_time, T~Readmission_time)) %>% 
+  
+ dplyr::select(
+     id, group_match, 
+     tipo_de_plan_res_1, TD_time, TD_status, DWCA_time, DWCA_status,
+     Readmission_time, Readmission_status, Readmissionb_time, Readmissionb_status, Readmission2_time, Readmission2_status, Readmission2b_time, Readmission2b_status, 
+     Readmission3_time, Readmission3_status, Readmission3b_time, Readmission3b_status,
+     dias_treat_imp_sin_na_1, duplicates_filtered, fech_ing_num_1) %>%  
+  dplyr::mutate(cens_time=as.numeric(as.Date("2019-11-13"))-fech_ing_num_1) %>% 
+  as.data.frame() 
+
+
+#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:#:#:#:##:#:
+d_match_surv_msprep_oct_2022 %>% 
+  dplyr::filter(duplicates_filtered==max(duplicates_filtered)) %>% 
+      knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption="Table 8b. Data in Wide, Five-states (example of patients with >= 5 admissions)",
+               align= c("c",rep('c', 5)))%>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 13)%>% 
+  kableExtra::add_footnote("Note= Proportions from the initial state") %>% 
+  kableExtra::kable_classic() %>% 
+  kableExtra::scroll_box(width = "100%", height = "350px")
+
+invisible("No se si debiera transformarlo a años. Tal vez a meses. Si lo transformo, me darán esas extrapolaciones bizarras del artículo anterior")
+
+```
+
+
 <br>
 
 ```{r create_multistate_db, eval=T, echo=T, paged.print=TRUE}                                 
-
 ms_d_match_surv <- mstate::msprep(time = c(NA, "Readmission_time", "Readmission2_time", "Readmission3_time", "Readmission4_time"), 
                   status = c(NA, "Readmission_status", "Readmission2_status", "Readmission3_status", "Readmission4_status"), 
                                             data = d_match_surv_msprep,
                                             id = "id",
                                             trans = trans_matrix,
-                                            keep =  c(paste0("tipo_de_plan_res_",1:4), paste0("TD_",1:4),paste0("DWCA_",1:4),paste0("dias_treat_imp_sin_na_",1:4)))
+                                            keep =  c("fech_ing_num_1", paste0("tipo_de_plan_res_",1:4), paste0("TD_",1:4),paste0("DWCA_",1:4),paste0("dias_treat_imp_sin_na_",1:4)))
 
 
 
@@ -4304,9 +4512,58 @@ ms_d_match_surv_cc <- mstate::msprep(time = c(NA, "Readmission_time", "Readmissi
                                             data = d_match_surv_msprep_cc,
                                             id = "id",
                                             trans = trans_matrix,
-                                            keep =  c(paste0("tipo_de_plan_res_",1:4), paste0("TD_",1:4),paste0("DWCA_",1:4),paste0("dias_treat_imp_sin_na_",1:4)))
+                                            keep =  c("fech_ing_num_1",paste0("tipo_de_plan_res_",1:4), paste0("TD_",1:4),paste0("DWCA_",1:4),paste0("dias_treat_imp_sin_na_",1:4)))
 #From starting state 1, subject 66 74 19717 has smallest transition time with status=0
 #Everyne has an infinite number in the transition. A good exmple is the user 19717. Only experienced a therapeutic discharge, but in the time from readmission it starts on 910 but ends in INf
+
+
+#_#_#_#_#_#_#_#_#_
+#2022 oct
+
+
+states_trans2<-c("Admission", "TD", "DWCA",	"Readmission",	"Readmissionb", "Readmission2",	"Readmission2b", "Readmission3", "Readmission3b")
+
+trans_matrix2 <- matrix(c(
+NA,1,2,NA,NA,NA,NA,NA,NA, 
+NA,NA,NA,3,NA,NA,NA,NA,NA, 
+NA,NA,NA,NA,4,NA,NA,NA,NA, 
+NA,NA,NA,NA,NA,5,NA,NA,NA, 
+NA,NA,NA,NA,NA,NA,6,NA,NA, 
+NA,NA,NA,NA,NA,NA,NA,7,NA, 
+NA,NA,NA,NA,NA,NA,NA,NA,8, 
+NA,NA,NA,NA,NA,NA,NA,NA,NA, 
+NA,NA,NA,NA,NA,NA,NA,NA,NA
+), nrow=9, ncol=9,byrow=TRUE,dimnames=list(from=states_trans2,to=states_trans2))
+
+        
+ms_d_match_surv_oct_2022 <- mstate::msprep(time = c(NA, "TD_time", "DWCA_time", "Readmission_time", "Readmissionb_time", "Readmission2_time", "Readmission2b_time", "Readmission3_time", "Readmission3b_time"), 
+                  status = c(NA, "TD_status", "DWCA_status", "Readmission_status", "Readmissionb_status", "Readmission2_status", "Readmission2b_status", "Readmission3_status", "Readmission3b_status"), 
+                                            data = d_match_surv_msprep_oct_2022,
+                                            id = "id",
+                                            trans = trans_matrix2,
+                                            keep =  c("fech_ing_num_1", paste0("tipo_de_plan_res_",1)))
+
+#ms_d_match_surv_oct_2022 %>% dplyr::filter(trans==4& is.infinite(time))
+#d_match_surv_msprep_oct_2022 %>% dplyr::filter(id%in%c(5,7))
+
+#mstate::events(ms_d_match_surv_oct_2022)
+
+invisible("Para ver si hay casos en que la fecha de término del evento, y el inicio coinciden o es menor")
+if(d_match_surv_msprep_oct_2022 %>% 
+    dplyr::filter(id %in% unlist(
+        ms_d_match_surv_oct_2022%>% 
+            dplyr::filter(Tstop<=Tstart) %>% 
+            dplyr::select(id,from,to,trans,Tstart,Tstop,time,status) %>% 
+            distinct(id))) %>%
+    #dplyr::mutate(diff_bet_treat=fech_ing_next_treat-fech_egres_num)%>% 
+    nrow()>0){stop("There are cases where Tstop-Tstart <=0")}
+
+ms_d_match_surv_cc_oct_2022 <- mstate::msprep(time = c(NA, "TD_time", "DWCA_time", "Readmission_time", "Readmissionb_time", "Readmission2_time", "Readmission2b_time", "Readmission3_time", "Readmission3b_time"), 
+                  status = c(NA, "TD_status", "DWCA_status", "Readmission_status", "Readmissionb_status", "Readmission2_status", "Readmission2b_status", "Readmission3_status", "Readmission3b_status"), 
+                                            data = d_match_surv_msprep_cc_oct_2022,
+                                            id = "id",
+                                            trans = trans_matrix2,
+                                            keep =  c("fech_ing_num_1",paste0("tipo_de_plan_res_",1)))
 ```
 
 
@@ -4316,7 +4573,7 @@ invisible(c("This problem responds to differences between treatments 0. Should b
 if(no_mostrar==1){
   d_match_surv_msprep %>% 
     dplyr::filter(id %in% unlist(
-       ms_d_match_surv%>% 
+       ms_d_match_surv_oct_2022%>% 
         dplyr::filter(Tstop<=Tstart) %>% 
         dplyr::select(id,from,to,trans,Tstart,Tstop,time,status) %>% 
         distinct(id))) %>%
@@ -4345,7 +4602,8 @@ d_match_surv_msprep %>%
       Readmission_time, Readmission2_time, Readmission3_time, Readmission4_time,
       tipo_de_plan_res_1,tipo_de_plan_res_2, tipo_de_plan_res_3, tipo_de_plan_res_4,
       dias_treat_imp_sin_na_1, dias_treat_imp_sin_na_2, dias_treat_imp_sin_na_3, dias_treat_imp_sin_na_4,
-      TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4), 
+      TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4,fech_ing_num_1) %>% 
+  dplyr::mutate(cens_time=as.numeric(as.Date("2019-11-13"))-fech_ing_num_1), 
 paste0(sub("/SUD_CL","",getwd()),"/_mult_state_ags/five_st_msprep_apr22.dta"))
 
 rio::export(
@@ -4358,10 +4616,11 @@ d_match_surv_msprep %>%
       Readmission.time, Readmission2.time, Readmission3.time, Readmission4.time,
       tipo_de_plan_res_1,tipo_de_plan_res_2, tipo_de_plan_res_3, tipo_de_plan_res_4,
       dias_treat_imp_sin_na_1, dias_treat_imp_sin_na_2, dias_treat_imp_sin_na_3, dias_treat_imp_sin_na_4,
-      TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4
-      ), 
+      TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4,fech_ing_num_1
+      )%>% 
+  dplyr::mutate(cens_time=as.numeric(as.Date("2019-11-13"))-fech_ing_num_1), 
 paste0(sub("/SUD_CL","",getwd()),"/_mult_state_ags/five_st_msprep_apr22.csv"))
-
+##cc
 rio::export(
 d_match_surv_msprep_cc %>% 
       dplyr::select(
@@ -4369,7 +4628,8 @@ d_match_surv_msprep_cc %>%
       Readmission_time, Readmission2_time, Readmission3_time, Readmission4_time,
       tipo_de_plan_res_1,tipo_de_plan_res_2, tipo_de_plan_res_3, tipo_de_plan_res_4,
       dias_treat_imp_sin_na_1, dias_treat_imp_sin_na_2, dias_treat_imp_sin_na_3, dias_treat_imp_sin_na_4,
-      TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4), 
+      TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4,fech_ing_num_1)%>% 
+  dplyr::mutate(cens_time=as.numeric(as.Date("2019-11-13"))-fech_ing_num_1), 
 paste0(sub("/SUD_CL","",getwd()),"/_mult_state_ags/five_st_msprep_apr22_cc.dta"))
 
 rio::export(
@@ -4382,9 +4642,37 @@ d_match_surv_msprep_cc %>%
       Readmission.time, Readmission2.time, Readmission3.time, Readmission4.time,
       tipo_de_plan_res_1,tipo_de_plan_res_2, tipo_de_plan_res_3, tipo_de_plan_res_4,
       dias_treat_imp_sin_na_1, dias_treat_imp_sin_na_2, dias_treat_imp_sin_na_3, dias_treat_imp_sin_na_4,
-      TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4
-      ), 
+      TD_1, TD_2, TD_3, TD_4, DWCA_1, DWCA_2, DWCA_3, DWCA_4,fech_ing_num_1
+      )%>% 
+  dplyr::mutate(cens_time=as.numeric(as.Date("2019-11-13"))-fech_ing_num_1), 
 paste0(sub("/SUD_CL","",getwd()),"/_mult_state_ags/five_st_msprep_apr22_cc.csv"))
+
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+##OCT 2022
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+rio::export(
+d_match_surv_msprep_oct_2022, 
+paste0(sub("/SUD_CL","",getwd()),"/_mult_state_ags/nine_st_msprep_oct22.dta"))
+
+rio::export(
+d_match_surv_msprep_oct_2022 %>% 
+  select_all(~gsub("\\_", ".", tolower(.))), 
+paste0(sub("/SUD_CL","",getwd()),"/_mult_state_ags/nine_st_msprep_oct22.csv"))
+
+rio::export(
+d_match_surv_msprep_cc %>% 
+      dplyr::select(
+      id, group_match,Readmission_status, Readmission2_status, Readmission3_status, Readmission4_status,
+      Readmission_time, Readmission2_time, Readmission3_time, Readmission4_time,
+      tipo_de_plan_res_1,
+      dias_treat_imp_sin_na_1, 
+      TD_1, DWCA_1, fech_ing_num_1)%>% 
+  dplyr::mutate(cens_time=as.numeric(as.Date("2019-11-13"))-fech_ing_num_1), 
+paste0(sub("/SUD_CL","",getwd()),"/_mult_state_ags/nine_st_msprep_oct22_cc.dta"))
+
+rio::export(
+d_match_surv_msprep_cc_oct_2022 %>%
+  select_all(~gsub("\\_", ".", tolower(.))), paste0(sub("/SUD_CL","",getwd()),"/_mult_state_ags/nine_st_msprep_oct22_cc.csv"))
 ```
 
 <br>
@@ -4478,8 +4766,6 @@ title(main=paste0(plots[i,"title"]), cex.main=1.2)
 }
 
 
-
-
 if(no_mostrar==1){
 jpeg(paste0(gsub("SUD_CL/Matching_Process_APR_22.Rmd","",path),"_mult_state_ags/ph_test1.jpg"), height=7, width= 13, res= 320, units = "in")
   
@@ -4513,8 +4799,6 @@ lines(survfit(Surv(time,status)~1, data=subset(ms_d_match_surv, trans==plots[i,"
 legend(2000,.2, c("AMBULATORY", "RESIDENTIAL"), bty="n", lty=c(2,1), cex=.8)
 title(main=paste0(plots[i,"title"]), cex.main=1.2)
 }
-
-
 
 if(no_mostrar==1){
 jpeg(paste0(gsub("SUD_CL/Matching_Process_APR_22.Rmd","",path),"_mult_state_ags/ph_test2.jpg"), height=7, width= 13, res= 320, units = "in")
@@ -4679,65 +4963,33 @@ start_time <- Sys.time()
 cox_markov_test_prueba12<-
    #cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res_1 + TD_1", tfrom=1 , tto=2, grid=tseq, trans=trans_matrix_etm, B=200)
   mstate::MarkovTest(ms_d_match_surv_res_tm,#ms_d_match_surv_res_tm[which(ms_d_match_surv_res_tm$id %in% 1:30),], 
-  formula="tipo_de_plan_res_1 + TD_1", transition=1, grid=tseq, B=200)
+  formula="tipo_de_plan_res_1", transition=1, grid=tseq, B=200)
 
 overall_test(cox_markov_test_prueba12)
 ```
 ```{r markov_semimarkov21_2_cont, echo=T, paged.print=TRUE, error=T, eval=T}  
 cox_markov_test_prueba23<-
   #cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res_1 + TD_1", tfrom=2 , tto=3, grid=tseq, trans=trans_matrix_etm, B=200)
-  mstate::MarkovTest(ms_d_match_surv_res_tm, formula="tipo_de_plan_res_1 + TD_1", transition=2, grid=tseq, B=200)
+  mstate::MarkovTest(ms_d_match_surv_res_tm, formula="tipo_de_plan_res_1", transition=2, grid=tseq, B=200)
 
 overall_test(cox_markov_test_prueba23)
 
 cox_markov_test_prueba34<-
   #cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res_1 + TD_1", tfrom=3 , tto=4, grid=tseq, trans=trans_matrix_etm, B=200)
-  mstate::MarkovTest(ms_d_match_surv_res_tm, formula="tipo_de_plan_res_1 + TD_1", transition=3, grid=tseq, B=200)
+  mstate::MarkovTest(ms_d_match_surv_res_tm, formula="tipo_de_plan_res_1", transition=3, grid=tseq, B=200)
 
 overall_test(cox_markov_test_prueba34)
 
 cox_markov_test_prueba45<-
   #cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res_1 + TD_1", tfrom=4 , tto=5, grid=tseq, trans=trans_matrix_etm, B=200)
-mstate::MarkovTest(ms_d_match_surv_res_tm, formula="tipo_de_plan_res_1 + TD_1", transition=4, grid=tseq, B=200)
+mstate::MarkovTest(ms_d_match_surv_res_tm, formula="tipo_de_plan_res_1", transition=4, grid=tseq, B=200)
 
 overall_test(cox_markov_test_prueba45)
-```
-
-```{r markov_semimarkov21_3_cont, echo=T, paged.print=TRUE, error=T, eval=T}  
-start_time2 <- Sys.time()
-
-cox_markov_test_prueba12d<-
-  cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1", tfrom=1 , tto=2, grid=tseq, trans=trans_matrix_etm, B=200)
-#mstate::MarkovTest(ms_d_match_surv_res_tm, formula="tipo_de_plan_res_1 + TD_1", transition=1, grid=tseq, B=200)
-
-overall_test(cox_markov_test_prueba12d)
-
-cox_markov_test_prueba23d<-
-  cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1 + TD_2", tfrom=2 , tto=3, grid=tseq, trans=trans_matrix_etm, B=200)
-#mstate::MarkovTest(ms_d_match_surv_res_tm, formula="tipo_de_plan_res + TD_1 + TD_2", transition=2, grid=tseq, B=200)
-
-overall_test(cox_markov_test_prueba23d)
-```
-```{r markov_semimarkov21_4_cont, echo=T, paged.print=TRUE, error=T, eval=T}  
-
-cox_markov_test_prueba34d<-
-  cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1+ TD_2+ TD_3", tfrom=3 , tto=4, grid=tseq, trans=trans_matrix_etm, B=200)
-#mstate::MarkovTest(ms_d_match_surv_res_tm, formula="tipo_de_plan_res + TD_1 + TD_2+ TD_3", transition=3, grid=tseq, B=200)
-
-overall_test(cox_markov_test_prueba34d)
-
-cox_markov_test_prueba45d<-
-  cox_markov_test(etm_ms_d_match_surv, formula="tipo_de_plan_res + TD_1+ TD_2+ TD_3+ TD_4", tfrom=4, tto=5, grid=tseq, trans=trans_matrix_etm, B=200)
-#mstate::MarkovTest(ms_d_match_surv_res_tm, formula="tipo_de_plan_res + TD_1 + TD_2+ TD_3+ TD_4", transition=4, grid=tseq, B=200)
-
-overall_test(cox_markov_test_prueba45d)
 
 end_time <- Sys.time()
 
 print("Time taken in process")
 end_time - start_time
-
-end_time - start_time2
 
 #The model considered the transition from intermediate states to our absorbing state (being readmitted at the fourth time) is explained by the time spent in the previous health state. This covariate (time in the previous state) was shown to be statistically significant (p<.001); results indicated a longer duration spent in the first treatment is associated with increased risk of readmission. Therefore, a semi-Markov (called a Markov renewal model) or clock reset approach should be undertaken for both models.
 ```
