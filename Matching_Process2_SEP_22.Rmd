@@ -72,15 +72,15 @@ if(!grepl("4.0.2",R.version.string)){stop("Different version (must be 4.0.2)")}
 path<-rstudioapi::getSourceEditorContext()$path
 
 if (grepl("CISS Fondecyt",path)==T){
-    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_15_apr22.RData")
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_1_apr22.RData")
   } else if (grepl("andre",path)==T){
-    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_15_apr22.RData")
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_1_apr22.RData")
   } else if (grepl("E:",path)==T){
-    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_15_apr22.RData")
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_1_apr22.RData")
   } else if (grepl("G:",path)==T){
-    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_15_apr22.RData")
+    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_1_apr22.RData")
   } else {
-    setwd("~/");load("~/mult_state_15_apr22.RData");path.expand("~/mult_state_15_apr22.RData")
+    setwd("~/");load("~/mult_state_1_apr22.RData");path.expand("~/mult_state_1_apr22.RData")
   }
 ```
 
@@ -234,6 +234,27 @@ eval_fork <- function(..., timeout=60){
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 #:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
 
+knitr::knit_hooks$set(time_it = local({
+  now <- NULL
+  function(before, options) {
+    if (before) {
+      # record the current time before each chunk
+      now <<- Sys.time()
+    } else {
+      # calculate the time difference after a chunk
+      res <- difftime(Sys.time(), now)
+      # return a character string to show the time
+      print(paste("Time for this code chunk to run:", res))
+    }
+  }
+}))
+knitr::opts_chunk$set(time_it = TRUE)
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
 LMAJ2 <- function (msdata, tmat, id, s, h, j, weighted){
   if (is.null(tmat)) 
     stop("msdata object should have a \"trans\" attribute")
@@ -335,6 +356,9 @@ msfx1 <- mstate::msfit(object = cx1,  trans = trans_matrix, vartype ="aalen")
 #errors for the transition probabilities when there is no censoring. The two estimators give
 #almost equal results in all practical applications.
 
+newtime0 = seq(from=round(min(ms_d_match_surv$time),0), to= round(max(ms_d_match_surv$time),0))
+
+
 msf0_plot<-
 plot(msf0, 
      #cols=c()
@@ -392,56 +416,115 @@ dev.off()
 }
 ```
 
-```{r msfit1b,eval=T, echo=T, paged.print=TRUE, fig.height=14, fig.width=12, fig.cap="Figure 1b. Estimate of Cumulative Hazards (Markov), Stratified by Setting", fig.align="center"}
 
-msfx0_plot<-
-plot(msfx0, 
+```{r msfitb,eval=T, echo=T, paged.print=TRUE, fig.height=14, fig.width=12, fig.cap="Figure 1b. Estimate of Cumulative Hazards (Semimarkov), Stratified by Setting (9 states)", fig.align="center"}
+if(no_mostrar==1){
+  for(i in c(1:3)){
+    print(survdiff(Surv(time,status==1)~tipo_de_programa_2,data=subset(ms_d_match_surv_oct_2022, trans == i)))
+    }
+  for(i in c(1:5)){
+    print(survdiff(Seurv(time,status==1)~tipo_de_programa_2,data=subset(ms_d_match_surv_oct_2022, trans == i)))
+  } 
+}
+
+pr0_9s <- subset(ms_d_match_surv_oct_2022, tipo_de_plan_res_1==0)
+pr1_9s <- subset(ms_d_match_surv_oct_2022, tipo_de_plan_res_1==1)
+attr(pr0_9s, "trans") <- trans_matrix2
+attr(pr1_9s, "trans") <- trans_matrix2
+
+
+c0_9s <- survival::coxph(Surv(time, status) ~ strata(trans), #Surv(time, status) ~ strata(trans) 
+            data = pr0_9s, method = "breslow")
+c1_9s <- survival::coxph(Surv(time, status) ~ strata(trans), 
+            data = pr1_9s, method = "breslow")
+
+cx0_9s <- coxph(Surv(Tstart,Tstop,status)~strata(trans),
+        data=pr0_9s,method="breslow")
+cx1_9s <- coxph(Surv(Tstart,Tstop,status)~strata(trans),
+        data=pr1_9s,method="breslow")
+
+msf0_9s <- mstate::msfit(object= c0_9s, trans= trans_matrix2,vartype ="aalen")
+msf1_9s <- mstate::msfit(object= c1_9s, trans= trans_matrix2,vartype ="aalen")
+
+msfx0_9s <- mstate::msfit(object= cx0_9s, trans= trans_matrix2,vartype ="aalen")
+msfx1_9s <- mstate::msfit(object= cx1_9s, trans= trans_matrix2,vartype ="aalen")
+
+
+newtime0_9s = seq(from=round(min(ms_d_match_surv_oct_2022$time),0), to= round(max(ms_d_match_surv_oct_2022$time),0))
+
+msf0_plot_9s<-
+plot(msf0_9s, 
      #cols=c()
      type="single",
      use.ggplot = TRUE)+
   ggtitle("")+
-  #ylim(0,1.5)+
+  ylim(0,1.5)+
   theme_bw()+
   scale_x_continuous("",breaks=seq(0,max(newtime0,na.rm=T),by=365.25), labels=(1:length(seq(0,max(newtime0,na.rm=T),by=365.25))-1)) +
-  theme(legend.position = "bottom")
- # scale_y_continuous(breaks=seq(0,7.5,by=1.5/10),limits=c(0,2.5))
+  theme(legend.position = "bottom")+
+  scale_y_continuous(breaks=seq(0,1.5,by=1.5/10),limits=c(0,1.5))
 
-msfx1_plot<-
-plot(msfx1, 
+msf1_plot_9s<-
+plot(msf1_9s, 
      #cols=c()
      type="single",
      use.ggplot = TRUE)+
   ggtitle("")+
-  #ylim(0,1.5)+
+  ylim(0,1.5)+
   theme_bw()+
   scale_x_continuous("",breaks=seq(0,max(newtime0,na.rm=T),by=365.25), labels=(1:length(seq(0,max(newtime0,na.rm=T),by=365.25))-1)) +
-  theme(legend.position = "bottom")
-  #scale_y_continuous(breaks=seq(0,2.5,by=1.5/10),limits=c(0,2.5))
+  theme(legend.position = "bottom")+
+  scale_y_continuous(breaks=seq(0,1.5,by=1.5/10),limits=c(0,1.5))
 
 
-ggarrange(msfx0_plot,msfx1_plot,
-          labels = c("Ambulatory", "Residential"),
-          common.legend = TRUE, 
-          #label.y="Cumulative Baseline Hazards",
-         # label.x="Years",
-          legend = "bottom")
+msf01_9s<-
+rbind.data.frame(cbind(res=0,msf0_plot_9s$data),cbind(res=1,msf1_plot_9s$data)) %>% 
+  dplyr::mutate(res=factor(res, labels=c("Ambulatory", "Residential")))
 
+msf01_9s %>% 
+  #dplyr::mutate(trans=factor(trans, labels=as.character(unique(msf01_9s$trans_name)))) %>%
+  dplyr::mutate(trans_rec=factor(dplyr::case_when(trans %in% c(1,2)~ "1) Admission to Treatment termination",
+                                           trans %in% c(3,4)~ "2) Treatment termination to Readmission",
+                                           trans %in% c(5,6)~ "3) First to Second Readmission",
+                                           trans %in% c(7,8)~ "4) Second to Third Readmission",T~NA_character_))) %>% 
+ggplot()+
+    geom_step(aes(y=Haz, x=time, linetype=res, color=trans_name), size=1)+
+    facet_wrap(~trans_rec)+
+    theme_survminer()+
+    theme(legend.position = "bottom", legend.title = element_text(size = 9), legend.text = element_text(size=8),
+           legend.box="vertical", legend.margin=margin())+
+    scale_x_continuous(breaks=seq(0, 11*365.25, by = 365.25), labels=seq(0, 11, by = 1))+
+    xlab("Time from first admission (in years)")+
+    ylab("Hazard")+
+    scale_linetype_manual(values=c("twodash", "dotted"))+
+    scale_color_manual(values=rep(c('#06283D','#47B5FF'), 4))+
+    labs(color="Transition", linetype="Treatment Setting")
 
  if(no_mostrar==1){
-jpeg(paste0(jpg_path,"_mult_state_ags/Cum_haz_markov_set_apr22.jpg"), height=14, width= 12, res= 320, units = "in")
+jpeg(paste0(jpg_path,"_mult_state_ags/Cum_haz_markov_set_apr22_9s.jpg"), height=14, width= 12, res= 320, units = "in")
 
-ggarrange(msfx0_plot,msfx1_plot,
-          labels = c("Ambulatory", "Residential"),
-          common.legend = TRUE, 
-          #label.y="Cumulative Baseline Hazards",
-         # label.x="Years",
-          legend = "bottom")
+msf01_9s %>% 
+  dplyr::mutate(trans_rec=factor(dplyr::case_when(trans %in% c(1,2)~ "1) Admission to Treatment termination",
+                                           trans %in% c(3,4)~ "2) Treatment termination to Readmission",
+                                           trans %in% c(5,6)~ "3) First to Second Readmission",
+                                           trans %in% c(7,8)~ "4) Second to Third Readmission",T~NA_character_))) %>% 
+ggplot()+
+    geom_step(aes(y=Haz, x=time, linetype=res, color=trans_name), size=1)+
+    facet_wrap(~trans_rec)+
+    theme_survminer()+
+    theme(legend.position = "bottom", legend.title = element_text(size = 10), legend.text = element_text(size=9),
+           legend.box="vertical", legend.margin=margin())+
+    scale_x_continuous(breaks=seq(0, 11*365.25, by = 365.25), labels=seq(0, 11, by = 1))+
+    xlab("Time from first admission (in years)")+
+    ylab("Hazard")+
+    scale_linetype_manual(values=c("twodash", "dotted"))+
+    scale_color_manual(values=rep(c('#06283D','#47B5FF'), 4))+
+    labs(color="Transition", linetype="Treatment Setting")
+
 
 dev.off()
 }
 ```
-
-
 
 ```{r cum_haz12a, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 2a. Estimate of Cumulative Hazards (Semi-Markov), Five-states", fig.align="center", error=T}
 
@@ -512,15 +595,96 @@ ggsave(paste0(jpg_path,"_mult_state_ags/","Fig2_alt_apr22.pdf"),
 }
 ```
 
-
 <br>
 
-```{r msfit2.5_4s, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 2b. Estimate of Cumulative Hazards (Semi-Markov), Five-states", fig.align="center", error=T, dpi=320}
+
+```{r cum_haz12b, eval=T, echo=T, paged.print=TRUE, fig.height=15, fig.width=10, fig.cap="Figure 2b. Estimate of Cumulative Hazards (Semi-Markov), Nine-states", fig.align="center", error=T}
+trans_for_nine_st<-c("1) Admission to Treatment termination", "2) Treatment termination to Readmission","3) First to Second Readmission","4) Second to Third Readmission")
+abc_let_9s<-c("A","B","C","D")
+st_plot_9s<-list()
+
+sum_rest_msf0_9s <- cbind.data.frame(msf0_9s$Haz$Haz, dplyr::filter(msf0_9s$varHaz, dplyr::case_when(trans1== trans2~T,T~F))) %>% 
+  dplyr::rename("Haz"=1) %>% 
+  dplyr::mutate(ci_lo= Haz-(sqrt(varHaz)*1.96),ci_up= Haz+(sqrt(varHaz)*1.96)) %>% 
+  dplyr::mutate(trans_rec=factor(dplyr::case_when(trans1 %in% c(1,2)~ "1) Admission to Treatment termination",
+                                                  trans1 %in% c(3,4)~ "2) Treatment termination to Readmission",
+                                                  trans1 %in% c(5,6)~ "3) First to Second Readmission",
+                                                  trans1 %in% c(7,8)~ "4) Second to Third Readmission",T~NA_character_))) %>% 
+    dplyr::mutate(trans1=factor(trans1, labels=as.character(unique(msf01_9s$trans_name)))) 
+
+sum_rest_msf1_9s <-  cbind.data.frame(msf1_9s$Haz$Haz, dplyr::filter(msf1_9s$varHaz, dplyr::case_when(trans1== trans2~T,T~F))) %>% 
+  dplyr::rename("Haz"=1) %>% 
+  dplyr::mutate(ci_lo= Haz-(sqrt(varHaz)*1.96),ci_up= Haz+(sqrt(varHaz)*1.96)) %>% 
+  dplyr::mutate(trans_rec=factor(dplyr::case_when(trans1 %in% c(1,2)~ "1) Admission to Treatment termination",
+                                                  trans1 %in% c(3,4)~ "2) Treatment termination to Readmission",
+                                                  trans1 %in% c(5,6)~ "3) First to Second Readmission",
+                                                  trans1 %in% c(7,8)~ "4) Second to Third Readmission",T~NA_character_))) %>% 
+  dplyr::mutate(trans1=factor(trans1, labels=as.character(unique(msf01_9s$trans_name))))
+
+
+for (i in 1:(length(trans_for_nine_st))){
+  st_plot_9s[[i]]<-
+ggplot()+
+  geom_step(data=sum_rest_msf0_9s %>% dplyr::filter(trans_rec==as.character(trans_for_nine_st[[i]])), aes(time, Haz, linetype="dashed", color=trans1, group=trans1),size=1, alpha=.65) + 
+  geom_step(data=sum_rest_msf1_9s %>% dplyr::filter(trans_rec==as.character(trans_for_nine_st[[i]])), aes(time, Haz, linetype="solid", color=trans1, group=trans1),size=1, alpha=.65) + 
+  #geom_ribbon(data=sum_rest_msf0_9s %>% dplyr::filter(trans_rec==as.character(trans_for_nine_st[[i]])), aes(time, ymin=ci_lo, ymax=ci_up, linetype="dashed", color=trans1, group=trans1),size=1, alpha=.65) + 
+  #geom_ribbon(data=sum_rest_msf1_9s %>% dplyr::filter(trans_rec==as.character(trans_for_nine_st[[i]])), aes(time, ymin=ci_lo, ymax=ci_up, linetype="solid", color=trans1, group=trans1),size=1, alpha=.65) + 
+  scale_linetype_manual(name= "Treatment\nsetting",values=c("dashed","solid"), labels=c("Ambulatory","Residential"))+
+  scale_x_continuous(breaks=seq(0, 11*365.25, by = 365.25), labels=seq(0, 11, by = 1))+
+  xlab("") + 
+  ylab("") + 
+  theme_minimal()+
+  theme(axis.title = element_blank())+
+  labs(color="Transition", linetype="Treatment Setting")+
+  theme(legend.position="none",
+        legend.background = element_rect(fill="white",
+                                  size=0.5, linetype="solid", 
+                                  colour ="black"))+
+  scale_color_manual(values=rep(c('black','grey60'), 4))+
+  ggtitle(paste0(abc_let_9s[[i]],") ",trans_for_nine_st[[i]]))
+  
+}
+
+fig_cox_abcd_9s<-
+ggarrange(
+  st_plot_9s[[1]] + theme(plot.title = element_text(size = 10, face = "bold"))+ylim(0,1.4),
+  st_plot_9s[[2]] + theme(plot.title = element_text(size = 10, face = "bold"))+ylim(0,1.4),
+  st_plot_9s[[3]] + theme(plot.title = element_text(size = 10, face = "bold"))+ylim(0,1.4),
+  st_plot_9s[[4]] + theme(plot.title = element_text(size = 10, face = "bold"))+ylim(0,1.4),
+  common.legend	=T, legend="right"
+          )
+
+fig_cox_abcd_lab_9s<-
+annotate_figure(fig_cox_abcd_9s, left = grid::textGrob("Cumulative hazards", rot = 90, vjust = 1, gp = grid::gpar(cex = 1.1)),
+                    bottom = grid::textGrob("Years", gp = grid::gpar(cex = 1.1)))
+
+fig_cox_abcd_lab_9s
+
+
+if(no_mostrar==1){
+ggsave(paste0(jpg_path,"_mult_state_ags/","Fig2_alt_apr22_9s.jpg"), 
+       fig_cox_abcd_lab_9s, width = 11.5, height = 9, dpi = 600, units= "in")
+ggsave(paste0(jpg_path,"_mult_state_ags/","Fig2_alt_apr22_9s.eps"), 
+       fig_cox_abcd_lab_9s, width = 11.5, height = 9, dpi = 600, units= "in")
+ggsave(paste0(jpg_path,"_mult_state_ags/","Fig2_alt_apr22_9s.ps"),
+       fig_cox_abcd_lab_9s, width = 11.5, height = 9, dpi = 600, units= "in")
+ggsave(paste0(jpg_path,"_mult_state_ags/","Fig2_alt_apr22_9s.pdf"),
+       fig_cox_abcd_lab_9s, width = 11.5, height = 9, dpi = 600, units= "in")
+}
+```
+
+
+```{r msfit2.5_4s, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 2c. Estimate of Cumulative Hazards (Semi-Markov), Five-states", fig.align="center", error=T, dpi=320}
 
 #Son distintos, por mas que parezcan iguales.
 #plot(cumhaz_data_a$time[which(cumhaz_data_a$trans=="Adm -> Ther.Disch")],round(cumhaz_data_a$Haz[which(cumhaz_data_a$trans=="Adm -> Ther.Disch")]-cumhaz_data_b$Haz[which(cumhaz_data_b$trans=="Adm -> Ther.Disch")],3))
 
 library(ggplot2)
+
+
+transition_label<- plots$title
+attr(transition_label,"names")<- plots$trans
+
 
 plot_comp_mssurvfit2<-
 rbind(cbind.data.frame(msf0$Haz,setting="Ambulatory"), 
@@ -549,6 +713,8 @@ jpeg(paste0(jpg_path,"_mult_state_ags/Cum_haz_ten_st_apr22.jpg"), height=20, wid
 plot_comp_mssurvfit2
 dev.off()
 }
+
+n_iter<-10000
 ```
 
 <br>
@@ -640,9 +806,92 @@ invisible("See cens")
 ```
 </div>
 
+
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:650px; overflow-x: scroll; width:100%">
+```{r probtrans_semimark_ci951_mssample_9s,eval=T, echo=T, paged.print=TRUE, error=T}
+#, fig.height=13, fig.width=10, fig.cap="Figure 12a. Aalen-Johansen estimator with confidence intervals", fig.align="center"
+#n_iter=1000
+
+n_iter<-10000
+
+time_before_probtrans_ci95_9s<-Sys.time()
+
+
+invisible(c("mssample"))
+
+# piece-wise constant estimates
+set.seed(1234)
+pmatrix_cox_a_0_9s<-
+mstate::mssample(msf0_9s$Haz, trans = trans_matrix2, clock = "reset", M = n_iter/2, tvec = seq(0,1826,length.out=180), do.trace=500)
+set.seed(1234)
+pmatrix_cox_b_0_9s<-
+mstate::mssample(msf1_9s$Haz, trans = trans_matrix2, clock = "reset", M = n_iter/2, tvec = seq(0,1826,length.out=180), do.trace=500)
+
+set.seed(1234)
+pmatrix_cox_a_0_s2_9s<-
+mstate::mssample(msf0_9s$Haz, trans = trans_matrix2, clock = "reset", M = n_iter/2, tvec = seq(0,1826,length.out=180), do.trace=500,
+                 history=list(state = 2, time = 0, tstate = NULL))
+set.seed(1234)
+pmatrix_cox_b_0_s2_9s<-
+mstate::mssample(msf1_9s$Haz, trans = trans_matrix2, clock = "reset", M = n_iter/2, tvec = seq(0,1826,length.out=180), do.trace=500,
+                 history=list(state = 2, time = 0, tstate = NULL))
+#cens=An independent censoring distribution, given as a data frame with time and Haz
+set.seed(1234)
+pmatrix_cox_a_0_s3_9s<-
+mstate::mssample(msf0_9s$Haz, trans = trans_matrix2, clock = "reset", M = n_iter/2, tvec = seq(0,1826,length.out=180), do.trace=500,
+                 history=list(state = 3, time = 0, tstate = NULL))
+set.seed(1234)
+pmatrix_cox_b_0_s3_9s<-
+mstate::mssample(msf1_9s$Haz, trans = trans_matrix2, clock = "reset", M = n_iter/2, tvec = seq(0,1826,length.out=180),do.trace=500,
+                 history=list(state = 3, time = 0, tstate = NULL))
+#cens=An independent censoring distribution, given as a data frame with time and Haz
+set.seed(1234)
+pmatrix_cox_a_0_s4_9s<-
+mstate::mssample(msf0_9s$Haz, trans = trans_matrix2, clock = "reset", M = n_iter/2, tvec = seq(0,1826,length.out=180), do.trace=500,
+                 history=list(state = 4, time = 0, tstate = NULL))
+set.seed(1234)
+pmatrix_cox_b_0_s4_9s<-
+mstate::mssample(msf1_9s$Haz, trans = trans_matrix2, clock = "reset", M = n_iter/2, tvec = seq(0,1826,length.out=180), do.trace=500,
+                 history=list(state = 4, time = 0, tstate = NULL))
+#cens=An independent censoring distribution, given as a data frame with time and Haz
+set.seed(1234)
+pmatrix_cox_a_0_s5_9s<-
+mstate::mssample(msf0_9s$Haz, trans = trans_matrix2, clock = "reset", M = n_iter/2, tvec = seq(0,1826,length.out=180), do.trace=500,
+                 history=list(state = 5, time = 0, tstate = NULL))
+set.seed(1234)
+pmatrix_cox_b_0_s5_9s<-
+mstate::mssample(msf1_9s$Haz, trans = trans_matrix2, clock = "reset", M = n_iter/2, tvec = seq(0,1826,length.out=180), do.trace=500,
+                 history=list(state = 5, time = 0, tstate = NULL))
+#cens=An independent censoring distribution, given as a data frame with time and Haz
+set.seed(1234)
+pmatrix_cox_a_0_s6_9s<-
+mstate::mssample(msf0_9s$Haz, trans = trans_matrix2, clock = "reset", M = n_iter/2, tvec = seq(0,1826,length.out=180), do.trace=500,
+                 history=list(state = 6, time = 0, tstate = NULL))
+set.seed(1234)
+pmatrix_cox_b_0_s6_9s<-
+mstate::mssample(msf1_9s$Haz, trans = trans_matrix2, clock = "reset", M = n_iter/2, tvec = seq(0,1826,length.out=180), do.trace=500,
+                 history=list(state = 6, time = 0, tstate = NULL))
+#cens=An independent censoring distribution, given as a data frame with time and Haz
+set.seed(1234)
+pmatrix_cox_a_0_s7_9s<-
+mstate::mssample(msf0_9s$Haz, trans = trans_matrix2, clock = "reset", M = n_iter/2, tvec = seq(0,1826,length.out=180), do.trace=500,
+                 history=list(state = 7, time = 0, tstate = NULL))
+set.seed(1234)
+pmatrix_cox_b_0_s7_9s<-
+mstate::mssample(msf1_9s$Haz, trans = trans_matrix2, clock = "reset", M = n_iter/2, tvec = seq(0,1826,length.out=180), do.trace=500,
+                 history=list(state = 7, time = 0, tstate = NULL))
+
+time_after_probtrans_ci95_9s<-Sys.time()
+
+#cens=An independent censoring distribution, given as a data frame with time and Haz
+#10 states
+```
+</div>
+
 <br>
 
-```{r mssample_plot, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 3. Estimate of State Occupancies at Baseline, Five-states model (simulated approach)", fig.align="center", error=T}
+```{r mssample_plot, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 3a. Estimate of State Occupancies at Baseline, Five-states model (simulated approach)", fig.align="center", error=T}
 #pmatrix_t_a_df_final pmatrix_t_b_df_final pmatrix_4s_t_a_df_final pmatrix_4s_t_b_df_final
 
 states_trans_lab<-paste0(1:5,") ",states_trans)
@@ -692,6 +941,74 @@ fig_ab_pmatrix
 if(no_mostrar==1){
 jpeg(paste0(jpg_path,"_mult_state_ags/pmatrix_probtrans_semimark_apr22.jpg"), height=20, width= 10, res= 320, units = "in")
 fig_ab_pmatrix
+dev.off()
+}
+```
+
+
+
+```{r mssample_plot_9s, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 3b. Estimate of State Occupancies at Baseline, Nine-states model (simulated approach)", fig.align="center", error=T}
+#pmatrix_t_a_df_final pmatrix_t_b_df_final pmatrix_4s_t_a_df_final pmatrix_4s_t_b_df_final
+
+states_trans_lab_9s<-paste0(1:9,") ",states_trans2)
+attr(states_trans_lab_9s,"names")<-1:9
+
+#seq(0,1826,length.out=180)
+
+ab_pmatrix_9s<-
+  pmatrix_cox_a_0_9s %>% 
+  dplyr::left_join(pmatrix_cox_b_0_9s, by="time", suffix=c("",".w_covs.res.s1")) %>%
+  dplyr::left_join(pmatrix_cox_a_0_s2_9s, by="time", suffix=c("",".w_covs.out.s2")) %>% 
+  dplyr::left_join(pmatrix_cox_b_0_s2_9s, by="time", suffix=c("",".w_covs.res.s2")) %>% 
+  dplyr::left_join(pmatrix_cox_a_0_s3_9s, by="time", suffix=c("",".w_covs.out.s3")) %>% 
+  dplyr::left_join(pmatrix_cox_b_0_s3_9s, by="time", suffix=c("",".w_covs.res.s3")) %>% 
+  dplyr::left_join(pmatrix_cox_a_0_s4_9s, by="time", suffix=c("",".w_covs.out.s4")) %>% 
+  dplyr::left_join(pmatrix_cox_b_0_s4_9s, by="time", suffix=c("",".w_covs.res.s4")) %>% 
+  dplyr::left_join(pmatrix_cox_a_0_s5_9s, by="time", suffix=c("",".w_covs.out.s5")) %>% 
+  dplyr::left_join(pmatrix_cox_b_0_s5_9s, by="time", suffix=c("",".w_covs.res.s5")) %>% 
+  dplyr::left_join(pmatrix_cox_a_0_s6_9s, by="time", suffix=c("",".w_covs.out.s6")) %>% 
+  dplyr::left_join(pmatrix_cox_b_0_s6_9s, by="time", suffix=c("",".w_covs.res.s6")) %>% 
+  dplyr::left_join(pmatrix_cox_a_0_s7_9s, by="time", suffix=c("",".w_covs.out.s7")) %>% 
+  dplyr::left_join(pmatrix_cox_b_0_s7_9s, by="time", suffix=c("",".w_covs.res.s7")) %>% 
+  dplyr::rename("pstate1.w_covs.out.s1"="pstate1",
+                "pstate2.w_covs.out.s1"="pstate2",
+                "pstate3.w_covs.out.s1"="pstate3",
+                "pstate4.w_covs.out.s1"="pstate4",
+                "pstate5.w_covs.out.s1"="pstate5",
+                "pstate6.w_covs.out.s1"="pstate6",
+                "pstate7.w_covs.out.s1"="pstate7",
+                "pstate8.w_covs.out.s1"="pstate8",
+                "pstate9.w_covs.out.s1"="pstate9") %>% 
+  #pstate1–pstate3 are close to the first rows of the matrices returned by pmatrix.fs
+  reshape2::melt(id.vars="time") %>% #janitor::tabyl(variable)
+  dplyr::mutate(start=stri_sub(variable,-1,-1)) %>% 
+  dplyr::mutate(state_to=stringi::stri_match_first_regex(variable, "(.*?)\\.")[,2]) %>%
+  dplyr::mutate(state_to=gsub("pstate", "", state_to), state_to=as.numeric(state_to)) %>% 
+  dplyr::mutate(setting= dplyr::case_when(grepl(".out",variable)~"Ambulatory",
+                                               grepl(".res",variable)~"Residential",
+                                               T~NA_character_))
+
+fig_ab_pmatrix_9s<-
+  #janitor::tabyl(start)
+ggplot(ab_pmatrix_9s, aes(time, value, color= factor(state_to), linetype =setting))+
+  geom_step(size=1, alpha=.65) + 
+  scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
+  facet_wrap(start~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab_9s)) + 
+  #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
+  scale_color_manual(name = "Starting from\nState", values=c("#54478C","#2C699A","#048BA8","#0DB39E",
+                                                      "#16DB93","#83E377","#EFEA5A","#F1C453","#F29E4C"), labels= as.character(c(1:9))) + # "#A65100" #"Cox",
+  scale_linetype_manual(name= "Type of\nprogram",values=c(1,4), labels=c("Ambulatory","Residential")) +
+  scale_x_continuous(breaks=seq(0,1826,length.out=11),
+                     label=round(seq(0,1826,length.out=11)/365.25,2))+
+  xlab("Years") + 
+  ylab("") + 
+  theme_minimal()
+
+fig_ab_pmatrix_9s
+
+if(no_mostrar==1){
+jpeg(paste0(jpg_path,"_mult_state_ags/pmatrix_probtrans_semimark_apr22_9s.jpg"), height=20, width= 10, res= 320, units = "in")
+fig_ab_pmatrix_9s
 dev.off()
 }
 ```
@@ -962,6 +1279,44 @@ time_after_LMAJ<-Sys.time()
 paste0("Time in process: ");time_after_LMAJ-time_before_LMAJ
 ```
 </div>
+
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
+```{r LMAJ_9s, eval=T, echo=T, paged.print=TRUE, error=T}
+
+pr0_sel_9s<-pr0_9s[,c("id", "from", "to", "trans", "Tstart", "Tstop", "time", "status", "tipo_de_plan_res_1")]
+attr(pr0_sel_9s,"trans")<-trans_matrix2
+
+pr1_sel_9s<-pr1_9s[,c("id", "from", "to", "trans", "Tstart", "Tstop", "time", "status", "tipo_de_plan_res_1")]
+attr(pr1_sel_9s,"trans")<-trans_matrix2
+
+LMAJ_mods <-list()
+
+lmaj_mods_pars<-expand.grid(s=c(90,365, 1096, 1826), from=1:7, res=c(0,1))
+
+for (j in 1:nrow(lmaj_mods_pars)) {  
+  paste0("Time ",lmaj_mods_pars[j, "s"],"; From: ",lmaj_mods_pars[j, "from"],"; Setting (res==1)= ",lmaj_mods_pars[j, "res"])
+   LMAJ_mods[[j]]<- 
+  
+     #tryCatch({assign(paste0("lmaj_",ifelse(lmaj_mods_pars[j, "res"]==1,"res","out"),"_",lmaj_mods_pars[j, "s"] ,"_9s"), 
+         
+         try(LMAJ(get(paste0("pr",lmaj_mods_pars[j, "res"],"_sel_9s")), #An "msdata" object, as for instance prepared by link{msprep}
+                  from= lmaj_mods_pars[j, "from"], ##Either a single state or a set of states in the state space 1,...,S
+                  s= lmaj_mods_pars[j, "s"],  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen"), #The method for calculating variances, as in probtrans
+                   silent=F)
+   #)}, error=function(e){},silent=F)
+   names(LMAJ_mods)[[j]] <- paste0("lmaj_",ifelse(lmaj_mods_pars[j, "res"]==1,"res","out"),"_",lmaj_mods_pars[j, "s"] ,"_",lmaj_mods_pars[j, "from"],"_9s")
+}
+
+time_after_LMAJ_9s<-Sys.time()
+
+#LMAJ(pr1,from=1,s=90,method="aalen")
+
+paste0("Time in process: ");time_after_LMAJ-time_before_LMAJ
+```
+</div>
+
 
 
 
@@ -1416,218 +1771,28 @@ attr(pr0_sel,"trans")<-trans_matrix
 pr1_sel<-pr1[,c("id", "from", "to", "trans", "Tstart", "Tstop", "time", "status", "tipo_de_plan_res_1")]
 attr(pr1_sel,"trans")<-trans_matrix
 
-lmaj2_out_1<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=1, ##Either a single state or a set of states in the state space 1,...,S
-                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_out_2<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=2, ##Either a single state or a set of states in the state space 1,...,S
-                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_out_3<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=3, ##Either a single state or a set of states in the state space 1,...,S
-                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_out_4<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=4, ##Either a single state or a set of states in the state space 1,...,S
-                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
 
-lmaj2_res_1<-
-LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=1, ##Either a single state or a set of states in the state space 1,...,S
-                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_res_2<-
-LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=2, ##Either a single state or a set of states in the state space 1,...,S
-                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_res_3<-
-LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=3, ##Either a single state or a set of states in the state space 1,...,S
-                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_res_4<-
-LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=4, ##Either a single state or a set of states in the state space 1,...,S
-                  s=90,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
+invisible("These are no 9 states, but 5")
 
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+LMAJ_mods2 <-list()
 
-lmaj2_out_1_365<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=1, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_out_2_365<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=2, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_out_3_365<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=3, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_out_4_365<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=4, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
+lmaj_mods_pars2<-expand.grid(s=c(90,365, 1096, 1826), from=1:7, res=c(0,1))
 
-lmaj2_res_1_365<-
-LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=1, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_res_2_365<-
-LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=2, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_res_3_365<-
-LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=3, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_res_4_365<-
-LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=4, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
+for (j in 1:nrow(lmaj_mods_pars2)) {  
+  paste0("Time ",lmaj_mods_pars2[j, "s"],"; From: ",lmaj_mods_pars2[j, "from"],"; Setting (res==1)= ",lmaj_mods_pars2[j, "res"])
+   LMAJ_mods2[[j]]<- 
+  
+     #tryCatch({assign(paste0("lmaj_",ifelse(lmaj_mods_pars[j, "res"]==1,"res","out"),"_",lmaj_mods_pars[j, "s"] ,"_9s"), 
+         
+         try(LMAJ2(get(paste0("pr",lmaj_mods_pars2[j, "res"],"_sel")), #An "msdata" object, as for instance prepared by link{msprep}
+                  from= lmaj_mods_pars2[j, "from"], ##Either a single state or a set of states in the state space 1,...,S
+                  s= lmaj_mods_pars2[j, "s"],  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen"), #The method for calculating variances, as in probtrans
+                   silent=F)
+   #)}, error=function(e){},silent=F)
+   names(LMAJ_mods2)[[j]] <- paste0("lmaj_",ifelse(lmaj_mods_pars2[j, "res"]==1,"res","out"),"_",lmaj_mods_pars2[j, "s"] ,"_",lmaj_mods_pars2[j, "from"],"_5s")
+}
 
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
-lmaj2_out_1_365<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=1, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_out_2_365<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=2, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_out_3_365<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=3, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_out_4_365<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=4, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-
-lmaj2_res_1_365<-
-LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=1, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_res_2_365<-
-LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=2, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_res_3_365<-
-LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=3, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_res_4_365<-
-LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=4, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
-
-lmaj2_out_1_1095<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=1, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_out_2_1095<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=2, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_out_3_1095<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=3, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_out_4_1095<-
-LMAJ2(pr0_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=4, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-
-lmaj2_res_1_1095<-
-LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=1, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_res_2_1095<-
-LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=2, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_res_3_1095<-
-LMAJ2(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=3, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365*3,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-lmaj2_res_4_1095<-
-LMAJ(pr1_sel, #An "msdata" object, as for instance prepared by link{msprep}
-                  from=4, ##Either a single state or a set of states in the state space 1,...,S
-                  s=365*9,  #The prediction time point s from which transition probabilities are to be obtained
-                  method ="aalen" #The method for calculating variances, as in probtrans
-                  )
-#if (nrow(mf) ==0) stop("No (non-missing) observations")
 time_after_LMAJ2<-Sys.time()
 
 #LMAJ(pr1,from=1,s=90,method="aalen")
@@ -1637,21 +1802,15 @@ paste0("Time in process: ");time_after_LMAJ2-time_before_LMAJ2
 </div>
 
 
-```{r lmaj_plot, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 4a. State Occupancies, landmark Aalen-Johansen estimator (At 3 years, from State 1)", fig.align="center", error=T}
+```{r lmaj_plot-5s, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 4a. State Occupancies, landmark Aalen-Johansen estimator (At 3 years, from State 1)", fig.align="center", error=T}
 #A data frame containing estimates and associated standard errors of the transition probabilities P(X(t)=k | X(s) in from) with s and from the arguments of the function.
-
-#View(lmaj_df %>% dplyr::mutate_at(3:22,~round(.,2)) %>% dplyr::filter(time==90))
-#View(lmaj_df %>% dplyr::mutate_at(3:22,~round(.,2)))
-
 
 states_transition_label<- paste0(1:5,") ",c("Admission", "Readmission","Second Readmission", "Third Readmission", "Fourth Readmission"))
 attr(states_transition_label,"names")<- 1:5
 
-
-
 lmaj_plot<-
-rbind(cbind(pr="res",lmaj_res_1_1095,transo=1),
-      cbind(pr="out",lmaj_out_1_1095,transo=1)) %>% 
+rbind(cbind(pr="res",LMAJ_mods2$lmaj_res_1096_1_5s,transo=1),
+      cbind(pr="out",LMAJ_mods2$lmaj_out_1096_1_5s,transo=1)) %>% 
   melt(id.vars=c("pr","transo","time")) %>% 
   dplyr::rename("state_from"="transo") %>% 
   dplyr::mutate(state_to=stri_sub(variable,-1,-1)) %>%
@@ -1678,12 +1837,12 @@ rbind(cbind(pr="res",lmaj_res_1_1095,transo=1),
   #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
   scale_fill_manual(name= "Type of\nprogram",values=c("gray35","gray75"), labels=c("Ambulatory","Residential"))+
   scale_linetype_manual(name= "Type of\nprogram",values=c(1,4), labels=c("Ambulatory","Residential")) +
-  scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/12),
-                     label=round(seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/12)/365.25,0))+
+  scale_x_continuous(breaks=seq(0,365.25*11,length.out=11),
+                     label=round(seq(0,365.25*11,length.out=11)/365.25,2))+
   xlab("Years") + 
   ylab("") + 
   theme_minimal(base_size = 18)+
-  theme(legend.position = c(0.75,.18))
+  theme(legend.position = c(0.75,.05))
 
 if(no_mostrar==1){
 jpeg(paste0(jpg_path,"_mult_state_ags/lmaj_st_occ_ago_from1_3y_apr22.jpg"), height=8, width= 15, res= 320, units = "in")
@@ -1693,17 +1852,47 @@ dev.off()
 ```
 
 
-```{r lmaj_plot2, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 4b. State Occupancies, landmark Aalen-Johansen estimator (at s=3 years)", fig.align="center", error=T}
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:650px; overflow-x: scroll; width:100%">
+```{r LMAJ2_9s, eval=T, echo=T, paged.print=TRUE, error=T}
+time_before_LMAJ3<-Sys.time()
+
+LMAJ_mods3 <-list()
+
+lmaj_mods_pars3<-expand.grid(s=c(90,365, 1096, 1826), from=1:7, res=c(0,1))
+
+for (j in 1:nrow(lmaj_mods_pars3)) {  
+  paste0("Time ",lmaj_mods_pars3[j, "s"],"; From: ",lmaj_mods_pars2[j, "from"],"; Setting (res==1)= ",lmaj_mods_pars3[j, "res"])
+   LMAJ_mods3[[j]]<- 
+  
+     #tryCatch({assign(paste0("lmaj_",ifelse(lmaj_mods_pars[j, "res"]==1,"res","out"),"_",lmaj_mods_pars[j, "s"] ,"_9s"), 
+         
+         try(LMAJ2(get(paste0("pr",lmaj_mods_pars3[j, "res"],"_sel_9s")), #An "msdata" object, as for instance prepared by link{msprep}
+                  from= lmaj_mods_pars3[j, "from"], ##Either a single state or a set of states in the state space 1,...,S
+                  s= lmaj_mods_pars3[j, "s"],  #The prediction time point s from which transition probabilities are to be obtained
+                  method ="aalen"), #The method for calculating variances, as in probtrans
+                   silent=F)
+   #)}, error=function(e){},silent=F)
+   names(LMAJ_mods3)[[j]] <- paste0("lmaj_",ifelse(lmaj_mods_pars3[j, "res"]==1,"res","out"),"_",lmaj_mods_pars3[j, "s"] ,"_",lmaj_mods_pars3[j, "from"],"_9s")
+}
+
+time_after_LMAJ3<-Sys.time()
+
+#LMAJ(pr1,from=1,s=90,method="aalen")
+
+paste0("Time in process: ");time_after_LMAJ3-time_before_LMAJ3
+```
+</div>
+
+```{r lmaj_plot-9s, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 4b. State Occupancies, landmark Aalen-Johansen estimator (At 3 years, from State 1) (Nine states)", fig.align="center", error=T}
 #A data frame containing estimates and associated standard errors of the transition probabilities P(X(t)=k | X(s) in from) with s and from the arguments of the function.
 
-#View(lmaj_df %>% dplyr::mutate_at(3:22,~round(.,2)) %>% dplyr::filter(time==90))
-#View(lmaj_df %>% dplyr::mutate_at(3:22,~round(.,2)))
-
-lmaj_plot2<-
-rbind(cbind(pr="res",lmaj2_res_1_1095,transo=1),
-      cbind(pr="out",lmaj2_out_1_1095,transo=1)) %>% 
+lmaj_plot_9s<-
+rbind(cbind(pr="res",LMAJ_mods3$lmaj_res_1096_1_9s,transo=1),
+      cbind(pr="out",LMAJ_mods3$lmaj_out_1096_1_9s,transo=1)) %>% 
   melt(id.vars=c("pr","transo","time")) %>% 
   dplyr::rename("state_from"="transo") %>% 
+  dplyr::filter(time<5.01*365.25) %>% 
   dplyr::mutate(state_to=stri_sub(variable,-1,-1)) %>%
     dplyr::mutate(setting= dplyr::case_when(grepl("out",pr)~"Ambulatory",
                                             grepl("res",pr)~"Residential",
@@ -1723,41 +1912,42 @@ rbind(cbind(pr="res",lmaj2_res_1_1095,transo=1),
   ggplot(aes(time, Estimate, linetype =setting))+
   geom_step(size=1, alpha=.65) + 
   geom_ribbon(aes(ymin=lo_ci, ymax=up_ci, fill=setting), alpha=.5)+#, fill=setting
-  facet_wrap(state_to~., ncol=1, labeller = as_labeller(states_trans_lab)) + #scales="free_y",
+  facet_wrap(state_to~., scales="free_y",labeller = as_labeller(states_trans_lab_9s), ncol=2) + #
   scale_y_continuous(labels = scales::percent_format(accuracy = .1))+
   #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
   scale_fill_manual(name= "Type of\nprogram",values=c("gray35","gray75"), labels=c("Ambulatory","Residential"))+
   scale_linetype_manual(name= "Type of\nprogram",values=c(1,4), labels=c("Ambulatory","Residential")) +
-  scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11),
-                     label=round(seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11)/365.25,2))+
+  scale_x_continuous(breaks=seq(0,365.25*5,length.out=11),
+                     label=round(seq(0,365.25*5,length.out=11)/365.25,2))+
   xlab("Years") + 
   ylab("") + 
-  theme_minimal()
-
-
-lmaj_plot2
+  theme_minimal(base_size = 18)+
+  theme(legend.position = c(0.75,.05))
 
 if(no_mostrar==1){
-jpeg(paste0(jpg_path,"_mult_state_ags/lmaj_st_occ_apr22.jpg"), height=20, width= 10, res= 320, units = "in")
-lmaj_plot2
+jpeg(paste0(jpg_path,"_mult_state_ags/lmaj_st_occ_ago_from1_3y_apr22_9s.jpg"), height=8, width= 15, res= 320, units = "in")
+lmaj_plot_9s
 dev.off()
 }
 ```
 
 ```{r dfs_mstate2,eval=T, echo=T, paged.print=TRUE, error=T}
+
+states_trans_lab<-paste0(1:5,") ",states_trans)
+attr(states_trans_lab,"names")<-1:5
 # Prob.occ5 <- data.frame(P=tmp.prob,
 # lci=tmp.prob-qnorm(0.975)*c(tmp$se1,tmp$se2,tmp$se3),
 # uci=tmp.prob+qnorm(0.975)*c(tmp$se1,tmp$se2,tmp$se3))
 
 lmaj_ci_df<-
-  rbind(cbind(pr="res",lmaj2_res_1_1095,transo=1),
-  cbind(pr="out",lmaj2_out_1_1095,transo=1)) %>% 
-  rbind(cbind(pr="res",lmaj2_res_2_1095,transo=2),
-  cbind(pr="out",lmaj2_out_2_1095,transo=2)) %>% 
-  rbind(cbind(pr="res",lmaj2_res_3_1095,transo=3),
-  cbind(pr="out",lmaj2_out_3_1095,transo=3)) %>% 
-  rbind(cbind(pr="res",lmaj2_res_4_1095,transo=4),
-  cbind(pr="out",lmaj2_out_4_1095,transo=4)) %>% 
+  rbind(cbind(pr="res",LMAJ_mods2$lmaj_res_1096_1_5s,transo=1),
+  cbind(pr="out",LMAJ_mods2$lmaj_out_1096_1_5s,transo=1)) %>% 
+  rbind(cbind(pr="res",LMAJ_mods2$lmaj_res_1096_2_5s,transo=2),
+  cbind(pr="out",LMAJ_mods2$lmaj_out_1096_2_5s,transo=2)) %>% 
+  rbind(cbind(pr="res",LMAJ_mods2$lmaj_res_1096_3_5s,transo=3),
+  cbind(pr="out",LMAJ_mods2$lmaj_out_1096_3_5s,transo=3)) %>% 
+  rbind(cbind(pr="res",LMAJ_mods2$lmaj_res_1096_4_5s,transo=4),
+  cbind(pr="out",LMAJ_mods2$lmaj_out_1096_4_5s,transo=4)) %>% 
   dplyr::mutate(lo_pstate1=pmax(0,1-(1-pstate1)* + exp(qnorm(0.975)*se1/(1-pstate1)))) %>% 
   dplyr::mutate(up_pstate1=1-(1-pstate1)* + exp(-qnorm(0.975)*se1/(1-pstate1))) %>% 
   dplyr::mutate(lo_pstate2=pmax(0,1-(1-pstate2)* + exp(qnorm(0.975)*se2/(1-pstate2)))) %>% 
@@ -1789,21 +1979,63 @@ lmaj_ci_df<-
   purrr::when(dplyr::group_by(.,time, state_from, state_to, setting) %>% summarise(n=n()) %>% dplyr::filter(n>1)%>% nrow()>0 ~ stop("There are cases with differences different than 0 days of a variable that should be equal"), 
             ~.) %>%
   dplyr::mutate(setting=factor(setting))  
+
+lmaj_ci_df%>% 
+    dplyr::select(time, state_from, state_to, setting, Estimate, l95ci, u95ci) %>% 
+    dplyr::arrange(state_from,state_to,setting,time) %>% 
+    dplyr::mutate(state_to=as.numeric(state_to)) %>% 
+    dplyr::mutate(time_group= dplyr::case_when(time>=85 & time<=105~ 1, time>=350 & time<=380~ 2, time>=1080 & time<=1110~ 3, time>=1781 & time<=1871~ 4, T~NA_real_)) %>% 
+    dplyr::filter(time_group %in% 1:4) %>%
+    dplyr::mutate(time_group=factor(time_group, levels=1:4,
+                              labels=c("~90days/3 months", "~1 year", "~3 years", "~5 years"),ordered=T)) %>% 
+    dplyr::mutate(comb=paste0(state_from,"_",state_to)) %>% 
+    dplyr::filter(comb %in% c("1_2","2_3","3_4", "4_5")) %>% 
+    dplyr::group_by(state_from, state_to, setting, time_group, comb) %>% 
+    dplyr::summarise(Estimate=mean(Estimate, na.rm=T), l95ci= mean(l95ci, na.rm=T), u95ci= mean(u95ci, na.rm=T)) %>% 
+    dplyr::left_join(cbind.data.frame(states_trans_lab,st=1:5), by=c("state_from"="st")) %>% 
+    dplyr::left_join(cbind.data.frame(states_trans_lab,st=1:5), by=c("state_to"="st")) %>% 
+    dplyr::select(-comb) %>% 
+    dplyr::rename("state_from_lab"="states_trans_lab.x","state_to_lab"="states_trans_lab.y") %>% 
+    dplyr::mutate(est_ci=paste0(sprintf("%1.3f",Estimate)," [",sprintf("%1.3f",abs(l95ci)),"-",sprintf("%1.3f",abs(u95ci)),"]")) %>%
+    dplyr::arrange(state_from,state_to) %>% 
+    dplyr::select(setting, state_from_lab, state_to_lab, est_ci) %>% 
+    tidyr::pivot_wider(names_from=setting,values_from = est_ci) %>% 
+    #2021-04-27: drop from/actual state, readmission
+    knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
+               caption = paste0("Table 1. Estimated transition probabilities, Five-states model (From state=1, at s=90 days)"),
+                 col.names = c("State from","State to","Ambulatory","Residential"),
+                 align =rep('l', 2),rep('c', 2)) %>%
+    kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size = 13) %>%
+    kableExtra::add_footnote("Note. We removed Readmission because it was an absorbing state", notation="none") %>% 
+    #kableExtra::add_header_above(c(" ", "Women-specific: Transition to" = 4,"General Population: Transition to" = 4)) %>% 
+    kableExtra::pack_rows("At 90 days", 1, 4) %>% 
+    kableExtra::pack_rows("At ~1 year", 5, 8) %>% 
+    kableExtra::pack_rows("At ~3 years", 9, 12) %>% 
+    kableExtra::pack_rows("At ~5 years", 13, 16) %>% 
+    kableExtra::scroll_box(width = "100%", height = "375px") 
 ```
 
 
-```{r dfs_mstate,eval=T, echo=T, paged.print=TRUE, error=T}
+```{r dfs_mstate_9s,eval=T, echo=T, paged.print=TRUE, error=T}
 # Prob.occ5 <- data.frame(P=tmp.prob,
 # lci=tmp.prob-qnorm(0.975)*c(tmp$se1,tmp$se2,tmp$se3),
 # uci=tmp.prob+qnorm(0.975)*c(tmp$se1,tmp$se2,tmp$se3))
 
 lmaj_ci_df2<-
-  rbind(cbind(pr="res",lmaj2_res_1,transo=1),
-  cbind(pr="out",lmaj2_out_1,transo=1)) %>% 
-  rbind(cbind(pr="res",lmaj2_res_2,transo=2),
-  cbind(pr="out",lmaj2_out_2,transo=2)) %>% 
-  rbind(cbind(pr="res",lmaj2_res_3,transo=3),
-  cbind(pr="out",lmaj2_out_3,transo=3)) %>% 
+  rbind(cbind(pr="res",LMAJ_mods3$lmaj_res_1096_1_9s,transo=1),
+  cbind(pr="out",LMAJ_mods3$lmaj_out_1096_1_9s,transo=1)) %>% 
+  rbind(cbind(pr="res",LMAJ_mods3$lmaj_res_1096_2_9s,transo=2),
+  cbind(pr="out",LMAJ_mods3$lmaj_out_1096_2_9s,transo=2)) %>% 
+  rbind(cbind(pr="res",LMAJ_mods3$lmaj_res_1096_3_9s,transo=3),
+  cbind(pr="out",LMAJ_mods3$lmaj_out_1096_3_9s,transo=3)) %>% 
+  rbind(cbind(pr="res",LMAJ_mods3$lmaj_res_1096_4_9s,transo=4),
+  cbind(pr="out",LMAJ_mods3$lmaj_out_1096_4_9s,transo=4)) %>% 
+  rbind(cbind(pr="res",LMAJ_mods3$lmaj_res_1096_5_9s,transo=5),
+  cbind(pr="out",LMAJ_mods3$lmaj_out_1096_5_9s,transo=5)) %>% 
+  rbind(cbind(pr="res",LMAJ_mods3$lmaj_res_1096_6_9s,transo=6),
+  cbind(pr="out",LMAJ_mods3$lmaj_out_1096_6_9s,transo=6)) %>% 
+  rbind(cbind(pr="res",LMAJ_mods3$lmaj_res_1096_7_9s,transo=7),
+  cbind(pr="out",LMAJ_mods3$lmaj_out_1096_7_9s,transo=7)) %>% 
   dplyr::mutate(lo_pstate1=pmax(0,1-(1-pstate1)* + exp(qnorm(0.975)*se1/(1-pstate1)))) %>% 
   dplyr::mutate(up_pstate1=1-(1-pstate1)* + exp(-qnorm(0.975)*se1/(1-pstate1))) %>% 
   dplyr::mutate(lo_pstate2=pmax(0,1-(1-pstate2)* + exp(qnorm(0.975)*se2/(1-pstate2)))) %>% 
@@ -1814,6 +2046,14 @@ lmaj_ci_df2<-
   dplyr::mutate(up_pstate4=1-(1-pstate4)* + exp(-qnorm(0.975)*se4/(1-pstate4))) %>% 
   dplyr::mutate(lo_pstate5=pmax(0,1-(1-pstate5)* + exp(qnorm(0.975)*se5/(1-pstate5)))) %>% 
   dplyr::mutate(up_pstate5=1-(1-pstate5)* + exp(-qnorm(0.975)*se5/(1-pstate5))) %>% 
+  dplyr::mutate(lo_pstate6=pmax(0,1-(1-pstate6)* + exp(qnorm(0.975)*se6/(1-pstate6)))) %>% 
+  dplyr::mutate(up_pstate6=1-(1-pstate6)* + exp(-qnorm(0.975)*se6/(1-pstate6))) %>% 
+  dplyr::mutate(lo_pstate7=pmax(0,1-(1-pstate7)* + exp(qnorm(0.975)*se7/(1-pstate7)))) %>% 
+  dplyr::mutate(up_pstate7=1-(1-pstate7)* + exp(-qnorm(0.975)*se7/(1-pstate7))) %>% 
+  dplyr::mutate(lo_pstate8=pmax(0,1-(1-pstate8)* + exp(qnorm(0.975)*se8/(1-pstate8)))) %>% 
+  dplyr::mutate(up_pstate8=1-(1-pstate8)* + exp(-qnorm(0.975)*se8/(1-pstate8))) %>% 
+  dplyr::mutate(lo_pstate9=pmax(0,1-(1-pstate9)* + exp(qnorm(0.975)*se9/(1-pstate9)))) %>% 
+  dplyr::mutate(up_pstate9=1-(1-pstate9)* + exp(-qnorm(0.975)*se9/(1-pstate9))) %>% 
   melt(id.vars=c("pr","transo","time")) %>% 
   dplyr::rename("state_from"="transo") %>% 
   dplyr::mutate(state_to=stri_sub(variable,-1,-1)) %>%
@@ -1838,20 +2078,20 @@ lmaj_ci_df2 %>%
     dplyr::select(time, state_from, state_to, setting, Estimate, l95ci, u95ci) %>% 
     dplyr::arrange(state_from,state_to,setting,time) %>% 
     dplyr::mutate(state_to=as.numeric(state_to)) %>% 
-    dplyr::filter(time %in% c(90, 365, 1095, 1826,1827)) %>%
-    dplyr::mutate(time=factor(time, levels=c(90, 365, 1095, 1826,1827),
-                              labels=c("~90days/3 months", "~1 year", "~3 years", "~5 years","~5 years"),ordered=T)) %>% 
+    dplyr::mutate(time_group= dplyr::case_when(time>=85 & time<=105~ 1, time>=350 & time<=380~ 2, time>=1080 & time<=1110~ 3, time>=1781 & time<=1871~ 4, T~NA_real_)) %>% 
+    dplyr::filter(time_group %in% 1:4) %>%
+    dplyr::mutate(time_group=factor(time_group, levels=1:4,
+                              labels=c("~90days/3 months", "~1 year", "~3 years", "~5 years"),ordered=T)) %>% 
     dplyr::mutate(comb=paste0(state_from,"_",state_to)) %>% 
-    dplyr::filter(comb %in% c("1_2","1_2","1_3","1_4","1_5")) %>% 
-    dplyr::left_join(cbind.data.frame(states_trans_lab,st=1:5), by=c("state_from"="st")) %>% 
-    dplyr::left_join(cbind.data.frame(states_trans_lab,st=1:5), by=c("state_to"="st")) %>% 
+    dplyr::filter(comb %in% c("1_2","1_3","2_4","3_5","4_6","5_7","6_8","7_9")) %>% 
+    dplyr::left_join(cbind.data.frame(states_trans_lab_9s,st=1:9), by=c("state_from"="st")) %>% 
+    dplyr::left_join(cbind.data.frame(states_trans_lab_9s,st=1:9), by=c("state_to"="st")) %>% 
     dplyr::select(-comb) %>% 
-    dplyr::rename("state_from_lab"="states_trans_lab.x","state_to_lab"="states_trans_lab.y") %>% 
+    dplyr::rename("state_from_lab"="states_trans_lab_9s.x","state_to_lab"="states_trans_lab_9s.y") %>% 
     dplyr::mutate(est_ci=paste0(sprintf("%1.3f",Estimate)," [",sprintf("%1.3f",abs(l95ci)),"-",sprintf("%1.3f",abs(u95ci)),"]")) %>%
-    dplyr::arrange(time, state_from,state_to) %>% 
-    dplyr::select(time, setting, state_from_lab, state_to_lab, est_ci) %>% 
+    dplyr::arrange(state_from,state_to) %>% 
+    dplyr::select(setting, state_from_lab, state_to_lab, est_ci) %>% 
     tidyr::pivot_wider(names_from=setting,values_from = est_ci) %>% 
-    dplyr::select(-time) %>% 
     #2021-04-27: drop from/actual state, readmission
     knitr::kable(format = "html", format.args = list(decimal.mark = ".", big.mark = ","),
                caption = paste0("Table 1. Estimated transition probabilities, Five-states model (From state=1, at s=90 days)"),
@@ -1928,139 +2168,11 @@ lmaj_ci_df_plot2
 #jpeg(paste0(jpg_path,"_mult_state_ags/Cum_haz_markov_set_jun2.jpg"), height=14, width= 12, res= 320, units = "in")
 
 if(no_mostrar==1){
-jpeg(paste0(jpg_path,"_mult_state_ags/probtrans_states_trans_apr22_3.jpg"), height=10, width= 15, res= 320, units = "in")
+jpeg(paste0(jpg_path,"_mult_state_ags/probtrans_states_trans_apr22_3_9s.jpg"), height=10, width= 15, res= 320, units = "in")
 lmaj_ci_df_plot2
 dev.off()
 }
 
-```
-
-<br>
-
-## Transition Probabilities, Markov
-
-
-```{r probtrans_mark_ci951_mssample,eval=T, echo=T, paged.print=TRUE, error=T}
-#, fig.height=13, fig.width=10, fig.cap="Figure 12a. Aalen-Johansen estimator with confidence intervals", fig.align="center"
-#n_iter=1000
-
-set.seed(1234)
-pt_markov_0 <- probtrans(msfx0,
-                predt=0,#his is either the time at which the prediction is made (if direction= "forward")
-                direction="forward",#One of "forward" (default) or "fixedhorizon", indicating whether prediction is forward or for a fixed horizon
-                method="aalen",# character string specifying the type of variances to be computed (so only needed if either variance or covariance is TRUE). 
-                variance=T,#Logical value indicating whether standard errors are to be calculated (default is TRUE)
-                covariance=F)#Logical value indicating whether covariances of transition probabilities for different states are to be calculated (default is FALSE)
-                
-pt_markov_1 <- probtrans(msfx1,
-                predt=0,#his is either the time at which the prediction is made (if direction= "forward")
-                direction="forward",#One of "forward" (default) or "fixedhorizon", indicating whether prediction is forward or for a fixed horizon
-                method="aalen",# character string specifying the type of variances to be computed (so only needed if either variance or covariance is TRUE). 
-                variance=T,#Logical value indicating whether standard errors are to be calculated (default is TRUE)
-                covariance=F)#Logical value indicating whether covariances of transition probabilities for different states are to be calculated (default is FALSE)
-```
-
-<br>
-
-```{r probtrans_plot, eval=T, echo=T, paged.print=TRUE, fig.height=10, fig.width=10, fig.cap="Figure 5. Estimate of State Occupancies at Baseline, Five-states model (Markov)", fig.align="center", error=T}
-#states_trans_lab<-paste0(1:10,") ",states_trans)
-#attr(states_trans_lab,"names")<-1:10
-
-ab_pmatrix_probtrans<-
-  pt_markov_0[[1]] %>% 
-  dplyr::left_join(pt_markov_1[[1]], by="time", suffix=c("",".w_covs.res.s01")) %>%
-  dplyr::left_join(pt_markov_0[[2]], by="time", suffix=c("",".w_covs.out.s02")) %>% 
-  dplyr::left_join(pt_markov_1[[2]], by="time", suffix=c("",".w_covs.res.s02")) %>% 
-  dplyr::left_join(pt_markov_0[[3]], by="time", suffix=c("",".w_covs.out.s03")) %>% 
-  dplyr::left_join(pt_markov_1[[3]], by="time", suffix=c("",".w_covs.res.s03")) %>% 
-  dplyr::left_join(pt_markov_0[[4]], by="time", suffix=c("",".w_covs.out.s04")) %>% 
-  dplyr::left_join(pt_markov_1[[4]], by="time", suffix=c("",".w_covs.res.s04")) %>% 
-    dplyr::select(-starts_with("se")) %>% 
-  dplyr::rename("pstate1.w_covs.out.s1"="pstate1",
-                "pstate2.w_covs.out.s1"="pstate2",
-                "pstate3.w_covs.out.s1"="pstate3",
-                "pstate4.w_covs.out.s1"="pstate4",
-                "pstate5.w_covs.out.s1"="pstate5") %>% 
-  #pstate1–pstate3 are close to the first rows of the matrices returned by pmatrix.fs
-  reshape2::melt(id.vars="time") %>% #janitor::tabyl(variable)
-  dplyr::mutate(start=stringi::stri_sub(variable,-1,-1)) %>% 
-  dplyr::mutate(state_to=stringi::stri_match_first_regex(variable, "(.*?)\\.")[,2]) %>%
-  dplyr::mutate(state_to=gsub("pstate", "", state_to), state_to=as.numeric(state_to)) %>% 
-  dplyr::mutate(setting= dplyr::case_when(grepl(".out",variable)~"Ambulatory",
-                                               grepl(".res",variable)~"Residential",
-                                               T~NA_character_))
-
-fig_ab_pmatrix_probtrans<-
-  #janitor::tabyl(start)
-  ggplot(ab_pmatrix_probtrans, aes(time, value, color= factor(state_to), linetype =setting))+
-    geom_step(size=1, alpha=.65) + 
-    scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
-    facet_wrap(start~., ncol=2, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
-    #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
-    scale_color_manual(name = "Starting from\nState", values=c26, labels= as.character(c(1:10))) + # "#A65100" #"Cox",
-    scale_linetype_manual(name= "Type of\nprogram",values=c(1,4), labels=c("Ambulatory","Residential")) +
-   scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=365.25),
-                     label=seq(0,round(max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/365.25),by=1))+
-    xlab("Years") + 
-    ylab("") + 
-    theme_minimal()+
-    #theme(legend.position=c(.7,.2))+
-    theme(legend.position="bottom")+
-  guides(color=guide_legend(ncol=5)) 
-
-fig_ab_pmatrix_probtrans
-
-if(no_mostrar==1){
-jpeg(paste0(jpg_path,"_mult_state_ags/probtrans_states_apr22.jpg"), height=10, width= 10, res= 320, units = "in")
-fig_ab_pmatrix_probtrans
-dev.off()
-}
-```
-
-```{r probtrans_plot2, eval=T, echo=T, paged.print=TRUE, fig.height=20, fig.width=10, fig.cap="Figure 6. Estimate of Transition Probabilities to the following state, Five-states model (Markov)", fig.align="center", error=T}
-myplots<- vector("list")
-
-for (i in rep(1:5,2)){
-  myplots[[paste0("pt_0_",i)]]<- plot(pt_markov_0, from= i,type="single",use.ggplot= TRUE)
-  myplots[[paste0("pt_1_",i)]]<- plot(pt_markov_1, from= i,type="single",use.ggplot= TRUE)
-}
-
-probtrans_df<-
-rbind(cbind(subset(myplots$pt_0_1$data,state_num %in% c(2))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=1),
-      cbind(subset(myplots$pt_1_1$data,state_num %in% c(2))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=1),
-      cbind(subset(myplots$pt_0_2$data,state_num %in% c(3))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=2),
-      cbind(subset(myplots$pt_1_2$data,state_num %in% c(3))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=2),
-      cbind(subset(myplots$pt_0_3$data,state_num %in% c(4))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=3),
-      cbind(subset(myplots$pt_1_3$data,state_num %in% c(4))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=3),
-      cbind(subset(myplots$pt_0_4$data,state_num %in% c(5))[,c("time","state","prob","CI_low","CI_upp")],res=0, st=4),
-      cbind(subset(myplots$pt_1_4$data,state_num %in% c(5))[,c("time","state","prob","CI_low","CI_upp")],res=1, st=4)
-)
-
-probtrans_df_plot<-
-probtrans_df %>% 
-  dplyr::mutate(res=factor(res), state=factor(state)) %>% 
- ggplot()+
-    geom_step(aes(time, prob, color= res, fill=res, linetype =res),size=1, alpha=.75) + 
-    geom_ribbon(aes(x=time, fill=res, color= res, linetype =res, ymin=CI_low, ymax=CI_upp), alpha=.35)+
-    scale_y_continuous(labels = scales::percent_format(accuracy = 2))+
-    facet_wrap(st~., ncol=1, scales="free_y", labeller = as_labeller(states_trans_lab)) + 
-    #facet_wrap(state~., ncol=1, scales="free_y") + #type_of_program
-    scale_color_manual(name = "Exit\nState", values=c("gray30","gray70"), labels=c("Ambulatory","Residential")) +
-    scale_fill_manual(name = "Exit\nState", values=c("gray30","gray70"), labels=c("Ambulatory","Residential")) +  
-    scale_linetype_manual(name= "Type of\nprogram",values=c(1,4), labels=c("Ambulatory","Residential")) +
-    scale_x_continuous(breaks=seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11),
-                       label=round(seq(0,max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T),by=max(c(msf0$Haz$time,msf1$Haz$time),na.rm=T)/11)/365.25,2))+
-    xlab("Years") + 
-    ylab("") + 
-    theme_minimal()
-
-probtrans_df_plot
-
-if(no_mostrar==1){
-jpeg(paste0(jpg_path,"_mult_state_ags/probtrans_states_trans_apr22.jpg"), height=20, width= 10, res= 320, units = "in")
-probtrans_df_plot
-dev.off()
-}
 ```
 
 <br>
@@ -2076,6 +2188,7 @@ dev.off()
 ## of the working independence Aalen-Johansen estimator.
 ## This is a modification of the LMAJ function in the 
 ## R package mstate.
+
 
 LMAJ2 <- function (msdata, tmat, id, s, h, j, weighted){
   if (is.null(tmat)) 
@@ -2428,7 +2541,6 @@ patp_test_b <- function(data, tmat, id2, h, j, s, group, times, D_hat,
   return(sqrt(n)*Wt*(D_boot-D_hat))
 }
 
-
 #data: a data.frame in the long format required by the mstate package.
 #tmat: a matrix of possible transitions between states of the process where different transitions are identified by a different integer. If a direct transition between two states is not possible it is indicated as NA. This matrix can be obtained via the mstate function transMat().
 #cid: variable name that identifies the clusters.
@@ -2447,190 +2559,159 @@ ms_d_match_surv$cid<-
   as.numeric(unlist(ms_d_match_surv %>% dplyr::mutate(id=as.numeric(id)) %>%  #119356
   dplyr::left_join(d_match_surv_msprep[,c("id","group_match")], by="id") %>% select(group_match)))#119356
 
-set.seed(2125)
-P12 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=1, j=2, s=0, B=1000, LMAJ=T, cband=T)
-invisible(c("Produce datos e intervalos"))
-set.seed(2125)
-P23 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=2, j=3, s=0, B=1000, LMAJ=T, cband=T)
-## Warning in max(event[who2]): ningun argumento finito para max; retornando -Inf
-## Error in coxph(Surv(Tstart, Tstop, status) ~ strata(trans), data = msdatasfrom): No (non-missing) observations
-invisible(c("No produce dato alguno"))
-set.seed(2125) 
-P34 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=3, j=4, s=0, B=1000, LMAJ=T, cband=T)
-## Warning in max(event[who2]): ningun argumento finito para max; retornando -Inf
-## Error in coxph(Surv(Tstart, Tstop, status) ~ strata(trans), data = msdatasfrom): No (non-missing) observations
-invisible(c("No produce dato alguno"))
-set.seed(2125)
-P45 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=4, j=5, s=0, B=1000, LMAJ=T, cband=T)
-## Warning in max(event[who2]): ningun argumento finito para max; retornando -Inf
-## Error in coxph(Surv(Tstart, Tstop, status) ~ strata(trans), data = msdatasfrom): No (non-missing) observations
-invisible(c("No produce dato alguno"))
+time_before_LMAJ4<-Sys.time()
+
+LMAJ_mods4 <-list()
+
+lmaj_mods_pars4a<-expand.grid(s=c(90,365, 1096, 1826), trans=c("1_2","2_3","3_4","4_5")) %>% 
+  tidyr::separate(trans, into=c("from","to"),sep="_")
 
 
-set.seed(2125)
-P12_90 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=1, j=2, s=90, B=1000, LMAJ=T, cband=T)
-invisible(c("Entrega intervalos"))
-set.seed(2125)
-P23_90 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=2, j=3, s=90, B=1000, LMAJ=T, cband=T)
-invisible(c("Entrega intervalos"))
-set.seed(2125) 
-P34_90 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=3, j=4, s=90, B=1000, LMAJ=T, cband=T)
-invisible(c("Entrega error"))
-set.seed(2125)
-P45_90 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=4, j=5, s=90, B=1000, LMAJ=T, cband=T)
-invisible(c("Entrega error"))
+for (i in 1:nrow(lmaj_mods_pars4a)) {  
+  
+  h<-as.numeric(lmaj_mods_pars4a[i, "from"])
+  j<-as.numeric(lmaj_mods_pars4a[i, "to"])
+  s<-as.numeric(lmaj_mods_pars4a[i, "s"])
+  
+  
+  set.seed(2125)
+        LMAJ_mods4[[i]] <- try(patp(data=ms_d_match_surv, 
+                      tmat=trans_matrix, 
+                      cid="cid", 
+                      id="id", 
+                      h=h, 
+                      j=j, 
+                      s=s, 
+                      B=n_iter/1e2, 
+                      LMAJ=T, 
+                      cband=T))
+  
+names(LMAJ_mods4)[[i]] <- paste0("P",h,j,"_",s)
+}
 
-set.seed(2125)
-P12_365 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=1, j=2, s=365, B=1000, LMAJ=T, cband=T)
-invisible(c("Entrega intervalos"))
-set.seed(2125)
-P23_365 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=2, j=3, s=365, B=1000, LMAJ=T, cband=T)
-invisible(c("No entrega intervalos"))
-set.seed(2125) 
-P34_365 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=3, j=4, s=365, B=1000, LMAJ=T, cband=T)
-invisible(c("Entrega sólo ceros"))
-set.seed(2125)
-P45_365 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=4, j=5, s=365, B=1000, LMAJ=T, cband=T)
-invisible(c("Entrega error"))
-
-set.seed(2125)
-P12_1096 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=1, j=2, s=(365*3)+1, B=1000, LMAJ=T, cband=T)
-invisible(c("Entrega intervalos"))
-set.seed(2125)
-P23_1096 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=2, j=3, s=(365*3)+1, B=1000, LMAJ=T, cband=T)
-invisible(c("No entrega intervalos"))
-set.seed(2125) 
-P34_1096 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=3, j=4, s=(365*3)+1, B=1000, LMAJ=T, cband=T)
-invisible(c("Entrega sólo ceros"))
-set.seed(2125)
-P45_1096 <- patp(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", 
-             h=4, j=5, s=(365*3)+1, B=1000, LMAJ=T, cband=T)
-invisible(c("Entrega error"))
+time_after_LMAJ4<-Sys.time()
 ```
 </div>
+
+
+
+<div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:650px; overflow-x: scroll; width:100%">
+```{r clus_mstate_9s,eval=T, echo=T, paged.print=TRUE, error=T}
+
+ms_d_match_surv_oct_2022$cid<-
+  as.numeric(unlist(ms_d_match_surv_oct_2022 %>% dplyr::mutate(id=as.numeric(id)) %>%  #119356
+  dplyr::left_join(d_match_surv_msprep_oct_2022[,c("id","group_match")], by="id") %>% select(group_match)))#119356
+
+time_before_LMAJ42<-Sys.time()
+
+LMAJ_mods4b <-list()
+
+lmaj_mods_pars4b<-expand.grid(s=c(90,365, 1096, 1826), trans=c("1_2","1_3","2_4","3_5","5_7","6_8")) %>% 
+  tidyr::separate(trans, into=c("from","to"),sep="_")
+
+for (i in 1:nrow(lmaj_mods_pars4b)) {  
+  
+    h<-as.numeric(lmaj_mods_pars4b[i, "from"])
+    j<-as.numeric(lmaj_mods_pars4b[i, "to"])
+    s<-as.numeric(lmaj_mods_pars4b[i, "s"])
+    
+    set.seed(2125)
+          LMAJ_mods4b[[i]] <- try(patp(data=ms_d_match_surv_oct_2022, 
+                        tmat=trans_matrix2, 
+                        cid="cid", 
+                        id="id", 
+                        h=h, 
+                        j=j, 
+                        s=s, 
+                        B=n_iter/1e2, 
+                        LMAJ=T, 
+                        cband=T))
+  
+names(LMAJ_mods4b)[[i]] <- paste0("P",h,j,"_",s)
+}
+
+time_after_LMAJ42<-Sys.time()
+```
+</div>
+
+
+
 
 <div style="border: 1px solid #ddd; padding: 5px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%">
 ```{r clus_mstate_group,eval=T, echo=T, paged.print=TRUE, error=T}
-P12_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=1, j=2, s=0, B=1000, LMAJ=T)
-
-tryCatch({P12_clus_0$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-# 0 
-P23_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=2, j=3, s=0, B=1000, LMAJ=T)
-tryCatch({P23_clus_0$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#Error
-P34_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=3, j=4, s=0, B=1000, LMAJ=T)
-tryCatch({P34_clus_0$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#Error
-P45_clus_0 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=4, j=5, s=0, B=1000, LMAJ=T)
-tryCatch({P45_clus_0$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#Error
-
-P12_clus_90 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=1, j=2, s=90, B=1000, LMAJ=T)
-tryCatch({P12_clus_90$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#  0  
-P23_clus_90 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=2, j=3, s=90, B=1000, LMAJ=T)
-tryCatch({P23_clus_90$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#.816
-P34_clus_90 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=3, j=4, s=90, B=1000, LMAJ=T)
-tryCatch({P34_clus_90$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#Error
-P45_clus_90 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=4, j=5, s=90, B=1000, LMAJ=T)
-tryCatch({P45_clus_90$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#Error
-
-P12_clus_365 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=1, j=2, s=365, B=1000, LMAJ=T)
-tryCatch({P12_clus_365$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#  0 
-P23_clus_365 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=2, j=3, s=365, B=1000, LMAJ=T)
-tryCatch({P23_clus_365$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-# 0.75
-P34_clus_365 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=3, j=4, s=365, B=1000, LMAJ=T)
-tryCatch({P34_clus_365$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#Error
-P45_clus_365 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=4, j=5, s=365, B=1000, LMAJ=T)
-tryCatch({P45_clus_365$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#Error
-
-P12_clus_1095 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=1, j=2, s=(365*3)+1, B=1000, LMAJ=T)
-tryCatch({P12_clus_1095$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#0.08 
-P23_clus_1095 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=2, j=3, s=(365*3)+1, B=1000, LMAJ=T)
-tryCatch({P23_clus_1095$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#0.11 
-P34_clus_1095 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=3, j=4, s=(365*3)+1, B=1000, LMAJ=T)
-tryCatch({P34_clus_1095$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#Error
-P45_clus_1095 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=4, j=5, s=(365*3)+1, B=1000, LMAJ=T)
-tryCatch({P45_clus_1095$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#Error
+lmaj_mods_pars5a<-expand.grid(s=c(90,365, 1096, 1826), trans=c("1_2","2_3","3_4","4_5")) %>% 
+  tidyr::separate(trans, into=c("from","to"),sep="_")
 
 
-P12_clus_1826 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=1, j=2, s=(365*5)+1, B=1000, LMAJ=T)
-tryCatch({P12_clus_1826$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#0.191 
-P23_clus_1826 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=2, j=3, s=(365*5)+1, B=1000, LMAJ=T)
-tryCatch({P23_clus_1826$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#0.093
-P34_clus_1826 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=3, j=4, s=(365*5)+1, B=1000, LMAJ=T)
-tryCatch({P34_clus_1826$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
-#Error in rowprods(EY) : 
-  #Not compatible with requested type: [type=list; target=double].
-P45_clus_1826 <- patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
-             h=4, j=5, s=(365*5)+1, B=1000, LMAJ=T)
-#Error in data.frame(time = sf0$time, Haz = -log(sf0$surv), norisk = norisk,  : 
-  #arguments imply differing number of rows: 15, 0
-tryCatch({P45_clus_1826$pval},error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
+time_before_LMAJ5<-Sys.time()
+
+LMAJ_mods5 <-list()
+
+for (i in 1:nrow(lmaj_mods_pars5a)) {  
+  
+    h<-as.numeric(lmaj_mods_pars5a[i, "from"])
+    j<-as.numeric(lmaj_mods_pars5a[i, "to"])
+    s<-as.numeric(lmaj_mods_pars5a[i, "s"])
+    
+    set.seed(2125)
+    LMAJ_mods5[[i]] <- tryCatch({
+      patp_test(data=ms_d_match_surv, tmat=trans_matrix, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=h, j=j, s=s, B=n_iter/1e2,  LMAJ=T)},
+    error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
+  
+names(LMAJ_mods5)[[i]] <- paste0("P",h,j,"_",s)
+}
+
+time_after_LMAJ5<-Sys.time()
+
+
+
+lmaj_mods_pars5b<-expand.grid(s=c(90,365, 1096, 1826), trans=c("1_2","1_3","2_4","3_5","5_7","6_8")) %>% 
+  tidyr::separate(trans, into=c("from","to"),sep="_")
+
+
+time_before_LMAJ5b<-Sys.time()
+
+LMAJ_mods5b <-list()
+
+for (i in 1:nrow(lmaj_mods_pars5b)) {  
+  
+    h<-as.numeric(lmaj_mods_pars5b[i, "from"])
+    j<-as.numeric(lmaj_mods_pars5b[i, "to"])
+    s<-as.numeric(lmaj_mods_pars5b[i, "s"])
+    
+    set.seed(2125)
+    LMAJ_mods5b[[i]] <- tryCatch({
+      patp_test(data=ms_d_match_surv_oct_2022, tmat=trans_matrix2, cid="cid", id="id", group="tipo_de_plan_res_1",
+             h=h, j=j, s=s, B=n_iter/1e2, LMAJ=T)},
+    error=function(error_message){warning(paste0("Error"));print("");message(error_message)})
+  
+names(LMAJ_mods5b)[[i]] <- paste0("P",h,j,"_",s)
+}
+
+time_after_LMAJ5b<-Sys.time()
+
 ```
 </div>
 
-```{r lmaj_clus_plot, eval=T, echo=T, paged.print=TRUE, fig.height=10, fig.width=10, fig.cap="Figure 7a. Estimate of State Occupancies at Baseline, Five-states model", fig.align="center", error=T}
+```{r lmaj_clus_plot, eval=T, echo=T, paged.print=TRUE, fig.height=10, fig.width=10, fig.cap="Figure 7a. Estimate of State Occupancies at Baseline, Five-states model", fig.align="center", eval=F, error=T}
 
-bind_rows(cbind.data.frame(P12,at=0,t=12),
-                 cbind.data.frame(P12_90,at=90,t=12),
-                 cbind.data.frame(P12_365,at=365,t=12),
-                 cbind.data.frame(P12_1096,at=1095,t=12)
-                 #cbind.data.frame(P12_1826,at=1826,t=12)
+bind_rows(cbind.data.frame(p=LMAJ_mods5$P12_90$diff_boot,at=rep(90,),t=rep(12,)),
+   cbind.data.frame(p=LMAJ_mods5$P12_365$diff_boot,at=rep(365,),t=rep(12,)),
+   cbind.data.frame(p=LMAJ_mods5$P12_1096$diff_boot,at=rep(1095,),t=rep(12,)),
+   cbind.data.frame(p=LMAJ_mods5$P12_1826$diff_boot,at=rep(1826,),t=rep(12,)),
+   cbind.data.frame(p=LMAJ_mods5$P23_90$diff_boot,at=rep(90,),t=rep(23,)),
+   cbind.data.frame(p=LMAJ_mods5$P23_365$diff_boot,at=rep(365,),t=rep(23,)),
+   cbind.data.frame(p=LMAJ_mods5$P23_1096$diff_boot,at=rep(1095,),t=rep(23,)),
+   cbind.data.frame(p=LMAJ_mods5$P23_1826$diff_boot,at=rep(1826,),t=rep(23,)),
                                   ) %>% 
-    #dplyr::mutate(P12=ifelse(t==12,P23,P12)) %>% 
-  
-    dplyr::mutate(at=factor(at,levels = c(0,90,365,1095,1826), labels=c("0 days","90 days", "1 year","3 years", "5 years"))) %>% 
-    #dplyr::mutate(l95ci=dplyr::case_when(se<.1 & Estimate==1~1,T~l95ci),
-    #            u95ci=dplyr::case_when(se<.1 & Estimate==1~1,T~u95ci)) %>%
-    ggplot(aes(time, P12))+#,² color= setting, linetype =setting, fill=setting
+  reshape2::melt(id.vars=c("at","t")) %>% 
+  dplyr::select(-variable) %>% 
+  dplyr::mutate(time=dplyr::row_number()) %>% 
+    dplyr::mutate(at=factor(at,levels = c(90,365,1095,1826), labels=c("90 days", "1 year","3 years", "5 years"))) %>% 
+    dplyr::mutate(l95ci=dplyr::case_when(se<.1 & Estimate==1~1,T~l95ci),
+                u95ci=dplyr::case_when(se<.1 & Estimate==1~1,T~u95ci)) %>%
+    ggplot(aes(time, value))+#,² color= setting, linetype =setting, fill=setting
     geom_step(size=1, alpha=.65) + 
     geom_ribbon(aes(ymin=ll.band, ymax=ul.band), alpha=.5)+
     facet_wrap(t~at, ncol=5, scales="free_y") + #
