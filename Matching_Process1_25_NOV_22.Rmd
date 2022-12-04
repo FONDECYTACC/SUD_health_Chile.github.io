@@ -1,0 +1,426 @@
+---
+title: "Ambulatory or residential? a multi-state analysis of treatments for substance use disorders (Step 1)"
+date: "`r withr::with_locale(new = c('LC_TIME' = 'C'), code =format(Sys.time(),'%B %d, %Y'))`"
+output:
+  html_document:
+    code_folding: hide  
+    toc: true # table of content true
+    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_float: true
+---
+
+
+```{css zoom-lib-src, echo = FALSE}
+script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"
+```
+
+```{js zoom-jquery, echo = FALSE}
+ $(document).ready(function() {
+    $('body').prepend('<div class=\"zoomDiv\"><img src=\"\" class=\"zoomImg\"></div>');
+    // onClick function for all plots (img's)
+    $('img:not(.zoomImg)').click(function() {
+      $('.zoomImg').attr('src', $(this).attr('src')).css({width: '100%'});
+      $('.zoomDiv').css({opacity: '1', width: 'auto', border: '1px solid white', borderRadius: '5px', position: 'fixed', top: '50%', left: '50%', marginRight: '-50%', transform: 'translate(-50%, -50%)', boxShadow: '0px 0px 50px #888888', zIndex: '50', overflow: 'auto', maxHeight: '100%'});
+    });
+    // onClick function for zoomImg
+    $('img.zoomImg').click(function() {
+      $('.zoomDiv').css({opacity: '0', width: '0%'}); 
+    });
+  });
+```
+
+<style type="text/css">
+.tablelines table, .tablelines td, .tablelines th {
+        border: 1px solid black;
+        }
+.centrado {
+    text-align: center;
+}
+.table.center {
+    margin-left:auto; 
+    margin-right:auto;
+  }
+.table_wrapper{
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+code.r{
+  font-size: 8px;
+}
+body{ /* Normal  */
+      text-align: justify;
+  }
+.superbigimage{
+    overflow-y:scroll;
+    white-space: nowrap;
+}
+.superbigimage img{
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+</style>
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px; text-align: justify;}
+</style>
+
+```{r prev_setup, include = FALSE, cache=T}
+rm(list=ls());gc()
+
+if(!grepl("4.0.2",R.version.string)){stop("Different version (must be 4.0.2)")}
+path<-rstudioapi::getSourceEditorContext()$path
+
+if (grepl("CISS Fondecyt",path)==T){
+    setwd("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_1_apr22.RData")
+  } else if (grepl("andre",path)==T){
+    setwd('C:/Users/andre/Desktop/SUD_CL/');load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_1_apr22.RData")
+  } else if (grepl("E:",path)==T){
+    setwd("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_1_apr22.RData")
+  } else if (grepl("G:",path)==T){
+    setwd("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/SUD_CL/");load("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_1_apr22.RData")
+  } else {
+    setwd("~/");load("~/mult_state_1_apr22.RData");path.expand("~/mult_state_1_apr22.RData")
+  }
+```
+
+```{r setup, include = FALSE, cache=T}
+#Libraries used in the routine. Dont change the order
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+copiar_nombres <- function(x,row.names=FALSE,col.names=TRUE,dec=",",...) {
+  if(class(ungroup(x))[1]=="tbl_df"){
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(data.frame(x)),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)    
+        }
+  } else {
+        if(options()$OutDec=="."){
+            options(OutDec = dec)
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ".")
+          return(x)
+        } else {
+            options(OutDec = ",")
+            write.table(format(x),"clipboard",sep="\t",row.names=FALSE,col.names=col.names,...)
+            options(OutDec = ",")
+          return(x)       
+  }
+ }
+}  
+
+library(mstate)
+library(tidyverse)
+library(data.table)
+library(etm)
+
+if(.Platform$OS.type == "windows") withAutoprint({
+  memory.size()
+  memory.size(TRUE)
+  memory.limit()
+})
+memory.limit(size=56000)
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+knitr::knit_hooks$set(time_it = local({
+  now <- NULL
+  function(before, options) {
+    if (before) {
+      # record the current time before each chunk
+      now <<- Sys.time()
+    } else {
+      # calculate the time difference after a chunk
+      res <- ifelse(difftime(Sys.time(), now)>(60^2),difftime(Sys.time(), now)/(60^2),difftime(Sys.time(), now)/(60^1))
+      # return a character string to show the time
+      x<-ifelse(difftime(Sys.time(), now)>(60^2),paste("Time for this code chunk to run:", round(res,1), "hours"),paste("Time for this code chunk to run:", round(res,1), "minutes"))
+      paste('<div class="message">', gsub('##', '\n', x),'</div>', sep = '\n')
+    }
+  }
+}))
+knitr::opts_chunk$set(time_it = TRUE)
+
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:#:
+
+```
+
+### Decision whether to use Markov or Semi-Markov
+
+<br>
+
+```{r markov_semimarkov,eval=T, echo=T, paged.print=TRUE}                                 
+#state arrival extended (semi-)Markov to mean that the i → j transition hazard depends on thetime of arrival at state i. 
+
+#Build a Cox proportional hazard model including treatment and time in previous state as covariates
+
+tab_cox_markov<- data.frame()
+for (i in c(2:max(trans_matrix,na.rm=T))){
+coxph(Surv(Tstart,Tstop,status)~factor(tipo_de_plan_res_1)+Tstart_yr,
+                  data=subset(ms_d_match_surv_res, trans==i) %>% dplyr::mutate(Tstart_yr=Tstart/365.25),method = "breslow") %>% 
+    assign(paste0("CoxMarkov",i),.,envir=.GlobalEnv)
+  round(exp(coef(get(paste0("CoxMarkov",i)))),2)%>% assign(paste0("HR",i),.,envir=.GlobalEnv)
+  round(exp(confint(get(paste0("CoxMarkov",i)))),2)%>% assign(paste0("CI",i),.,envir=.GlobalEnv)
+  round(coef(summary(get(paste0("CoxMarkov",i))))[,5],4)%>% assign(paste0("P",i),.,envir=.GlobalEnv)
+  data.frame(get(paste0("CI",i))) %>% dplyr::rename("Lower 95% CI"="X2.5..","Upper 95% CI"="X97.5..")%>% assign(paste0("CI",i),.,envir=.GlobalEnv)
+  tab_cox_markov_add<- cbind.data.frame(plots[i, "title"],get(paste0("HR",i)),get(paste0("CI",i)),get(paste0("P",i)))
+  tab_cox_markov<-rbind.data.frame(tab_cox_markov,tab_cox_markov_add)
+}
+invisible(formatC(c(exp(coef(get(paste0("CoxMarkov",2))))[2], exp(confint(get(paste0("CoxMarkov",2))))[2,]), format = "f", digits = 8))
+invisible(scales::scientific(c(0.000416, 0.000240,  0.000592), digits = 3))
+invisible(scales::scientific(c(0.000329, 0.00000404,  0.000653), digits = 3))
+
+tab_cox_markov2<- data.frame()
+for (i in c(2:max(trans_matrix,na.rm=T))){
+coxph(Surv(time,status)~factor(tipo_de_plan_res_1)+Tstart_yr,
+                  data=subset(ms_d_match_surv_res, trans==i) %>% dplyr::mutate(Tstart_yr=Tstart/365.25),method = "breslow") %>% 
+    assign(paste0("CoxMarkov",i),.,envir=.GlobalEnv)
+  round(exp(coef(get(paste0("CoxMarkov",i)))),2)%>% assign(paste0("HR",i),.,envir=.GlobalEnv)
+  round(exp(confint(get(paste0("CoxMarkov",i)))),2)%>% assign(paste0("CI",i),.,envir=.GlobalEnv)
+  round(coef(summary(get(paste0("CoxMarkov",i))))[,5],4)%>% assign(paste0("P",i),.,envir=.GlobalEnv)
+  data.frame(get(paste0("CI",i))) %>% dplyr::rename("Lower 95% CI"="X2.5..","Upper 95% CI"="X97.5..")%>% assign(paste0("CI",i),.,envir=.GlobalEnv)
+  tab_cox_markov_add<- cbind.data.frame(plots[i, "title"],get(paste0("HR",i)),get(paste0("CI",i)),get(paste0("P",i)))
+  tab_cox_markov2<-rbind.data.frame(tab_cox_markov2,tab_cox_markov_add)
+}
+#2021-08-21: con renewal da lo mismo
+
+tab_cox_markov %>% 
+  data.table(keep.rownames=T) %>% 
+  dplyr::rename("Terms"="rn", "Transition"="plots[i, \"title\"]",
+                "HR"="get(paste0(\"HR\", i))","P"="get(paste0(\"P\", i))") %>% 
+  dplyr::mutate(Terms=dplyr::case_when(grepl("tipo_de_", Terms)~"Setting (Residential)",
+                                    grepl("Tstart",Terms)~"Time in previous state(in years)")) %>% 
+  dplyr::mutate(P=ifelse(P<.001,"<.001",sprintf("%1.3f",P))) %>% 
+  dplyr::rename("Sig."="P") %>% 
+  dplyr::mutate(`95% CIs`=paste0(sprintf("%2.2f",`Lower 95% CI`),", ",sprintf("%2.2f",`Upper 95% CI`))) %>% 
+  dplyr::select(-`Lower 95% CI`,-`Upper 95% CI`) %>% 
+  dplyr::select(Transition, Terms, HR, `95% CIs`, Sig.) %>% 
+      knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption="Table 11. PH Model incluiding time in previous state & Setting as a covariate",
+               align= c("c",rep('c', 5)))%>%
+  #kableExtra::pack_rows("Three-states", 1, 2) %>% 
+  #kableExtra::pack_rows("Four-states", 3, 4) %>% 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 11)%>% 
+  kableExtra::kable_classic() %>% 
+  kableExtra::scroll_box(width = "100%", height = "350px")
+#a variable appears on both the left and right sides of the formula
+#this warning should be normal, since we are dealing with time to arrival at a determined state.
+```
+```{r markov_semimarkov_9s,eval=T, echo=T, paged.print=TRUE}                                 
+#state arrival extended (semi-)Markov to mean that the i → j transition hazard depends on thetime of arrival at state i. 
+
+#Build a Cox proportional hazard model including treatment and time in previous state as covariates
+
+tab_cox_markov_9s<- data.frame()
+for (i in c(3:max(trans_matrix2,na.rm=T))){
+coxph(Surv(Tstart,Tstop,status)~factor(tipo_de_plan_res_1)+Tstart_yr,
+                  data=subset(ms_d_match_surv_oct_2022, trans==i) %>% dplyr::mutate(Tstart_yr=Tstart/365.25),method = "breslow") %>% 
+    assign(paste0("CoxMarkov",i),.,envir=.GlobalEnv)
+  round(exp(coef(get(paste0("CoxMarkov",i)))),2)%>% assign(paste0("HR",i),.,envir=.GlobalEnv)
+  round(exp(confint(get(paste0("CoxMarkov",i)))),2)%>% assign(paste0("CI",i),.,envir=.GlobalEnv)
+  round(coef(summary(get(paste0("CoxMarkov",i))))[,5],4)%>% assign(paste0("P",i),.,envir=.GlobalEnv)
+  data.frame(get(paste0("CI",i))) %>% dplyr::rename("Lower 95% CI"="X2.5..","Upper 95% CI"="X97.5..")%>% assign(paste0("CI",i),.,envir=.GlobalEnv)
+  tab_cox_markov_add2<- cbind.data.frame(plots2[i, "title"],get(paste0("HR",i)),get(paste0("CI",i)),get(paste0("P",i)))
+  tab_cox_markov_9s<-rbind.data.frame(tab_cox_markov_9s,tab_cox_markov_add2)
+}
+invisible(formatC(c(exp(coef(get(paste0("CoxMarkov",2))))[2], exp(confint(get(paste0("CoxMarkov",2))))[2,]), format = "f", digits = 8))
+invisible(scales::scientific(c(0.000416, 0.000240,  0.000592), digits = 3))
+invisible(scales::scientific(c(0.000329, 0.00000404,  0.000653), digits = 3))
+
+tab_cox_markov2_9s<- data.frame()
+for (i in c(3:max(trans_matrix2,na.rm=T))){
+coxph(Surv(time,status)~factor(tipo_de_plan_res_1)+Tstart_yr,
+                  data=subset(ms_d_match_surv_oct_2022, trans==i) %>% dplyr::mutate(Tstart_yr=Tstart/365.25),method = "breslow") %>% 
+    assign(paste0("CoxMarkov",i),.,envir=.GlobalEnv)
+  round(exp(coef(get(paste0("CoxMarkov",i)))),2)%>% assign(paste0("HR",i),.,envir=.GlobalEnv)
+  round(exp(confint(get(paste0("CoxMarkov",i)))),2)%>% assign(paste0("CI",i),.,envir=.GlobalEnv)
+  round(coef(summary(get(paste0("CoxMarkov",i))))[,5],4)%>% assign(paste0("P",i),.,envir=.GlobalEnv)
+  data.frame(get(paste0("CI",i))) %>% dplyr::rename("Lower 95% CI"="X2.5..","Upper 95% CI"="X97.5..")%>% assign(paste0("CI",i),.,envir=.GlobalEnv)
+  tab_cox_markov_add22<- cbind.data.frame(plots2[i, "title"],get(paste0("HR",i)),get(paste0("CI",i)),get(paste0("P",i)))
+  tab_cox_markov2_9s<-rbind.data.frame(tab_cox_markov2_9s,tab_cox_markov_add22)
+}
+#2021-08-21: con renewal da lo mismo
+
+tab_cox_markov_9s %>% 
+  data.table(keep.rownames=T) %>% 
+  dplyr::rename("Terms"="rn", "Transition"="plots2[i, \"title\"]",
+                "HR"="get(paste0(\"HR\", i))","P"="get(paste0(\"P\", i))") %>% 
+  dplyr::mutate(Terms=dplyr::case_when(grepl("tipo_de_", Terms)~"Setting (Residential)",
+                                    grepl("Tstart",Terms)~"Time in previous state(in years)")) %>% 
+  dplyr::mutate(P=ifelse(P<.001,"<.001",sprintf("%1.3f",P))) %>% 
+  dplyr::rename("Sig."="P") %>% 
+  dplyr::mutate(`95% CIs`=paste0(sprintf("%2.2f",`Lower 95% CI`),", ",sprintf("%2.2f",`Upper 95% CI`))) %>% 
+  dplyr::select(-`Lower 95% CI`,-`Upper 95% CI`) %>% 
+  dplyr::select(Transition, Terms, HR, `95% CIs`, Sig.) %>% 
+      knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption="Table 11. PH Model incluiding time in previous state & Setting as a covariate",
+               align= c("c",rep('c', 5)))%>%
+  #kableExtra::pack_rows("Three-states", 1, 2) %>% 
+  #kableExtra::pack_rows("Four-states", 3, 4) %>% 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 11)%>% 
+  kableExtra::kable_classic() %>% 
+  kableExtra::scroll_box(width = "100%", height = "350px")
+#a variable appears on both the left and right sides of the formula
+#this warning should be normal, since we are dealing with time to arrival at a determined state.
+```
+```{r markov_semimarkov21, echo=T, paged.print=TRUE, error=T, eval=T}  
+overall_test<-function(x){
+  x<-deparse(substitute(x))
+  paste0("Chi2(", get(x)[["Nsub"]],")=",
+  round(get(x)[["orig_ch_stat"]],2),", p=",
+  sprintf("%1.4f",get(x)[["p_ch_stat_wb"]]))
+} 
+
+#_#_#_#__#_#_#_#_#_#__###### markov test ##### _#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+ms_d_match_surv_res_tm<- ms_d_match_surv_res
+ms_d_match_surv_oct_2022_tm<- ms_d_match_surv_oct_2022
+
+
+attr(ms_d_match_surv_res_tm, "trans")<-trans_matrix
+attr(ms_d_match_surv_oct_2022_tm, "trans")<-trans_matrix2
+
+
+#Time grid
+tseq <- seq(1,1837,by=30) 
+
+#Three approaches to testing are considered; i) A simple method based on including 
+#time of entry into the state as a covariate in a Cox model for each transition 
+#intensity ii) Use of the stratified version of the Commenges-Andersen test 2 
+#for a univariate frailty, and iii) A novel class of tests based on families of 
+#log-rank statistics, where patients are grouped by their state occupancy at landmark times.
+
+invisible("Pruebas")
+
+start_time <- Sys.time()
+
+#ms_d_match_surv_oct_2022_tm[which(ms_d_match_surv_oct_2022_tm$id %in% 1:20),], 
+cox_markov_test_prueba12<-
+  mstate::MarkovTest(ms_d_match_surv_oct_2022_tm,
+  formula="tipo_de_plan_res_1", id = "id", transition=1, grid=tseq, B=10)
+
+overall_test(cox_markov_test_prueba12)
+```
+```{r markov_semimarkov21_2_cont, echo=T, paged.print=TRUE, error=T, eval=T}  
+cox_markov_test_prueba13<-
+  mstate::MarkovTest(ms_d_match_surv_oct_2022_tm, formula="tipo_de_plan_res_1", id = "id", transition=2, grid=tseq, B=200)
+
+overall_test(cox_markov_test_prueba13)
+
+cox_markov_test_prueba24<-
+  mstate::MarkovTest(ms_d_match_surv_oct_2022_tm, formula="tipo_de_plan_res_1", id = "id", transition=3, grid=tseq, B=200)
+
+overall_test(cox_markov_test_prueba24)
+
+cox_markov_test_prueba35<-
+mstate::MarkovTest(ms_d_match_surv_oct_2022_tm, formula="tipo_de_plan_res_1", id = "id", transition=4, grid=tseq, B=200)
+
+overall_test(cox_markov_test_prueba35)
+
+end_time <- Sys.time()
+
+print("Time taken in process")
+end_time - start_time
+
+#The model considered the transition from intermediate states to our absorbing state (being readmitted at the fourth time) is explained by the time spent in the previous health state. This covariate (time in the previous state) was shown to be statistically significant (p<.001); results indicated a longer duration spent in the first treatment is associated with increased risk of readmission. Therefore, a semi-Markov (called a Markov renewal model) or clock reset approach should be undertaken for both models.
+```
+```{r markov_semimarkov21_3_cont, echo=T, paged.print=TRUE, error=T, eval=T}  
+#ms_d_match_surv_oct_2022_tm[which(ms_d_match_surv_oct_2022_tm$id %in% 1:20),], 
+cox_markov_test_prueba46<-
+  mstate::MarkovTest(ms_d_match_surv_oct_2022_tm,#[which(ms_d_match_surv_oct_2022_tm$id %in% 1:20),], 
+  formula="tipo_de_plan_res_1", id = "id", transition=5, grid=tseq, B=200)
+
+overall_test(cox_markov_test_prueba46)
+
+cox_markov_test_prueba57<-
+mstate::MarkovTest(ms_d_match_surv_oct_2022_tm, #[which(ms_d_match_surv_oct_2022_tm$id %in% 1:20),], 
+  formula="tipo_de_plan_res_1", id = "id", transition=6, grid=tseq, B=200)
+
+overall_test(cox_markov_test_prueba57)
+
+
+cox_markov_test_prueba68<-
+  mstate::MarkovTest(ms_d_match_surv_oct_2022_tm, #[which(ms_d_match_surv_oct_2022_tm$id %in% 1:20),], 
+  formula="tipo_de_plan_res_1", id = "id", transition=7, grid=tseq, B=200)
+
+overall_test(cox_markov_test_prueba68)
+
+cox_markov_test_prueba79<-
+  mstate::MarkovTest(ms_d_match_surv_oct_2022_tm, #[which(ms_d_match_surv_oct_2022_tm$id %in% 1:20),],
+  formula="tipo_de_plan_res_1", id = "id", transition=8, grid=tseq, B=200)
+
+overall_test(cox_markov_test_prueba79)
+
+end_time2 <- Sys.time()
+```
+
+<br>
+
+```{r markov_semimarkov21_plot, echo=T, paged.print=TRUE, error=T, eval=T, fig.height=11, fig.width= 7}  
+vec_plot<-c("","","24","35","46","57","68","79")
+library(gridExtra)
+
+pics<-list() 
+  for(i in c(3:max(trans_matrix2,na.rm=T))){
+    b<-i-2
+  pics[[b]]<-plot(get(paste0("cox_markov_test_prueba",vec_plot[i])), tseq, what="overall", idx=1:500, xlab="Days of follow-up", ylab="Chi-square statistic", scales=list(x=list( cex=.5),y=list( cex=.5)), main=list(label= paste0(plots2[i,"title"]), cex=1))
+  }
+do.call(grid.arrange, c(pics, ncol=2))
+
+
+if(no_mostrar==1){
+  #https://github.com/hputter/mstate/blob/master/R/plot.MarkovTest.R
+jpeg(paste0(gsub("SUD_CL/Matching_Process_APR_22.Rmd","",path),"/_mult_state_ags/markov_test1.jpg"), width=7, height= 11, res= 320, units = "in")
+  
+do.call(grid.arrange, c(pics, ncol=2))
+dev.off()
+}
+```
+
+<br>
+
+
+# Session Info
+
+```{r session_info, echo=T, paged.print=TRUE, error=T}
+Sys.getenv("R_LIBS_USER")
+rstudioapi::getSourceEditorContext()
+
+if (grepl("CISS Fondecyt",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_125_nov22.RData")
+  } else if (grepl("andre",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("C:/Users/andre/Desktop/SUD_CL/mult_state_125_nov22.RData")
+  } else if (grepl("E:",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("E:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_125_nov22.RData")
+  } else if (grepl("G:",rstudioapi::getSourceEditorContext()$path)==T){
+    save.image("G:/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_125_nov22.RData")
+  } else {
+    save.image("~/mult_state_125_nov22.RData")
+    path.expand("~/mult_state_125_nov22.RData")
+  }
+
+sessionInfo()
+sesion_info <- devtools::session_info()
+dplyr::select(
+  tibble::as_tibble(sesion_info$packages),
+  c(package, loadedversion, source)
+) %>% 
+  DT::datatable(filter = 'top', colnames = c('Row number' =1,'Variable' = 2, 'Percentage'= 3),
+              caption = htmltools::tags$caption(
+        style = 'caption-side: top; text-align: left;',
+        '', htmltools::em('Packages')),
+      options=list(
+initComplete = htmlwidgets::JS(
+      "function(settings, json) {",
+      "$(this.api().tables().body()).css({'font-size': '80%'});",
+      "}")))
+```

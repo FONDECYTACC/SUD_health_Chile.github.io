@@ -4999,10 +4999,16 @@ As seen in both Figures above, the cumulative hazards does not follow a proporti
 ```{r cox_zph_b, eval=T, echo=T, warning=FALSE, paged.print=TRUE}
 cox_zph_trans2<-data.frame()#rn="0",chisq=1,df=1,p=1
 for(i in c(1:max(trans_matrix2,na.rm=T))){
-
-cox_zph_trans2<-dplyr::bind_rows(cox_zph_trans2,cbind.data.frame(trans=i,data.table::data.table(cox.zph(coxph(Surv(Tstart,Tstop,status)~factor(tipo_de_plan_res_1)+Tstart, data=subset(ms_d_match_surv_oct_2022, trans==i),method = "breslow"))$table, keep.rownames = T))
+  
+cox_zph_trans2<-dplyr::bind_rows(cox_zph_trans2,cbind.data.frame(trans=i,data.table::data.table(cox.zph(coxph(Surv(Tstart,Tstop,status)~factor(tipo_de_plan_res_1)+Tstart, data=subset(ms_d_match_surv_oct_2022, trans==i),method = "efron"))$table, keep.rownames = T))
 )
 }
+
+for(i in c(1:max(trans_matrix2,na.rm=T))){
+  print(paste0("Transition ", i))
+    print(broom::tidy(coxph(Surv(Tstart,Tstop,status)~factor(tipo_de_plan_res_1)+yr_arrival, data=subset(ms_d_match_surv_oct_2022, trans==i) %>% dplyr::mutate(yr_arrival=Tstart/365.25),method = "efron"), exponentiate=T, conf.int=T))
+}
+    
 
 cox_zph_trans2$p<-round(cox_zph_trans2$p,3)
 cox_zph_trans2$chisq<-round(cox_zph_trans2$chisq,3)

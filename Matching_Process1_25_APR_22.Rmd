@@ -211,7 +211,63 @@ tab_cox_markov %>%
 #a variable appears on both the left and right sides of the formula
 #this warning should be normal, since we are dealing with time to arrival at a determined state.
 ```
+```{r markov_semimarkov_9s,eval=T, echo=T, paged.print=TRUE}                                 
+#state arrival extended (semi-)Markov to mean that the i → j transition hazard depends on thetime of arrival at state i. 
 
+#Build a Cox proportional hazard model including treatment and time in previous state as covariates
+
+tab_cox_markov_9s<- data.frame()
+for (i in c(3:max(trans_matrix2,na.rm=T))){
+coxph(Surv(Tstart,Tstop,status)~factor(tipo_de_plan_res_1)+Tstart_yr,
+                  data=subset(ms_d_match_surv_oct_2022, trans==i) %>% dplyr::mutate(Tstart_yr=Tstart/365.25),method = "breslow") %>% 
+    assign(paste0("CoxMarkov",i),.,envir=.GlobalEnv)
+  round(exp(coef(get(paste0("CoxMarkov",i)))),2)%>% assign(paste0("HR",i),.,envir=.GlobalEnv)
+  round(exp(confint(get(paste0("CoxMarkov",i)))),2)%>% assign(paste0("CI",i),.,envir=.GlobalEnv)
+  round(coef(summary(get(paste0("CoxMarkov",i))))[,5],4)%>% assign(paste0("P",i),.,envir=.GlobalEnv)
+  data.frame(get(paste0("CI",i))) %>% dplyr::rename("Lower 95% CI"="X2.5..","Upper 95% CI"="X97.5..")%>% assign(paste0("CI",i),.,envir=.GlobalEnv)
+  tab_cox_markov_add2<- cbind.data.frame(plots2[i, "title"],get(paste0("HR",i)),get(paste0("CI",i)),get(paste0("P",i)))
+  tab_cox_markov_9s<-rbind.data.frame(tab_cox_markov_9s,tab_cox_markov_add2)
+}
+invisible(formatC(c(exp(coef(get(paste0("CoxMarkov",2))))[2], exp(confint(get(paste0("CoxMarkov",2))))[2,]), format = "f", digits = 8))
+invisible(scales::scientific(c(0.000416, 0.000240,  0.000592), digits = 3))
+invisible(scales::scientific(c(0.000329, 0.00000404,  0.000653), digits = 3))
+
+tab_cox_markov2_9s<- data.frame()
+for (i in c(3:max(trans_matrix2,na.rm=T))){
+coxph(Surv(time,status)~factor(tipo_de_plan_res_1)+Tstart_yr,
+                  data=subset(ms_d_match_surv_oct_2022, trans==i) %>% dplyr::mutate(Tstart_yr=Tstart/365.25),method = "breslow") %>% 
+    assign(paste0("CoxMarkov",i),.,envir=.GlobalEnv)
+  round(exp(coef(get(paste0("CoxMarkov",i)))),2)%>% assign(paste0("HR",i),.,envir=.GlobalEnv)
+  round(exp(confint(get(paste0("CoxMarkov",i)))),2)%>% assign(paste0("CI",i),.,envir=.GlobalEnv)
+  round(coef(summary(get(paste0("CoxMarkov",i))))[,5],4)%>% assign(paste0("P",i),.,envir=.GlobalEnv)
+  data.frame(get(paste0("CI",i))) %>% dplyr::rename("Lower 95% CI"="X2.5..","Upper 95% CI"="X97.5..")%>% assign(paste0("CI",i),.,envir=.GlobalEnv)
+  tab_cox_markov_add22<- cbind.data.frame(plots2[i, "title"],get(paste0("HR",i)),get(paste0("CI",i)),get(paste0("P",i)))
+  tab_cox_markov2_9s<-rbind.data.frame(tab_cox_markov2_9s,tab_cox_markov_add22)
+}
+#2021-08-21: con renewal da lo mismo
+
+tab_cox_markov_9s %>% 
+  data.table(keep.rownames=T) %>% 
+  dplyr::rename("Terms"="rn", "Transition"="plots2[i, \"title\"]",
+                "HR"="get(paste0(\"HR\", i))","P"="get(paste0(\"P\", i))") %>% 
+  dplyr::mutate(Terms=dplyr::case_when(grepl("tipo_de_", Terms)~"Setting (Residential)",
+                                    grepl("Tstart",Terms)~"Time in previous state(in years)")) %>% 
+  dplyr::mutate(P=ifelse(P<.001,"<.001",sprintf("%1.3f",P))) %>% 
+  dplyr::rename("Sig."="P") %>% 
+  dplyr::mutate(`95% CIs`=paste0(sprintf("%2.2f",`Lower 95% CI`),", ",sprintf("%2.2f",`Upper 95% CI`))) %>% 
+  dplyr::select(-`Lower 95% CI`,-`Upper 95% CI`) %>% 
+  dplyr::select(Transition, Terms, HR, `95% CIs`, Sig.) %>% 
+      knitr::kable(format= "html", format.args= list(decimal.mark= ".", big.mark= ","),
+               caption="Table 11. PH Model incluiding time in previous state & Setting as a covariate",
+               align= c("c",rep('c', 5)))%>%
+  #kableExtra::pack_rows("Three-states", 1, 2) %>% 
+  #kableExtra::pack_rows("Four-states", 3, 4) %>% 
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover"),font_size= 11)%>% 
+  kableExtra::kable_classic() %>% 
+  kableExtra::scroll_box(width = "100%", height = "350px")
+#a variable appears on both the left and right sides of the formula
+#this warning should be normal, since we are dealing with time to arrival at a determined state.
+```
 ```{r markov_semimarkov21, echo=T, paged.print=TRUE, error=T, eval=T}  
 overall_test<-function(x){
   x<-deparse(substitute(x))
@@ -223,8 +279,11 @@ overall_test<-function(x){
 #_#_#_#__#_#_#_#_#_#__###### markov test ##### _#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 
 ms_d_match_surv_res_tm<- ms_d_match_surv_res
+ms_d_match_surv_oct_2022_tm<- ms_d_match_surv_oct_2022
+
 
 attr(ms_d_match_surv_res_tm, "trans")<-trans_matrix
+attr(ms_d_match_surv_oct_2022_tm, "trans")<-trans_matrix2
 
 
 #Time grid
