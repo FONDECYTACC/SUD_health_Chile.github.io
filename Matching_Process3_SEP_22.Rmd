@@ -825,6 +825,7 @@ return(ahr)
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 invisible("Log-normal")#_#_#_#_#_#_#_#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+require(flexsurv)
 
 logn_aft_to_ahr<-
 function(x, trans){
@@ -865,6 +866,83 @@ function(x, trans){
     return(newList)
 }
 
+logn_aft_to_ahr_lo<-
+function(x, trans){
+  fit.lnm<-get(x)[[trans]]
+    # Probability Density Functions
+    f0 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    dlnorm(x=x, meanlog=meanlog, sdlog=sdlog)
+    }
+    f1 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"]+confint(fit.lnm)["factor(tipo_de_plan_res_1)1",1],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    dlnorm(x=x, meanlog=meanlog, sdlog=sdlog)
+    }
+    ft <- function(x){ (f0(x) + f1(x))}
+    # Survival functions
+    S0 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    plnorm(q=x, meanlog=meanlog, sdlog=sdlog, lower=FALSE)
+    }
+    S1 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"]+confint(fit.lnm)["factor(tipo_de_plan_res_1)1",1],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    plnorm(q=x, meanlog=meanlog, sdlog=sdlog, lower=FALSE)
+    }
+    St <- function(x){ ( S0(x) * f0(x) + S1(x) * f1(x) ) / ( f0(x) + f1(x) ) }
+    ## St <- function(x){ (S0(x) + S1(x))/2} ## assuming same number of events
+    # Hazard functions
+    h0 <- function(x, f=f0, S=S0){f(x)/S(x)}
+    h1 <- function(x, f=f1, S=S1){f(x)/S(x)}
+    newList <- list("90 days" = calcAHRgeo(x=90, h0=h0, h1=h1, ft=ft, wt=St), 
+                    "1 year" = calcAHRgeo(x=365.25, h0=h0, h1=h1, ft=ft, wt=St),
+                    "3 years" = calcAHRgeo(x=1096, h0=h0, h1=h1, ft=ft, wt=St),
+                    "5 years" = calcAHRgeo(x=1826, h0=h0, h1=h1, ft=ft, wt=St)
+                    )
+    return(newList)
+}
+
+logn_aft_to_ahr_up<-
+function(x, trans){
+  fit.lnm<-get(x)[[trans]]
+    # Probability Density Functions
+    f0 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    dlnorm(x=x, meanlog=meanlog, sdlog=sdlog)
+    }
+    f1 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"]+confint(fit.lnm)["factor(tipo_de_plan_res_1)1",2],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    dlnorm(x=x, meanlog=meanlog, sdlog=sdlog)
+    }
+    ft <- function(x){ (f0(x) + f1(x))}
+    # Survival functions
+    S0 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    plnorm(q=x, meanlog=meanlog, sdlog=sdlog, lower=FALSE)
+    }
+    S1 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"]+confint(fit.lnm)["factor(tipo_de_plan_res_1)1",2],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    plnorm(q=x, meanlog=meanlog, sdlog=sdlog, lower=FALSE)
+    }
+    St <- function(x){ ( S0(x) * f0(x) + S1(x) * f1(x) ) / ( f0(x) + f1(x) ) }
+    ## St <- function(x){ (S0(x) + S1(x))/2} ## assuming same number of events
+    # Hazard functions
+    h0 <- function(x, f=f0, S=S0){f(x)/S(x)}
+    h1 <- function(x, f=f1, S=S1){f(x)/S(x)}
+    newList <- list("90 days" = calcAHRgeo(x=90, h0=h0, h1=h1, ft=ft, wt=St), 
+                    "1 year" = calcAHRgeo(x=365.25, h0=h0, h1=h1, ft=ft, wt=St),
+                    "3 years" = calcAHRgeo(x=1096, h0=h0, h1=h1, ft=ft, wt=St),
+                    "5 years" = calcAHRgeo(x=1826, h0=h0, h1=h1, ft=ft, wt=St)
+                    )
+    return(newList)
+}
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 #_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
 invisible("Generalized gamma")#_#_#_#_#_#_#_#_#_#_#_#_#_
@@ -873,7 +951,6 @@ invisible("Generalized gamma")#_#_#_#_#_#_#_#_#_#_#_#_#_
 ggam_aft_to_ahr<-
 function(x, trans){
   fit.ggm<-get(x)[[trans]]
-  print(fit.ggm)
     f0 <- function(x,
     mu = coef(fit.ggm)["mu"],
     sigma =exp(coef(fit.ggm)["sigma"]),
@@ -923,6 +1000,110 @@ function(x, trans){
                     )
     return(newList)
 }
+ggam_aft_to_ahr_lo<-
+function(x, trans){
+  fit.ggm<-get(x)[[trans]]
+    f0 <- function(x,
+    mu = coef(fit.ggm)["mu"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    f1 <- function(x,
+    mu = coef(fit.ggm)["mu"]+confint(fit.ggm)["factor(tipo_de_plan_res_1)1",1],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    ft <- function(x){ (f0(x) + f1(x))}
+    # Cumulative Density Functions
+    S0 <- function(x,
+    mu = coef(fit.ggm)["mu"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+    }
+    S1 <- function(x,
+    mu = coef(fit.ggm)["mu"]+confint(fit.ggm)["factor(tipo_de_plan_res_1)1",1],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+    }
+    St <- function(x){ ( S0(x) * f0(x) + S1(x) * f1(x) ) / ( f0(x) + f1(x) ) }
+    ## St <- function(x){ (S0(x) + S1(x))/2} ## assuming same number of events
+    ## Hazard functions
+    h0 <- function(x,
+    mu = coef(fit.ggm)["mu"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    h1 <- function(x,
+    mu = coef(fit.ggm)["mu"]+confint(fit.ggm)["factor(tipo_de_plan_res_1)1",1],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    
+    newList <- list("90 days" = calcAHRgeo(x=90, h0=h0, h1=h1, ft=ft, wt=St), 
+                    "1 year" = calcAHRgeo(x=365.25, h0=h0, h1=h1, ft=ft, wt=St),
+                    "3 years" = calcAHRgeo(x=1096, h0=h0, h1=h1, ft=ft, wt=St),
+                    "5 years" = calcAHRgeo(x=1826, h0=h0, h1=h1, ft=ft, wt=St)
+                    )
+    return(newList)
+}
+ggam_aft_to_ahr_up<-
+function(x, trans){
+  fit.ggm<-get(x)[[trans]]
+    f0 <- function(x,
+    mu = coef(fit.ggm)["mu"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    f1 <- function(x,
+    mu = coef(fit.ggm)["mu"]+confint(fit.ggm)["factor(tipo_de_plan_res_1)1",2],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    ft <- function(x){ (f0(x) + f1(x))}
+    # Cumulative Density Functions
+    S0 <- function(x,
+    mu = coef(fit.ggm)["mu"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+    }
+    S1 <- function(x,
+    mu = coef(fit.ggm)["mu"]+confint(fit.ggm)["factor(tipo_de_plan_res_1)1",2],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+    }
+    St <- function(x){ ( S0(x) * f0(x) + S1(x) * f1(x) ) / ( f0(x) + f1(x) ) }
+    ## St <- function(x){ (S0(x) + S1(x))/2} ## assuming same number of events
+    ## Hazard functions
+    h0 <- function(x,
+    mu = coef(fit.ggm)["mu"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    h1 <- function(x,
+    mu = coef(fit.ggm)["mu"]+confint(fit.ggm)["factor(tipo_de_plan_res_1)1",2],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    
+    newList <- list("90 days" = calcAHRgeo(x=90, h0=h0, h1=h1, ft=ft, wt=St), 
+                    "1 year" = calcAHRgeo(x=365.25, h0=h0, h1=h1, ft=ft, wt=St),
+                    "3 years" = calcAHRgeo(x=1096, h0=h0, h1=h1, ft=ft, wt=St),
+                    "5 years" = calcAHRgeo(x=1826, h0=h0, h1=h1, ft=ft, wt=St)
+                    )
+    return(newList)
+}
 
 print("Average hazard ratio")
 
@@ -935,8 +1116,12 @@ ggam_aft_to_ahr("fits_c_ggam2",1)
 cat("Model of 9 states, transitions 3 4 5 6 7 8")
 
 logn_aft_to_ahr("fits_c_logn3",3)
+logn_aft_to_ahr_lo("fits_c_logn3",3)
+logn_aft_to_ahr_up("fits_c_logn3",3)
 
 ggam_aft_to_ahr( "fits_c_ggam3", 4)
+ggam_aft_to_ahr_lo( "fits_c_ggam3", 4)
+ggam_aft_to_ahr_up( "fits_c_ggam3", 4)
 
 logn_aft_to_ahr("fits_c_logn3",5)
 

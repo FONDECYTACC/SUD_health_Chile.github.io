@@ -966,12 +966,443 @@ plot(traveller_oct_2022) %>%
 
 
 ```{r evalue, warning=FALSE, message=F, cache=T, paged.print=TRUE, eval=T, error=T}
-evalue_or<-
-    EValue::evalues.RR(dplyr::rename(data.table::data.table(exp(coefBase(timecox_pwp_const2_opc2, digits=8)), keep.rownames = T), "Variables"="rn")[1,2], 
-                   dplyr::rename(data.table::data.table(exp(coefBase(timecox_pwp_const2_opc2, digits=8)), keep.rownames = T), "Variables"="rn")[1,7], 
-                   dplyr::rename(data.table::data.table(exp(coefBase(timecox_pwp_const2_opc2, digits=8)), keep.rownames = T), "Variables"="rn")[1,8], rare=F)
-evalue_or
+#2_1_gom m2_2_gom m2_3_logn m2_4_ggam m2_5_logn m2_6_ggam m2_7_ggam m2_8_ggam 
 
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+invisible("Log-normal")#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+require(flexsurv)
+
+logn_aft_to_ahr<-
+function(x, trans){
+  fit.lnm<-get(x)[[trans]]
+    # Probability Density Functions
+    f0 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    dlnorm(x=x, meanlog=meanlog, sdlog=sdlog)
+    }
+    f1 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"]+coef(fit.lnm)["factor(tipo_de_plan_res_1)1"],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    dlnorm(x=x, meanlog=meanlog, sdlog=sdlog)
+    }
+    ft <- function(x){ (f0(x) + f1(x))}
+    # Survival functions
+    S0 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    plnorm(q=x, meanlog=meanlog, sdlog=sdlog, lower=FALSE)
+    }
+    S1 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"]+coef(fit.lnm)["factor(tipo_de_plan_res_1)1"],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    plnorm(q=x, meanlog=meanlog, sdlog=sdlog, lower=FALSE)
+    }
+    St <- function(x){ ( S0(x) * f0(x) + S1(x) * f1(x) ) / ( f0(x) + f1(x) ) }
+    ## St <- function(x){ (S0(x) + S1(x))/2} ## assuming same number of events
+    # Hazard functions
+    h0 <- function(x, f=f0, S=S0){f(x)/S(x)}
+    h1 <- function(x, f=f1, S=S1){f(x)/S(x)}
+    newList <- list("90 days" = calcAHRgeo(x=90, h0=h0, h1=h1, ft=ft, wt=St), 
+                    "1 year" = calcAHRgeo(x=365.25, h0=h0, h1=h1, ft=ft, wt=St),
+                    "3 years" = calcAHRgeo(x=1096, h0=h0, h1=h1, ft=ft, wt=St),
+                    "5 years" = calcAHRgeo(x=1826, h0=h0, h1=h1, ft=ft, wt=St)
+                    )
+    return(newList)
+}
+
+logn_aft_to_ahr_lo<-
+function(x, trans){
+  fit.lnm<-get(x)[[trans]]
+    # Probability Density Functions
+    f0 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    dlnorm(x=x, meanlog=meanlog, sdlog=sdlog)
+    }
+    f1 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"]+confint(fit.lnm)["factor(tipo_de_plan_res_1)1",1],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    dlnorm(x=x, meanlog=meanlog, sdlog=sdlog)
+    }
+    ft <- function(x){ (f0(x) + f1(x))}
+    # Survival functions
+    S0 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    plnorm(q=x, meanlog=meanlog, sdlog=sdlog, lower=FALSE)
+    }
+    S1 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"]+confint(fit.lnm)["factor(tipo_de_plan_res_1)1",1],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    plnorm(q=x, meanlog=meanlog, sdlog=sdlog, lower=FALSE)
+    }
+    St <- function(x){ ( S0(x) * f0(x) + S1(x) * f1(x) ) / ( f0(x) + f1(x) ) }
+    ## St <- function(x){ (S0(x) + S1(x))/2} ## assuming same number of events
+    # Hazard functions
+    h0 <- function(x, f=f0, S=S0){f(x)/S(x)}
+    h1 <- function(x, f=f1, S=S1){f(x)/S(x)}
+    newList <- list("90 days" = calcAHRgeo(x=90, h0=h0, h1=h1, ft=ft, wt=St), 
+                    "1 year" = calcAHRgeo(x=365.25, h0=h0, h1=h1, ft=ft, wt=St),
+                    "3 years" = calcAHRgeo(x=1096, h0=h0, h1=h1, ft=ft, wt=St),
+                    "5 years" = calcAHRgeo(x=1826, h0=h0, h1=h1, ft=ft, wt=St)
+                    )
+    return(newList)
+}
+
+logn_aft_to_ahr_up<-
+function(x, trans){
+  fit.lnm<-get(x)[[trans]]
+    # Probability Density Functions
+    f0 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    dlnorm(x=x, meanlog=meanlog, sdlog=sdlog)
+    }
+    f1 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"]+confint(fit.lnm)["factor(tipo_de_plan_res_1)1",2],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    dlnorm(x=x, meanlog=meanlog, sdlog=sdlog)
+    }
+    ft <- function(x){ (f0(x) + f1(x))}
+    # Survival functions
+    S0 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    plnorm(q=x, meanlog=meanlog, sdlog=sdlog, lower=FALSE)
+    }
+    S1 <- function(x,
+    meanlog = coef(fit.lnm)["meanlog"]+confint(fit.lnm)["factor(tipo_de_plan_res_1)1",2],
+    sdlog = exp(coef(fit.lnm)["sdlog"])){
+    plnorm(q=x, meanlog=meanlog, sdlog=sdlog, lower=FALSE)
+    }
+    St <- function(x){ ( S0(x) * f0(x) + S1(x) * f1(x) ) / ( f0(x) + f1(x) ) }
+    ## St <- function(x){ (S0(x) + S1(x))/2} ## assuming same number of events
+    # Hazard functions
+    h0 <- function(x, f=f0, S=S0){f(x)/S(x)}
+    h1 <- function(x, f=f1, S=S1){f(x)/S(x)}
+    newList <- list("90 days" = calcAHRgeo(x=90, h0=h0, h1=h1, ft=ft, wt=St), 
+                    "1 year" = calcAHRgeo(x=365.25, h0=h0, h1=h1, ft=ft, wt=St),
+                    "3 years" = calcAHRgeo(x=1096, h0=h0, h1=h1, ft=ft, wt=St),
+                    "5 years" = calcAHRgeo(x=1826, h0=h0, h1=h1, ft=ft, wt=St)
+                    )
+    return(newList)
+}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+invisible("Generalized gamma")#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+# Probability Density Functions
+
+ggam_aft_to_ahr<-
+function(x, trans){
+  fit.ggm<-invisible(get(x)[[trans]])
+    f0 <- function(x,
+    mu = coef(fit.ggm)["mu"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    f1 <- function(x,
+    mu = coef(fit.ggm)["mu"]+coef(fit.ggm)["factor(tipo_de_plan_res_1)1"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    ft <- function(x){ (f0(x) + f1(x))}
+    # Cumulative Density Functions
+    S0 <- function(x,
+    mu = coef(fit.ggm)["mu"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+    }
+    S1 <- function(x,
+    mu = coef(fit.ggm)["mu"]+coef(fit.ggm)["factor(tipo_de_plan_res_1)1"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+    }
+    St <- function(x){ ( S0(x) * f0(x) + S1(x) * f1(x) ) / ( f0(x) + f1(x) ) }
+    ## St <- function(x){ (S0(x) + S1(x))/2} ## assuming same number of events
+    ## Hazard functions
+    h0 <- function(x,
+    mu = coef(fit.ggm)["mu"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    h1 <- function(x,
+    mu = coef(fit.ggm)["mu"]+coef(fit.ggm)["factor(tipo_de_plan_res_1)1"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    
+    newList <- list("90 days" = calcAHRgeo(x=90, h0=h0, h1=h1, ft=ft, wt=St), 
+                    "1 year" = calcAHRgeo(x=365.25, h0=h0, h1=h1, ft=ft, wt=St),
+                    "3 years" = calcAHRgeo(x=1096, h0=h0, h1=h1, ft=ft, wt=St),
+                    "5 years" = calcAHRgeo(x=1826, h0=h0, h1=h1, ft=ft, wt=St)
+                    )
+    return(newList)
+}
+ggam_aft_to_ahr_lo<-
+function(x, trans){
+  fit.ggm<-get(x)[[trans]]
+    f0 <- function(x,
+    mu = coef(fit.ggm)["mu"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    f1 <- function(x,
+    mu = coef(fit.ggm)["mu"]+confint(fit.ggm)["factor(tipo_de_plan_res_1)1",1],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    ft <- function(x){ (f0(x) + f1(x))}
+    # Cumulative Density Functions
+    S0 <- function(x,
+    mu = coef(fit.ggm)["mu"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+    }
+    S1 <- function(x,
+    mu = coef(fit.ggm)["mu"]+confint(fit.ggm)["factor(tipo_de_plan_res_1)1",1],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+    }
+    St <- function(x){ ( S0(x) * f0(x) + S1(x) * f1(x) ) / ( f0(x) + f1(x) ) }
+    ## St <- function(x){ (S0(x) + S1(x))/2} ## assuming same number of events
+    ## Hazard functions
+    h0 <- function(x,
+    mu = coef(fit.ggm)["mu"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    h1 <- function(x,
+    mu = coef(fit.ggm)["mu"]+confint(fit.ggm)["factor(tipo_de_plan_res_1)1",1],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    
+    newList <- list("90 days" = calcAHRgeo(x=90, h0=h0, h1=h1, ft=ft, wt=St), 
+                    "1 year" = calcAHRgeo(x=365.25, h0=h0, h1=h1, ft=ft, wt=St),
+                    "3 years" = calcAHRgeo(x=1096, h0=h0, h1=h1, ft=ft, wt=St),
+                    "5 years" = calcAHRgeo(x=1826, h0=h0, h1=h1, ft=ft, wt=St)
+                    )
+    return(newList)
+}
+ggam_aft_to_ahr_up<-
+function(x, trans){
+  fit.ggm<-get(x)[[trans]]
+    f0 <- function(x,
+    mu = coef(fit.ggm)["mu"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    f1 <- function(x,
+    mu = coef(fit.ggm)["mu"]+confint(fit.ggm)["factor(tipo_de_plan_res_1)1",2],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    dgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    ft <- function(x){ (f0(x) + f1(x))}
+    # Cumulative Density Functions
+    S0 <- function(x,
+    mu = coef(fit.ggm)["mu"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+    }
+    S1 <- function(x,
+    mu = coef(fit.ggm)["mu"]+confint(fit.ggm)["factor(tipo_de_plan_res_1)1",2],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    pgengamma(q=x, mu=mu, sigma=sigma, Q=Q, lower=FALSE)
+    }
+    St <- function(x){ ( S0(x) * f0(x) + S1(x) * f1(x) ) / ( f0(x) + f1(x) ) }
+    ## St <- function(x){ (S0(x) + S1(x))/2} ## assuming same number of events
+    ## Hazard functions
+    h0 <- function(x,
+    mu = coef(fit.ggm)["mu"],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    h1 <- function(x,
+    mu = coef(fit.ggm)["mu"]+confint(fit.ggm)["factor(tipo_de_plan_res_1)1",2],
+    sigma =exp(coef(fit.ggm)["sigma"]),
+    Q = coef(fit.ggm)["Q"]){
+    hgengamma(x=x, mu=mu, sigma=sigma, Q=Q)
+    }
+    
+    newList <- list("90 days" = calcAHRgeo(x=90, h0=h0, h1=h1, ft=ft, wt=St), 
+                    "1 year" = calcAHRgeo(x=365.25, h0=h0, h1=h1, ft=ft, wt=St),
+                    "3 years" = calcAHRgeo(x=1096, h0=h0, h1=h1, ft=ft, wt=St),
+                    "5 years" = calcAHRgeo(x=1826, h0=h0, h1=h1, ft=ft, wt=St)
+                    )
+    return(newList)
+}
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_#_
+
+#load("C:/Users/CISS Fondecyt/Mi unidad/Alvacast/SISTRAT 2019 (github)/mult_state_5_apr22.RData")
+#sel_param_fits_a
+#dt_ms_d_match_surv_oct_2022_a
+
+#https://cran.r-project.org/web/packages/tipr/tipr.pdf
+
+#' @param rare 1 if outcome is rare (<15 percent at end of follow-up); 0 if
+#'   outcome is not rare (>15 percent at end of follow-up)
+#detach("package:EValue",  unload=TRUE)
+
+
+HR_evalue<-
+function(x, trans, term="factor(tipo_de_plan_res_1)1"){
+  # compute E-value for HR = 0.56 with CI: [0.46, 0.69]
+  # for a common outcome
+  # toRR(HR(0.56, 0.46, 0.69, rare = FALSE))
+  
+  fit<-get(x)[[trans]]
+  rare_cond<-(fit$event/fit$N)<.15
+  y<- match(term,attr(coef(fit), "names"))
+
+      RR_est<-toRR(HR(exp(coef(fit)[y]),rare=rare_cond))
+      RR_lo<-toRR(HR(exp(confint(fit)["factor(tipo_de_plan_res_1)1",1]),rare=rare_cond))
+      RR_up<-toRR(HR(exp(confint(fit)["factor(tipo_de_plan_res_1)1",2]),rare=rare_cond))
+      
+      evalue_or<- EValue::evalues.RR(RR_est, 
+                   RR_lo, 
+                   RR_up, 
+                   rare=rare_cond)
+      
+      return(evalue_or)
+}
+
+HR_evalue_aft<-
+function(x, trans, term="factor(tipo_de_plan_res_1)1", time= "90 days"){
+  # compute E-value for HR = 0.56 with CI: [0.46, 0.69]
+  # for a common outcome
+  # toRR(HR(0.56, 0.46, 0.69, rare = FALSE))
+  # "90 days", "1 year", "3 years" "5 years"
+  # get("fits_c_ggam3")[[4]]$dlist$name
+  
+  fit<-get(x)[[trans]]
+  rare_cond<-(fit$events/fit$N)<.15
+  tt<-time
+  print(fit$dlist$name)
+  if(fit$dlist$name =="lnorm"){
+      RR_est<-toRR(HR(as.numeric(logn_aft_to_ahr(x, trans)[tt]), rare=rare_cond))
+      RR_lo<- toRR(HR(as.numeric(logn_aft_to_ahr_up(x, trans)[tt]), rare=rare_cond))
+      RR_up<- toRR(HR(as.numeric(logn_aft_to_ahr_lo(x, trans)[tt]), rare=rare_cond))
+      
+      evalue_or<- EValue::evalues.RR(RR_est , 
+                   RR_lo,
+                   RR_up, 
+                   rare=rare_cond)
+      return(evalue_or)
+  } else {
+      RR_est<-toRR(HR(as.numeric(ggam_aft_to_ahr(x, trans)[tt]), rare=rare_cond))
+      RR_lo<- toRR(HR(as.numeric(ggam_aft_to_ahr_up(x, trans)[tt]), rare=rare_cond))
+      RR_up<- toRR(HR(as.numeric(ggam_aft_to_ahr_lo(x, trans)[tt]), rare=rare_cond))
+      
+      evalue_or<- EValue::evalues.RR(RR_est, 
+                   RR_lo, 
+                   RR_up, 
+                   rare=rare_cond)
+      return(evalue_or)    
+  }
+}
+
+ 
+ evalue_gomp1<- EValue::evalues.RR(toRR(HR(as.numeric(exp(coef(fits_c_gomp3[[1]])["factor(tipo_de_plan_res_1)1"])),rare= (fits_c_gomp3[[1]]$events/fits_c_gomp3[[1]]$N))), 
+                   toRR(HR(as.numeric(exp(confint(fits_c_gomp3[[1]])["factor(tipo_de_plan_res_1)1",1])),rare= (fits_c_gomp3[[1]]$events/fits_c_gomp3[[1]]$N))), 
+                   toRR(HR(as.numeric(exp(confint(fits_c_gomp3[[1]])["factor(tipo_de_plan_res_1)1",2])),rare= (fits_c_gomp3[[1]]$events/fits_c_gomp3[[1]]$N))), 
+                   rare=(fits_c_gomp3[[1]]$events/fits_c_gomp3[[1]]$N)<.15)
+
+ evalue_gomp2<-  EValue::evalues.RR(toRR(HR(as.numeric(exp(coef(fits_c_gomp3[[2]])["factor(tipo_de_plan_res_1)1"])),rare= (fits_c_gomp3[[2]]$events/fits_c_gomp3[[2]]$N))), 
+                   toRR(HR(as.numeric(exp(confint(fits_c_gomp3[[2]])["factor(tipo_de_plan_res_1)1",1])),rare= (fits_c_gomp3[[2]]$events/fits_c_gomp3[[2]]$N))), 
+                   toRR(HR(as.numeric(exp(confint(fits_c_gomp3[[2]])["factor(tipo_de_plan_res_1)1",2])),rare= (fits_c_gomp3[[2]]$events/fits_c_gomp3[[2]]$N))), 
+                   rare=(fits_c_gomp3[[2]]$events/fits_c_gomp3[[2]]$N)<.15)
+           
+#logn_aft_to_ahr("fits_c_logn3",3)
+
+e_values_df <-
+ dplyr::bind_rows( 
+cbind.data.frame(Trans=1, tt="", data.table::data.table(evalue_gomp1, keep.rownames = T)),
+cbind.data.frame(Trans=2, tt="", data.table::data.table(evalue_gomp2, keep.rownames = T)),
+cbind.data.frame(Trans=3, tt="90 d", data.table::data.table(HR_evalue_aft(x="fits_c_logn3",trans=3, time="90 days"), keep.rownames = T)),
+cbind.data.frame(Trans=3, tt="1 yr", data.table::data.table(HR_evalue_aft(x="fits_c_logn3",trans=3, time="1 year"), keep.rownames = T)),
+cbind.data.frame(Trans=3, tt="3 yr", data.table::data.table(HR_evalue_aft(x="fits_c_logn3",trans=3, time="3 years"), keep.rownames = T)),
+cbind.data.frame(Trans=3, tt="5 yr", data.table::data.table(HR_evalue_aft(x="fits_c_logn3",trans=3, time="5 years"), keep.rownames = T)),
+cbind.data.frame(Trans=4, tt="90 d", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=4, time="90 days"), keep.rownames = T)),
+cbind.data.frame(Trans=4, tt="1 yr", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=4, time="1 year"), keep.rownames = T)),
+cbind.data.frame(Trans=4, tt="3 yr", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=4, time="3 years"), keep.rownames = T)),
+cbind.data.frame(Trans=4, tt="5 yr", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=4, time="5 years"), keep.rownames = T)),
+cbind.data.frame(Trans=5, tt="90 d", data.table::data.table(HR_evalue_aft(x="fits_c_logn3",trans=5, time="90 days"), keep.rownames = T)),
+cbind.data.frame(Trans=5, tt="1 yr", data.table::data.table(HR_evalue_aft(x="fits_c_logn3",trans=5, time="1 year"), keep.rownames = T)),
+cbind.data.frame(Trans=5, tt="3 yr", data.table::data.table(HR_evalue_aft(x="fits_c_logn3",trans=5, time="3 years"), keep.rownames = T)),
+cbind.data.frame(Trans=5, tt="5 yr", data.table::data.table(HR_evalue_aft(x="fits_c_logn3",trans=5, time="5 years"), keep.rownames = T)),
+cbind.data.frame(Trans=6, tt="90 d", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=6, time="90 days"), keep.rownames = T)),
+cbind.data.frame(Trans=6, tt="1 yr", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=6, time="1 year"), keep.rownames = T)),
+cbind.data.frame(Trans=6, tt="3 yr", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=6, time="3 years"), keep.rownames = T)),
+cbind.data.frame(Trans=6, tt="5 yr", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=6, time="5 years"), keep.rownames = T)),
+cbind.data.frame(Trans=7, tt="90 d", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=7, time="90 days"), keep.rownames = T)),
+cbind.data.frame(Trans=7, tt="1 yr", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=7, time="1 year"), keep.rownames = T)),
+cbind.data.frame(Trans=7, tt="3 yr", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=7, time="3 years"), keep.rownames = T)),
+cbind.data.frame(Trans=7, tt="5 yr", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=7, time="5 years"), keep.rownames = T)),
+cbind.data.frame(Trans=8, tt="90 d", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=8, time="90 days"), keep.rownames = T)),
+cbind.data.frame(Trans=8, tt="1 yr", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=8, time="1 year"), keep.rownames = T)),
+cbind.data.frame(Trans=8, tt="3 yr", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=8, time="3 years"), keep.rownames = T)),
+cbind.data.frame(Trans=8, tt="5 yr", data.table::data.table(HR_evalue_aft(x="fits_c_ggam3",trans=8, time="5 years"), keep.rownames = T))
+)
+
+# HR_evalue_aft(x="fits_c_logn3",trans=3, time="90 days")
+# HR_evalue_aft(x="fits_c_logn3",trans=3, time="1 year")
+# HR_evalue_aft(x="fits_c_logn3",trans=3, time="3 years")
+# HR_evalue_aft(x="fits_c_logn3",trans=3, time="5 years")
+# 
+# #ggam_aft_to_ahr( "fits_c_ggam3", 4)
+# HR_evalue_aft(x="fits_c_ggam3",trans=4, time="90 days")
+# HR_evalue_aft(x="fits_c_ggam3",trans=4, time="1 year")
+# HR_evalue_aft(x="fits_c_ggam3",trans=4, time="3 years")
+# HR_evalue_aft(x="fits_c_ggam3",trans=4, time="5 years")
+# 
+# #logn_aft_to_ahr("fits_c_logn3",3)
+# HR_evalue_aft(x="fits_c_logn3",trans=5, time="90 days")
+# HR_evalue_aft(x="fits_c_logn3",trans=5, time="1 year")
+# HR_evalue_aft(x="fits_c_logn3",trans=5, time="3 years")
+# HR_evalue_aft(x="fits_c_logn3",trans=5, time="5 years")
+# 
+# #ggam_aft_to_ahr( "fits_c_ggam3", 6)
+# HR_evalue_aft(x="fits_c_ggam3",trans=6, time="90 days")
+# HR_evalue_aft(x="fits_c_ggam3",trans=6, time="1 year")
+# HR_evalue_aft(x="fits_c_ggam3",trans=6, time="3 years")
+# HR_evalue_aft(x="fits_c_ggam3",trans=6, time="5 years")
+# 
+# #ggam_aft_to_ahr( "fits_c_ggam3", 8)
+# HR_evalue_aft(x="fits_c_ggam3",trans=8, time="90 days")
+# HR_evalue_aft(x="fits_c_ggam3",trans=8, time="1 year")
+# HR_evalue_aft(x="fits_c_ggam3",trans=8, time="3 years")
+# HR_evalue_aft(x="fits_c_ggam3",trans=8, time="5 years")
+
+e_values_df %>% 
+    tidyr::pivot_wider(id_cols= c("Trans", "tt"), names_from= "rn", values_from= c("point", "lower", "upper")) %>% 
+    dplyr::select(Trans, tt, `point_E-values`, `lower_E-values`, `upper_E-values`, "point_RR", lower_RR, upper_RR) %>% 
+  knitr::kable(caption="E-values by each geometric averaged Hazard Ratio by each transition (onlñy 1 row= PH models)", col.names= c("Transition", "Time", "E value", "95%IC Lo", "95%IC Up", "RR", "RR 95%CI Lo", "RR 95%CI Up"), digits=2)%>%
+  kableExtra::kable_classic()
+
+# Trans   tt       rn    point    lower    upper
 ```
 
 We estimated the sensibility of the associations found assuming different values of the sensitivity parameter ($\Gamma$).  
